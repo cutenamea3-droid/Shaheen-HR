@@ -17,10 +17,12 @@ dist-ssr
 .nitro
 *.local
 
-# Env / secrets (never commit publishable or service keys)
+# Env / secrets (never commit service-role keys)
 .env
 .env.*
 !.env.example
+# Publishable/anon client keys for Cloudflare Pages builds (same pattern as Admin hardcode)
+!.env.production
 
 # Wrangler / Cloudflare
 .wrangler/

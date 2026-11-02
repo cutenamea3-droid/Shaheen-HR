@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
-import { supabase } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { getPortalAccount, PORTAL_EMAIL, signInPortalAccount, updatePortalProfile, type PortalAccount } from "@/lib/cloud";
 import { AboutPanel } from "./AboutPanel";
 
@@ -40,6 +40,17 @@ export function LockGate({ children }: { children: ReactNode }) {
     let active = true;
     localStorage.removeItem("shaheen-pass");
     localStorage.removeItem("shaheen-unlocked");
+    // Missing VITE_SUPABASE_* must not crash the SPA into the root error UI —
+    // show the sign-in card with a clear message; localStorage data stays intact.
+    if (!isSupabaseConfigured()) {
+      setError(
+        "Cloud sign-in is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY on the build). Local saved data is still in this browser.",
+      );
+      setReady(true);
+      return () => {
+        active = false;
+      };
+    }
     const acceptSession = async (userId: string, userEmail: string) => {
       try {
         const next = await getPortalAccount(userId);
@@ -75,24 +86,35 @@ export function LockGate({ children }: { children: ReactNode }) {
       } else {
         setReady(true);
       }
+    }).catch((e) => {
+      if (!active) return;
+      setError(e instanceof Error ? e.message : "Could not reach cloud auth.");
+      setReady(true);
     });
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      if (session) {
-        window.setTimeout(() => {
-          if (active) void acceptSession(session.user.id, session.user.email ?? "");
-        }, 0);
-      } else {
-        setAccount(null);
-        setEmail("");
-      }
-    });
+    let unsubscribe = () => {};
+    try {
+      const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!active) return;
+        if (session) {
+          window.setTimeout(() => {
+            if (active) void acceptSession(session.user.id, session.user.email ?? "");
+          }, 0);
+        } else {
+          setAccount(null);
+          setEmail("");
+        }
+      });
+      unsubscribe = () => subscription.subscription.unsubscribe();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start cloud auth.");
+      setReady(true);
+    }
     const onLock = () => setAccount(null);
     window.addEventListener("shaheen-lock", onLock);
     return () => {
       active = false;
-      subscription.subscription.unsubscribe();
+      unsubscribe();
       window.removeEventListener("shaheen-lock", onLock);
     };
   }, []);
