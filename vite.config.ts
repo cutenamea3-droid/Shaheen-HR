@@ -6,10 +6,29 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Cloudflare Pages (shaheen-hr.pages.dev) was failing at runtime with the Nitro
+// cloudflare-module SSR worker. This app is a client dashboard (localStorage +
+// optional Supabase), so ship a static SPA shell instead of SSR.
+//
+// CF Pages settings:
+//   Build command:      bun run build   (or npm run build)
+//   Build output dir:   dist/client
+//   Root directory:     /
+// Env vars (Build + Runtime; Vite needs them at build time):
+//   VITE_SUPABASE_URL
+//   VITE_SUPABASE_PUBLISHABLE_KEY
 export default defineConfig({
+  // Skip Nitro Cloudflare worker packaging — Pages serves static assets only.
+  nitro: false,
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
+    // Keep custom server entry for local/dev SSR tooling; SPA mode skips route SSR in prod.
     server: { entry: "server" },
+    spa: {
+      enabled: true,
+      // CF Pages serves /index.html for unmatched routes when no top-level 404.html exists.
+      prerender: {
+        outputPath: "/index.html",
+      },
+    },
   },
 });

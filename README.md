@@ -27,3 +27,23 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Cloudflare Pages
+
+Production URL: https://shaheen-hr.pages.dev
+
+This app deploys as a **static SPA** (client-side routing + localStorage; optional Supabase sync). Do not point Pages at Nitro/SSR worker output.
+
+| Setting | Value |
+|--------|--------|
+| Build command | `bun run build` (or `npm run build`) |
+| Build output directory | `dist/client` |
+| Root directory | `/` (repo root) |
+| Framework preset | None / Vite |
+
+**Environment variables** (Production + Preview, available at **Build** time — Vite inlines `VITE_*`):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+See `.env.example`. Dashboard data still persists to `localStorage` in the browser (`shaheen-driver-tracker-v1`, Admin `hr-attendance-v1`); cloud sync remains optional when signed in.
