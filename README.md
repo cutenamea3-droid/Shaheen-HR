@@ -37,7 +37,7 @@ This app deploys as a **static SPA** (client-side routing + localStorage; option
 | Setting | Value |
 |--------|--------|
 | Build command | `bun run build` (or `npm run build`) |
-| Build output directory | `dist/client` |
+| Build output directory | `dist` |
 | Root directory | `/` (repo root) |
 | Framework preset | None / Vite |
 

@@ -12,7 +12,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 //
 // CF Pages settings:
 //   Build command:      bun run build   (or npm run build)
-//   Build output dir:   dist/client
+//   Build output dir:   dist
 //   Root directory:     /
 // Env vars (Build + Runtime; Vite needs them at build time):
 //   VITE_SUPABASE_URL
@@ -28,6 +28,23 @@ export default defineConfig({
       // CF Pages serves /index.html for unmatched routes when no top-level 404.html exists.
       prerender: {
         outputPath: "/index.html",
+      },
+    },
+  },
+  vite: {
+    // Cloudflare Pages UI is locked to output dir `dist`, so put the SPA shell
+    // and assets at dist/index.html (not dist/client). Keep the SSR build used
+    // only for prerender outside that folder so Pages does not upload it.
+    environments: {
+      client: {
+        build: {
+          outDir: "dist",
+        },
+      },
+      ssr: {
+        build: {
+          outDir: "dist-server",
+        },
       },
     },
   },
