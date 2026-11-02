@@ -380,3 +380,54 @@ export function deleteRecord(sectionId: string, rowId: string) {
     return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) } } };
   });
 }
+
+function recordPersonKey(name: string) {
+  return name.trim().toLowerCase();
+}
+
+/** Move every document row for a person from one record section into another (preserves cells/driverId/addedAt; new row ids). */
+export function moveRecordPerson(fromId: string, toId: string, personName: string) {
+  if (fromId === toId) return;
+  const key = recordPersonKey(personName);
+  if (!key) return;
+  update((d) => {
+    const from = d.sections[fromId] ?? emptyRecordSection();
+    const to = d.sections[toId] ?? emptyRecordSection();
+    const moving = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") === key);
+    if (!moving.length) return d;
+    const stay = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") !== key);
+    const added = moving.map((r) => ({
+      ...r,
+      id: toId + "_" + uid(),
+      cells: [...r.cells],
+    }));
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [fromId]: { ...from, rows: stay },
+        [toId]: { ...to, rows: [...to.rows, ...added] },
+      },
+    };
+  });
+}
+
+/** Rename every document row for a person within a record section so person-card grouping stays intact. */
+export function renameRecordPerson(sectionId: string, oldName: string, newName: string) {
+  const next = newName.trim();
+  if (!next) return;
+  const key = recordPersonKey(oldName);
+  if (!key || recordPersonKey(next) === key) return;
+  update((d) => {
+    const sec = d.sections[sectionId];
+    if (!sec) return d;
+    let touched = false;
+    const rows = sec.rows.map((r) => {
+      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
+      touched = true;
+      return { ...r, cells: r.cells.map((c, i) => (i === 0 ? next : c)) };
+    });
+    if (!touched) return d;
+    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows } } };
+  });
+}
