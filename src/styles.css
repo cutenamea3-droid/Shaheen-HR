@@ -1,0 +1,562 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-row: var(--danger-row);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-note: var(--note);
+  --color-note-soft: var(--note-soft);
+  --color-sign: var(--sign);
+  --color-sign-soft: var(--sign-soft);
+  --color-gold: var(--gold);
+  --color-eagle: var(--eagle);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.85rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.1 0 0);
+  --primary: oklch(0.65 0.175 48);
+  --primary-foreground: oklch(0.99 0.005 80);
+  --secondary: oklch(0.94 0.04 80);
+  --secondary-foreground: oklch(0.3 0.05 55);
+  --muted: oklch(0.97 0.004 78);
+  --muted-foreground: oklch(0.48 0.025 55);
+  --accent: oklch(0.95 0.05 75);
+  --accent-foreground: oklch(0.32 0.07 50);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.92 0.006 75);
+  --input: oklch(0.88 0.025 75);
+  --ring: oklch(0.65 0.175 48);
+
+  --ok: oklch(0.52 0.14 152);
+  --ok-soft: oklch(0.95 0.05 152);
+  --warn: oklch(0.6 0.16 62);
+  --warn-soft: oklch(0.94 0.08 80);
+  --danger: oklch(0.56 0.21 25);
+  --danger-soft: oklch(0.95 0.04 20);
+  --danger-row: oklch(0.91 0.065 20);
+  --info: oklch(0.52 0.17 255);
+  --info-soft: oklch(0.94 0.04 250);
+  --note: oklch(0.5 0.11 85);
+  --note-soft: oklch(0.97 0.09 98);
+  --sign: oklch(0.55 0.19 350);
+  --sign-soft: oklch(0.95 0.04 350);
+  --gold: oklch(0.83 0.16 85);
+  --eagle: oklch(0.5 0.13 150);
+  --ink: oklch(0.21 0.02 50);
+  --ink-foreground: oklch(0.96 0.01 80);
+  --ink-muted: oklch(0.72 0.03 70);
+
+  --gradient-brand: linear-gradient(120deg, oklch(0.6 0.18 42), oklch(0.7 0.17 58) 55%, oklch(0.83 0.16 85));
+  --gradient-header: linear-gradient(100deg, oklch(0.27 0.03 50), oklch(0.33 0.06 50));
+  --gradient-sky: linear-gradient(#fff, #fff);
+  --shadow-card: 0 1px 2px oklch(0.4 0.05 50 / 0.06), 0 8px 24px -12px oklch(0.4 0.08 50 / 0.18);
+  --shadow-pop: 0 18px 50px -12px oklch(0.35 0.08 50 / 0.35);
+
+  --chart-1: var(--primary);
+  --chart-2: var(--eagle);
+  --chart-3: var(--gold);
+  --chart-4: var(--info);
+  --chart-5: var(--danger);
+  --sidebar: oklch(0.21 0.02 50);
+  --sidebar-foreground: oklch(0.93 0.015 80);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.28 0.025 50);
+  --sidebar-accent-foreground: oklch(0.97 0.01 80);
+  --sidebar-border: oklch(0.3 0.02 50);
+  --sidebar-ring: var(--primary);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    font-size: 13px;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+}
+
+@utility bg-brand {
+  background-image: var(--gradient-brand);
+}
+@utility bg-header {
+  background-image: var(--gradient-header);
+}
+@utility bg-sky {
+  background-image: var(--gradient-sky);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-pop {
+  box-shadow: var(--shadow-pop);
+}
+@utility text-brand {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes flash-row {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; }
+  20%, 60% { box-shadow: inset 0 0 0 3px var(--primary); background-color: var(--accent); }
+}
+@utility animate-flash {
+  animation: flash-row 2.4s ease-in-out 1;
+}
+
+@media print {
+  aside { display: none !important; }
+  .app-switcher { display: none !important; }
+}
+
+
+/* ---------- Dark Mode (light mode above is untouched) ---------- */
+.dark {
+  --background: oklch(0.2 0.014 255);
+  --foreground: oklch(0.9 0.012 85);
+  --card: oklch(0.235 0.014 255);
+  --card-foreground: oklch(0.9 0.012 85);
+  --popover: oklch(0.25 0.014 255);
+  --popover-foreground: oklch(0.9 0.012 85);
+  --secondary: oklch(0.29 0.014 255);
+  --secondary-foreground: oklch(0.88 0.012 85);
+  --muted: oklch(0.28 0.012 255);
+  --muted-foreground: oklch(0.7 0.015 85);
+  --accent: oklch(0.3 0.03 60);
+  --accent-foreground: oklch(0.9 0.02 75);
+  --border: oklch(0.34 0.012 255);
+  --input: oklch(0.38 0.012 255);
+  --ok-soft: oklch(0.3 0.04 150);
+  --ok: oklch(0.8 0.09 150);
+  --warn-soft: oklch(0.31 0.045 75);
+  --warn: oklch(0.84 0.09 80);
+  --danger: oklch(0.8 0.08 25);
+  --danger-soft: oklch(0.3 0.06 25);
+  --danger-row: oklch(0.26 0.03 25);
+  --info-soft: oklch(0.3 0.04 245);
+  --info: oklch(0.8 0.08 245);
+  --note-soft: oklch(0.3 0.03 90 / 0.55);
+  --note: oklch(0.86 0.05 90);
+  --sign-soft: oklch(0.3 0.045 350);
+  --sign: oklch(0.82 0.08 350);
+  --ink: oklch(0.3 0.012 255);
+  --sidebar: oklch(0.17 0.014 255);
+  --sidebar-border: oklch(0.27 0.012 255);
+  --sidebar-accent: oklch(0.25 0.014 255);
+  --gradient-brand: linear-gradient(120deg, oklch(0.42 0.09 45), oklch(0.48 0.09 58) 55%, oklch(0.55 0.09 80));
+  --gradient-sky: linear-gradient(var(--background), var(--background));
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+  color-scheme: dark;
+}
+.dark tbody td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+.dark table td, .dark table th { border-color: oklch(1 0 0 / 0.1) !important; }
+.dark thead th { border-bottom: 2px solid oklch(0.7 0.12 60 / 0.6); }
+.dark tbody td.ring-danger { box-shadow: none; }
+.dark td .border-danger { border-color: transparent; }
+.dark [data-driver-name] { color: oklch(0.95 0.015 85); font-weight: 800; }
+.dark td .bg-ok { background-color: var(--ok-soft); color: var(--ok); }
+.dark td .bg-danger { background-color: var(--danger-soft); color: var(--danger); }
+.dark td .bg-sign { background-color: var(--sign-soft); color: var(--sign); }
+.dark td .bg-info { background-color: var(--info-soft); color: var(--info); }
+.dark td .bg-warn { background-color: var(--warn-soft); color: var(--warn); }
+
+/* Excel-style selected row */
+tr.row-selected {
+  --sel-fill: #E8F0FE;
+  --sel-line: #2563EB;
+}
+.dark tr.row-selected {
+  --sel-fill: color-mix(in srgb, #2563EB 28%, var(--card));
+  --sel-line: #60A5FA;
+}
+tr.row-selected > td {
+  background-color: var(--sel-fill) !important;
+  box-shadow: inset 0 2.5px 0 var(--sel-line), inset 0 -2.5px 0 var(--sel-line);
+}
+/* alert rows keep a hint of red under the blue */
+tr.row-selected > td.bg-danger-row,
+tr.row-selected:has(> td.bg-danger-row) > td {
+  background-color: color-mix(in srgb, var(--sel-fill) 70%, var(--danger-row)) !important;
+}
+tr.row-selected > td:first-child {
+  background-color: var(--sel-line) !important;
+  color: #ffffff !important;
+}
+/* frozen driver name column divider */
+.freeze-edge { box-shadow: 4px 0 6px -3px color-mix(in oklab, var(--foreground) 35%, transparent); }
+tr.row-selected > td.freeze-edge {
+  box-shadow: inset 0 2.5px 0 var(--sel-line), inset 0 -2.5px 0 var(--sel-line), 4px 0 6px -3px color-mix(in oklab, var(--foreground) 35%, transparent);
+}
+
+/* ---------- Combined site: top switcher ---------- */
+.with-switcher .h-screen { height: calc(100vh - 44px); }
+.with-switcher .min-h-screen { min-height: calc(100vh - 44px); }
+.with-switcher .sticky.top-0 { top: 44px; }
+/* table headers stick to their own scroll box, not the page */
+.with-switcher .overflow-auto .sticky.top-0 { top: 0; }
+
+/* ---------- Admin & Attendance: its original look, kept separate ---------- */
+@theme inline {
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+html:has(.admin-theme) { font-size: 16px; }
+body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
+.admin-theme {
+  --radius: 0.9rem;
+  --background: oklch(0.985 0.004 70);
+  --foreground: oklch(0.2 0.01 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.03 230);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.03 230);
+  --primary: oklch(0.7 0.18 50);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.04 70);
+  --secondary-foreground: oklch(0.4 0.12 50);
+  --muted: oklch(0.965 0.008 70);
+  --muted-foreground: oklch(0.5 0.03 225);
+  --accent: oklch(0.82 0.13 75);
+  --accent-foreground: oklch(0.25 0.05 60);
+  --destructive: oklch(0.55 0.21 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.55 0.15 150);
+  --info: oklch(0.5 0.17 255);
+  --warning: oklch(0.75 0.15 80);
+  --border: oklch(0.91 0.01 70);
+  --input: oklch(0.89 0.015 70);
+  --ring: oklch(0.7 0.18 50);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.22 0.008 60);
+  --sidebar-foreground: oklch(0.92 0.01 70);
+  --sidebar-primary: oklch(0.208 0.042 265.755);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.3 0.01 60);
+  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
+  --sidebar-border: oklch(0.3 0.01 60);
+  --sidebar-ring: oklch(0.704 0.04 256.788);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+.admin-theme h4 { font-family: inherit; }
+@utility brand-gradient { background-image: linear-gradient(135deg, var(--primary), oklch(0.78 0.16 70)); }
+@utility nav-glow { background-image: linear-gradient(135deg, var(--primary), oklch(0.8 0.16 75)); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--primary) 70%, transparent), inset 0 1px 0 color-mix(in oklab, white 35%, transparent); }
+/* panel: rest depth + lift. Note: hover rules also target .panel directly because
+   @apply ui-lift only copies utility *properties*, not separate .ui-lift:hover selectors. */
+@utility panel {
+  @apply relative isolate rounded-2xl border border-border bg-card p-4 md:p-6;
+  box-shadow:
+    0 1px 2px oklch(0.4 0.05 50 / 0.06),
+    0 12px 28px -16px oklch(0.35 0.08 50 / 0.28);
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 220ms ease,
+    filter 260ms ease;
+  will-change: transform;
+}
+@utility field { @apply h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring; }
+@utility btn {
+  @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease,
+    background-color 180ms ease,
+    opacity 180ms ease;
+  will-change: transform;
+}
+@utility btn-primary {
+  @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 brand-gradient text-primary-foreground;
+  box-shadow: 0 8px 22px -10px color-mix(in oklab, var(--primary) 55%, transparent);
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease,
+    opacity 180ms ease;
+  will-change: transform;
+}
+@utility btn-ghost {
+  @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 border border-border bg-card text-foreground hover:bg-muted;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease,
+    background-color 180ms ease;
+  will-change: transform;
+}
+@utility btn-danger {
+  @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 border border-destructive/40 bg-card text-destructive hover:bg-destructive/10;
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease;
+  will-change: transform;
+}
+@utility chip { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+@utility lbl { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground; }
+
+/* ---------- Shared 3D-ish lift / press / glow (dashboard + CV) ---------- */
+@utility ui-lift {
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 220ms ease,
+    filter 260ms ease;
+  will-change: transform;
+}
+@utility ui-press {
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease,
+    opacity 180ms ease;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Include .panel — Admin KPI/attendance cards use `panel`, not the `ui-lift` class name */
+  .motion-safe\:ui-lift:hover,
+  .ui-lift:hover,
+  .ui-lift:focus-visible,
+  .panel:hover,
+  .panel:focus-visible {
+    transform: translateY(-4px) scale(1.012);
+    box-shadow:
+      0 2px 4px oklch(0.35 0.05 50 / 0.08),
+      0 18px 40px -16px oklch(0.35 0.08 50 / 0.38);
+    border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  }
+  .ui-lift:active,
+  .panel:active {
+    transform: translateY(-1px) scale(0.995);
+  }
+  .ui-press:hover,
+  .ui-press:focus-visible,
+  .btn:hover,
+  .btn:focus-visible,
+  .btn-primary:hover,
+  .btn-primary:focus-visible,
+  .btn-ghost:hover,
+  .btn-ghost:focus-visible,
+  .btn-danger:hover,
+  .btn-danger:focus-visible {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow:
+      0 10px 28px -10px color-mix(in oklab, var(--primary) 55%, transparent),
+      0 2px 6px oklch(0.3 0.05 50 / 0.12);
+    filter: brightness(1.03);
+  }
+  .ui-press:active,
+  .btn:active,
+  .btn-primary:active,
+  .btn-ghost:active,
+  .btn-danger:active {
+    transform: translateY(0) scale(0.98);
+    filter: brightness(0.98);
+  }
+}
+.ui-glow,
+.panel {
+  position: relative;
+  isolation: isolate;
+}
+.ui-glow::before,
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    color-mix(in oklab, var(--primary) 75%, white),
+    oklch(0.85 0.12 85),
+    color-mix(in oklab, var(--primary) 55%, oklch(0.7 0.14 35))
+  );
+  background-size: 200% 200%;
+  opacity: 0;
+  filter: blur(10px);
+  transition: opacity 280ms ease;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ui-glow:hover::before,
+  .ui-glow:focus-within::before,
+  .panel:hover::before,
+  .panel:focus-within::before {
+    opacity: 0.5;
+    animation: ui-glow-shift 3.2s ease infinite;
+  }
+}
+@keyframes ui-glow-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Soft depth on common dashboard card shells */
+.shadow-card {
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  button.shadow-card:hover,
+  a.shadow-card:hover,
+  .shadow-card.ui-interactive:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: var(--shadow-pop);
+  }
+}
+
+/* Polish: stronger focus rings (a11y) — cream/orange language */
+:where(a, button, [role="button"], input, select, textarea, summary):focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 85%, white);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 28%, transparent);
+}
+
+/* Polish: main panel enter fade */
+@keyframes ui-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.ui-enter { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .ui-enter { animation: ui-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+
+/* Polish: soft row hover inside marked tables (keeps alert row colors) */
+@media (prefers-reduced-motion: no-preference) {
+  .ui-row-hover tbody tr:hover > td {
+    filter: brightness(0.975);
+  }
+  .admin-theme table tbody tr:hover > td {
+    filter: brightness(0.98);
+  }
+}
+
+/* Personal CV page — cream / orange reference look */
+.cv-theme {
+  --background: #f6f1e8;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --muted: #efe8dc;
+  --muted-foreground: #6b635a;
+  --primary: #f97316;
+  --primary-foreground: #fffaf5;
+  --secondary: #fff7ed;
+  --secondary-foreground: #9a3412;
+  --accent: #ffedd5;
+  --accent-foreground: #9a3412;
+  --border: #eadfce;
+  --ring: #f97316;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #ffe8d2 0%, transparent 55%),
+    radial-gradient(900px 420px at 90% 0%, #fff3e0 0%, transparent 50%),
+    var(--background);
+  color: var(--foreground);
+}
+.cv-theme .cv-serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+}
+@keyframes cv-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+/* Use forwards (not both) so delayed sections stay visible if animation is skipped/late. */
+.cv-rise { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .cv-rise { animation: cv-rise 0.7s cubic-bezier(.2,.7,.2,1) forwards; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-rise, .ui-enter { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .ui-lift, .ui-press, .panel, .btn, .btn-primary, .btn-ghost, .btn-danger, .shadow-card { transition: none !important; }
+  .ui-lift:hover, .ui-press:hover, .panel:hover, .btn:hover, .btn-primary:hover, .shadow-card:hover { transform: none !important; }
+  .ui-glow::before, .panel::before { display: none !important; }
+  .ui-row-hover tbody tr:hover > td,
+  .admin-theme table tbody tr:hover > td { filter: none !important; }
+}
+
+@media print {
+  .cv-no-print { display: none !important; }
+  .cv-theme { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
+  .cv-theme .cv-rise { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .cv-nav { position: static !important; box-shadow: none !important; }
+}

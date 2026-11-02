@@ -1,0 +1,382 @@
+import { useSyncExternalStore } from "react";
+import { toast } from "sonner";
+import { buildSeed, migrateData, SECTIONS, uid, type AppData, type SectionData } from "./sections";
+import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
+
+const KEY = "shaheen-driver-tracker-v1";
+/** Manual record lists stored as tracker_sections rows (same cloud table). */
+export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"] as const;
+export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes"];
+let state: AppData = buildSeed();
+let loaded = false;
+const listeners = new Set<() => void>();
+
+export type SyncStatus = "local" | "syncing" | "synced" | "error";
+let sync: SyncStatus = "local";
+const syncListeners = new Set<() => void>();
+function setSync(s: SyncStatus) {
+  sync = s;
+  syncListeners.forEach((l) => l());
+}
+export const useSyncStatus = () =>
+  useSyncExternalStore(
+    (l) => {
+      syncListeners.add(l);
+      return () => syncListeners.delete(l);
+    },
+    () => sync,
+    () => "local" as SyncStatus,
+  );
+
+function emit() {
+  listeners.forEach((l) => l());
+}
+function emptyRecordSection(): SectionData {
+  return {
+    headers: [...RECORD_HEADERS],
+    widths: RECORD_HEADERS.map(() => 200),
+    hidden: RECORD_HEADERS.map(() => false),
+    rows: [],
+  };
+}
+
+/** Ensure record tabs exist locally so first cloud upload includes them. */
+function ensureRecordSections(data: AppData): AppData {
+  const sections = { ...data.sections };
+  let touched = false;
+  for (const id of RECORD_SECTION_IDS) {
+    if (!sections[id]) {
+      sections[id] = emptyRecordSection();
+      touched = true;
+    }
+  }
+  return touched ? { ...data, sections } : data;
+}
+
+function markAllSectionsDirty() {
+  Object.keys(state.sections).forEach((id) => dirty.add(id));
+}
+
+/** localStorage is a short cache only — Supabase tracker_sections is source of truth once signed in. */
+function persist() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    if (!localWarned) {
+      localWarned = true;
+      toast.error("This computer's browser storage is full", {
+        id: "local-full",
+        description: "Your changes are still being sent to the cloud. Download a Backup to be safe.",
+        duration: 10000,
+      });
+    }
+  }
+}
+let localWarned = false;
+
+function saveFailReason(e: unknown) {
+  const m = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "You are offline — check your internet connection.";
+  if (/quota|storage|disk|full|space|limit|413|too large/.test(m)) return "Cloud storage is full or the change is too large.";
+  if (/passcode|unauthor|401|403/.test(m)) return "The portal was locked — please lock and unlock again with your password.";
+  if (/timeout|fetch|network|failed to/.test(m)) return "The cloud did not answer (connection problem).";
+  return "The cloud could not save right now.";
+}
+export function retrySync() {
+  void flush();
+}
+
+// ---------- cloud sync ----------
+const dirty = new Set<string>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+let flushing = false;
+let lastStamp = "";
+let cloudReady = false;
+let failCount = 0;
+let pulling = false;
+
+function scheduleFlush() {
+  if (flushTimer) clearTimeout(flushTimer);
+  flushTimer = setTimeout(flush, 500);
+}
+async function flush() {
+  flushTimer = null;
+  if (!cloudReady || flushing || !dirty.size) return;
+  flushing = true;
+  let ids: string[] = [];
+  let authenticated = false;
+  try {
+    authenticated = await hasPortalSession();
+    if (!authenticated) return;
+    if (!dirty.size) return;
+    ids = [...dirty];
+    dirty.clear();
+    setSync("syncing");
+    const sections = Object.fromEntries(ids.map((id) => [id, JSON.stringify(state.sections[id])]));
+    const r = await cloudSave({ data: { sections } });
+    if (r.stamp > lastStamp) lastStamp = r.stamp;
+    setSync("synced");
+    try {
+      const { logLocalActivity } = await import("./portal-local");
+      const meta = {
+        actorName: "Driver Compliance",
+        action: ids.length === 1 ? `Saved compliance section` : `Saved ${ids.length} compliance sections`,
+        sectionId: ids.length === 1 ? ids[0]! : "sections",
+      };
+      logLocalActivity(meta);
+      // Cloud trigger also logs tracker upserts; this covers client-side audit when available.
+      void logPortalActivity(meta).catch(() => undefined);
+    } catch {
+      /* activity logging must never block saves */
+    }
+    if (failCount) {
+      failCount = 0;
+      toast.dismiss("cloud-save-fail");
+      toast.success("All changes are saved to the cloud again");
+    }
+  } catch (e) {
+    ids.forEach((id) => dirty.add(id));
+    setSync("error");
+    failCount++;
+    if (failCount === 1 || failCount % 10 === 0)
+      toast.error("Your changes were NOT saved to the cloud", {
+        id: "cloud-save-fail",
+        description: saveFailReason(e) + " They are kept on this computer and will retry automatically.",
+        duration: Infinity,
+        action: { label: "Try again", onClick: () => retrySync() },
+      });
+  } finally {
+    flushing = false;
+    if (dirty.size && authenticated) {
+      if (flushTimer) clearTimeout(flushTimer);
+      flushTimer = setTimeout(flush, failCount ? Math.min(30000, 3000 * failCount) : 500);
+    }
+  }
+}
+
+async function pullCloud(force = false) {
+  if (pulling) return;
+  pulling = true;
+  try {
+    if (!(await hasPortalSession())) return;
+    if (!force) {
+      const { stamp } = await cloudStamp();
+      if (!stamp || stamp <= lastStamp) return;
+    }
+    if (cloudReady && (dirty.size || flushing)) return;
+    const r = await cloudLoad();
+    if (cloudReady && (dirty.size || flushing)) return;
+    const ids = Object.keys(r.sections);
+    if (!ids.length) {
+      // Cloud empty → seed/local cache is first durable copy (incl. record tabs), then upload.
+      state = ensureRecordSections(state);
+      cloudReady = true;
+      persist();
+      emit();
+      markAllSectionsDirty();
+      await flush();
+      return;
+    }
+    // Remote is source of truth: apply cloud rows, keep any local-only keys only until uploaded.
+    const sections = { ...state.sections };
+    for (const id of ids) sections[id] = JSON.parse(r.sections[id]);
+    if (!cloudReady) dirty.clear();
+    const m = migrateData(ensureRecordSections({ ...state, sections }));
+    state = m.data;
+    m.changed.forEach((id) => dirty.add(id));
+    // Upload record shells (or other local-only sections) missing from remote.
+    for (const id of RECORD_SECTION_IDS) {
+      if (!r.sections[id]) dirty.add(id);
+    }
+    if (dirty.size) scheduleFlush();
+    lastStamp = r.stamp;
+    cloudReady = true;
+    persist();
+    emit();
+    setSync("synced");
+  } catch {
+    setSync("error");
+  } finally {
+    pulling = false;
+  }
+}
+
+let pollStarted = false;
+export function startCloudSync() {
+  if (typeof window === "undefined" || pollStarted) return;
+  pollStarted = true;
+  subscribePortalAuth((signedIn) => {
+    if (signedIn) window.setTimeout(() => void pullCloud(true), 0);
+    else {
+      cloudReady = false;
+      setSync("local");
+    }
+  });
+  void pullCloud(true);
+  setInterval(() => {
+    if (document.visibilityState === "visible") void pullCloud();
+  }, 4000);
+  window.addEventListener("focus", () => void pullCloud());
+}
+
+export function loadFromStorage() {
+  if (loaded || typeof window === "undefined") return;
+  loaded = true;
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as AppData;
+      if (parsed?.sections) state = migrateData(parsed).data;
+    }
+  } catch {
+    /* ignore corrupt storage */
+  }
+  state = ensureRecordSections(state);
+  emit();
+  // Pull/push to Supabase — localStorage remains a cache only.
+  startCloudSync();
+}
+
+export function useData() {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => state,
+    () => state,
+  );
+}
+export const useLoaded = () =>
+  useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => loaded,
+    () => false,
+  );
+
+function update(fn: (d: AppData) => AppData) {
+  const prev = state;
+  state = fn(state);
+  for (const id of Object.keys(state.sections)) if (state.sections[id] !== prev.sections[id]) dirty.add(id);
+  persist();
+  emit();
+  scheduleFlush();
+}
+
+const ACTIVE_IDX: Record<string, number> = {};
+SECTIONS.forEach((s) => {
+  const i = s.types.indexOf("active");
+  if (i >= 0) ACTIVE_IDX[s.id] = i;
+});
+
+export function setCell(sectionId: string, rowId: string, col: number, value: string) {
+  update((d) => {
+    const sec = d.sections[sectionId];
+    const row = sec.rows.find((r) => r.id === rowId);
+    if (!row) return d;
+    const isActive = SECTIONS.find((s) => s.id === sectionId)?.types[col] === "active";
+    const sections = { ...d.sections };
+    if (isActive) {
+      // keep Active / Inactive in sync for this driver across every section
+      for (const [sid, idx] of Object.entries(ACTIVE_IDX)) {
+        sections[sid] = {
+          ...sections[sid],
+          rows: sections[sid].rows.map((r) =>
+            r.driverId === row.driverId ? { ...r, cells: r.cells.map((c, i) => (i === idx ? value : c)) } : r,
+          ),
+        };
+      }
+      return { ...d, sections };
+    }
+    sections[sectionId] = {
+      ...sec,
+      rows: sec.rows.map((r) =>
+        r.id === rowId ? { ...r, cells: r.cells.map((c, i) => (i === col ? value : c)) } : r,
+      ),
+    };
+    return { ...d, sections };
+  });
+}
+
+export function patchSection(sectionId: string, patch: Partial<AppData["sections"][string]>) {
+  update((d) => ({ ...d, sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], ...patch } } }));
+}
+
+export function setRowHeight(sectionId: string, rowId: string, h: number) {
+  update((d) => {
+    const sec = d.sections[sectionId];
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: { ...sec, rows: sec.rows.map((r) => (r.id === rowId ? { ...r, height: h } : r)) },
+      },
+    };
+  });
+}
+
+export function deleteDriver(driverId: string) {
+  update((d) => {
+    const sections = { ...d.sections };
+    for (const k of Object.keys(sections))
+      sections[k] = { ...sections[k], rows: sections[k].rows.filter((r) => r.driverId !== driverId) };
+    return { ...d, sections };
+  });
+}
+
+/** values: sectionId -> cells array (same length as the section's columns) */
+export function addDriver(values: Record<string, string[]>) {
+  const driverId = "d_" + uid();
+  const addedAt = Date.now();
+  update((d) => {
+    const sections = { ...d.sections };
+    for (const [sid, cells] of Object.entries(values)) {
+      sections[sid] = {
+        ...sections[sid],
+        rows: [...sections[sid].rows, { id: sid + "_" + uid(), driverId, cells, addedAt }],
+      };
+    }
+    return { ...d, sections };
+  });
+  return driverId;
+}
+
+export function resetToSpreadsheet() {
+  update(() => buildSeed());
+}
+export function exportBackup() {
+  return JSON.stringify(state, null, 2);
+}
+export function importBackup(json: string) {
+  const parsed = JSON.parse(json) as AppData;
+  if (!parsed?.sections) throw new Error("Not a valid backup file");
+  update(() => migrateData(parsed).data);
+}
+
+/** Adds an empty row for an existing driver in a section where they are missing (keeps rows line-by-line). */
+export function addRowForDriver(sectionId: string, driverId: string, name: string) {
+  update((d) => {
+    const sec = d.sections[sectionId];
+    if (!sec || sec.rows.some((r) => r.driverId === driverId)) return d;
+    const cells = sec.headers.map((_, i) => (i === 0 ? name : ""));
+    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() }] } } };
+  });
+}
+
+/** Manual record lists (extra driver documents, owner operators, mechanics) — kept apart from the driver sections. */
+export function addRecord(sectionId: string, cells: string[]) {
+  update((d) => {
+    const sec = d.sections[sectionId] ?? emptyRecordSection();
+    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId: "r_" + uid(), cells, addedAt: Date.now() }] } } };
+  });
+}
+export function deleteRecord(sectionId: string, rowId: string) {
+  update((d) => {
+    const sec = d.sections[sectionId];
+    if (!sec) return d;
+    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) } } };
+  });
+}
