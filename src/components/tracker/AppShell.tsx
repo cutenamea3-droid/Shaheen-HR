@@ -18,6 +18,7 @@ import { analyzeRow, rowAlertsMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
 import { exportBackup, importBackup, loadFromStorage, resetToSpreadsheet, retrySync, useData, useLoaded, useSyncStatus } from "@/lib/store";
 import { AlertsBell } from "./AlertsDrawer";
+import { QuickFind } from "./QuickFind";
 
 export const SECTION_ICONS: Record<string, typeof FileText> = {
   dmv: FileText, medical: HeartPulse, queries: SearchCheck, ssccdl: IdCard, docs: FolderOpen, info: Users, inactive: UserX,
@@ -63,7 +64,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <aside className={cn("flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}>
+      <aside className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}>
         <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
           <img src={logo.url} alt="Shaheen Transport logo" className="size-12 shrink-0 rounded-xl bg-card object-contain p-0.5" />
           {!collapsed && (
@@ -123,12 +124,13 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-2.5 shadow-card">
+        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-2.5 shadow-card">
           <div>
             <h1 className="font-display text-xl font-extrabold">{title}</h1>
             {subtitle && !work && <p className="text-base text-muted-foreground">{subtitle}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <QuickFind />
             <AlertsBell />
             <button
               type="button"

@@ -210,6 +210,8 @@
 @media print {
   aside { display: none !important; }
   .app-switcher { display: none !important; }
+  .tracker-no-print,
+  .no-print { display: none !important; }
   .dot-audit-actions { display: none !important; }
   .dot-audit-print {
     -webkit-print-color-adjust: exact;

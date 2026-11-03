@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, FolderOpen, Trash2, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Search, FolderOpen, Trash2, X, Printer } from "lucide-react";
+import { toast } from "sonner";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SECTIONS, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
@@ -15,6 +17,7 @@ import {
   suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
+import { printDriverDossier } from "@/lib/driver-dossier";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
@@ -48,30 +51,14 @@ const STATUS_BADGE: Record<DriverStatus, string> = {
 
 export function DriverCards({ focusDriver }: { focusDriver?: string | undefined } = {}) {
   const data = useData();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [exp, setExp] = useState<ExpFilter>("all");
   const view = useViewMode();
   const [openId, setOpenId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!focusDriver) return;
-    setStatusFilter("all");
-    setExp("all");
-    setQ("");
-    const t = setTimeout(() => {
-      const el = document.getElementById("driver-" + focusDriver);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.classList.remove("animate-flash");
-        void (el as HTMLElement).offsetWidth;
-        el.classList.add("animate-flash");
-      }
-    }, 150);
-    return () => clearTimeout(t);
-  }, [focusDriver]);
-
-  const drivers = useMemo(() => {
+  const allDrivers = useMemo(() => {
     const map = new Map<string, Driver>();
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
@@ -111,19 +98,42 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
         if (def.id === "ssccdl") d.cdl = (r.cells[1] ?? "").trim();
       }
     }
-    return [...map.values()]
+    return [...map.values()].sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
+  }, [data]);
+
+  const drivers = useMemo(() => {
+    return allDrivers
       .filter((d) => statusFilter === "all" || d.status === statusFilter)
       .filter((d) => matchesExpFilter(data, d.driverId, exp))
-      .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()))
-      .sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
-  }, [data, q, statusFilter, exp]);
+      .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()));
+  }, [allDrivers, data, q, statusFilter, exp]);
 
-  const open = drivers.find((d) => d.driverId === openId) ?? null;
+  // Quick Find / deep link: clear filters, open sheet, scroll+flash the row.
+  useEffect(() => {
+    if (!focusDriver) return;
+    setStatusFilter("all");
+    setExp("all");
+    setQ("");
+    setOpenId(focusDriver);
+    const t = setTimeout(() => {
+      const el = document.getElementById("driver-" + focusDriver);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.remove("animate-flash");
+        void (el as HTMLElement).offsetWidth;
+        el.classList.add("animate-flash");
+      }
+      void navigate({ to: "/drivers", search: { driver: undefined }, replace: true });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [focusDriver, navigate]);
+
+  const open = allDrivers.find((d) => d.driverId === openId) ?? null;
   const th = "px-4 py-3 text-left text-xs font-extrabold tracking-wider uppercase";
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-hidden p-5">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="tracker-no-print flex flex-wrap items-center gap-3">
         <div className="relative max-w-md flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -158,7 +168,7 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
               <th className={th}>Status</th>
               <th className={th}>CDL</th>
               <th className={th}>Documents</th>
-              <th className={th}>Action</th>
+              <th className={cn(th, "tracker-no-print")}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -212,7 +222,7 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
                       {d.issues ? `${d.issues} action item${d.issues > 1 ? "s" : ""}` : "All clear"}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="tracker-no-print px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -252,14 +262,14 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          {open && <DriverFile driverId={open.driverId} name={open.name} />}
+          {open && <DriverFile driverId={open.driverId} name={open.name} cdl={open.cdl} />}
         </SheetContent>
       </Sheet>
     </div>
   );
 }
 
-function DriverFile({ driverId, name }: { driverId: string; name: string }) {
+function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; cdl: string }) {
   const data = useData();
   const view = useViewMode();
   const statusInfo = useMemo(() => {
@@ -281,7 +291,7 @@ function DriverFile({ driverId, name }: { driverId: string; name: string }) {
         <SheetClose
           type="button"
           aria-label="Close driver file"
-          className="absolute top-4 right-4 inline-flex size-10 items-center justify-center rounded-xl bg-primary-foreground/15 text-primary-foreground shadow-card transition hover:bg-primary-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/80"
+          className="tracker-no-print absolute top-4 right-4 inline-flex size-10 items-center justify-center rounded-xl bg-primary-foreground/15 text-primary-foreground shadow-card transition hover:bg-primary-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/80"
         >
           <X className="size-5 stroke-[2.5]" aria-hidden />
           <span className="sr-only">Close</span>
@@ -293,6 +303,21 @@ function DriverFile({ driverId, name }: { driverId: string; name: string }) {
             All documents in one place. Changes here are the same as editing in each section.
           </SheetDescription>
         </SheetHeader>
+        <div className="tracker-no-print mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (printDriverDossier(data, driverId)) toast.success("Print dossier opened");
+              else toast.error("Allow pop-ups to print the dossier");
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border-2 border-primary-foreground/40 bg-primary-foreground/15 px-3 py-2 text-sm font-bold text-primary-foreground hover:bg-primary-foreground/25"
+          >
+            <Printer className="size-4" /> Print Dossier
+          </button>
+        </div>
+        <p className="mt-2 hidden text-sm text-primary-foreground/90 print:block">
+          CDL {cdl || "—"}
+        </p>
         {statusInfo && (
           <div className="mt-4 rounded-xl bg-primary-foreground/10 p-3">
             <div className="mb-2 text-xs font-extrabold tracking-widest uppercase opacity-90">Employment status</div>

@@ -23,7 +23,7 @@ function DriversPage() {
   const { driver } = Route.useSearch();
   return (
     <AppShell title="Driver Cards" subtitle="Open a driver to see and edit all their documents at once">
-      <DriverCards focusDriver={driver} />
+      <DriverCards {...(driver ? { focusDriver: driver } : {})} />
     </AppShell>
   );
 }
