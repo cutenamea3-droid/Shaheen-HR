@@ -374,7 +374,9 @@ const PAYROLL_HEAD = [
 
 export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel = from.slice(0, 7)) {
   const rows = payrollSummary(data, from, to);
-  const esc = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
+  // CSV cells are string | number (hours already .toFixed strings; day counts are numbers).
+  // esc already coerces via String(s) — widen the param for exact typing only (no output change).
+  const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
   const lines = [
     PAYROLL_HEAD.map(esc).join(","),
     ...rows.map((r) =>
