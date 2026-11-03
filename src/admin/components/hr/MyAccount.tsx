@@ -40,38 +40,41 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
           if (!current) return setMsg({ ok: false, text: "Enter your current password." });
           if (pass.length < 8) return setMsg({ ok: false, text: "Password must be at least 8 characters." });
           if (pass !== confirm) return setMsg({ ok: false, text: "Passwords do not match." });
+          if (pass === current) return setMsg({ ok: false, text: "New password must be different from the current password." });
           setBusy(true);
           try {
-            const localExists = hasHrLocalPassword(email);
-            if (localExists) {
-              const ok = await verifyHrLocalPassword(email, current);
-              if (!ok) throw new Error("Current password is incorrect.");
-            } else {
-              // Verify current against Supabase by re-signing in
+            const mail = email.trim().toLowerCase();
+            // Accept current if it matches local hash OR the live cloud password.
+            // Local-only checks used to reject the password the user just signed in with
+            // after a prior local-fallback save left the two out of sync.
+            let currentOk = hasHrLocalPassword(mail) && (await verifyHrLocalPassword(mail, current));
+            if (!currentOk) {
               const { error: signErr } = await supabase.auth.signInWithPassword({
-                email: email.trim().toLowerCase(),
+                email: mail,
                 password: current,
               });
-              if (signErr) throw new Error("Current password is incorrect.");
+              currentOk = !signErr;
+            }
+            if (!currentOk) throw new Error("Current password is incorrect.");
+
+            const { data: sessionData } = await supabase.auth.getSession();
+            let cloudOk = false;
+            if (sessionData.session) {
+              const { error } = await supabase.auth.updateUser({ password: pass });
+              cloudOk = !error;
             }
 
-            const { error } = await supabase.auth.updateUser({ password: pass });
-            if (error) {
-              // Persist locally so change still works if cloud rejects
-              await setHrLocalPassword(email, pass);
-              addLog(email, "Changed password (local fallback)");
-              setCurrent("");
-              setPass("");
-              setConfirm("");
-              setMsg({ ok: true, text: "Password saved locally (cloud update unavailable)." });
-            } else {
-              await setHrLocalPassword(email, pass);
-              addLog(email, "Changed password");
-              setCurrent("");
-              setPass("");
-              setConfirm("");
-              setMsg({ ok: true, text: "Password changed." });
-            }
+            // Always mirror to localStorage so the next sign-in honors the new password
+            // even when the cloud update is unavailable (local-only session).
+            await setHrLocalPassword(mail, pass);
+            addLog(email, cloudOk ? "Changed password" : "Changed password (local fallback)");
+            setCurrent("");
+            setPass("");
+            setConfirm("");
+            setMsg({
+              ok: true,
+              text: cloudOk ? "Password changed." : "Password saved locally (cloud update unavailable).",
+            });
           } catch (err) {
             setMsg({ ok: false, text: err instanceof Error ? err.message : "Could not update password." });
           } finally {
@@ -94,7 +97,11 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
           <span className="lbl">Confirm new password</span>
           <input type="password" className="field" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
         </label>
-        {msg && <p className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.text}</p>}
+        {msg && (
+          <p role="status" className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>
+            {msg.text}
+          </p>
+        )}
         <button className="btn-primary w-full" disabled={busy}>
           {busy ? "Saving…" : "Update password"}
         </button>

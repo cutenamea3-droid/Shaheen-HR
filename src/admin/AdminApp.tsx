@@ -66,16 +66,31 @@ function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
           setBusy(true);
           setErr("");
           const mail = email.trim().toLowerCase();
-          const { error } = await supabase.auth.signInWithPassword({ email: mail, password: pass });
-          if (!error) {
-            const { clearHrLocalSession } = await import("@/admin/lib/hr-auth-local");
-            clearHrLocalSession();
-            setBusy(false);
-            return;
-          }
           try {
-            const { hasHrLocalPassword, verifyHrLocalPassword, writeHrLocalSession } = await import("@/admin/lib/hr-auth-local");
-            if (hasHrLocalPassword(mail) && (await verifyHrLocalPassword(mail, pass))) {
+            const {
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+            } = await import("@/admin/lib/hr-auth-local");
+            const hasLocal = hasHrLocalPassword(mail);
+            const localOk = hasLocal && (await verifyHrLocalPassword(mail, pass));
+
+            const { error } = await supabase.auth.signInWithPassword({ email: mail, password: pass });
+            if (!error) {
+              // A prior My Account change may have saved a newer password locally while
+              // cloud still had the old one. Do not let the stale cloud password win.
+              if (hasLocal && !localOk) {
+                await supabase.auth.signOut();
+                setBusy(false);
+                setErr("Wrong email or password");
+                return;
+              }
+              clearHrLocalSession();
+              setBusy(false);
+              return;
+            }
+            if (localOk) {
               writeHrLocalSession(mail);
               onLocalAuth(mail);
               setBusy(false);

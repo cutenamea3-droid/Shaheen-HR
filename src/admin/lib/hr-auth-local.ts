@@ -21,6 +21,9 @@ function write(map: SecretsMap) {
 }
 
 async function hash(value: string): Promise<string> {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Secure context required to change password.");
+  }
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
