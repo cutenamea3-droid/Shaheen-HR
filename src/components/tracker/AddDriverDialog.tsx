@@ -73,10 +73,10 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
         if (!o) reset();
       }}
     >
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto p-0">
-        <div className="bg-brand px-6 py-5 text-primary-foreground">
+      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto p-0 [&>button]:top-4 [&>button]:right-4 [&>button]:inline-flex [&>button]:size-10 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-xl [&>button]:bg-primary-foreground/15 [&>button]:p-0 [&>button]:text-primary-foreground [&>button]:opacity-100 [&>button]:shadow-card [&>button]:ring-0 [&>button]:hover:bg-primary-foreground/25 [&>button]:hover:opacity-100 [&>button]:data-[state=open]:bg-primary-foreground/15 [&>button]:data-[state=open]:text-primary-foreground [&>button_svg]:size-5">
+        <div className="bg-brand px-6 py-5 pr-16 text-primary-foreground">
           <DialogHeader>
-            <DialogTitle className="font-display text-2xl">Add New Driver</DialogTitle>
+            <DialogTitle className="font-display text-2xl text-primary-foreground">Add New Driver</DialogTitle>
             <DialogDescription className="text-base text-primary-foreground/90">
               Only name and CDL number are required — everything else can be filled later.
             </DialogDescription>

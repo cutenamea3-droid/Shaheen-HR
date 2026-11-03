@@ -177,8 +177,10 @@ export function DriverCards() {
         <SheetContent
           side="right"
           className="w-full overflow-y-auto p-0 sm:max-w-3xl [&>button]:hidden"
-          onEscapeKeyDown={() => setOpenId(null)}
-          onPointerDownOutside={() => setOpenId(null)}
+          // Close only via the header X — no backdrop / edge / Escape dismiss.
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
           {open && <DriverFile driverId={open.driverId} name={open.name} />}
         </SheetContent>
