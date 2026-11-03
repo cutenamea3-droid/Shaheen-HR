@@ -130,7 +130,7 @@ function CvPage() {
         {/* Floating CV nav — full-bleed (edge padding only) */}
         <nav
           aria-label="CV sections"
-          className="cv-no-print cv-nav ui-lift sticky top-14 z-40 mb-8 flex w-full flex-wrap items-center gap-3 rounded-full border border-white/80 bg-white/95 px-3 py-2 shadow-[0_10px_40px_-18px_rgba(40,20,0,0.35)] backdrop-blur md:gap-4 md:px-5"
+          className="cv-no-print cv-nav ui-lift sticky top-14 z-40 mb-8 flex w-full flex-wrap items-center gap-3 rounded-full border border-white/80 bg-white px-3 py-2 shadow-[0_10px_40px_-18px_rgba(40,20,0,0.35)] md:gap-4 md:px-5"
         >
           <a href="#home" className="flex items-center gap-2 rounded-full px-2 py-1 text-xs font-bold tracking-wide text-foreground md:text-sm">
             <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">YS</span>
