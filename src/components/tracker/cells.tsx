@@ -192,8 +192,9 @@ export function DateCell({
 }: {
   value: string;
   onSave: (v: string) => void;
-  tone?: Tone;
-  appliedStatus?: string;
+  tone?: Tone | undefined;
+  /** May be omitted or explicitly undefined when the date column has no paired Applied status. */
+  appliedStatus?: string | undefined;
 }) {
   const view = useViewMode();
   const [editing, setEditing] = useState(false);
@@ -266,7 +267,8 @@ export function StatusToggle({
   value: string;
   options: string[];
   onSave: (v: string) => void;
-  expiryValue?: string;
+  /** May be omitted or explicitly undefined when the status column has no paired expiry. */
+  expiryValue?: string | undefined;
 }) {
   const view = useViewMode();
   const [open, setOpen] = useState(false);
