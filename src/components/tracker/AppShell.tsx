@@ -241,14 +241,22 @@ function NavItem({
       to={to}
       title={label}
       className={cn(
-        "ui-press flex items-center gap-3 rounded-xl px-3 py-3 text-base font-semibold transition",
-        active ? "bg-brand text-primary-foreground shadow-pop" : "text-sidebar-foreground/85 hover:bg-sidebar-accent",
+        "tracker-nav flex items-center gap-3 rounded-2xl text-[15px] font-semibold",
+        collapsed ? "justify-center px-2 py-2.5" : "px-4 py-2.5",
+        active
+          ? "tracker-nav-active text-primary-foreground"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/90 hover:text-sidebar-foreground",
       )}
     >
-      <Icon className="size-5 shrink-0" />
-      {!collapsed && <span className="flex-1 leading-tight">{label}</span>}
+      <Icon className="size-5 shrink-0 opacity-95" strokeWidth={active ? 2.35 : 2} />
+      {!collapsed && <span className="flex-1 truncate leading-tight tracking-tight">{label}</span>}
       {!collapsed && !!count && (
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-extrabold", active ? "bg-card text-primary" : "bg-danger text-primary-foreground")}>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold tabular-nums leading-none",
+            active ? "bg-white/95 text-primary shadow-sm" : "bg-danger text-primary-foreground",
+          )}
+        >
           {count}
         </span>
       )}
