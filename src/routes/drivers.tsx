@@ -3,6 +3,9 @@ import { AppShell } from "@/components/tracker/AppShell";
 import { DriverCards } from "@/components/tracker/DriverCards";
 
 export const Route = createFileRoute("/drivers")({
+  validateSearch: (s: Record<string, unknown>): { driver?: string | undefined } => ({
+    driver: typeof s.driver === "string" ? s.driver : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Driver Cards — Shaheen Driver Tracker" },
@@ -13,9 +16,14 @@ export const Route = createFileRoute("/drivers")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: () => (
-    <AppShell title="Driver Cards" subtitle="Open a driver to see and edit all their documents at once">
-      <DriverCards />
-    </AppShell>
-  ),
+  component: DriversPage,
 });
+
+function DriversPage() {
+  const { driver } = Route.useSearch();
+  return (
+    <AppShell title="Driver Cards" subtitle="Open a driver to see and edit all their documents at once">
+      <DriverCards focusDriver={driver} />
+    </AppShell>
+  );
+}

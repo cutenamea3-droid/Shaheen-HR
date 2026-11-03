@@ -302,3 +302,199 @@ export function matchesExpFilter(data: AppData, driverId: string, filter: ExpFil
   // Fully Compliant — nothing expired and nothing within 30 days
   return !days.some((n) => n < 0 || n <= 30);
 }
+
+/** Smart Alerts drawer groups. */
+export type SmartAlertGroup = "critical" | "upcoming" | "incomplete";
+
+export interface SmartAlert {
+  key: string;
+  group: SmartAlertGroup;
+  driver: string;
+  driverId: string;
+  sectionId: string;
+  sectionTitle: string;
+  document: string;
+  /** Shown in the Expiry/Days column. */
+  expiryLabel: string;
+  daysLeft: number | null;
+  rowId: string;
+  /** incomplete CDL → drivers list; everything else → section table row */
+  target: "section" | "drivers";
+}
+
+function docName(headers: string[], col: number, fallback: string) {
+  const h = (headers[col] ?? "").trim();
+  if (!h) return fallback;
+  const cleaned = h.replace(/\s*(exp(iry|iration|ires)?|date)\s*$/i, "").trim();
+  return cleaned || h;
+}
+
+function expiryDaysLabel(days: number, d: Date) {
+  if (days < 0) return `Expired ${-days}d ago · ${fmtDate(d)}`;
+  if (days === 0) return `Today · ${fmtDate(d)}`;
+  return `${days}d left · ${fmtDate(d)}`;
+}
+
+/**
+ * Smart Alerts for the header bell drawer.
+ * Critical: expired or within 7 days · Upcoming: 8–30 days · Incomplete: missing CDL / dates.
+ * Active drivers only; "Old" expiry cells skipped. Does not change stored data shape.
+ */
+export function collectSmartAlerts(data: AppData): SmartAlert[] {
+  const out: SmartAlert[] = [];
+  for (const def of SECTIONS) {
+    if (def.id === "inactive" || def.id === "docs" || def.id === "info") continue;
+    const sec = data.sections[def.id];
+    if (!sec) continue;
+    for (const row of sec.rows) {
+      if (!rowIsActive(def, row, data)) continue;
+      const driver = (row.cells[0] ?? "").trim() || "—";
+      const base = {
+        driver,
+        driverId: row.driverId,
+        sectionId: def.id,
+        sectionTitle: def.title,
+        rowId: row.id,
+      };
+
+      // Missing CDL status → Incomplete (opens Driver Cards)
+      if (def.id === "ssccdl") {
+        const cdlStatus = normStatus(row.cells[2] ?? "");
+        if (!cdlStatus || cdlStatus === "Missing" || cdlStatus === "Invalid" || cdlStatus === "Expired") {
+          out.push({
+            ...base,
+            key: `${def.id}-${row.id}-cdl-status`,
+            group: "incomplete",
+            document: "CDL",
+            expiryLabel: cdlStatus || "Missing",
+            daysLeft: null,
+            target: "drivers",
+          });
+        }
+      }
+
+      def.types.forEach((t, i) => {
+        if (t !== "date") return;
+        const raw = row.cells[i] ?? "";
+        if (isOldExpiry(raw)) return;
+        const document = docName(sec.headers, i, def.short);
+        const d = parseISO(raw);
+        if (!d) {
+          // Empty or non-date / Missing → Incomplete
+          if (!raw.trim() || normStatus(raw) === "Missing") {
+            out.push({
+              ...base,
+              key: `${def.id}-${row.id}-date-${i}`,
+              group: "incomplete",
+              document,
+              expiryLabel: "Missing",
+              daysLeft: null,
+              target: "section",
+            });
+          }
+          return;
+        }
+        const left = daysUntil(d);
+        // ≤7 matches dashboard "Urgent" window; 8–30 is Upcoming.
+        if (left <= 7) {
+          out.push({
+            ...base,
+            key: `${def.id}-${row.id}-date-${i}`,
+            group: "critical",
+            document,
+            expiryLabel: expiryDaysLabel(left, d),
+            daysLeft: left,
+            target: "section",
+          });
+        } else if (left <= 30) {
+          out.push({
+            ...base,
+            key: `${def.id}-${row.id}-date-${i}`,
+            group: "upcoming",
+            document,
+            expiryLabel: expiryDaysLabel(left, d),
+            daysLeft: left,
+            target: "section",
+          });
+        }
+      });
+    }
+  }
+  const rank = (g: SmartAlertGroup) => (g === "critical" ? 0 : g === "upcoming" ? 1 : 2);
+  return out.sort((a, b) => {
+    const rg = rank(a.group) - rank(b.group);
+    if (rg) return rg;
+    const da = a.daysLeft ?? 9999;
+    const db = b.daysLeft ?? 9999;
+    if (da !== db) return da - db;
+    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+  });
+}
+
+export function smartAlertCounts(data: AppData) {
+  const list = collectSmartAlerts(data);
+  const critical = list.filter((a) => a.group === "critical").length;
+  const upcoming = list.filter((a) => a.group === "upcoming").length;
+  const incomplete = list.filter((a) => a.group === "incomplete").length;
+  return { critical, upcoming, incomplete, total: list.length };
+}
+
+/** Active drivers with a fully clean file (notes not counted) — fleet compliance %. */
+export function fleetCompliancePct(data: AppData) {
+  const bad = new Set<string>();
+  const names = new Set<string>();
+  for (const def of SECTIONS) {
+    if (def.id === "inactive") continue;
+    const sec = data.sections[def.id];
+    if (!sec) continue;
+    for (const r of sec.rows) {
+      if (!rowIsActive(def, r, data)) continue;
+      const name = (r.cells[0] ?? "").trim().toLowerCase();
+      if (!name) continue;
+      names.add(name);
+      for (const i of analyzeRow(def, sec.headers, r).issues) {
+        if (i.tone !== "note") bad.add(name);
+      }
+    }
+  }
+  const activeCount = names.size;
+  if (!activeCount) return 100;
+  return Math.round(((activeCount - [...bad].filter((n) => names.has(n)).length) / activeCount) * 100);
+}
+
+/** Plain-text Safety Digest for clipboard (critical + 8–30 day lists). */
+export function buildSafetyDigest(data: AppData) {
+  const now = new Date();
+  const when = now.toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const totalDrivers = data.sections.dmv?.rows.length ?? 0;
+  const compliance = fleetCompliancePct(data);
+  const alerts = collectSmartAlerts(data);
+  const critical = alerts.filter((a) => a.group === "critical");
+  const upcoming = alerts.filter((a) => a.group === "upcoming");
+
+  const line = (a: SmartAlert) =>
+    `· ${a.driver} | ${a.sectionTitle} | ${a.document} | ${a.expiryLabel}`;
+
+  const lines = [
+    "Shaheen Transport — Safety Digest",
+    `Generated: ${when}`,
+    "",
+    `Total drivers: ${totalDrivers}`,
+    `Fleet compliance: ${compliance}%`,
+    "",
+    `CRITICAL (<7 days or expired) — ${critical.length}`,
+    ...(critical.length ? critical.map(line) : ["· None"]),
+    "",
+    `UPCOMING (8–30 days) — ${upcoming.length}`,
+    ...(upcoming.length ? upcoming.map(line) : ["· None"]),
+    "",
+  ];
+  return lines.join("\n");
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, FolderOpen, Trash2, X } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -26,13 +26,30 @@ interface Driver {
 
 type StatusFilter = "active" | "inactive" | "all";
 
-export function DriverCards() {
+export function DriverCards({ focusDriver }: { focusDriver?: string | undefined } = {}) {
   const data = useData();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [exp, setExp] = useState<ExpFilter>("all");
   const view = useViewMode();
   const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focusDriver) return;
+    setStatusFilter("all");
+    setExp("all");
+    setQ("");
+    const t = setTimeout(() => {
+      const el = document.getElementById("driver-" + focusDriver);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.remove("animate-flash");
+        void (el as HTMLElement).offsetWidth;
+        el.classList.add("animate-flash");
+      }
+    }, 150);
+    return () => clearTimeout(t);
+  }, [focusDriver]);
 
   const drivers = useMemo(() => {
     const map = new Map<string, Driver>();
@@ -115,6 +132,7 @@ export function DriverCards() {
               return (
                 <tr
                   key={d.driverId}
+                  id={"driver-" + d.driverId}
                   className={cn("border-b border-foreground/15 align-top", d.issues > 0 ? "bg-danger-row" : "bg-card", !d.active && "opacity-60")}
                 >
                   <td className={cn("px-4 py-3", d.issues > 0 && "border-l-4 border-l-danger")}>

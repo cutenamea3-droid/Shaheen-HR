@@ -17,6 +17,7 @@ import { SECTIONS } from "@/lib/sections";
 import { analyzeRow, rowIsActive } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
 import { exportBackup, importBackup, loadFromStorage, resetToSpreadsheet, retrySync, useData, useLoaded, useSyncStatus } from "@/lib/store";
+import { AlertsBell } from "./AlertsDrawer";
 
 export const SECTION_ICONS: Record<string, typeof FileText> = {
   dmv: FileText, medical: HeartPulse, queries: SearchCheck, ssccdl: IdCard, docs: FolderOpen, info: Users, inactive: UserX,
@@ -128,6 +129,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             {subtitle && !work && <p className="text-base text-muted-foreground">{subtitle}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <AlertsBell />
             <button
               type="button"
               onClick={() => setWorkMode(!work)}

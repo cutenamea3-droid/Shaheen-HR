@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight } from "lucide-react";
+import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight, ClipboardCopy } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type SectionDef } from "@/lib/sections";
-import { analyzeRow, collectPlans, complianceScore, daysUntil, fmtDate, matchesExpFilter, rowIsActive, today, type ExpFilter, type Issue, type Tone } from "@/lib/alerts";
+import { analyzeRow, buildSafetyDigest, collectPlans, complianceScore, daysUntil, fmtDate, matchesExpFilter, rowIsActive, today, type ExpFilter, type Issue, type Tone } from "@/lib/alerts";
 import { downloadReportPdf } from "@/lib/pdf";
 import { useData } from "@/lib/store";
 import { Chip } from "./cells";
@@ -79,6 +80,21 @@ export function Dashboard() {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(buildSafetyDigest(data));
+              toast.success("Safety Digest copied to clipboard!");
+            } catch {
+              toast.error("Could not copy Safety Digest");
+            }
+          }}
+          className="ui-press inline-flex h-12 items-center gap-2 rounded-xl border-2 bg-ink px-4 text-sm font-bold text-ink-foreground hover:opacity-90"
+          title="Copy a text summary of critical and 30-day expirations"
+        >
+          <ClipboardCopy className="size-4" /> Copy Safety Digest
+        </button>
       </div>
 
       <ExpirationFilter value={exp} onChange={setExp} />
