@@ -3,9 +3,38 @@ import { useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
-import { emptyRec, type Status } from "@/admin/lib/types";
+import { emptyRec, type DayRec, type Dept, type Status } from "@/admin/lib/types";
 import { SectionTitle, TimeInput, Toggle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
+
+/** UI-only variance threshold (does not change calc.ts grace / formulas). */
+const VARIANCE_MIN = 15;
+
+/** Late / early-out minutes vs department shift. Leave & absent skipped. */
+function shiftVariance(dept: Dept | undefined, r: DayRec): { lateMin: number; earlyOutMin: number } {
+  if (!dept || r.status === "leave" || r.status === "absent") return { lateMin: 0, earlyOutMin: 0 };
+  const start = dept.start;
+  let end = dept.end;
+  if (end <= start) end += 1440;
+
+  let lateMin = 0;
+  if (r.in != null) {
+    let pin = r.in;
+    if (pin < start) pin += 1440;
+    const late = pin - start;
+    if (late > VARIANCE_MIN) lateMin = late;
+  }
+
+  let earlyOutMin = 0;
+  if (r.out != null) {
+    let pout = r.out;
+    if (pout < start) pout += 1440;
+    const early = end - pout;
+    if (early > VARIANCE_MIN) earlyOutMin = early;
+  }
+
+  return { lateMin, earlyOutMin };
+}
 
 export function Attendance() {
   const { date, setDate } = useWorkDate();
@@ -29,6 +58,45 @@ export function Attendance() {
     setSaveMsg(ok ? `✓ Saved — ${prettyDate(date)} is now in reports` : "Save failed, try again");
     if (ok) setTimeout(() => setSaveMsg(""), 4000);
   };
+
+  /** Fill dept start/end for active employees whose punch in & out are empty that day; then sync. */
+  const fillStandardTimes = async () => {
+    const targets = employees.filter((e) => {
+      if (!depts.some((d) => d.id === e.deptId)) return false;
+      const r = day[e.id];
+      const status = r?.status ?? "present";
+      if (status === "leave" || status === "absent") return false;
+      return (r?.in == null) && (r?.out == null);
+    });
+    if (!targets.length) {
+      alert(`No active employees with empty punches on ${prettyDate(date)}.`);
+      return;
+    }
+    const okConfirm = confirm(
+      `Fill standard shift times for ${targets.length} employee(s) with empty punches on ${prettyDate(date)}?\n\nPunch in/out will be set from each department's shift, then recalculated and synced.`,
+    );
+    if (!okConfirm) return;
+
+    for (const e of targets) {
+      const dept = depts.find((d) => d.id === e.deptId)!;
+      const prev = day[e.id];
+      setRec(date, e.id, {
+        status: prev?.status === "half" ? "half" : "present",
+        in: dept.start,
+        out: dept.end,
+      });
+    }
+
+    setSaveMsg("Saving…");
+    const ok = await saveNow();
+    setSaveMsg(
+      ok
+        ? `✓ Filled ${targets.length} · ${prettyDate(date)} synced`
+        : `Filled ${targets.length} locally — sync failed, try Save`,
+    );
+    if (ok) setTimeout(() => setSaveMsg(""), 4000);
+  };
+
   const saveBtn = (
     <div className="flex items-center gap-3">
       <button className="btn-primary px-6" onClick={() => void save()}>Save attendance</button>
@@ -65,6 +133,9 @@ export function Attendance() {
             >
               Export Payroll CSV
             </button>
+            <button className="btn-ghost" onClick={() => void fillStandardTimes()}>
+              Fill Standard Times
+            </button>
             <button className="btn-primary" onClick={() => void save()}>Save</button>
             <button className="btn-danger" onClick={() => confirm(`Clear ALL records for ${prettyDate(date)}?`) && resetDay(date)}>
               Reset day
@@ -90,6 +161,7 @@ export function Attendance() {
           };
           const noBreakDay = c.isSat || r.noBreak;
           const timesOff = r.status === "leave" || r.status === "absent";
+          const { lateMin, earlyOutMin } = shiftVariance(dept, r);
           return (
             <div key={e.id} className={`panel ${rec ? "" : "opacity-80"}`}>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -102,6 +174,16 @@ export function Attendance() {
                   {!timesOff && r.in != null && r.out == null && (
                     <span className="chip ml-2 bg-amber-100 text-amber-800" title="Punch in is set but punch out is empty">
                       Missing Clock-Out
+                    </span>
+                  )}
+                  {lateMin > 0 && (
+                    <span className="chip ml-2 bg-muted/70 text-muted-foreground font-medium" title={`Arrived ${lateMin} min after shift start`}>
+                      Late (+{lateMin} min)
+                    </span>
+                  )}
+                  {earlyOutMin > 0 && (
+                    <span className="chip ml-2 bg-muted/70 text-muted-foreground font-medium" title={`Left ${earlyOutMin} min before shift end`}>
+                      Early Out (−{earlyOutMin} min)
                     </span>
                   )}
                 </div>
