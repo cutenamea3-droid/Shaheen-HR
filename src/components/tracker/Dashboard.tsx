@@ -32,7 +32,8 @@ const CATS: { id: Cat; label: string; match: (i: Issue) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
   { id: "expired", label: "Expired", match: (i) => i.tone === "danger" && /expired/i.test(i.label) },
   { id: "soon", label: "Expiring soon", match: (i) => i.tone === "warn" },
-  { id: "applied", label: "Applied", match: (i) => i.tone === "info" },
+  // Match by label so Applied + remaining / Expired + Applied stay under Applied (tone may be warn/danger).
+  { id: "applied", label: "Applied", match: (i) => /applied/i.test(i.label) },
   { id: "missing", label: "Missing / Invalid", match: (i) => (i.tone === "danger" && !/expired/i.test(i.label)) || i.tone === "sign" },
   { id: "notes", label: "Notes", match: (i) => i.tone === "note" },
 ];

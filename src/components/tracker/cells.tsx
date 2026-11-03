@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { Check, X, Pencil, CalendarDays, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { fmtCell, normStatus, parseISO, statusTone, type Tone } from "@/lib/alerts";
+import {
+  appliedExpiryView,
+  fmtCell,
+  normStatus,
+  parseISO,
+  statusTone,
+  type Tone,
+} from "@/lib/alerts";
 import { useViewMode } from "@/lib/viewmode";
 
 export const TONE_BOX: Record<Tone, string> = {
@@ -176,11 +183,24 @@ export function EditableText({
   );
 }
 
-export function DateCell({ value, onSave, tone }: { value: string; onSave: (v: string) => void; tone?: Tone }) {
+export function DateCell({
+  value,
+  onSave,
+  tone,
+  /** When paired status is Applied, keep remaining / expired caption under the date. */
+  appliedStatus,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  tone?: Tone;
+  appliedStatus?: string;
+}) {
   const view = useViewMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const isDate = !!parseISO(value);
+  const applied = normStatus(appliedStatus ?? "") === "Applied";
+  const appliedView = applied ? appliedExpiryView(value) : null;
   const change = (v: string) => setDraft(v); // saved only on Save
   if (editing && !view)
     return (
@@ -206,6 +226,13 @@ export function DateCell({ value, onSave, tone }: { value: string; onSave: (v: s
         />
       </div>
     );
+  // Date cell keeps the calendar date; when Applied, show countdown / overdue under it (expiration axis).
+  const dateSub =
+    appliedView && isDate
+      ? appliedView.expiration
+        ? `${appliedView.expiration} · ${appliedView.dateHint}`
+        : appliedView.dateHint || null
+      : null;
   return (
     <button
       type="button"
@@ -215,13 +242,16 @@ export function DateCell({ value, onSave, tone }: { value: string; onSave: (v: s
         setEditing(true);
       }}
       className={cn(
-        "inline-flex min-h-9 w-full items-center gap-2 whitespace-pre-wrap break-words rounded-lg border px-2.5 py-1 text-left text-base font-semibold",
+        "inline-flex min-h-9 w-full flex-col items-start justify-center gap-0.5 whitespace-pre-wrap break-words rounded-lg border px-2.5 py-1 text-left text-base font-semibold",
         tone ? TONE_BOX[tone] : "bg-card hover:border-primary/60",
         !value.trim() && "border-dashed font-normal italic text-muted-foreground/70",
       )}
     >
-      {isDate && <CalendarDays className="size-4 shrink-0 opacity-70" />}
-      {value.trim() ? fmtCell(value) : "Add date"}
+      <span className="inline-flex items-center gap-2">
+        {isDate && <CalendarDays className="size-4 shrink-0 opacity-70" />}
+        {value.trim() ? fmtCell(value) : "Add date"}
+      </span>
+      {dateSub && <span className="text-xs font-bold leading-tight opacity-95">{dateSub}</span>}
     </button>
   );
 }
@@ -230,19 +260,33 @@ export function StatusToggle({
   value,
   options,
   onSave,
+  /** Paired Exact Expiration cell — Applied keeps remaining days visible (does not change stored value). */
+  expiryValue,
 }: {
   value: string;
   options: string[];
   onSave: (v: string) => void;
+  expiryValue?: string;
 }) {
   const view = useViewMode();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
-  const tone = statusTone(value);
+  const applied = normStatus(value) === "Applied";
+  const appliedView = applied && expiryValue != null ? appliedExpiryView(expiryValue) : null;
+  const tone = appliedView?.tone ?? statusTone(value);
+  // Application axis stays the stored value (Applied). Never auto-rewrite to Valid/Renewed.
+  // When past expiry, show "Expired + Applied" so both axes remain visible together.
+  const primary =
+    applied && appliedView?.expiration === "Expired"
+      ? "Expired + Applied"
+      : value.trim() || (view ? "—" : "Select");
+  // Expiration axis + countdown under Application (display only — onSave still writes the dropdown value).
+  const hint = applied && appliedView ? appliedView.hint : null;
   if (view)
     return (
-      <div className={cn("inline-flex min-h-9 w-full items-center rounded-lg px-2.5 py-1 text-base font-bold", TONE_SOLID[tone])}>
-        <span className="whitespace-pre-wrap break-words">{value.trim() || "—"}</span>
+      <div className={cn("inline-flex min-h-9 w-full flex-col items-start justify-center rounded-lg px-2.5 py-1 text-base font-bold", TONE_SOLID[tone])}>
+        <span className="whitespace-pre-wrap break-words">{primary}</span>
+        {hint && <span className="text-xs font-bold leading-tight opacity-95">{hint}</span>}
       </div>
     );
   return (
@@ -255,7 +299,10 @@ export function StatusToggle({
             TONE_SOLID[tone],
           )}
         >
-          <span className="whitespace-pre-wrap break-words">{value.trim() || "Select"}</span>
+          <span className="flex min-w-0 flex-col items-start gap-0.5">
+            <span className="whitespace-pre-wrap break-words">{primary}</span>
+            {hint && <span className="text-xs font-bold leading-tight opacity-95">{hint}</span>}
+          </span>
           <ChevronDown className="size-4 shrink-0" />
         </button>
       </PopoverTrigger>

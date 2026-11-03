@@ -14,6 +14,7 @@ import {
   rowAlertsMuted,
   rowDriverStatus,
   rowIsActive,
+  statusExpiryCol,
   suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
@@ -419,8 +420,31 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 {suggestion && <PlanSuggestChip suggestion={suggestion} onApply={() => save(suggestion)} />}
               </div>
             )}
-            {t === "date" && <DateCell value={v} onSave={save} tone={tone} />}
-            {t === "status" && <StatusToggle value={v} options={def.statusOptions} onSave={save} />}
+            {t === "date" && (
+              <DateCell
+                value={v}
+                onSave={save}
+                tone={tone}
+                appliedStatus={
+                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i) >= 0
+                    ? row.cells[
+                        def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i)
+                      ]
+                    : undefined
+                }
+              />
+            )}
+            {t === "status" && (
+              <StatusToggle
+                value={v}
+                options={def.statusOptions}
+                onSave={save}
+                expiryValue={(() => {
+                  const exp = statusExpiryCol(sectionId, i);
+                  return exp != null ? row.cells[exp] : undefined;
+                })()}
+              />
+            )}
             {t === "active" && <ActiveToggle value={v} onSave={save} />}
             {t === "score" && <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>}
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Columns3, Info, ChevronUp, Trash2, Pencil, Check, X, Bell, UserPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { analyzeRow, complianceScore, rowIsActive, suggestApplyPlan } from "@/lib/alerts";
+import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol, suggestApplyPlan } from "@/lib/alerts";
 import { sectionById } from "@/lib/sections";
 import { addRowForDriver, deleteDriver, patchSection, setCell, setRowHeight, useData } from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
@@ -520,8 +520,32 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                           })()}
                         </div>
                       )}
-                      {t === "date" && <DateCell value={v} onSave={save} tone={tone} />}
-                      {t === "status" && <StatusToggle value={v} options={def.statusOptions} onSave={save} />}
+                      {t === "date" && (
+                        <DateCell
+                          value={v}
+                          onSave={save}
+                          tone={tone}
+                          appliedStatus={
+                            // Pair Exact Expiration with its status column (DMV / Queries Applied).
+                            def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci) >= 0
+                              ? row.cells[
+                                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci)
+                                ]
+                              : undefined
+                          }
+                        />
+                      )}
+                      {t === "status" && (
+                        <StatusToggle
+                          value={v}
+                          options={def.statusOptions}
+                          onSave={save}
+                          expiryValue={(() => {
+                            const exp = statusExpiryCol(sectionId, ci);
+                            return exp != null ? row.cells[exp] : undefined;
+                          })()}
+                        />
+                      )}
                       {t === "active" && <ActiveToggle value={v} onSave={save} />}
                       {t === "score" && <ScoreBar value={complianceScore(row)} />}
                     </td>
