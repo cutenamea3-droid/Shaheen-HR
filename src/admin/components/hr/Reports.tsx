@@ -10,14 +10,14 @@ import { SectionTitle, todayStr } from "./common";
 function Card({ title, sub, make, name }: { title: string; sub: string; make: () => Table[]; name: string }) {
   const company = useApp((s) => s.settings.company);
   return (
-    <div className="panel flex flex-col justify-between gap-3">
+    <div className="admin-emp-card flex flex-col justify-between gap-3">
       <div>
-        <h3 className="font-bold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{sub}</p>
+        <h3 className="font-bold tracking-tight">{title}</h3>
+        <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{sub}</p>
       </div>
-      <div className="flex gap-2">
-        <button className="btn-primary" onClick={() => void downloadPdf(make(), company, `${name}.pdf`)}>PDF</button>
-        <button className="btn-ghost" onClick={() => downloadCsv(make(), `${name}.csv`)}>CSV</button>
+      <div className="admin-toolbar">
+        <button type="button" className="btn-primary" onClick={() => void downloadPdf(make(), company, `${name}.pdf`)}>PDF</button>
+        <button type="button" className="btn-ghost" onClick={() => downloadCsv(make(), `${name}.csv`)}>CSV</button>
       </div>
     </div>
   );
@@ -42,23 +42,24 @@ export function Reports() {
 
   return (
     <div className="space-y-8">
-      <section>
+      <section className="admin-emp-card space-y-1">
         <SectionTitle
           title="Payroll export"
-          sub="Summary CSV for the selected date range (reuses attendance calc rules)."
+          sub="Summary CSV for the selected date range (reuses attendance calc rules — formulas unchanged)."
           right={
-            <div className="flex flex-wrap items-center gap-2">
+            <>
               <input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} />
               <input type="date" className="field w-auto" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} />
               <span className="text-sm text-muted-foreground">to</span>
               <input type="date" className="field w-auto" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
               <button
+                type="button"
                 className="btn-primary"
                 onClick={() => downloadPayrollCsv(data, from, to, from.slice(0, 7))}
               >
                 Export Payroll CSV
               </button>
-            </div>
+            </>
           }
         />
       </section>

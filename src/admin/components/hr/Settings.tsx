@@ -13,8 +13,8 @@ export function SettingsPanel() {
   return (
     <div className="space-y-8">
       <section>
-        <SectionTitle title="Rules" sub="All times are machine (USA) time." />
-        <div className="panel grid gap-3 md:grid-cols-3">
+        <SectionTitle title="Rules" sub="All times are machine (USA) time. Values feed existing calc — UI layout only here." />
+        <div className="admin-emp-card grid gap-3 md:grid-cols-3">
           <label className="md:col-span-3"><span className="lbl">Company name (on PDFs)</span><input className="field" value={settings.company} onChange={(e) => setSettings({ company: e.target.value })} /></label>
           {num("grace", "Late grace (min)")}
           {num("breakMin", "Break allowed (min)")}
@@ -26,15 +26,15 @@ export function SettingsPanel() {
       <section>
         <SectionTitle
           title="Departments & shift times"
-          right={<button className="btn-primary" onClick={() => upsertDept({ id: Math.random().toString(36).slice(2, 9), name: "New department", start: parseTime("9:00")!, end: parseTime("19:00")! })}>Add department</button>}
+          right={<button type="button" className="btn-primary" onClick={() => upsertDept({ id: Math.random().toString(36).slice(2, 9), name: "New department", start: parseTime("9:00")!, end: parseTime("19:00")! })}>Add department</button>}
         />
         <div className="space-y-2">
           {depts.map((d) => (
-            <div key={d.id} className="panel grid gap-3 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
+            <div key={d.id} className="admin-emp-card grid gap-3 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
               <label><span className="lbl">Name</span><input className="field" value={d.name} onChange={(e) => upsertDept({ ...d, name: e.target.value })} /></label>
               <TimeInput label="Shift start" value={d.start} onChange={(v) => v != null && upsertDept({ ...d, start: v })} />
               <TimeInput label="Shift end" value={d.end} onChange={(v) => v != null && upsertDept({ ...d, end: v })} />
-              <button className="btn-danger" onClick={() => confirm(`Delete ${d.name}?`) && removeDept(d.id)}>Delete</button>
+              <button type="button" className="btn-danger" onClick={() => confirm(`Delete ${d.name}?`) && removeDept(d.id)}>Delete</button>
               <p className="text-xs text-muted-foreground md:col-span-4">{fmtTime(d.start)} – {fmtTime(d.end)}</p>
             </div>
           ))}

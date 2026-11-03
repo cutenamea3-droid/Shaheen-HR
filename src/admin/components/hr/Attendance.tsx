@@ -98,19 +98,19 @@ export function Attendance() {
   };
 
   const saveBtn = (
-    <div className="flex items-center gap-3">
-      <button className="btn-primary px-6" onClick={() => void save()}>Save attendance</button>
+    <div className="admin-toolbar gap-3">
+      <button type="button" className="btn-primary px-6" onClick={() => void save()}>Save attendance</button>
       {saveMsg && <span className={`text-sm font-semibold ${saveMsg.startsWith("✓") ? "text-primary" : saveMsg.includes("failed") ? "text-destructive" : "text-muted-foreground"}`}>{saveMsg}</span>}
     </div>
   );
 
   return (
-    <div>
+    <div className="space-y-4">
       <SectionTitle
         title="Daily attendance"
         sub={`${prettyDate(date)} · Paste each time from the machine, then click Save.`}
         right={
-          <div className="flex flex-wrap gap-2">
+          <>
             <input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
             <input
               type="date"
@@ -128,19 +128,20 @@ export function Attendance() {
               onChange={(e) => e.target.value && setRangeTo(e.target.value)}
             />
             <button
+              type="button"
               className="btn-ghost"
               onClick={() => downloadPayrollCsv(data, rangeFrom, rangeTo, rangeFrom.slice(0, 7))}
             >
               Export Payroll CSV
             </button>
-            <button className="btn-ghost" onClick={() => void fillStandardTimes()}>
+            <button type="button" className="btn-ghost" onClick={() => void fillStandardTimes()}>
               Fill Standard Times
             </button>
-            <button className="btn-primary" onClick={() => void save()}>Save</button>
-            <button className="btn-danger" onClick={() => confirm(`Clear ALL records for ${prettyDate(date)}?`) && resetDay(date)}>
+            <button type="button" className="btn-primary" onClick={() => void save()}>Save</button>
+            <button type="button" className="btn-danger" onClick={() => confirm(`Clear ALL records for ${prettyDate(date)}?`) && resetDay(date)}>
               Reset day
             </button>
-          </div>
+          </>
         }
       />
 
@@ -163,11 +164,11 @@ export function Attendance() {
           const timesOff = r.status === "leave" || r.status === "absent";
           const { lateMin, earlyOutMin } = shiftVariance(dept, r);
           return (
-            <div key={e.id} className={`panel ${rec ? "" : "opacity-80"}`}>
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div>
+            <div key={e.id} className={`admin-emp-card ${rec ? "" : "opacity-80"}`}>
+              <div className="admin-emp-head">
+                <div className="min-w-0">
                   <span className="mr-2 font-display text-muted-foreground">{i + 1}.</span>
-                  <span className="font-bold">{e.name}</span>
+                  <span className="font-bold tracking-tight">{e.name}</span>
                   <span className="ml-2 text-sm text-muted-foreground">{dept?.name}</span>
                   {e.afterHours && <span className="chip ml-2 bg-secondary text-secondary-foreground">After-hours</span>}
                   {!rec && <span className="chip ml-2 bg-muted text-muted-foreground">Not entered</span>}
@@ -177,17 +178,17 @@ export function Attendance() {
                     </span>
                   )}
                   {lateMin > 0 && (
-                    <span className="chip ml-2 bg-muted/70 text-muted-foreground font-medium" title={`Arrived ${lateMin} min after shift start`}>
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Arrived ${lateMin} min after shift start`}>
                       Late (+{lateMin} min)
                     </span>
                   )}
                   {earlyOutMin > 0 && (
-                    <span className="chip ml-2 bg-muted/70 text-muted-foreground font-medium" title={`Left ${earlyOutMin} min before shift end`}>
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Left ${earlyOutMin} min before shift end`}>
                       Early Out (−{earlyOutMin} min)
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="admin-toolbar">
                   <select className="field w-auto" value={r.status} onChange={(ev) => setStatus(ev.target.value as Status)}>
                     <option value="present">Present</option>
                     <option value="half">Half day</option>
@@ -195,7 +196,7 @@ export function Attendance() {
                     <option value="absent">Absent</option>
                   </select>
                   {rec && (
-                    <button className="btn-ghost" onClick={() => confirm(`Reset ${e.name}'s record for this day?`) && resetRec(date, e.id)}>
+                    <button type="button" className="btn-ghost" onClick={() => confirm(`Reset ${e.name}'s record for this day?`) && resetRec(date, e.id)}>
                       Reset
                     </button>
                   )}
@@ -211,7 +212,7 @@ export function Attendance() {
 
               {!timesOff && (
                 <>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="admin-form-grid admin-form-grid-4 grid-cols-2">
                     <TimeInput label="Punch in" value={r.in} onChange={(v) => set({ in: v })} />
                     <TimeInput label="Break in" value={r.bin} disabled={noBreakDay} onChange={(v) => set({ bin: v })} />
                     <TimeInput label="Break out" value={r.bout} disabled={noBreakDay} onChange={(v) => set({ bout: v })} />
@@ -285,7 +286,7 @@ export function Attendance() {
               })()}
 
               {rec && (
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-muted px-3 py-2 text-sm">
+                <div className="admin-summary-strip">
                   <span>
                     Worked: <b>{c.worked != null ? `${fmtHours(c.worked)} h` : "—"}</b>
                   </span>
@@ -305,7 +306,7 @@ export function Attendance() {
           );
         })}
       </div>
-      {employees.length > 0 && <div className="panel mt-4 flex justify-end">{saveBtn}</div>}
+      {employees.length > 0 && <div className="admin-emp-card mt-1 flex justify-end">{saveBtn}</div>}
     </div>
   );
 }
