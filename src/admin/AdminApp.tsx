@@ -7,6 +7,7 @@ import { Overtime } from "@/admin/components/hr/Overtime";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import { getSyncStatus, saveNow, startSync, stopSync, subscribeSync } from "@/admin/lib/cloud-sync";
+import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons } from "@/admin/components/hr/Settings";
 
 function SyncBadge() {
@@ -161,6 +162,13 @@ export function AdminApp() {
   const [localOnly, setLocalOnly] = useState(false);
   const setAuthed = (v: boolean) => {
     if (!v) {
+      if (isPreviewIsolated()) {
+        // Stay signed into mock preview account — never call Auth.
+        setLocalOnly(true);
+        setEmail(HR_EMAIL);
+        setAuthedState(true);
+        return;
+      }
       void import("@/admin/lib/hr-auth-local").then((m) => m.clearHrLocalSession()).catch(() => undefined);
       setLocalOnly(false);
       setAuthedState(false);
@@ -171,6 +179,14 @@ export function AdminApp() {
   const [tab, setTab] = useState<TabId>("overview");
   const [small, setSmall] = useState(false);
   useEffect(() => {
+    if (isPreviewIsolated()) {
+      stopSync();
+      setLocalOnly(true);
+      setEmail(HR_EMAIL);
+      setAuthedState(true);
+      setReady(true);
+      return;
+    }
     const apply = async (uid: string | null, mail: string) => {
       if (uid) {
         await startSync(uid);
@@ -241,9 +257,17 @@ export function AdminApp() {
   const renderTabGroup = (ids: Set<string>) =>
     opsTabs.filter(([id]) => ids.has(id)).map(([id, label, , Icon]) => navBtn(id, label, Icon));
   return (
-    <div className="flex min-h-screen">
-      <TaskGate />
-      <aside className={`sticky top-0 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-visible border-r border-sidebar-border bg-sidebar p-2 text-sidebar-foreground transition-all ${small ? "w-16" : "w-16 md:w-60"}`}>
+    <div className="admin-shell flex min-h-screen">
+      {!isPreviewIsolated() && <TaskGate />}
+      {isPreviewIsolated() && (
+        <div
+          role="status"
+          className="tracker-no-print fixed top-[44px] right-0 left-0 z-[60] border-b border-warn/40 bg-warn-soft px-3 py-1.5 text-center text-xs font-bold text-warn md:left-0"
+        >
+          Isolated preview — Admin mock session + local seed only. Cloud sync disabled; Supabase URL is non-routable.
+        </div>
+      )}
+      <aside className={`admin-aside sticky top-0 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-visible border-r border-sidebar-border bg-sidebar p-2 text-sidebar-foreground transition-all ${small ? "w-16" : "w-16 md:w-60"}`}>
         <div className="mb-3 flex items-center gap-2 px-1 py-2">
           <img src="/logo.jpg" alt="Shaheen Transport LLC" className="h-10 w-10 shrink-0 rounded-lg object-contain" />
           {!small && <span className="hidden font-display text-sm font-bold leading-tight md:block"><span className="text-primary">SHAHEEN</span><br />HR Dashboard</span>}
@@ -272,7 +296,7 @@ export function AdminApp() {
           {small ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
         </button>
       </aside>
-      <main className="ui-enter shell-main-pad min-w-0 flex-1 overflow-x-visible md:px-6 md:pt-5">
+      <main className={`ui-enter admin-main shell-main-pad min-w-0 flex-1 overflow-x-visible md:px-6 md:pt-5 ${isPreviewIsolated() ? "pt-10" : ""}`}>
         <header className="shell-page-header tracker-no-print border-b border-border/70 pb-2.5">
           <nav aria-label="Breadcrumb" className="shell-crumb">
             {crumbs.map((c, i) => (
@@ -285,17 +309,21 @@ export function AdminApp() {
             ))}
           </nav>
         </header>
-        {localOnly ? (
+        {isPreviewIsolated() || localOnly ? (
           <div className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground">
-            Local session — cloud sync paused until you sign in with Supabase.
+            {isPreviewIsolated()
+              ? "Isolated preview — local seed/Zustand only; Save stays on this browser."
+              : "Local session — cloud sync paused until you sign in with Supabase."}
           </div>
         ) : (
           <SyncBadge />
         )}
-        {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
-          : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
-          : current === "logs" ? <SystemLogs />
-          : Active ? <Active /> : null}
+        <div className="admin-page">
+          {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
+            : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
+            : current === "logs" ? <SystemLogs />
+            : Active ? <Active /> : null}
+        </div>
       </main>
     </div>
   );

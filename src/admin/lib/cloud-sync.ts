@@ -1,4 +1,5 @@
 import { supabase } from "@/admin/integrations/supabase/client";
+import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { useApp, whenAttendanceHydrated } from "./store";
 
 const KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
@@ -94,6 +95,11 @@ async function pull(userId: string, force = false) {
 
 /** Load the saved data from the cloud, then save every change. */
 export async function startSync(userId: string) {
+  if (isPreviewIsolated()) {
+    stopSync();
+    setStatus("synced");
+    return;
+  }
   currentUser = userId;
   // Wait for localStorage rehydrate so we don't push seed over a newer cloud copy.
   await whenAttendanceHydrated();
@@ -148,6 +154,11 @@ export function stopSync() {
 
 /** Save everything to the cloud right now. Returns true on success. */
 export async function saveNow() {
+  // Isolated preview: attendance already persists via zustand localStorage — never hit Supabase.
+  if (isPreviewIsolated()) {
+    setStatus("synced");
+    return true;
+  }
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) return false;
   if (timer) clearTimeout(timer);

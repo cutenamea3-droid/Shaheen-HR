@@ -4,17 +4,15 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { getPortalAccount, PORTAL_EMAIL, signInPortalAccount, updatePortalProfile, type PortalAccount } from "@/lib/cloud";
+import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { AboutPanel } from "./AboutPanel";
+
+export { isPreviewIsolated } from "@/lib/preview-isolated";
 
 const PortalAccountContext = createContext<{
   account: PortalAccount;
   updateDisplayName: (name: string) => Promise<void>;
 } | null>(null);
-
-/** Local visual-preview only. Never set on Cloudflare / .env.production. */
-export function isPreviewIsolated(): boolean {
-  return import.meta.env.VITE_PREVIEW_ISOLATED === "1";
-}
 
 const PREVIEW_ACCOUNT: PortalAccount = {
   user_id: "preview-isolated-local",
