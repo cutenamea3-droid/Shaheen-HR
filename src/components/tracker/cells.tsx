@@ -26,7 +26,20 @@ export const TONE_SOLID: Record<Tone, string> = {
 
 export function Chip({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-sm font-semibold", TONE_BOX[tone], className)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-sm font-semibold leading-tight", TONE_BOX[tone], className)}>
+      <span
+        className={cn(
+          "tracker-status-dot shrink-0",
+          tone === "danger" && "bg-danger",
+          tone === "warn" && "bg-warn",
+          tone === "info" && "bg-info",
+          tone === "note" && "bg-gold",
+          tone === "ok" && "bg-ok",
+          tone === "sign" && "bg-sign",
+          tone === "muted" && "bg-muted-foreground",
+        )}
+        aria-hidden
+      />
       {children}
     </span>
   );

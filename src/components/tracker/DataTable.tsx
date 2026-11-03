@@ -198,44 +198,48 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
       </div>}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="tracker-toolbar">
         <div className="relative min-w-72 flex-1">
-          <Search className="absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${def.title}…`}
-            className="h-10 w-full rounded-xl border-2 bg-card pr-4 pl-11 text-base shadow-card outline-none focus:border-primary"
+            className="tracker-search"
+            aria-label={`Search ${def.title}`}
           />
         </div>
-        <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group" role="group" aria-label="Employment filter">
           {(["all", "active", "inactive", "new"] as Filter[]).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm font-bold capitalize transition",
-                filter === f ? "bg-brand text-primary-foreground shadow-card" : "text-muted-foreground hover:text-foreground",
-              )}
+              aria-pressed={filter === f}
+              className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
             >
               {f === "all" ? "Show all" : f === "new" ? `New (${newCount})` : f}
             </button>
           ))}
         </div>
-        <div className="inline-flex rounded-xl border-2 border-danger/30 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
           <button
             type="button"
             onClick={() => setAlertsOnly(false)}
-            className={cn("rounded-lg px-3 py-1.5 text-sm font-bold", !alertsOnly ? "bg-ink text-ink-foreground" : "text-muted-foreground")}
+            aria-pressed={!alertsOnly}
+            className={cn("tracker-filter-btn", !alertsOnly ? "bg-ink text-ink-foreground" : "")}
           >
             Show All
           </button>
           <button
             type="button"
             onClick={() => setAlertsOnly(true)}
+            aria-pressed={alertsOnly}
             title="Show only drivers with expired, expiring, missing, applied or note items"
-            className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold", alertsOnly ? "bg-danger text-primary-foreground" : "text-danger")}
+            className={cn(
+              "tracker-filter-btn inline-flex items-center gap-1.5",
+              alertsOnly ? "bg-danger text-primary-foreground" : "text-danger",
+            )}
           >
             <Bell className="size-4" /> Only Issues ({alertCount})
           </button>
@@ -308,7 +312,7 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
       </p>}
 
       {/* Table */}
-      <div className="ui-lift ui-row-hover min-h-0 flex-1 overflow-auto rounded-2xl border bg-card shadow-card">
+      <div className="ui-lift ui-row-hover tracker-table-wrap">
         <table className="table-fixed border-separate border-spacing-0" style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}>
           <colgroup>
             <col style={{ width: 70 }} />
@@ -444,7 +448,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                     {ri + 1}
                     {isNew(row) && <span className="mt-1 block rounded bg-ok-soft px-1 text-[10px] font-bold text-ok">NEW</span>}
                     {issues.length > 0 && (
-                      <span className="mt-1 block size-2.5 rounded-full bg-danger" title={issues.map((x) => x.label).join("\n")} />
+                      <span
+                        className="tracker-status-dot mt-1 block bg-danger"
+                        title={issues.map((x) => x.label).join("\n")}
+                        aria-label={`${issues.length} issue${issues.length > 1 ? "s" : ""}`}
+                      />
                     )}
                   </div>
                   {!rlock && <span
