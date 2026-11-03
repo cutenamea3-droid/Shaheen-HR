@@ -430,7 +430,7 @@ function expiryDaysLabel(days: number, d: Date) {
 /**
  * Smart Alerts for the header bell drawer.
  * Critical: expired or within 7 days · Upcoming: 8–30 days · Incomplete: missing CDL / dates.
- * Active drivers only; "Old" expiry cells skipped. Does not change stored data shape.
+ * Active drivers only (leave/inactive muted); "Old" expiry cells skipped. Does not change stored data shape.
  */
 export function collectSmartAlerts(data: AppData): SmartAlert[] {
   const out: SmartAlert[] = [];
@@ -439,7 +439,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     const sec = data.sections[def.id];
     if (!sec) continue;
     for (const row of sec.rows) {
-      if (!rowIsActive(def, row, data)) continue;
+      if (rowAlertsMuted(def, row, data)) continue;
       const driver = (row.cells[0] ?? "").trim() || "—";
       const base = {
         driver,
@@ -531,7 +531,7 @@ export function smartAlertCounts(data: AppData) {
   return { critical, upcoming, incomplete, total: list.length };
 }
 
-/** Active drivers with a fully clean file (notes not counted) — fleet compliance %. */
+/** Active drivers with a fully clean file (notes not counted) — fleet compliance %. Leave/inactive excluded. */
 export function fleetCompliancePct(data: AppData) {
   const bad = new Set<string>();
   const names = new Set<string>();
@@ -540,7 +540,7 @@ export function fleetCompliancePct(data: AppData) {
     const sec = data.sections[def.id];
     if (!sec) continue;
     for (const r of sec.rows) {
-      if (!rowIsActive(def, r, data)) continue;
+      if (rowAlertsMuted(def, r, data)) continue;
       const name = (r.cells[0] ?? "").trim().toLowerCase();
       if (!name) continue;
       names.add(name);
