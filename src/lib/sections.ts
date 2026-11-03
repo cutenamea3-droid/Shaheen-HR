@@ -382,6 +382,93 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
   return { data: changed.length ? { ...input, sections } : input, changed };
 }
 
+/** Canonical Active/Inactive label for a driver from any section that stores status. */
+export function driverEmploymentStatus(data: AppData, driverId: string): "Active" | "Inactive" {
+  for (const s of SECTIONS) {
+    if (s.id === "inactive") continue;
+    const i = s.types.indexOf("active");
+    if (i < 0) continue;
+    const r = data.sections[s.id]?.rows.find((x) => x.driverId === driverId);
+    if (!r) continue;
+    return r.cells[i]?.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  }
+  const inaDef = SECTIONS.find((s) => s.id === "inactive");
+  const i = inaDef?.types.indexOf("active") ?? -1;
+  const r = i >= 0 ? data.sections.inactive?.rows.find((x) => x.driverId === driverId) : undefined;
+  if (r && i >= 0) return r.cells[i]?.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  return "Active";
+}
+
+/** Build Inactive Drivers cells: Name, License, Phone, Status, State. */
+export function buildInactiveCells(data: AppData, driverId: string, status: string): string[] {
+  let name = "";
+  let license = "";
+  let phone = "";
+  let state = "";
+  for (const id of ["dmv", "ssccdl", "docs", "medical", "queries", "info", "inactive"] as const) {
+    const r = data.sections[id]?.rows.find((x) => x.driverId === driverId);
+    if (!r) continue;
+    if (!name.trim()) name = (r.cells[0] ?? "").trim();
+    if ((id === "dmv" || id === "ssccdl" || id === "inactive") && !license.trim()) license = (r.cells[1] ?? "").trim();
+    if (id === "info" && !phone.trim()) phone = (r.cells[1] ?? "").trim();
+    if (id === "inactive" && !phone.trim()) phone = (r.cells[2] ?? "").trim();
+    const def = SECTIONS.find((s) => s.id === id);
+    const si = def?.types.indexOf("state") ?? -1;
+    if (si >= 0 && !state.trim()) state = (r.cells[si] ?? "").trim();
+    if (id === "info" && !state.trim()) state = (r.cells[3] ?? "").trim();
+  }
+  const label = status.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  return [name, license, phone, label, state];
+}
+
+/**
+ * Keep Inactive Drivers roster in sync with employment status across sections.
+ * Drivers marked Inactive gain a row here immediately; existing rows get matching Status.
+ */
+export function syncInactiveRoster(input: AppData): { data: AppData; changed: string[] } {
+  const inaDef = SECTIONS.find((s) => s.id === "inactive");
+  const inaSec = input.sections.inactive;
+  if (!inaDef || !inaSec) return { data: input, changed: [] };
+  const statusIdx = inaDef.types.indexOf("active");
+  if (statusIdx < 0) return { data: input, changed: [] };
+
+  const inactiveIds = new Set<string>();
+  for (const s of SECTIONS) {
+    if (s.id === "inactive") continue;
+    const i = s.types.indexOf("active");
+    if (i < 0) continue;
+    for (const r of input.sections[s.id]?.rows ?? []) {
+      if (r.cells[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
+    }
+  }
+
+  let touched = false;
+  const byId = new Map(inaSec.rows.map((r) => [r.driverId, r]));
+  const rows = inaSec.rows.map((r) => {
+    const want = inactiveIds.has(r.driverId) ? "Inactive" : driverEmploymentStatus(input, r.driverId);
+    if ((r.cells[statusIdx] ?? "").trim() === want) return r;
+    touched = true;
+    return { ...r, cells: r.cells.map((c, i) => (i === statusIdx ? want : c)) };
+  });
+
+  for (const driverId of inactiveIds) {
+    if (byId.has(driverId)) continue;
+    touched = true;
+    rows.push({
+      id: `inactive_${uid()}`,
+      driverId,
+      cells: buildInactiveCells(input, driverId, "Inactive"),
+      addedAt: Date.now(),
+    });
+  }
+
+  if (!touched) return { data: input, changed: [] };
+  return {
+    data: { ...input, sections: { ...input.sections, inactive: { ...inaSec, rows } } },
+    changed: ["inactive"],
+  };
+}
+
 export function migrateData(input: AppData): { data: AppData; changed: string[] } {
   const linked = linkDrivers(input);
   const data = linked.data;
@@ -411,6 +498,8 @@ export function migrateData(input: AppData): { data: AppData; changed: string[] 
   }
   const afterSplits = changed.length ? { ...data, sections } : data;
   const normalized = normalizeSections(afterSplits);
-  const allChanged = [...new Set([...changed, ...normalized.changed])];
-  return { data: allChanged.length ? normalized.data : afterSplits, changed: allChanged };
+  const afterNorm = normalized.changed.length ? normalized.data : afterSplits;
+  const roster = syncInactiveRoster(afterNorm);
+  const allChanged = [...new Set([...changed, ...normalized.changed, ...roster.changed])];
+  return { data: allChanged.length ? roster.data : afterSplits, changed: allChanged };
 }

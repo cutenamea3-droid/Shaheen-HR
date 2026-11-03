@@ -1,12 +1,23 @@
 import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { buildSeed, migrateData, SECTIONS, uid, type AppData, type SectionData } from "./sections";
+import {
+  buildInactiveCells,
+  buildSeed,
+  migrateData,
+  SECTIONS,
+  uid,
+  type AppData,
+  type SectionData,
+} from "./sections";
 import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
 
 const KEY = "shaheen-driver-tracker-v1";
 /** Manual record lists stored as tracker_sections rows (same cloud table). */
 export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"] as const;
-export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes"];
+/** Document columns + person Active/Inactive (last). */
+export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes", "Active Status"];
+/** Index of Active/Inactive on record rows (Owner Operators etc.). */
+export const RECORD_ACTIVE_COL = 5;
 let state: AppData = buildSeed();
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -34,10 +45,54 @@ function emit() {
 function emptyRecordSection(): SectionData {
   return {
     headers: [...RECORD_HEADERS],
-    widths: RECORD_HEADERS.map(() => 200),
+    widths: RECORD_HEADERS.map((_, i) => (i === RECORD_ACTIVE_COL ? 150 : 200)),
     hidden: RECORD_HEADERS.map(() => false),
     rows: [],
   };
+}
+
+/** Pad/migrate record tabs so Active Status column exists on every row. */
+function normalizeRecordSection(sec: SectionData): SectionData {
+  let headers = [...(sec.headers ?? [])];
+  let widths = [...(sec.widths ?? [])];
+  let hidden = [...(sec.hidden ?? [])];
+  let rows = sec.rows.map((r) => ({ ...r, cells: [...r.cells] }));
+  let touched = false;
+
+  const hasActive = headers.some((h) => /^active\s*status$/i.test(h.trim()));
+  if (!hasActive) {
+    headers = [...headers, "Active Status"];
+    widths = [...widths, 150];
+    hidden = [...hidden, false];
+    touched = true;
+  }
+  // Prefer canonical header order when lengths match expected shape.
+  if (headers.length === RECORD_HEADERS.length) {
+    for (let i = 0; i < RECORD_HEADERS.length; i++) {
+      if (headers[i] !== RECORD_HEADERS[i]) {
+        headers[i] = RECORD_HEADERS[i];
+        touched = true;
+      }
+    }
+  }
+  const len = headers.length;
+  while (widths.length < len) widths.push(200);
+  while (hidden.length < len) hidden.push(false);
+  rows = rows.map((r) => {
+    const cells = [...r.cells];
+    while (cells.length < len) {
+      cells.push(cells.length === RECORD_ACTIVE_COL || cells.length === len - 1 ? "Active" : "");
+      touched = true;
+    }
+    const activeIdx = headers.findIndex((h) => /^active\s*status$/i.test(h.trim()));
+    if (activeIdx >= 0 && !cells[activeIdx]?.trim()) {
+      cells[activeIdx] = "Active";
+      touched = true;
+    }
+    return cells === r.cells ? r : { ...r, cells };
+  });
+  if (!touched && widths.length === (sec.widths?.length ?? 0) && hidden.length === (sec.hidden?.length ?? 0)) return sec;
+  return { ...sec, headers, widths: widths.slice(0, len), hidden: hidden.slice(0, len), rows };
 }
 
 /** Ensure record tabs exist locally so first cloud upload includes them. */
@@ -48,6 +103,12 @@ function ensureRecordSections(data: AppData): AppData {
     if (!sections[id]) {
       sections[id] = emptyRecordSection();
       touched = true;
+    } else {
+      const next = normalizeRecordSection(sections[id]);
+      if (next !== sections[id]) {
+        sections[id] = next;
+        touched = true;
+      }
     }
   }
   return touched ? { ...data, sections } : data;
@@ -231,10 +292,20 @@ export function loadFromStorage() {
   } catch {
     /* ignore corrupt storage */
   }
-  state = ensureRecordSections(state);
+  const withRecords = ensureRecordSections(state);
+  if (withRecords !== state) {
+    state = withRecords;
+    markAllSectionsDirty();
+    persist();
+  }
   emit();
   // Pull/push to Supabase — localStorage remains a cache only.
   startCloudSync();
+}
+
+/** Current app data snapshot (for tests and non-React callers). */
+export function getData() {
+  return state;
 }
 
 export function useData() {
@@ -275,19 +346,43 @@ SECTIONS.forEach((s) => {
 export function setCell(sectionId: string, rowId: string, col: number, value: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    const row = sec.rows.find((r) => r.id === rowId);
-    if (!row) return d;
+    const row = sec?.rows.find((r) => r.id === rowId);
+    if (!row || !sec) return d;
     const isActive = SECTIONS.find((s) => s.id === sectionId)?.types[col] === "active";
     const sections = { ...d.sections };
     if (isActive) {
+      const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
       // keep Active / Inactive in sync for this driver across every section
       for (const [sid, idx] of Object.entries(ACTIVE_IDX)) {
+        const cur = sections[sid];
+        if (!cur) continue;
         sections[sid] = {
-          ...sections[sid],
-          rows: sections[sid].rows.map((r) =>
-            r.driverId === row.driverId ? { ...r, cells: r.cells.map((c, i) => (i === idx ? value : c)) } : r,
+          ...cur,
+          rows: cur.rows.map((r) =>
+            r.driverId === row.driverId ? { ...r, cells: r.cells.map((c, i) => (i === idx ? label : c)) } : r,
           ),
         };
+      }
+      // Inactive Drivers tab must list anyone marked Inactive (create row if missing)
+      const ina = sections.inactive;
+      const inaIdx = ACTIVE_IDX.inactive;
+      if (ina && inaIdx != null) {
+        const has = ina.rows.some((r) => r.driverId === row.driverId);
+        if (label === "Inactive" && !has) {
+          const draft = { ...d, sections };
+          sections.inactive = {
+            ...ina,
+            rows: [
+              ...ina.rows,
+              {
+                id: "inactive_" + uid(),
+                driverId: row.driverId,
+                cells: buildInactiveCells(draft, row.driverId, label),
+                addedAt: Date.now(),
+              },
+            ],
+          };
+        }
       }
       return { ...d, sections };
     }
@@ -370,9 +465,58 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
 export function addRecord(sectionId: string, cells: string[]) {
   update((d) => {
     const sec = d.sections[sectionId] ?? emptyRecordSection();
-    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId: "r_" + uid(), cells, addedAt: Date.now() }] } } };
+    const padded = [...cells];
+    while (padded.length < RECORD_HEADERS.length) {
+      padded.push(padded.length === RECORD_ACTIVE_COL ? "Active" : "");
+    }
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: {
+          ...sec,
+          rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId: "r_" + uid(), cells: padded, addedAt: Date.now() }],
+        },
+      },
+    };
   });
 }
+
+/** Set Active/Inactive for every document row belonging to one person in a record section. */
+export function setRecordPersonActive(sectionId: string, personName: string, value: string) {
+  const key = recordPersonKey(personName);
+  if (!key) return;
+  const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  update((d) => {
+    const sec = d.sections[sectionId];
+    if (!sec) return d;
+    let touched = false;
+    const rows = sec.rows.map((r) => {
+      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
+      const cells = [...r.cells];
+      while (cells.length <= RECORD_ACTIVE_COL) cells.push("");
+      const wasInactive = cells[RECORD_ACTIVE_COL].trim().toLowerCase() === "inactive";
+      if (label === "Inactive" && wasInactive) return r;
+      if (label === "Active" && cells[RECORD_ACTIVE_COL] === "Active") return r;
+      touched = true;
+      cells[RECORD_ACTIVE_COL] = label;
+      return { ...r, cells };
+    });
+    if (!touched) return d;
+    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows } } };
+  });
+}
+
+export function recordPersonIsActive(rows: { cells: string[] }[]) {
+  for (const r of rows) {
+    const v = (r.cells[RECORD_ACTIVE_COL] ?? "").trim();
+    if (v) return v.toLowerCase() !== "inactive";
+  }
+  return true;
+}
+
+// Pad record Active Status on boot so UI/tests see the column without waiting for loadFromStorage.
+state = ensureRecordSections(state);
 export function deleteRecord(sectionId: string, rowId: string) {
   update((d) => {
     const sec = d.sections[sectionId];

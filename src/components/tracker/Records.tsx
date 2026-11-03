@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, FolderInput, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -6,12 +6,14 @@ import {
   deleteRecord,
   moveRecordPerson,
   RECORD_HEADERS,
+  recordPersonIsActive,
   renameRecordPerson,
   setCell,
+  setRecordPersonActive,
   useData,
 } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
-import { DateCell, EditableText, StatusToggle } from "./cells";
+import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import type { Row } from "@/lib/sections";
 
 /** Manual record lists — kept separate from the driver sections (not counted in alerts or Driver Cards). */
@@ -21,6 +23,7 @@ export const RECORD_TABS = [
   { id: "rec_mechanics", label: "Mechanics", short: "Mechanic", who: "Mechanic" },
 ];
 const STATUS = ["Valid", "On File", "Expired", "Missing", "Not Confirmed"];
+type ActiveFilter = "active" | "inactive" | "all";
 
 function nameKey(name: string) {
   return name.trim().toLowerCase();
@@ -30,6 +33,7 @@ type PersonGroup = {
   key: string;
   name: string;
   rows: Row[];
+  active: boolean;
 };
 
 function groupByPerson(rows: Row[]): PersonGroup[] {
@@ -39,8 +43,9 @@ function groupByPerson(rows: Row[]): PersonGroup[] {
     const key = nameKey(name);
     const g = map.get(key);
     if (g) g.rows.push(r);
-    else map.set(key, { key, name, rows: [r] });
+    else map.set(key, { key, name, rows: [r], active: true });
   }
+  for (const g of map.values()) g.active = recordPersonIsActive(g.rows);
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
@@ -56,8 +61,14 @@ export function Records() {
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [doc, setDoc] = useState("");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const cur = RECORD_TABS.find((t) => t.id === tab)!;
+  const ownersTab = tab === "rec_owners";
+
+  useEffect(() => {
+    setActiveFilter("active");
+  }, [tab]);
 
   const people = useMemo(() => {
     const rows = data.sections[tab]?.rows ?? [];
@@ -65,12 +76,14 @@ export function Records() {
     const filtered = !needle
       ? rows
       : rows.filter((r) => r.cells.some((c) => c.toLowerCase().includes(needle)));
-    return groupByPerson(filtered);
-  }, [data.sections, tab, q]);
+    const grouped = groupByPerson(filtered);
+    if (!ownersTab || activeFilter === "all") return grouped;
+    return grouped.filter((p) => (activeFilter === "active" ? p.active : !p.active));
+  }, [data.sections, tab, q, ownersTab, activeFilter]);
 
   const add = () => {
     if (!name.trim()) return;
-    addRecord(tab, [name.trim(), doc.trim(), "Valid", "", ""]);
+    addRecord(tab, [name.trim(), doc.trim(), "Valid", "", "", "Active"]);
     setDoc("");
     setOpen((o) => ({ ...o, [`${tab}:${nameKey(name)}`]: true }));
   };
@@ -134,6 +147,23 @@ export function Records() {
             className="h-10 w-full rounded-xl border bg-card pr-3 pl-9"
           />
         </div>
+        {ownersTab && (
+          <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
+            {(["active", "inactive", "all"] as ActiveFilter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setActiveFilter(f)}
+                className={cn(
+                  "ui-press rounded-lg px-3 py-1.5 text-sm font-bold capitalize",
+                  activeFilter === f ? "bg-brand text-primary-foreground shadow-card" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        )}
         {!view && (
           <form
             onSubmit={(e) => {
@@ -172,7 +202,10 @@ export function Records() {
           return (
             <article
               key={cardKey}
-              className="ui-lift overflow-hidden rounded-2xl border bg-card shadow-card"
+              className={cn(
+                "ui-lift overflow-hidden rounded-2xl border bg-card shadow-card",
+                ownersTab && !p.active && "opacity-70",
+              )}
               style={{ animationDelay: `${Math.min(i, 12) * 28}ms` }}
             >
               <div className="flex flex-wrap items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-3">
@@ -194,6 +227,7 @@ export function Records() {
                     <span className="block truncate text-lg font-extrabold tracking-tight">{p.name}</span>
                     <span className="text-sm text-muted-foreground">
                       {p.rows.length} document{p.rows.length === 1 ? "" : "s"}
+                      {ownersTab ? ` · ${p.active ? "Active" : "Inactive"}` : ""}
                     </span>
                   </span>
                 </button>
@@ -201,6 +235,13 @@ export function Records() {
                 <span className="rounded-lg border border-primary/25 bg-brand/10 px-2.5 py-1 text-xs font-bold tracking-wide text-primary uppercase">
                   {cur.short}
                 </span>
+
+                {ownersTab && (
+                  <ActiveToggle
+                    value={p.active ? "Active" : "Inactive"}
+                    onSave={(v) => setRecordPersonActive(tab, p.name, v)}
+                  />
+                )}
 
                 {!view && (
                   <label className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
