@@ -243,3 +243,62 @@ export function collectPlans(data: AppData): PlanItem[] {
   }
   return out.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
+
+/** Expiration toolbar filters (Dashboard + Driver Cards). */
+export type ExpFilter = "all" | "expired" | "d15" | "d30" | "compliant";
+
+export const EXP_FILTERS: { id: ExpFilter; label: string; tone?: string }[] = [
+  { id: "all", label: "All Drivers" },
+  { id: "expired", label: "Expired (Red)", tone: "danger" },
+  { id: "d15", label: "Expiring in 15 Days", tone: "warn" },
+  { id: "d30", label: "Expiring in 30 Days", tone: "warn" },
+  { id: "compliant", label: "Fully Compliant", tone: "ok" },
+];
+
+/** Date columns that drive expiration alerts (section → cell indexes). */
+const EXPIRY_COLS: Record<string, number[]> = {
+  dmv: [3],
+  medical: [2],
+  queries: [2, 4],
+  ssccdl: [3],
+};
+
+/** Days-until for every parseable expiry date on a driver (skips "Old"). */
+export function driverExpiryDays(data: AppData, driverId: string): number[] {
+  const out: number[] = [];
+  for (const [sid, cols] of Object.entries(EXPIRY_COLS)) {
+    const row = data.sections[sid]?.rows.find((r) => r.driverId === driverId);
+    if (!row) continue;
+    for (const i of cols) {
+      const v = row.cells[i] ?? "";
+      if (isOldExpiry(v)) continue;
+      if (normStatus(v) === "Expired") {
+        out.push(-1);
+        continue;
+      }
+      const d = parseISO(v);
+      if (d) out.push(daysUntil(d));
+    }
+  }
+  return out;
+}
+
+export type OverallExpStatus = "Expired" | "Expiring Soon" | "Compliant";
+
+/** Worst expiration bucket for a driver. */
+export function overallExpStatus(data: AppData, driverId: string): OverallExpStatus {
+  const days = driverExpiryDays(data, driverId);
+  if (days.some((n) => n < 0)) return "Expired";
+  if (days.some((n) => n <= 30)) return "Expiring Soon";
+  return "Compliant";
+}
+
+export function matchesExpFilter(data: AppData, driverId: string, filter: ExpFilter): boolean {
+  if (filter === "all") return true;
+  const days = driverExpiryDays(data, driverId);
+  if (filter === "expired") return days.some((n) => n < 0);
+  if (filter === "d15") return days.some((n) => n >= 0 && n <= 15);
+  if (filter === "d30") return days.some((n) => n >= 0 && n <= 30);
+  // Fully Compliant — nothing expired and nothing within 30 days
+  return !days.some((n) => n < 0 || n <= 30);
+}

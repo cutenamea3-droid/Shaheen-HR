@@ -187,6 +187,19 @@
 @media print {
   aside { display: none !important; }
   .app-switcher { display: none !important; }
+  .dot-audit-actions { display: none !important; }
+  .dot-audit-print {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .dot-audit-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 3px solid #d9711f;
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
 }
 
 

@@ -3,10 +3,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type SectionDef } from "@/lib/sections";
-import { analyzeRow, collectPlans, complianceScore, daysUntil, fmtDate, rowIsActive, today, type Issue, type Tone } from "@/lib/alerts";
+import { analyzeRow, collectPlans, complianceScore, daysUntil, fmtDate, matchesExpFilter, rowIsActive, today, type ExpFilter, type Issue, type Tone } from "@/lib/alerts";
 import { downloadReportPdf } from "@/lib/pdf";
 import { useData } from "@/lib/store";
 import { Chip } from "./cells";
+import { ExpirationFilter } from "./ExpirationFilter";
 import { SECTION_ICONS } from "./AppShell";
 
 type Cat = "all" | "expired" | "soon" | "applied" | "missing" | "notes";
@@ -23,6 +24,7 @@ type ActiveF = "active" | "inactive" | "all";
 export function Dashboard() {
   const data = useData();
   const [af, setAf] = useState<ActiveF>("active");
+  const [exp, setExp] = useState<ExpFilter>("all");
   const [q, setQ] = useState("");
 
   const stats = useMemo(() => {
@@ -79,13 +81,15 @@ export function Dashboard() {
         </div>
       </div>
 
+      <ExpirationFilter value={exp} onChange={setExp} />
+
       <TodayPanel />
 
       <FuturePlans />
 
       <div className="grid gap-5 2xl:grid-cols-2">
         {SECTIONS.filter((s) => s.id !== "inactive").map((def) => (
-          <SectionAlerts key={def.id} def={def} af={af} q={q} />
+          <SectionAlerts key={def.id} def={def} af={af} q={q} exp={exp} />
         ))}
       </div>
     </div>
@@ -107,7 +111,7 @@ function Stat({ icon: Icon, label, value, sub, tone }: { icon: typeof Users; lab
   );
 }
 
-function SectionAlerts({ def, af, q }: { def: SectionDef; af: ActiveF; q: string }) {
+function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: string; exp: ExpFilter }) {
   const data = useData();
   const navigate = useNavigate();
   const [cat, setCat] = useState<Cat>("all");
@@ -122,10 +126,11 @@ function SectionAlerts({ def, af, q }: { def: SectionDef; af: ActiveF; q: string
           const a = rowIsActive(def, r, data);
           return af === "all" || (af === "active" ? a : !a);
         })
+        .filter((r) => matchesExpFilter(data, r.driverId, exp))
         .map((r) => ({ row: r, issues: analyzeRow(def, sec.headers, r).issues }))
         .filter((x) => x.issues.length)
         .filter((x) => !q.trim() || x.row.cells[0].toLowerCase().includes(q.toLowerCase())),
-    [sec, def, data, af, q],
+    [sec, def, data, af, q, exp],
   );
   const catCount = (c: Cat) => items.filter((x) => x.issues.some(CATS.find((k) => k.id === c)!.match)).length;
   const shown = items.filter((x) => x.issues.some(CATS.find((k) => k.id === cat)!.match));

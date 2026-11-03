@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, HeartPulse, SearchCheck, IdCard, FolderOpen, Users, UserX,
-  PanelLeftClose, PanelLeftOpen, Download, Upload, RotateCcw,
+  PanelLeftClose, PanelLeftOpen, Download, Upload, RotateCcw, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -15,6 +15,7 @@ import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { SECTIONS } from "@/lib/sections";
 import { analyzeRow, rowIsActive } from "@/lib/alerts";
+import { exportDotAuditSummary } from "@/lib/dot-audit";
 import { exportBackup, importBackup, loadFromStorage, resetToSpreadsheet, retrySync, useData, useLoaded, useSyncStatus } from "@/lib/store";
 
 export const SECTION_ICONS: Record<string, typeof FileText> = {
@@ -160,6 +161,17 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
                 <span className="size-2 rounded-full bg-ok" /> {sync === "syncing" ? "Saving to cloud…" : sync === "synced" ? "Saved to cloud" : "Connecting to cloud…"}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                exportDotAuditSummary(data);
+                toast.success("DOT Audit Summary ready — CSV downloaded and print view opened");
+              }}
+              title="Printable table + CSV: Driver Name, CDL, DMV Status, Medical Expiry, Clearinghouse Annual, Overall Status"
+              className={btn}
+            >
+              <ClipboardList className="size-4" /> Export DOT Audit Summary
+            </button>
             <button
               type="button"
               onClick={() => {

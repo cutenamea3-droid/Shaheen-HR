@@ -3,10 +3,11 @@ import { Search, FolderOpen, Trash2, X } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type Row } from "@/lib/sections";
-import { analyzeRow, complianceScore, normStatus, rowIsActive, suggestApplyPlan } from "@/lib/alerts";
+import { analyzeRow, complianceScore, matchesExpFilter, normStatus, rowIsActive, suggestApplyPlan, type ExpFilter } from "@/lib/alerts";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
+import { ExpirationFilter } from "./ExpirationFilter";
 
 // The cards read and write the exact same rows as the sections — no copies.
 const CARD_SECTIONS = SECTIONS.filter((s) => s.id !== "inactive");
@@ -29,6 +30,7 @@ export function DriverCards() {
   const data = useData();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [exp, setExp] = useState<ExpFilter>("all");
   const view = useViewMode();
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -59,9 +61,10 @@ export function DriverCards() {
     }
     return [...map.values()]
       .filter((d) => statusFilter === "all" || (statusFilter === "active" ? d.active : !d.active))
+      .filter((d) => matchesExpFilter(data, d.driverId, exp))
       .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()))
       .sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
-  }, [data, q, statusFilter]);
+  }, [data, q, statusFilter, exp]);
 
   const open = drivers.find((d) => d.driverId === openId) ?? null;
   const th = "px-4 py-3 text-left text-xs font-extrabold tracking-wider uppercase";
@@ -93,6 +96,7 @@ export function DriverCards() {
             </button>
           ))}
         </div>
+        <ExpirationFilter value={exp} onChange={setExp} />
       </div>
       <div className="ui-lift ui-row-hover min-h-0 flex-1 overflow-auto rounded-2xl border bg-card shadow-card">
         <table className="w-full border-collapse">
