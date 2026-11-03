@@ -9,10 +9,10 @@ export function Team() {
   const [deptId, setDeptId] = useState(depts[0]?.id ?? "");
   const [after, setAfter] = useState(false);
   return (
-    <div>
-      <SectionTitle title="Team" sub="Order here is the order in every report. Use the number box or arrows to move." />
+    <div className="space-y-4">
+      <SectionTitle title="Team" sub="Employee profiles — order here is the order in every report. Use the number box or arrows to move." />
       <form
-        className="panel mb-4 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end"
+        className="admin-emp-card mb-1 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           if (!name.trim()) return;
@@ -29,11 +29,11 @@ export function Team() {
           </select>
         </label>
         <Toggle checked={after} onChange={setAfter} label="After-hours (overnight)" />
-        <button className="btn-primary">Add employee</button>
+        <button type="submit" className="btn-primary">Add employee</button>
       </form>
       <div className="space-y-2">
         {employees.map((e, i) => (
-          <div key={e.id} className="panel grid gap-3 md:grid-cols-[80px_1fr_1fr_auto_120px_110px_auto] md:items-end">
+          <div key={e.id} className="admin-emp-card grid gap-3 md:grid-cols-[80px_1fr_1fr_auto_120px_110px_auto] md:items-end">
             <label>
               <span className="lbl">No.</span>
               <input type="number" min={1} max={employees.length} className="field" value={i + 1} onChange={(ev) => moveEmployee(e.id, +ev.target.value - 1)} />
@@ -48,10 +48,10 @@ export function Team() {
             <Toggle checked={e.afterHours} onChange={(v) => updateEmployee(e.id, { afterHours: v })} label="After-hours" />
             <label><span className="lbl">Leave from</span><input type="month" className="field" value={e.joinMonth} onChange={(ev) => ev.target.value && updateEmployee(e.id, { joinMonth: ev.target.value })} /></label>
             <label><span className="lbl">Saved leaves</span><input type="number" min={0} className="field" value={e.openingLeave} onChange={(ev) => updateEmployee(e.id, { openingLeave: +ev.target.value })} /></label>
-            <div className="flex gap-1">
-              <button className="btn-ghost px-3" disabled={i === 0} onClick={() => moveEmployee(e.id, i - 1)} aria-label="Move up">↑</button>
-              <button className="btn-ghost px-3" disabled={i === employees.length - 1} onClick={() => moveEmployee(e.id, i + 1)} aria-label="Move down">↓</button>
-              <button className="btn-danger px-3" onClick={() => confirm(`Remove ${e.name}?`) && removeEmployee(e.id)} aria-label="Remove">✕</button>
+            <div className="admin-toolbar gap-1">
+              <button type="button" className="btn-ghost px-3" disabled={i === 0} onClick={() => moveEmployee(e.id, i - 1)} aria-label="Move up">↑</button>
+              <button type="button" className="btn-ghost px-3" disabled={i === employees.length - 1} onClick={() => moveEmployee(e.id, i + 1)} aria-label="Move down">↓</button>
+              <button type="button" className="btn-danger px-3" onClick={() => confirm(`Remove ${e.name}?`) && removeEmployee(e.id)} aria-label="Remove">✕</button>
             </div>
           </div>
         ))}

@@ -62,11 +62,11 @@ export function Tone({ tone, children }: { tone?: "red" | "green" | "blue" | und
 export function SectionTitle({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 className="text-xl font-bold">{title}</h2>
-        {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+      <div className="min-w-0">
+        <h2 className="font-display text-xl font-extrabold tracking-tight">{title}</h2>
+        {sub && <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{sub}</p>}
       </div>
-      {right}
+      {right ? <div className="admin-toolbar">{right}</div> : null}
     </div>
   );
 }
