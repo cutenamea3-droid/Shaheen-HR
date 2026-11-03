@@ -267,6 +267,13 @@ async function pullCloud(force = false) {
 let pollStarted = false;
 export function startCloudSync() {
   if (typeof window === "undefined" || pollStarted) return;
+  // Isolated visual preview: stay on seed/localStorage; never subscribe or pull/push.
+  if (import.meta.env.VITE_PREVIEW_ISOLATED === "1") {
+    pollStarted = true;
+    cloudReady = false;
+    setSync("local");
+    return;
+  }
   pollStarted = true;
   subscribePortalAuth((signedIn) => {
     if (signedIn) window.setTimeout(() => void pullCloud(true), 0);

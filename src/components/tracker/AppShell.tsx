@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { setWorkMode, useWorkMode } from "@/lib/workmode";
 import { setViewMode, useViewMode } from "@/lib/viewmode";
 import { Activity, Briefcase, Eye, LogOut, ShieldCheck, UserCog } from "lucide-react";
-import { lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
+import { isPreviewIsolated, lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { SECTIONS } from "@/lib/sections";
@@ -205,7 +205,14 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               </button>
             ) : (
               <span className="hidden items-center gap-2 rounded-lg bg-ok-soft px-3 py-2 text-sm font-bold text-ok md:inline-flex">
-                <span className="size-2 rounded-full bg-ok" /> {sync === "syncing" ? "Saving to cloud…" : sync === "synced" ? "Saved to cloud" : "Connecting to cloud…"}
+                <span className="size-2 rounded-full bg-ok" />{" "}
+                {isPreviewIsolated()
+                  ? "Local only (not syncing)"
+                  : sync === "syncing"
+                    ? "Saving to cloud…"
+                    : sync === "synced"
+                      ? "Saved to cloud"
+                      : "Connecting to cloud…"}
               </span>
             )}
             <button
