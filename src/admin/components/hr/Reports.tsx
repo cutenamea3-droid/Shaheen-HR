@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "@/admin/lib/store";
+import { monthDays } from "@/admin/lib/calc";
 import {
-  dailyAttendance, dailyCombined, dailyPerformance, downloadCsv, downloadPdf,
+  dailyAttendance, dailyCombined, dailyPerformance, downloadCsv, downloadPdf, downloadPayrollCsv,
   monthlyAttendance, monthlyOvertime, monthlyPerformance, type Table,
 } from "@/admin/lib/reports";
 import { SectionTitle, todayStr } from "./common";
@@ -25,10 +26,42 @@ function Card({ title, sub, make, name }: { title: string; sub: string; make: ()
 export function Reports() {
   const [date, setDate] = useState(todayStr());
   const [month, setMonth] = useState(todayStr().slice(0, 7));
+  const days = useMemo(() => monthDays(month), [month]);
+  const [from, setFrom] = useState(days[0] ?? `${month}-01`);
+  const [to, setTo] = useState(days[days.length - 1] ?? `${month}-01`);
   const s = useApp();
   const data = { depts: s.depts, employees: s.employees, records: s.records, perf: s.perf, settings: s.settings };
+
+  const onMonthChange = (m: string) => {
+    if (!m) return;
+    setMonth(m);
+    const md = monthDays(m);
+    setFrom(md[0]!);
+    setTo(md[md.length - 1]!);
+  };
+
   return (
     <div className="space-y-8">
+      <section>
+        <SectionTitle
+          title="Payroll export"
+          sub="Summary CSV for the selected date range (reuses attendance calc rules)."
+          right={
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} />
+              <input type="date" className="field w-auto" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              <span className="text-sm text-muted-foreground">to</span>
+              <input type="date" className="field w-auto" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
+              <button
+                className="btn-primary"
+                onClick={() => downloadPayrollCsv(data, from, to, from.slice(0, 7))}
+              >
+                Export Payroll CSV
+              </button>
+            </div>
+          }
+        />
+      </section>
       <section>
         <SectionTitle title="CEO daily reports" sub="Bordered tables, violations printed in red." right={<input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />} />
         <div className="grid gap-3 md:grid-cols-3">
@@ -38,7 +71,7 @@ export function Reports() {
         </div>
       </section>
       <section>
-        <SectionTitle title="Monthly reports" right={<input type="month" className="field w-auto" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />} />
+        <SectionTitle title="Monthly reports" right={<input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} />} />
         <div className="grid gap-3 md:grid-cols-2">
           <Card title="Combined monthly" sub="Attendance, performance and overtime together" make={() => [...monthlyAttendance(data, month), ...monthlyPerformance(data, month), ...monthlyOvertime(data, month)]} name={`monthly-combined-${month}`} />
           <Card title="Monthly attendance" sub="Days, hours, late, over break, miss punches, leaves, notes" make={() => monthlyAttendance(data, month)} name={`monthly-attendance-${month}`} />

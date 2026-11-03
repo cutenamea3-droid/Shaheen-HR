@@ -288,3 +288,113 @@ export function downloadCsv(tables: Table[], filename: string) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+/** Inclusive YYYY-MM-DD range (local calendar days). */
+export function datesInRange(from: string, to: string): string[] {
+  if (!from || !to || from > to) return [];
+  const out: string[] = [];
+  const cur = new Date(+from.slice(0, 4), +from.slice(5, 7) - 1, +from.slice(8, 10));
+  const end = new Date(+to.slice(0, 4), +to.slice(5, 7) - 1, +to.slice(8, 10));
+  while (cur <= end) {
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    out.push(`${y}-${m}-${d}`);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+export type PayrollRow = {
+  name: string;
+  department: string;
+  regularShiftHours: number;
+  overtimeHours: number;
+  additionalDayHours: number;
+  daysPresent: number;
+  daysAbsent: number;
+};
+
+/**
+ * Payroll rollup for a date range. Reuses calcDay — does not alter formulas.
+ * Regular = worked − overtime on non-extra days; on double-shift days = worked − extraDayMin.
+ * Overtime / additional day hours come from calcDay.overtimeMin / extraDayMin.
+ */
+export function payrollSummary(data: Data, from: string, to: string): PayrollRow[] {
+  const days = datesInRange(from, to);
+  return data.employees.map((e) => {
+    const dept = data.depts.find((d) => d.id === e.deptId);
+    let regularMin = 0;
+    let overtimeMin = 0;
+    let additionalMin = 0;
+    let daysPresent = 0;
+    let daysAbsent = 0;
+    for (const d of days) {
+      const rec = data.records[d]?.[e.id];
+      if (!rec) continue;
+      if (rec.status === "absent") {
+        daysAbsent++;
+        continue;
+      }
+      if (rec.status === "leave") continue;
+      if (rec.status === "present" || rec.status === "half") daysPresent++;
+      const c = calcDay(e, dept, d, rec, data.settings);
+      if (c.extraDay) {
+        additionalMin += c.extraDayMin;
+        // Double shift: base portion stays regular; pure additional days are all extraDayMin.
+        if (rec.doubleShift && c.worked != null) {
+          regularMin += Math.max(0, c.worked - c.extraDayMin);
+        }
+      } else {
+        overtimeMin += c.overtimeMin;
+        if (c.worked != null) regularMin += Math.max(0, c.worked - c.overtimeMin);
+      }
+    }
+    return {
+      name: e.name,
+      department: dept?.name ?? "—",
+      regularShiftHours: +fmtHours(regularMin),
+      overtimeHours: +fmtHours(overtimeMin),
+      additionalDayHours: +fmtHours(additionalMin),
+      daysPresent,
+      daysAbsent,
+    };
+  });
+}
+
+const PAYROLL_HEAD = [
+  "Employee Name",
+  "Department",
+  "Regular Shift Hours",
+  "Overtime Hours",
+  "Additional Day/Double Shift Hours",
+  "Total Days Present",
+  "Total Days Absent",
+];
+
+export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel = from.slice(0, 7)) {
+  const rows = payrollSummary(data, from, to);
+  const esc = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
+  const lines = [
+    PAYROLL_HEAD.map(esc).join(","),
+    ...rows.map((r) =>
+      [
+        r.name,
+        r.department,
+        r.regularShiftHours.toFixed(2),
+        r.overtimeHours.toFixed(2),
+        r.additionalDayHours.toFixed(2),
+        r.daysPresent,
+        r.daysAbsent,
+      ]
+        .map(esc)
+        .join(","),
+    ),
+  ];
+  const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `Shaheen_Payroll_Summary_${monthLabel}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
