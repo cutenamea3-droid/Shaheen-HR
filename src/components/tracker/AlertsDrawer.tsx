@@ -69,17 +69,17 @@ export function AlertsBell() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             {GROUPS.map((g) => {
               const items = alerts.filter((a) => a.group === g.id);
               return (
-                <section key={g.id} className={cn("rounded-xl border-2 bg-card", g.tone)}>
-                  <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+                <section key={g.id} className={cn("tracker-alert-group", g.tone)}>
+                  <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-3">
                     <div>
-                      <h3 className="text-base font-extrabold">{g.title}</h3>
-                      <p className="text-xs text-muted-foreground">{g.hint}</p>
+                      <h3 className="text-base font-extrabold tracking-tight">{g.title}</h3>
+                      <p className="text-xs font-semibold text-muted-foreground">{g.hint}</p>
                     </div>
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-extrabold", g.badge)}>
+                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-extrabold tabular-nums", g.badge)}>
                       {items.length}
                     </span>
                   </div>
@@ -92,16 +92,30 @@ export function AlertsBell() {
                         key={a.key}
                         type="button"
                         onClick={() => openAlert(a)}
-                        className="ui-press flex w-full flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left hover:bg-accent"
+                        className="ui-press tracker-alert-item"
                       >
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-extrabold">{a.driver}</span>
-                          <span className="shrink-0 text-xs font-bold text-muted-foreground">{a.sectionTitle}</span>
+                          <span className="font-extrabold leading-tight">{a.driver}</span>
+                          <span className="shrink-0 text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                            {a.sectionTitle}
+                          </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-snug">
                           <span className="font-semibold text-primary">{a.document}</span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className={cn("font-semibold", a.group === "critical" ? "text-danger" : a.group === "upcoming" ? "text-warn" : "text-info")}>
+                          <span className="text-muted-foreground" aria-hidden>·</span>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1.5 font-bold",
+                              a.group === "critical" ? "text-danger" : a.group === "upcoming" ? "text-warn" : "text-info",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "tracker-status-dot",
+                                a.group === "critical" ? "bg-danger" : a.group === "upcoming" ? "bg-warn" : "bg-info",
+                              )}
+                              aria-hidden
+                            />
                             {a.expiryLabel}
                           </span>
                         </div>
