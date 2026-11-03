@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Search, FolderOpen, Trash2 } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Search, FolderOpen, Trash2, X } from "lucide-react";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type Row } from "@/lib/sections";
 import { analyzeRow, complianceScore, normStatus, rowIsActive, suggestApplyPlan } from "@/lib/alerts";
@@ -174,7 +174,12 @@ export function DriverCards() {
       </div>
 
       <Sheet open={!!open} onOpenChange={(o) => !o && setOpenId(null)}>
-        <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-3xl">
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto p-0 sm:max-w-3xl [&>button]:hidden"
+          onEscapeKeyDown={() => setOpenId(null)}
+          onPointerDownOutside={() => setOpenId(null)}
+        >
           {open && <DriverFile driverId={open.driverId} name={open.name} />}
         </SheetContent>
       </Sheet>
@@ -186,10 +191,18 @@ function DriverFile({ driverId, name }: { driverId: string; name: string }) {
   const data = useData();
   return (
     <>
-      <div className="bg-brand px-6 py-5 pr-12 text-primary-foreground">
+      <div className="relative bg-brand px-6 py-5 pr-16 text-primary-foreground">
+        <SheetClose
+          type="button"
+          aria-label="Close driver file"
+          className="absolute top-4 right-4 inline-flex size-10 items-center justify-center rounded-xl bg-primary-foreground/15 text-primary-foreground shadow-card transition hover:bg-primary-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/80"
+        >
+          <X className="size-5 stroke-[2.5]" aria-hidden />
+          <span className="sr-only">Close</span>
+        </SheetClose>
         <div className="text-xs font-extrabold tracking-widest uppercase opacity-90">Driver file</div>
         <SheetHeader>
-          <SheetTitle className="font-display text-2xl">{name.trim()}</SheetTitle>
+          <SheetTitle className="font-display text-2xl text-primary-foreground">{name.trim()}</SheetTitle>
           <SheetDescription className="text-primary-foreground/90">
             All documents in one place. Changes here are the same as editing in each section.
           </SheetDescription>
