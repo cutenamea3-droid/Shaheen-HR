@@ -106,7 +106,13 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <aside className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}>
+      <a href="#main-content" className="shell-skip tracker-no-print">
+        Skip to main content
+      </a>
+      <aside
+        className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}
+        aria-label="Driver Compliance sidebar"
+      >
         <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
           <img src={logo.url} alt="Shaheen Transport logo" className="size-12 shrink-0 rounded-xl bg-card object-contain p-0.5" />
           {!collapsed && (
@@ -149,6 +155,8 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          aria-controls="main-content"
           className="ui-press flex items-center gap-3 border-t border-sidebar-border px-6 py-4 text-base font-semibold text-ink-muted hover:text-sidebar-foreground"
         >
           {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
@@ -166,7 +174,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card">
+        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card" role="banner">
           <div className="min-w-0 space-y-1">
             <ShellBreadcrumbs crumbs={crumbs} />
             <h1 className="font-display text-xl font-extrabold tracking-tight">{title}</h1>
@@ -274,8 +282,8 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             </button>
           </div>
         </header>
-        <div className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto">
-          {loaded ? children : <div className="p-10 text-lg text-muted-foreground">Loading your data…</div>}
+        <div id="main-content" tabIndex={-1} className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none">
+          {loaded ? children : <div className="p-10 text-lg text-muted-foreground" role="status">Loading your data…</div>}
         </div>
       </main>
     </div>

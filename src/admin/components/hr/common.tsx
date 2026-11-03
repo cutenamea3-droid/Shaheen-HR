@@ -24,14 +24,17 @@ export function TimeInput({ value, onChange, label, disabled }: { value: number 
       setTxt(fmtTime(v));
     }
   };
+  const hintId = bad ? `${label.replace(/\s+/g, "-").toLowerCase()}-time-hint` : undefined;
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="lbl">{label}</span>
       <input
         className={`field ${bad ? "border-destructive" : ""}`}
         placeholder={disabled ? "No break" : "e.g. 5:59 AM"}
         value={disabled ? "" : txt}
         disabled={disabled}
+        aria-invalid={bad || undefined}
+        aria-describedby={hintId}
         onChange={(e) => setTxt(e.target.value)}
         onBlur={(e) => commit(e.target.value)}
         onPaste={(e) => {
@@ -41,6 +44,11 @@ export function TimeInput({ value, onChange, label, disabled }: { value: number 
           commit(t);
         }}
       />
+      {bad && (
+        <span id={hintId} className="admin-form-hint" role="alert">
+          Use a time like 5:59 AM or 17:02
+        </span>
+      )}
     </label>
   );
 }

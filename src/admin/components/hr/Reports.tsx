@@ -48,10 +48,12 @@ export function Reports() {
           sub="Summary CSV for the selected date range (reuses attendance calc rules — formulas unchanged)."
           right={
             <>
-              <input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} />
-              <input type="date" className="field w-auto" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} />
-              <span className="text-sm text-muted-foreground">to</span>
-              <input type="date" className="field w-auto" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
+              <input type="month" className="field w-auto" aria-label="Payroll month" value={month} onChange={(e) => onMonthChange(e.target.value)} />
+              <input type="date" className="field w-auto" aria-label="Payroll range from" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              <span className="text-sm text-muted-foreground" aria-hidden>
+                to
+              </span>
+              <input type="date" className="field w-auto" aria-label="Payroll range to" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
               <button
                 type="button"
                 className="btn-primary"

@@ -91,11 +91,12 @@
 
   --ok: oklch(0.52 0.14 152);
   --ok-soft: oklch(0.95 0.05 152);
-  --warn: oklch(0.6 0.16 62);
-  --warn-soft: oklch(0.94 0.08 80);
-  --danger: oklch(0.56 0.21 25);
-  --danger-soft: oklch(0.95 0.04 20);
-  --danger-row: oklch(0.91 0.065 20);
+  /* Phase 5: subtler warn / issue-row fills (status chips keep readable chroma via soft pairs) */
+  --warn: oklch(0.58 0.125 62);
+  --warn-soft: oklch(0.965 0.04 80);
+  --danger: oklch(0.55 0.18 25);
+  --danger-soft: oklch(0.97 0.028 20);
+  --danger-row: oklch(0.96 0.028 22);
   --info: oklch(0.52 0.17 255);
   --info-soft: oklch(0.94 0.04 250);
   --note: oklch(0.5 0.11 85);
@@ -280,11 +281,11 @@
   --input: oklch(0.38 0.012 255);
   --ok-soft: oklch(0.3 0.04 150);
   --ok: oklch(0.8 0.09 150);
-  --warn-soft: oklch(0.31 0.045 75);
-  --warn: oklch(0.84 0.09 80);
-  --danger: oklch(0.8 0.08 25);
-  --danger-soft: oklch(0.3 0.06 25);
-  --danger-row: oklch(0.26 0.03 25);
+  --warn-soft: oklch(0.3 0.035 75);
+  --warn: oklch(0.82 0.075 80);
+  --danger: oklch(0.78 0.07 25);
+  --danger-soft: oklch(0.29 0.045 25);
+  --danger-row: oklch(0.25 0.022 25);
   --info-soft: oklch(0.3 0.04 245);
   --info: oklch(0.8 0.08 245);
   --note-soft: oklch(0.3 0.03 90 / 0.55);
@@ -432,10 +433,39 @@ tr.row-selected > td.freeze-edge {
   border: 1px solid var(--border);
   background-color: var(--card);
   box-shadow: var(--shadow-card);
+  /* Isolate scroll + paint for large Driver tables (safe frontend perf). */
+  contain: layout paint;
 }
 .tracker-table-wrap thead.sticky,
 .tracker-table-wrap thead.sticky tr {
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--foreground) 12%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--foreground) 10%, transparent),
+    0 10px 18px -16px oklch(0.35 0.06 50 / 0.35);
+}
+/* Opaque sticky header so scrolled rows never bleed through the brand gradient */
+.tracker-table-wrap thead.sticky th {
+  background-color: oklch(0.52 0.155 48);
+  background-image: var(--gradient-brand);
+  background-blend-mode: normal;
+}
+.dark .tracker-table-wrap thead.sticky th {
+  background-color: oklch(0.36 0.07 50);
+}
+.tracker-table-wrap tbody > tr {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.4rem;
+}
+.tracker-table-wrap td,
+.tracker-table-wrap th {
+  padding-top: 0.55rem;
+  padding-bottom: 0.55rem;
+}
+.tracker-table-wrap td {
+  border-color: color-mix(in oklab, var(--foreground) 14%, transparent);
+}
+/* Softer inset issue ring than raw ring-danger */
+.tracker-table-wrap td.tracker-cell-flag {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--danger) 45%, transparent);
 }
 @utility tracker-status-dot {
   display: inline-block;
@@ -599,6 +629,61 @@ tr.row-selected > td.freeze-edge {
   .admin-toolbar .field {
     min-width: 0;
     flex: 1 1 auto;
+  }
+}
+
+/* ---------- Phase 5: enterprise polish (presentation / a11y / safe perf) ---------- */
+@utility shell-skip {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  z-index: 80;
+  border-radius: 0.65rem;
+  background-color: var(--ink);
+  color: var(--ink-foreground);
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transform: translateY(-160%);
+  transition: transform 140ms ease;
+}
+.shell-skip:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.tracker-filter-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 80%, white);
+  outline-offset: 1px;
+}
+.admin-table thead.admin-thead-sticky th {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background-color: var(--card);
+  box-shadow: 0 1px 0 var(--border);
+}
+.admin-theme .field:focus-visible,
+.admin-theme .field:focus {
+  border-color: color-mix(in oklab, var(--primary) 55%, var(--border));
+}
+.admin-theme label:has(.field),
+.admin-theme label:has(select.field) {
+  min-width: 0;
+}
+.admin-form-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--destructive);
+}
+@media (max-width: 768px) {
+  .tracker-table-wrap {
+    border-radius: 0.75rem;
+  }
+  .shell-main-pad {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
 

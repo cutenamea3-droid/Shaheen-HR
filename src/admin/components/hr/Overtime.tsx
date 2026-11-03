@@ -56,7 +56,14 @@ export function Overtime() {
             </div>
             <div className="overflow-x-auto">
               <table className="admin-table">
-                <thead><tr><th>Date</th><th>Type</th><th>Hours</th><th>Note</th></tr></thead>
+                <thead className="admin-thead-sticky">
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Hours</th>
+                    <th scope="col">Note</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {x.rows.map((r, i) => (
                     <tr key={i}><td>{prettyDate(r.d)}</td><td>{r.kind}</td><td>{fmtHours(r.min)}</td><td className="whitespace-pre-wrap">{r.note || "—"}</td></tr>

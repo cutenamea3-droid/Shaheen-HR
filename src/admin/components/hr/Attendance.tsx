@@ -111,19 +111,29 @@ export function Attendance() {
         sub={`${prettyDate(date)} · Paste each time from the machine, then click Save.`}
         right={
           <>
-            <input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+            <input
+              type="date"
+              className="field w-auto"
+              aria-label="Attendance date"
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+            />
             <input
               type="date"
               className="field w-auto"
               title="Payroll range from"
+              aria-label="Payroll range from"
               value={rangeFrom}
               onChange={(e) => e.target.value && setRangeFrom(e.target.value)}
             />
-            <span className="self-center text-sm text-muted-foreground">to</span>
+            <span className="self-center text-sm text-muted-foreground" aria-hidden>
+              to
+            </span>
             <input
               type="date"
               className="field w-auto"
               title="Payroll range to"
+              aria-label="Payroll range to"
               value={rangeTo}
               onChange={(e) => e.target.value && setRangeTo(e.target.value)}
             />

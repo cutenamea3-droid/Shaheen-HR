@@ -313,7 +313,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
 
       {/* Table */}
       <div className="ui-lift ui-row-hover tracker-table-wrap">
-        <table className="table-fixed border-separate border-spacing-0" style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}>
+        <table
+          className="tracker-table table-fixed border-separate border-spacing-0"
+          style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}
+          aria-label={`${def.title} driver rows`}
+        >
           <colgroup>
             <col style={{ width: 70 }} />
             {order.map((i) => visible[i] && <col key={i} style={{ width: widths[i] }} />)}
@@ -321,12 +325,13 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-brand text-primary-foreground">
-              <th className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold">#</th>
+              <th scope="col" className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold">#</th>
               {order.map((i) => [sec.headers[i], i] as const).map(
                 ([h, i]) =>
                   visible[i] && (
                     <th
                       key={i}
+                      scope="col"
                       className={cn(
                         "relative border-l border-ink-foreground/10 px-2.5 py-2 text-left align-middle",
                         i === 0 && "freeze-edge sticky left-[70px] z-30 bg-brand",
@@ -471,8 +476,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                     <td
                       key={ci}
                       className={cn(
-                        "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground", issues.length > 0 ? "bg-danger-row" : "bg-card",
-                        flagged && "ring-2 ring-inset ring-danger",
+                        "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground",
+                        issues.length > 0 ? "bg-danger-row" : "bg-card",
+                        flagged && "tracker-cell-flag",
                         ci === 0 && "freeze-edge sticky left-[70px] z-10",
                       )}
                     >
