@@ -14,7 +14,7 @@ import { lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGa
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { SECTIONS } from "@/lib/sections";
-import { analyzeRow, rowIsActive } from "@/lib/alerts";
+import { analyzeRow, rowAlertsMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
 import { exportBackup, importBackup, loadFromStorage, resetToSpreadsheet, retrySync, useData, useLoaded, useSyncStatus } from "@/lib/store";
 import { AlertsBell } from "./AlertsDrawer";
@@ -56,7 +56,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
     const c: Record<string, number> = {};
     for (const def of SECTIONS) {
       const sec = data.sections[def.id];
-      c[def.id] = sec.rows.filter((r) => rowIsActive(def, r, data) && analyzeRow(def, sec.headers, r).issues.length).length;
+      c[def.id] = sec.rows.filter((r) => !rowAlertsMuted(def, r, data) && analyzeRow(def, sec.headers, r).issues.length).length;
     }
     return c;
   }, [data]);

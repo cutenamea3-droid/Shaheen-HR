@@ -1,4 +1,15 @@
-import { SECTIONS, type AppData, type Row, type SectionDef } from "./sections";
+import {
+  SECTIONS,
+  formatDriverStatus,
+  parseDriverStatus,
+  type AppData,
+  type DriverStatus,
+  type Row,
+  type SectionDef,
+} from "./sections";
+
+export type { DriverStatus };
+export { formatDriverStatus, parseDriverStatus };
 
 export type Tone = "danger" | "warn" | "info" | "note" | "ok" | "sign" | "muted";
 
@@ -196,17 +207,98 @@ export function complianceScore(row: Row) {
   return Math.max(0, Math.round(score));
 }
 
-export function rowIsActive(def: SectionDef, row: Row, data: AppData) {
+/** Resolve employment status for a row (optional status defaults to active). */
+export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): DriverStatus {
+  if (row.status) return row.status;
   const idx = def.types.indexOf("active");
-  if (idx >= 0) return row.cells[idx].trim().toLowerCase() !== "inactive";
+  if (idx >= 0) return parseDriverStatus(row.cells[idx]);
   // sections without a status column follow the driver's DMV / other status
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
     if (i < 0 || s.id === "inactive") continue;
-    const r = data.sections[s.id].rows.find((x) => x.driverId === row.driverId);
-    if (r) return r.cells[i].trim().toLowerCase() !== "inactive";
+    const r = data.sections[s.id]?.rows.find((x) => x.driverId === row.driverId);
+    if (r) return r.status ?? parseDriverStatus(r.cells[i]);
   }
-  return true;
+  return "active";
+}
+
+/** True unless employment status is Inactive (Leave still counts as listed/employed). */
+export function rowIsActive(def: SectionDef, row: Row, data: AppData) {
+  return rowDriverStatus(def, row, data) !== "inactive";
+}
+
+/** Leave and Inactive are excluded from compliance % and urgent alert counters. */
+export function rowAlertsMuted(def: SectionDef, row: Row, data: AppData) {
+  const s = rowDriverStatus(def, row, data);
+  return s === "leave" || s === "inactive";
+}
+
+export function alertsMuteBanner(status: DriverStatus): string | null {
+  if (status === "leave") return "Alerts muted (Driver on leave)";
+  if (status === "inactive") return "Alerts muted (Driver inactive)";
+  return null;
+}
+
+/** Document expirations in the next ~90 days for the horizon radar. */
+export interface HorizonDoc {
+  sectionId: string;
+  sectionTitle: string;
+  rowId: string;
+  driverId: string;
+  driver: string;
+  label: string;
+  date: Date;
+  col: number;
+}
+
+function horizonDateCols(def: SectionDef): { col: number; label: string }[] {
+  switch (def.id) {
+    case "dmv":
+      return [{ col: 3, label: "DMV Pull Notice" }];
+    case "medical":
+      return [{ col: 2, label: "Medical Certificate" }];
+    case "queries":
+      return [
+        { col: 2, label: "Annual Query" },
+        { col: 4, label: "Pre-Employment Query" },
+      ];
+    case "ssccdl":
+      return [{ col: 3, label: "CDL" }];
+    default:
+      return [];
+  }
+}
+
+export function collectHorizonDocs(data: AppData): HorizonDoc[] {
+  const out: HorizonDoc[] = [];
+  for (const def of SECTIONS) {
+    if (def.id === "inactive" || def.id === "info" || def.id === "docs") continue;
+    const sec = data.sections[def.id];
+    if (!sec) continue;
+    for (const row of sec.rows) {
+      if (rowAlertsMuted(def, row, data)) continue;
+      for (const { col, label } of horizonDateCols(def)) {
+        const raw = row.cells[col] ?? "";
+        if (isOldExpiry(raw)) continue;
+        const d = parseISO(raw);
+        if (!d) continue;
+        const left = daysUntil(d);
+        // Include overdue through ~90 days ahead (this / next / month-after).
+        if (left > 100) continue;
+        out.push({
+          sectionId: def.id,
+          sectionTitle: def.title,
+          rowId: row.id,
+          driverId: row.driverId,
+          driver: (row.cells[0] ?? "").trim(),
+          label,
+          date: d,
+          col,
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => a.date.getTime() - b.date.getTime());
 }
 
 export interface PlanItem {

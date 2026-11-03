@@ -2,8 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, FolderOpen, Trash2, X } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SECTIONS, type Row } from "@/lib/sections";
-import { analyzeRow, complianceScore, matchesExpFilter, normStatus, rowIsActive, suggestApplyPlan, type ExpFilter } from "@/lib/alerts";
+import { SECTIONS, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
+import {
+  alertsMuteBanner,
+  analyzeRow,
+  complianceScore,
+  matchesExpFilter,
+  normStatus,
+  rowAlertsMuted,
+  rowDriverStatus,
+  rowIsActive,
+  suggestApplyPlan,
+  type ExpFilter,
+} from "@/lib/alerts";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
@@ -16,15 +27,24 @@ interface Driver {
   driverId: string;
   name: string;
   active: boolean;
+  status: DriverStatus;
   issues: number;
   phone: string;
   cdl: string;
   state: string;
   valid: number;
   total: number;
+  /** Section/row/col to write employment status from the cards list. */
+  statusTarget?: { sectionId: string; rowId: string; col: number };
 }
 
-type StatusFilter = "active" | "inactive" | "all";
+type StatusFilter = "active" | "leave" | "inactive" | "all";
+
+const STATUS_BADGE: Record<DriverStatus, string> = {
+  active: "bg-ok-soft text-ok",
+  leave: "bg-warn-soft text-warn",
+  inactive: "bg-muted text-muted-foreground",
+};
 
 export function DriverCards({ focusDriver }: { focusDriver?: string | undefined } = {}) {
   const data = useData();
@@ -58,13 +78,28 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
       for (const r of sec.rows) {
         let d = map.get(r.driverId);
         if (!d) {
-          d = { driverId: r.driverId, name: r.cells[0] ?? "", active: rowIsActive(def, r, data), issues: 0, phone: "", cdl: "", state: "", valid: 0, total: 0 };
+          d = {
+            driverId: r.driverId,
+            name: r.cells[0] ?? "",
+            active: rowIsActive(def, r, data),
+            status: rowDriverStatus(def, r, data),
+            issues: 0,
+            phone: "",
+            cdl: "",
+            state: "",
+            valid: 0,
+            total: 0,
+          };
           map.set(r.driverId, d);
         }
-        // Always refresh active from latest row so Inactive toggles apply immediately.
+        // Always refresh status from latest row so toggles apply immediately.
         d.active = rowIsActive(def, r, data);
+        d.status = rowDriverStatus(def, r, data);
         if (!d.name.trim()) d.name = r.cells[0] ?? "";
-        d.issues += analyzeRow(def, sec.headers, r).issues.length;
+        const muted = rowAlertsMuted(def, r, data);
+        if (!muted) d.issues += analyzeRow(def, sec.headers, r).issues.length;
+        const aidx = def.types.indexOf("active");
+        if (aidx >= 0 && !d.statusTarget) d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
         def.types.forEach((t, i) => {
           if (t === "status") {
             d.total++;
@@ -77,7 +112,7 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
       }
     }
     return [...map.values()]
-      .filter((d) => statusFilter === "all" || (statusFilter === "active" ? d.active : !d.active))
+      .filter((d) => statusFilter === "all" || d.status === statusFilter)
       .filter((d) => matchesExpFilter(data, d.driverId, exp))
       .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()))
       .sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
@@ -98,8 +133,8 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
             className="h-10 w-full rounded-xl border bg-card pr-3 pl-9 text-base"
           />
         </div>
-        <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
-          {(["active", "inactive", "all"] as StatusFilter[]).map((f) => (
+        <div className="inline-flex flex-wrap rounded-xl border-2 bg-card p-1 shadow-card">
+          {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
             <button
               key={f}
               type="button"
@@ -129,11 +164,16 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
           <tbody>
             {drivers.map((d) => {
               const pct = d.total ? Math.round((d.valid / d.total) * 100) : 0;
+              const mute = alertsMuteBanner(d.status);
               return (
                 <tr
                   key={d.driverId}
                   id={"driver-" + d.driverId}
-                  className={cn("border-b border-foreground/15 align-top", d.issues > 0 ? "bg-danger-row" : "bg-card", !d.active && "opacity-60")}
+                  className={cn(
+                    "border-b border-foreground/15 align-top",
+                    d.issues > 0 ? "bg-danger-row" : "bg-card",
+                    (d.status === "leave" || d.status === "inactive") && "opacity-70",
+                  )}
                 >
                   <td className={cn("px-4 py-3", d.issues > 0 && "border-l-4 border-l-danger")}>
                     <div className="flex items-center gap-3">
@@ -143,13 +183,21 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
                       <div>
                         <div data-driver-name className="font-extrabold">{d.name.trim() || "—"}</div>
                         <div className="text-sm text-muted-foreground">{d.phone || "—"}</div>
+                        {mute && <div className="mt-1 text-xs font-semibold text-warn">{mute}</div>}
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", d.active ? "bg-ok-soft text-ok" : "bg-muted text-muted-foreground")}>
-                      {d.active ? "Active" : "Inactive"}
-                    </span>
+                    {d.statusTarget && !view ? (
+                      <ActiveToggle
+                        value={formatDriverStatus(d.status)}
+                        onSave={(v) => setCell(d.statusTarget!.sectionId, d.statusTarget!.rowId, d.statusTarget!.col, v)}
+                      />
+                    ) : (
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[d.status])}>
+                        {formatDriverStatus(d.status)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold">{d.cdl || "—"}</div>
@@ -213,6 +261,20 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
 
 function DriverFile({ driverId, name }: { driverId: string; name: string }) {
   const data = useData();
+  const view = useViewMode();
+  const statusInfo = useMemo(() => {
+    for (const def of CARD_SECTIONS) {
+      const sec = data.sections[def.id];
+      const row = sec?.rows.find((r) => r.driverId === driverId);
+      if (!row) continue;
+      const col = def.types.indexOf("active");
+      if (col < 0) continue;
+      return { def, row, col, status: rowDriverStatus(def, row, data) };
+    }
+    return null;
+  }, [data, driverId]);
+  const mute = statusInfo ? alertsMuteBanner(statusInfo.status) : null;
+
   return (
     <>
       <div className="relative bg-brand px-6 py-5 pr-16 text-primary-foreground">
@@ -231,7 +293,27 @@ function DriverFile({ driverId, name }: { driverId: string; name: string }) {
             All documents in one place. Changes here are the same as editing in each section.
           </SheetDescription>
         </SheetHeader>
+        {statusInfo && (
+          <div className="mt-4 rounded-xl bg-primary-foreground/10 p-3">
+            <div className="mb-2 text-xs font-extrabold tracking-widest uppercase opacity-90">Employment status</div>
+            {view ? (
+              <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[statusInfo.status])}>
+                {formatDriverStatus(statusInfo.status)}
+              </span>
+            ) : (
+              <ActiveToggle
+                value={formatDriverStatus(statusInfo.status)}
+                onSave={(v) => setCell(statusInfo.def.id, statusInfo.row.id, statusInfo.col, v)}
+              />
+            )}
+          </div>
+        )}
       </div>
+      {mute && (
+        <div className="border-b border-warn/30 bg-warn-soft px-6 py-3 text-sm font-bold text-warn" role="status">
+          {mute}
+        </div>
+      )}
       <div className="space-y-4 px-6 py-5">
         {CARD_SECTIONS.map((def) => {
           const sec = data.sections[def.id];

@@ -306,14 +306,48 @@ export function StatusToggle({
   );
 }
 
-export function ActiveToggle({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+const EMPLOYMENT_OPTS = ["Active", "Leave", "Inactive"] as const;
+const BINARY_OPTS = ["Active", "Inactive"] as const;
+
+const EMPLOYMENT_ON: Record<(typeof EMPLOYMENT_OPTS)[number], string> = {
+  Active: "bg-ok text-primary-foreground shadow-card",
+  Leave: "bg-warn text-primary-foreground shadow-card",
+  Inactive: "bg-muted text-muted-foreground shadow-card border border-border",
+};
+
+/**
+ * Employment status selector.
+ * Driver sections: Active (green) / Leave (amber) / Inactive (gray).
+ * Records (binary): Active / Inactive only.
+ * Empty value counts as Active (backward compatible).
+ */
+export function ActiveToggle({
+  value,
+  onSave,
+  mode = "employment",
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  mode?: "employment" | "binary";
+}) {
   const view = useViewMode();
-  // Empty / missing status counts as Active (same rule as rowIsActive).
-  const inactive = value.trim().toLowerCase() === "inactive";
+  const opts = mode === "binary" ? BINARY_OPTS : EMPLOYMENT_OPTS;
+  const cur = (() => {
+    const k = value.trim().toLowerCase();
+    if (k === "inactive") return "Inactive";
+    if (mode === "employment" && (k === "leave" || k === "on leave")) return "Leave";
+    return "Active";
+  })();
   return (
-    <div className="inline-flex rounded-lg border bg-muted p-1">
-      {(["Active", "Inactive"] as const).map((o) => {
-        const on = o === "Inactive" ? inactive : !inactive;
+    <div className="inline-flex flex-wrap rounded-lg border bg-card p-1">
+      {opts.map((o) => {
+        const on = cur === o;
+        const onCls =
+          mode === "binary"
+            ? o === "Active"
+              ? "bg-eagle text-primary-foreground shadow-card"
+              : "bg-ink text-ink-foreground shadow-card"
+            : EMPLOYMENT_ON[o as (typeof EMPLOYMENT_OPTS)[number]];
         return (
           <button
             key={o}
@@ -325,7 +359,7 @@ export function ActiveToggle({ value, onSave }: { value: string; onSave: (v: str
             }}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-bold transition",
-              on ? (o === "Active" ? "bg-eagle text-primary-foreground shadow-card" : "bg-ink text-ink-foreground shadow-card") : "text-muted-foreground hover:text-foreground",
+              on ? onCls : "text-muted-foreground hover:text-foreground",
             )}
           >
             {o}

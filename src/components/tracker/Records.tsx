@@ -238,6 +238,7 @@ export function Records() {
 
                 {ownersTab && (
                   <ActiveToggle
+                    mode="binary"
                     value={p.active ? "Active" : "Inactive"}
                     onSave={(v) => setRecordPersonActive(tab, p.name, v)}
                   />

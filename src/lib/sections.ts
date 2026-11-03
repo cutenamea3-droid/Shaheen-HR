@@ -131,6 +131,9 @@ export const SECTIONS: SectionDef[] = [
 
 export const sectionById = (id: string) => SECTIONS.find((s) => s.id === id);
 
+/** Driver employment status. Optional on stored rows — missing/empty means active. */
+export type DriverStatus = "active" | "leave" | "inactive";
+
 export interface Row {
   id: string;
   driverId: string;
@@ -138,6 +141,25 @@ export interface Row {
   height?: number;
   /** ms timestamp when added via Add Driver; drivers from the sheet have none */
   addedAt?: number;
+  /**
+   * Optional employment status mirror. Prefer the section `active` cell;
+   * when both are missing, treat as active (backward compatible).
+   */
+  status?: DriverStatus;
+}
+
+/** Parse employment status from a cell or optional Row.status. Empty → active. */
+export function parseDriverStatus(value?: string | null): DriverStatus {
+  const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  if (k === "inactive") return "inactive";
+  if (k === "leave" || k === "on leave") return "leave";
+  return "active";
+}
+
+export function formatDriverStatus(status: DriverStatus): "Active" | "Leave" | "Inactive" {
+  if (status === "inactive") return "Inactive";
+  if (status === "leave") return "Leave";
+  return "Active";
 }
 export interface SectionData {
   headers: string[];
@@ -166,7 +188,7 @@ export function defaultWidth(t: ColType) {
     case "status": return 190;
     case "date": return 190;
     case "score": return 170;
-    case "active": return 150;
+    case "active": return 220;
     case "state": return 110;
     default: return 200;
   }
@@ -382,20 +404,21 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
   return { data: changed.length ? { ...input, sections } : input, changed };
 }
 
-/** Canonical Active/Inactive label for a driver from any section that stores status. */
-export function driverEmploymentStatus(data: AppData, driverId: string): "Active" | "Inactive" {
+/** Canonical Active/Leave/Inactive label for a driver from any section that stores status. */
+export function driverEmploymentStatus(data: AppData, driverId: string): "Active" | "Leave" | "Inactive" {
   for (const s of SECTIONS) {
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
     const r = data.sections[s.id]?.rows.find((x) => x.driverId === driverId);
     if (!r) continue;
-    return r.cells[i]?.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+    // Prefer optional Row.status when set; otherwise the active cell (empty → active).
+    return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
   }
   const inaDef = SECTIONS.find((s) => s.id === "inactive");
   const i = inaDef?.types.indexOf("active") ?? -1;
   const r = i >= 0 ? data.sections.inactive?.rows.find((x) => x.driverId === driverId) : undefined;
-  if (r && i >= 0) return r.cells[i]?.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
   return "Active";
 }
 
@@ -417,7 +440,8 @@ export function buildInactiveCells(data: AppData, driverId: string, status: stri
     if (si >= 0 && !state.trim()) state = (r.cells[si] ?? "").trim();
     if (id === "info" && !state.trim()) state = (r.cells[3] ?? "").trim();
   }
-  const label = status.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  // Inactive roster only stores Active/Inactive (Leave drivers stay on main sections).
+  const label = parseDriverStatus(status) === "inactive" ? "Inactive" : "Active";
   return [name, license, phone, label, state];
 }
 
@@ -445,7 +469,8 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
   let touched = false;
   const byId = new Map(inaSec.rows.map((r) => [r.driverId, r]));
   const rows = inaSec.rows.map((r) => {
-    const want = inactiveIds.has(r.driverId) ? "Inactive" : driverEmploymentStatus(input, r.driverId);
+    // Roster Status is Active/Inactive only — Leave maps to Active here.
+    const want = inactiveIds.has(r.driverId) ? "Inactive" : "Active";
     if ((r.cells[statusIdx] ?? "").trim() === want) return r;
     touched = true;
     return { ...r, cells: r.cells.map((c, i) => (i === statusIdx ? want : c)) };

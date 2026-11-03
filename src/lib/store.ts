@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import {
   buildInactiveCells,
   buildSeed,
+  formatDriverStatus,
   migrateData,
+  parseDriverStatus,
   SECTIONS,
   uid,
   type AppData,
@@ -351,15 +353,24 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
     const isActive = SECTIONS.find((s) => s.id === sectionId)?.types[col] === "active";
     const sections = { ...d.sections };
     if (isActive) {
-      const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
-      // keep Active / Inactive in sync for this driver across every section
+      const status = parseDriverStatus(value);
+      const label = formatDriverStatus(status);
+      // keep Active / Leave / Inactive in sync for this driver across every section
       for (const [sid, idx] of Object.entries(ACTIVE_IDX)) {
         const cur = sections[sid];
         if (!cur) continue;
+        // Inactive roster Status column stays Active/Inactive only
+        const cellLabel = sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
         sections[sid] = {
           ...cur,
           rows: cur.rows.map((r) =>
-            r.driverId === row.driverId ? { ...r, cells: r.cells.map((c, i) => (i === idx ? label : c)) } : r,
+            r.driverId === row.driverId
+              ? {
+                  ...r,
+                  status,
+                  cells: r.cells.map((c, i) => (i === idx ? cellLabel : c)),
+                }
+              : r,
           ),
         };
       }
@@ -368,7 +379,7 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       const inaIdx = ACTIVE_IDX.inactive;
       if (ina && inaIdx != null) {
         const has = ina.rows.some((r) => r.driverId === row.driverId);
-        if (label === "Inactive" && !has) {
+        if (status === "inactive" && !has) {
           const draft = { ...d, sections };
           sections.inactive = {
             ...ina,
@@ -377,7 +388,8 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
               {
                 id: "inactive_" + uid(),
                 driverId: row.driverId,
-                cells: buildInactiveCells(draft, row.driverId, label),
+                status: "inactive",
+                cells: buildInactiveCells(draft, row.driverId, "Inactive"),
                 addedAt: Date.now(),
               },
             ],

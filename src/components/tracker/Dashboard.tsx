@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight, ClipboardCopy } from "lucide-react";
+import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight, ClipboardCopy, Radar } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type SectionDef } from "@/lib/sections";
-import { analyzeRow, buildSafetyDigest, collectPlans, complianceScore, daysUntil, fmtDate, matchesExpFilter, rowIsActive, today, type ExpFilter, type Issue, type Tone } from "@/lib/alerts";
+import {
+  analyzeRow,
+  buildSafetyDigest,
+  collectHorizonDocs,
+  collectPlans,
+  complianceScore,
+  daysUntil,
+  fmtDate,
+  matchesExpFilter,
+  rowAlertsMuted,
+  rowIsActive,
+  today,
+  type ExpFilter,
+  type HorizonDoc,
+  type Issue,
+  type Tone,
+} from "@/lib/alerts";
 import { downloadReportPdf } from "@/lib/pdf";
 import { useData } from "@/lib/store";
 import { Chip } from "./cells";
@@ -31,30 +47,33 @@ export function Dashboard() {
   const stats = useMemo(() => {
     const dmv = data.sections.dmv.rows;
     const def = SECTIONS[0];
-    const active = dmv.filter((r) => rowIsActive(def, r, data)).length;
-    const docs = data.sections.docs.rows.filter((r) => rowIsActive(SECTIONS[4], r, data));
+    const active = dmv.filter((r) => rowIsActive(def, r, data) && !rowAlertsMuted(def, r, data)).length;
+    const leave = dmv.filter((r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data)).length;
+    const inactive = dmv.filter((r) => !rowIsActive(def, r, data)).length;
+    // Compliance % excludes leave/inactive drivers.
+    const docs = data.sections.docs.rows.filter((r) => !rowAlertsMuted(SECTIONS[4], r, data));
     const avg = docs.length ? Math.round(docs.reduce((a, r) => a + complianceScore(r), 0) / docs.length) : 0;
     let alerts = 0;
     let expired = 0;
     for (const d of SECTIONS) {
       const sec = data.sections[d.id];
       for (const r of sec.rows) {
-        if (!rowIsActive(d, r, data)) continue;
+        if (rowAlertsMuted(d, r, data)) continue;
         const { issues } = analyzeRow(d, sec.headers, r);
         if (issues.length) alerts++;
         if (issues.some((i) => /expired/i.test(i.label))) expired++;
       }
     }
-    return { total: dmv.length, active, inactive: dmv.length - active, avg, alerts, expired };
+    return { total: dmv.length, active, leave, inactive, avg, alerts, expired };
   }, [data]);
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Stat icon={Users} label="Total drivers" value={stats.total} sub={`${stats.active} active · ${stats.inactive} inactive`} tone="bg-brand" />
-        <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="across all sections" tone="bg-danger" />
+        <Stat icon={Users} label="Total drivers" value={stats.total} sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`} tone="bg-brand" />
+        <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="leave & inactive excluded" tone="bg-danger" />
         <Stat icon={Clock3} label="Already expired" value={stats.expired} sub="act today" tone="bg-warn" />
-        <Stat icon={ShieldCheck} label="Avg document compliance" value={`${stats.avg}%`} sub="Other Documents" tone="bg-eagle" />
+        <Stat icon={ShieldCheck} label="Avg document compliance" value={`${stats.avg}%`} sub="Other Documents · active only" tone="bg-eagle" />
         <Stat icon={CalendarClock} label="Today" value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })} sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })} tone="bg-info" />
       </div>
 
@@ -99,6 +118,8 @@ export function Dashboard() {
 
       <ExpirationFilter value={exp} onChange={setExp} />
 
+      <HorizonRadar />
+
       <TodayPanel />
 
       <FuturePlans />
@@ -140,7 +161,11 @@ function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: s
       sec.rows
         .filter((r) => {
           const a = rowIsActive(def, r, data);
-          return af === "all" || (af === "active" ? a : !a);
+          const muted = rowAlertsMuted(def, r, data);
+          // Active filter = truly active (leave muted from alert lists); inactive = not employed.
+          if (af === "active") return a && !muted;
+          if (af === "inactive") return !a;
+          return true;
         })
         .filter((r) => matchesExpFilter(data, r.driverId, exp))
         .map((r) => ({ row: r, issues: analyzeRow(def, sec.headers, r).issues }))
@@ -341,6 +366,134 @@ function FuturePlans() {
   );
 }
 
+type HorizonBucket = "this" | "next" | "after";
+
+function monthKey(d: Date) {
+  return `${d.getFullYear()}-${d.getMonth()}`;
+}
+
+function HorizonRadar() {
+  const data = useData();
+  const navigate = useNavigate();
+  const [bucket, setBucket] = useState<HorizonBucket | null>(null);
+  const months = useMemo(() => {
+    const t = today();
+    const thisM = new Date(t.getFullYear(), t.getMonth(), 1);
+    const nextM = new Date(t.getFullYear(), t.getMonth() + 1, 1);
+    const afterM = new Date(t.getFullYear(), t.getMonth() + 2, 1);
+    return [
+      { id: "this" as const, label: "This month", date: thisM },
+      { id: "next" as const, label: "Next month", date: nextM },
+      { id: "after" as const, label: "Month after", date: afterM },
+    ];
+  }, []);
+
+  const docs = useMemo(() => collectHorizonDocs(data), [data]);
+
+  const counts = useMemo(() => {
+    const c: Record<HorizonBucket, { docs: number; drivers: Set<string> }> = {
+      this: { docs: 0, drivers: new Set() },
+      next: { docs: 0, drivers: new Set() },
+      after: { docs: 0, drivers: new Set() },
+    };
+    for (const d of docs) {
+      const key = monthKey(d.date);
+      for (const m of months) {
+        if (key === monthKey(m.date)) {
+          c[m.id].docs++;
+          c[m.id].drivers.add(d.driverId);
+        }
+      }
+    }
+    return c;
+  }, [docs, months]);
+
+  const filtered: HorizonDoc[] = useMemo(() => {
+    if (!bucket) return [];
+    const m = months.find((x) => x.id === bucket)!;
+    const key = monthKey(m.date);
+    return docs.filter((d) => monthKey(d.date) === key);
+  }, [bucket, docs, months]);
+
+  return (
+    <section className="ui-lift rounded-2xl border bg-card shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="grid size-11 place-items-center rounded-xl bg-eagle text-primary-foreground">
+            <Radar className="size-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold">90-Day Horizon Radar</h2>
+            <p className="text-sm text-muted-foreground">Document expirations this month, next, and the month after — click a column to filter</p>
+          </div>
+        </div>
+        {bucket && (
+          <button
+            type="button"
+            onClick={() => setBucket(null)}
+            className="rounded-lg border-2 px-3 py-1.5 text-sm font-bold hover:border-primary/50"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
+      <div className="grid gap-3 p-5 sm:grid-cols-3">
+        {months.map((m) => {
+          const n = counts[m.id];
+          const on = bucket === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setBucket(on ? null : m.id)}
+              className={cn(
+                "ui-press rounded-2xl border-2 p-4 text-left transition",
+                on ? "border-eagle bg-eagle/10 shadow-card" : "border-transparent bg-muted/50 hover:border-eagle/40",
+              )}
+            >
+              <div className="text-xs font-extrabold tracking-widest text-muted-foreground uppercase">{m.label}</div>
+              <div className="mt-1 font-display text-sm font-bold text-foreground">
+                {m.date.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </div>
+              <div className="mt-3 font-display text-3xl font-extrabold">{n.docs}</div>
+              <div className="text-sm text-muted-foreground">
+                doc{n.docs === 1 ? "" : "s"} · {n.drivers.size} driver{n.drivers.size === 1 ? "" : "s"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {bucket && (
+        <div className="max-h-[360px] space-y-2 overflow-y-auto border-t p-5">
+          {!filtered.length && (
+            <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">No documents due in this month ✓</p>
+          )}
+          {filtered.map((d) => (
+            <button
+              key={`${d.sectionId}-${d.rowId}-${d.col}`}
+              type="button"
+              onClick={() => navigate({ to: "/s/$sectionId", params: { sectionId: d.sectionId }, search: { row: d.rowId } })}
+              className="ui-press group flex w-full items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3 text-left transition hover:border-eagle/50 hover:bg-accent"
+            >
+              <Chip tone={daysUntil(d.date) < 0 ? "danger" : daysUntil(d.date) <= 14 ? "warn" : "ok"} className="shrink-0 flex-col gap-0 px-3 py-1.5 text-center leading-tight">
+                <span className="text-xs uppercase">{d.date.toLocaleDateString("en-US", { month: "short" })}</span>
+                <span className="font-display text-xl">{d.date.getDate()}</span>
+              </Chip>
+              <div className="min-w-0 flex-1">
+                <div className="font-extrabold">{d.driver || "—"}</div>
+                <div className="text-sm text-muted-foreground">
+                  {d.sectionTitle} · {d.label} · due {fmtDate(d.date)}
+                </div>
+              </div>
+              <ArrowRight className="mt-1 size-5 shrink-0 text-muted-foreground group-hover:text-eagle" />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 type UrgentItem = { key: string; sec: SectionDef; rowId: string; name: string; label: string; left: number };
 
 function urgentLeft(i: Issue): number | null {
@@ -374,7 +527,8 @@ function TodayPanel() {
       if (def.id === "inactive") continue;
       const sec = data.sections[def.id];
       for (const r of sec.rows) {
-        if (!rowIsActive(def, r, data)) continue;
+        // Leave / inactive excluded from compliance % and urgent counters.
+        if (rowAlertsMuted(def, r, data)) continue;
         const name = r.cells[0].trim();
         names.add(name.toLowerCase());
         for (const i of analyzeRow(def, sec.headers, r).issues) {
