@@ -3,38 +3,10 @@ import { useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
-import { emptyRec, type DayRec, type Dept, type Status } from "@/admin/lib/types";
+import { shiftVariance } from "@/admin/lib/shift-variance";
+import { emptyRec, type Status } from "@/admin/lib/types";
 import { SectionTitle, TimeInput, Toggle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
-
-/** UI-only variance threshold (does not change calc.ts grace / formulas). */
-const VARIANCE_MIN = 15;
-
-/** Late / early-out minutes vs department shift. Leave & absent skipped. */
-function shiftVariance(dept: Dept | undefined, r: DayRec): { lateMin: number; earlyOutMin: number } {
-  if (!dept || r.status === "leave" || r.status === "absent") return { lateMin: 0, earlyOutMin: 0 };
-  const start = dept.start;
-  let end = dept.end;
-  if (end <= start) end += 1440;
-
-  let lateMin = 0;
-  if (r.in != null) {
-    let pin = r.in;
-    if (pin < start) pin += 1440;
-    const late = pin - start;
-    if (late > VARIANCE_MIN) lateMin = late;
-  }
-
-  let earlyOutMin = 0;
-  if (r.out != null) {
-    let pout = r.out;
-    if (pout < start) pout += 1440;
-    const early = end - pout;
-    if (early > VARIANCE_MIN) earlyOutMin = early;
-  }
-
-  return { lateMin, earlyOutMin };
-}
 
 export function Attendance() {
   const { date, setDate } = useWorkDate();
@@ -172,7 +144,7 @@ export function Attendance() {
           };
           const noBreakDay = c.isSat || r.noBreak;
           const timesOff = r.status === "leave" || r.status === "absent";
-          const { lateMin, earlyOutMin } = shiftVariance(dept, r);
+          const variance = shiftVariance(dept, r, { grace: settings.grace, date, employee: e });
           return (
             <div key={e.id} className={`admin-emp-card ${rec ? "" : "opacity-80"}`}>
               <div className="admin-emp-head">
@@ -187,14 +159,24 @@ export function Attendance() {
                       Missing Clock-Out
                     </span>
                   )}
-                  {lateMin > 0 && (
-                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Arrived ${lateMin} min after shift start`}>
-                      Late (+{lateMin} min)
+                  {variance.shiftNotConfigured && (
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title="No department shift times in Team settings">
+                      Shift Not Configured
                     </span>
                   )}
-                  {earlyOutMin > 0 && (
-                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Left ${earlyOutMin} min before shift end`}>
-                      Early Out (−{earlyOutMin} min)
+                  {!variance.skipped && variance.lateMin > 0 && (
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Arrived ${variance.lateMin} min after shift start`}>
+                      Late (+{variance.lateMin} min)
+                    </span>
+                  )}
+                  {!variance.skipped && variance.earlyOutMin > 0 && (
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title={`Left ${variance.earlyOutMin} min before shift end`}>
+                      Early Out (−{variance.earlyOutMin} min)
+                    </span>
+                  )}
+                  {!variance.skipped && variance.onTime && (
+                    <span className="chip ml-2 bg-muted/70 font-medium text-muted-foreground" title="Within scheduled shift and grace">
+                      On Time
                     </span>
                   )}
                 </div>
