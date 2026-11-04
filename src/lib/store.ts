@@ -9,8 +9,11 @@ import {
   SECTIONS,
   uid,
   type AppData,
+  type DriverClass,
+  type RosterKind,
   type SectionData,
 } from "./sections";
+import { applyDriverClass, applyRosterKind } from "./driver-meta";
 import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
 
@@ -451,12 +454,39 @@ export function addDriver(values: Record<string, string[]>) {
     for (const [sid, cells] of Object.entries(values)) {
       sections[sid] = {
         ...sections[sid],
-        rows: [...sections[sid].rows, { id: sid + "_" + uid(), driverId, cells, addedAt }],
+        rows: [
+          ...sections[sid].rows,
+          {
+            id: sid + "_" + uid(),
+            driverId,
+            cells,
+            addedAt,
+            // New via wizard → exclusive onboarding list until "Move to Active Drivers".
+            rosterKind: "new" as RosterKind,
+            driverClass: "company" as DriverClass,
+          },
+        ],
       };
     }
     return { ...d, sections };
   });
   return driverId;
+}
+
+/**
+ * Set Company ↔ Owner Operator classification (mirrored by driverId).
+ * Keeps all section rows and history — never delete/recreate. Confirm in UI before calling.
+ */
+export function setDriverClass(driverId: string, next: DriverClass) {
+  update((d) => applyDriverClass(d, driverId, next));
+}
+
+/**
+ * Set onboarding roster kind. "roster" = Move to Active Drivers; "new" reverses back to New list.
+ * Confirm in UI before calling. Does not change employment Active/Leave/Inactive.
+ */
+export function setDriverRosterKind(driverId: string, next: RosterKind) {
+  update((d) => applyRosterKind(d, driverId, next));
 }
 
 export function resetToSpreadsheet() {

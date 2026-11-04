@@ -7,6 +7,7 @@ import {
   type Row,
   type SectionDef,
 } from "./sections";
+import { isNewDriver, isOwnerOperator } from "./driver-meta";
 
 export type { DriverStatus };
 export { formatDriverStatus, parseDriverStatus };
@@ -345,6 +346,18 @@ export function rowAlertsMuted(def: SectionDef, row: Row, data: AppData) {
   return s === "leave" || s === "inactive";
 }
 
+/**
+ * Ordinary company compliance / digests / default reminder counts.
+ * Also excludes New Drivers (onboarding) and Owner Operators (dedicated scope).
+ * Temporary notes never enter analyzeRow — this is list membership only.
+ */
+export function rowOrdinaryComplianceMuted(def: SectionDef, row: Row, data: AppData) {
+  if (rowAlertsMuted(def, row, data)) return true;
+  if (isNewDriver(data, row.driverId)) return true;
+  if (isOwnerOperator(data, row.driverId)) return true;
+  return false;
+}
+
 export function alertsMuteBanner(status: DriverStatus): string | null {
   if (status === "leave") return "Alerts muted (Driver on leave)";
   if (status === "inactive") return "Alerts muted (Driver inactive)";
@@ -388,7 +401,7 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
     const sec = data.sections[def.id];
     if (!sec) continue;
     for (const row of sec.rows) {
-      if (rowAlertsMuted(def, row, data)) continue;
+      if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       for (const { col, label } of horizonDateCols(def)) {
         const raw = row.cells[col] ?? "";
         if (isOldExpiry(raw)) continue;
@@ -427,6 +440,7 @@ export function collectPlans(data: AppData): PlanItem[] {
   for (const def of SECTIONS) {
     const sec = data.sections[def.id];
     for (const row of sec.rows) {
+      if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
       def.types.forEach((t, i) => {
         if (t !== "plan") return;
@@ -551,7 +565,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     const sec = data.sections[def.id];
     if (!sec) continue;
     for (const row of sec.rows) {
-      if (rowAlertsMuted(def, row, data)) continue;
+      if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       const driver = (row.cells[0] ?? "").trim() || "—";
       const base = {
         driver,
@@ -652,7 +666,7 @@ export function fleetCompliancePct(data: AppData) {
     const sec = data.sections[def.id];
     if (!sec) continue;
     for (const r of sec.rows) {
-      if (rowAlertsMuted(def, r, data)) continue;
+      if (rowOrdinaryComplianceMuted(def, r, data)) continue;
       const name = (r.cells[0] ?? "").trim().toLowerCase();
       if (!name) continue;
       names.add(name);

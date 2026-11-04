@@ -29,22 +29,22 @@ test("styles.css avoids global GPU/scale soft-text traps", () => {
   expect(css).toMatch(/text-rendering:\s*geometricPrecision/);
 });
 
-test("compliance rows have no driver-type / owner-operator field", () => {
+test("seed compliance rows are not auto-classified (no invented Owner Operator / New)", () => {
   const data = seed as AppData;
   const dmvRows = data.sections.dmv?.rows ?? [];
   expect(dmvRows.length).toBeGreaterThan(0);
 
   for (const row of dmvRows.slice(0, 20) as Row[]) {
-    const keys = Object.keys(row);
-    expect(keys).not.toContain("driverType");
-    expect(keys).not.toContain("driver_type");
-    expect(keys).not.toContain("ownerOperator");
-    expect(keys).not.toContain("owner_operator");
-    expect(keys).not.toContain("employmentType");
+    // Optional runtime fields (driverClass / rosterKind) must stay unset on seed —
+    // missing means company + roster. Never invent categories from Records names.
+    expect(row.driverClass).toBeUndefined();
+    expect(row.rosterKind).toBeUndefined();
+    expect(Object.keys(row)).not.toContain("driverType");
+    expect(Object.keys(row)).not.toContain("employmentType");
   }
 });
 
-test("Records Owner Operators are not linked into the DMV compliance roster", () => {
+test("Records Owner Operators remain a separate document store (no name-link into DMV)", () => {
   const data = seed as AppData;
   expect(RECORD_SECTION_IDS).toContain("rec_owners");
 
@@ -63,7 +63,6 @@ test("Records Owner Operators are not linked into the DMV compliance roster", ()
   expect(dmvNames.size).toBeGreaterThan(0);
 
   const overlap = [...ownerNames].filter((n) => dmvNames.has(n));
-  // No shared driverId link and seed names do not overlap — a compliance
-  // "Owner Operators" filter cannot be derived without new classification data.
+  // Classification is an explicit Row.driverClass on compliance — never derived from rec_owners names.
   expect(overlap).toEqual([]);
 });
