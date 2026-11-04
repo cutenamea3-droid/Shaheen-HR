@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { setWorkMode, useWorkMode } from "@/lib/workmode";
 import { setViewMode, useViewMode } from "@/lib/viewmode";
 import { Activity, Briefcase, Eye, LogOut, ShieldCheck, UserCog } from "lucide-react";
-import { lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
+import { isPreviewIsolated, lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { SECTIONS } from "@/lib/sections";
@@ -25,6 +25,44 @@ export const SECTION_ICONS: Record<string, typeof FileText> = {
 };
 
 type ShellProps = { title: string; subtitle?: string; children: React.ReactNode };
+
+type Crumb = { label: string; to?: string };
+
+function driverCrumbs(pathname: string, title: string): Crumb[] {
+  const root: Crumb = { label: "Driver Compliance", to: "/" };
+  if (pathname === "/") return [root, { label: "Dashboard" }];
+  if (pathname.startsWith("/s/")) return [root, { label: "Sections" }, { label: title }];
+  if (pathname === "/drivers") return [root, { label: "Driver Cards" }];
+  if (pathname === "/records") return [root, { label: "Records" }];
+  if (pathname === "/account") return [root, { label: "My Account" }];
+  if (pathname === "/team") return [root, { label: "User Accounts" }];
+  if (pathname === "/activity") return [root, { label: "Activity Logs" }];
+  return [root, { label: title }];
+}
+
+function ShellBreadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
+  return (
+    <nav aria-label="Breadcrumb" className="shell-crumb tracker-no-print">
+      {crumbs.map((c, i) => {
+        const last = i === crumbs.length - 1;
+        return (
+          <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
+            {i > 0 && <span className="shell-crumb-sep" aria-hidden>/</span>}
+            {last || !c.to ? (
+              <span className={last ? "shell-crumb-current" : undefined} aria-current={last ? "page" : undefined}>
+                {c.label}
+              </span>
+            ) : (
+              <Link to={c.to} className="hover:text-foreground hover:underline underline-offset-2">
+                {c.label}
+              </Link>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
 
 // While switching to Admin & Attendance, the old Driver page can render once outside
 // the Driver lock; show nothing instead of crashing.
@@ -52,6 +90,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
   const view = useViewMode();
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => loadFromStorage(), []);
+  const crumbs = useMemo(() => driverCrumbs(loc.pathname, title), [loc.pathname, title]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -62,9 +101,18 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
     return c;
   }, [data]);
 
+  const groupLbl = (label: string) =>
+    !collapsed ? <p className="shell-nav-group">{label}</p> : null;
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <aside className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}>
+      <a href="#main-content" className="shell-skip tracker-no-print">
+        Skip to main content
+      </a>
+      <aside
+        className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}
+        aria-label="Driver Compliance sidebar"
+      >
         <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
           <img src={logo.url} alt="Shaheen Transport logo" className="size-12 shrink-0 rounded-xl bg-card object-contain p-0.5" />
           {!collapsed && (
@@ -74,12 +122,12 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             </div>
           )}
         </div>
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {!collapsed && <p className="px-3 pb-1 text-xs font-bold tracking-widest text-ink-muted uppercase">Dashboard</p>}
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3" aria-label="Driver Compliance">
+          {groupLbl("Overview")}
           <NavItem to="/" active={loc.pathname === "/"} icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/drivers" active={loc.pathname === "/drivers"} icon={IdCard} label="Driver Cards" collapsed={collapsed} />
           <NavItem to="/records" active={loc.pathname === "/records"} icon={FolderOpen} label="Records" collapsed={collapsed} />
-          {!collapsed && <p className="px-3 pt-4 pb-1 text-xs font-bold tracking-widest text-ink-muted uppercase">Sections</p>}
+          {groupLbl("Compliance sections")}
           {SECTIONS.map((s) => (
             <NavItem
               key={s.id}
@@ -97,16 +145,18 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               collapsed={collapsed}
             />
           ))}
-          {!collapsed && <p className="px-3 pt-4 pb-1 text-xs font-bold tracking-widest text-ink-muted uppercase">My Account</p>}
+          {groupLbl("My Account")}
           <NavItem to="/account" active={loc.pathname === "/account"} icon={UserCog} label="My Account" collapsed={collapsed} />
-          {account.role === "admin" && !collapsed && <p className="px-3 pt-4 pb-1 text-xs font-bold tracking-widest text-ink-muted uppercase">Team Management</p>}
+          {account.role === "admin" && groupLbl("Team Management")}
           {account.role === "admin" && <NavItem to="/team" active={loc.pathname === "/team"} icon={ShieldCheck} label="User Accounts" collapsed={collapsed} />}
-          {account.role === "admin" && !collapsed && <p className="px-3 pt-4 pb-1 text-xs font-bold tracking-widest text-ink-muted uppercase">Activity / System Logs</p>}
+          {account.role === "admin" && groupLbl("System")}
           {account.role === "admin" && <NavItem to="/activity" active={loc.pathname === "/activity"} icon={Activity} label="Activity Logs" collapsed={collapsed} />}
         </nav>
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
+          aria-expanded={!collapsed}
+          aria-controls="main-content"
           className="ui-press flex items-center gap-3 border-t border-sidebar-border px-6 py-4 text-base font-semibold text-ink-muted hover:text-sidebar-foreground"
         >
           {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
@@ -124,10 +174,11 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-2.5 shadow-card">
-          <div>
-            <h1 className="font-display text-xl font-extrabold">{title}</h1>
-            {subtitle && !work && <p className="text-base text-muted-foreground">{subtitle}</p>}
+        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card" role="banner">
+          <div className="min-w-0 space-y-1">
+            <ShellBreadcrumbs crumbs={crumbs} />
+            <h1 className="font-display text-xl font-extrabold tracking-tight">{title}</h1>
+            {subtitle && !work && <p className="text-sm leading-snug text-muted-foreground">{subtitle}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <QuickFind />
@@ -162,7 +213,14 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               </button>
             ) : (
               <span className="hidden items-center gap-2 rounded-lg bg-ok-soft px-3 py-2 text-sm font-bold text-ok md:inline-flex">
-                <span className="size-2 rounded-full bg-ok" /> {sync === "syncing" ? "Saving to cloud…" : sync === "synced" ? "Saved to cloud" : "Connecting to cloud…"}
+                <span className="size-2 rounded-full bg-ok" />{" "}
+                {isPreviewIsolated()
+                  ? "Local only (not syncing)"
+                  : sync === "syncing"
+                    ? "Saving to cloud…"
+                    : sync === "synced"
+                      ? "Saved to cloud"
+                      : "Connecting to cloud…"}
               </span>
             )}
             <button
@@ -224,8 +282,8 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             </button>
           </div>
         </header>
-        <div className="ui-enter flex min-h-0 flex-1 flex-col overflow-auto px-3 py-2">
-          {loaded ? children : <div className="p-10 text-lg text-muted-foreground">Loading your data…</div>}
+        <div id="main-content" tabIndex={-1} className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none">
+          {loaded ? children : <div className="p-10 text-lg text-muted-foreground" role="status">Loading your data…</div>}
         </div>
       </main>
     </div>
@@ -242,6 +300,7 @@ function NavItem({
     <Link
       to={to}
       title={label}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "tracker-nav flex items-center gap-3 rounded-2xl text-[15px] font-semibold",
         collapsed ? "justify-center px-2 py-2.5" : "px-4 py-2.5",

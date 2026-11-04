@@ -12,6 +12,7 @@ import {
   type SectionData,
 } from "./sections";
 import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
+import { isPreviewIsolated } from "./preview-isolated";
 
 const KEY = "shaheen-driver-tracker-v1";
 /** Manual record lists stored as tracker_sections rows (same cloud table). */
@@ -267,6 +268,13 @@ async function pullCloud(force = false) {
 let pollStarted = false;
 export function startCloudSync() {
   if (typeof window === "undefined" || pollStarted) return;
+  // Isolated visual preview: stay on seed/localStorage; never subscribe or pull/push.
+  if (isPreviewIsolated()) {
+    pollStarted = true;
+    cloudReady = false;
+    setSync("local");
+    return;
+  }
   pollStarted = true;
   subscribePortalAuth((signedIn) => {
     if (signedIn) window.setTimeout(() => void pullCloud(true), 0);

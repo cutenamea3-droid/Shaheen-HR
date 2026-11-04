@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Columns3, Info, ChevronUp, Trash2, Pencil, Check, X, Bell, UserPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { analyzeRow, complianceScore, rowIsActive, suggestApplyPlan } from "@/lib/alerts";
+import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol, suggestApplyPlan } from "@/lib/alerts";
 import { sectionById } from "@/lib/sections";
 import { addRowForDriver, deleteDriver, patchSection, setCell, setRowHeight, useData } from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
@@ -198,44 +198,48 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
       </div>}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="tracker-toolbar">
         <div className="relative min-w-72 flex-1">
-          <Search className="absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${def.title}…`}
-            className="h-10 w-full rounded-xl border-2 bg-card pr-4 pl-11 text-base shadow-card outline-none focus:border-primary"
+            className="tracker-search"
+            aria-label={`Search ${def.title}`}
           />
         </div>
-        <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group" role="group" aria-label="Employment filter">
           {(["all", "active", "inactive", "new"] as Filter[]).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm font-bold capitalize transition",
-                filter === f ? "bg-brand text-primary-foreground shadow-card" : "text-muted-foreground hover:text-foreground",
-              )}
+              aria-pressed={filter === f}
+              className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
             >
               {f === "all" ? "Show all" : f === "new" ? `New (${newCount})` : f}
             </button>
           ))}
         </div>
-        <div className="inline-flex rounded-xl border-2 border-danger/30 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
           <button
             type="button"
             onClick={() => setAlertsOnly(false)}
-            className={cn("rounded-lg px-3 py-1.5 text-sm font-bold", !alertsOnly ? "bg-ink text-ink-foreground" : "text-muted-foreground")}
+            aria-pressed={!alertsOnly}
+            className={cn("tracker-filter-btn", !alertsOnly ? "bg-ink text-ink-foreground" : "")}
           >
             Show All
           </button>
           <button
             type="button"
             onClick={() => setAlertsOnly(true)}
+            aria-pressed={alertsOnly}
             title="Show only drivers with expired, expiring, missing, applied or note items"
-            className={cn("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold", alertsOnly ? "bg-danger text-primary-foreground" : "text-danger")}
+            className={cn(
+              "tracker-filter-btn inline-flex items-center gap-1.5",
+              alertsOnly ? "bg-danger text-primary-foreground" : "text-danger",
+            )}
           >
             <Bell className="size-4" /> Only Issues ({alertCount})
           </button>
@@ -308,8 +312,12 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
       </p>}
 
       {/* Table */}
-      <div className="ui-lift ui-row-hover min-h-0 flex-1 overflow-auto rounded-2xl border bg-card shadow-card">
-        <table className="table-fixed border-separate border-spacing-0" style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}>
+      <div className="ui-lift ui-row-hover tracker-table-wrap">
+        <table
+          className="tracker-table table-fixed border-separate border-spacing-0"
+          style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}
+          aria-label={`${def.title} driver rows`}
+        >
           <colgroup>
             <col style={{ width: 70 }} />
             {order.map((i) => visible[i] && <col key={i} style={{ width: widths[i] }} />)}
@@ -317,12 +325,13 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-brand text-primary-foreground">
-              <th className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold">#</th>
+              <th scope="col" className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold">#</th>
               {order.map((i) => [sec.headers[i], i] as const).map(
                 ([h, i]) =>
                   visible[i] && (
                     <th
                       key={i}
+                      scope="col"
                       className={cn(
                         "relative border-l border-ink-foreground/10 px-2.5 py-2 text-left align-middle",
                         i === 0 && "freeze-edge sticky left-[70px] z-30 bg-brand",
@@ -444,7 +453,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                     {ri + 1}
                     {isNew(row) && <span className="mt-1 block rounded bg-ok-soft px-1 text-[10px] font-bold text-ok">NEW</span>}
                     {issues.length > 0 && (
-                      <span className="mt-1 block size-2.5 rounded-full bg-danger" title={issues.map((x) => x.label).join("\n")} />
+                      <span
+                        className="tracker-status-dot mt-1 block bg-danger"
+                        title={issues.map((x) => x.label).join("\n")}
+                        aria-label={`${issues.length} issue${issues.length > 1 ? "s" : ""}`}
+                      />
                     )}
                   </div>
                   {!rlock && <span
@@ -463,8 +476,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                     <td
                       key={ci}
                       className={cn(
-                        "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground", issues.length > 0 ? "bg-danger-row" : "bg-card",
-                        flagged && "ring-2 ring-inset ring-danger",
+                        "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground",
+                        issues.length > 0 ? "bg-danger-row" : "bg-card",
+                        flagged && "tracker-cell-flag",
                         ci === 0 && "freeze-edge sticky left-[70px] z-10",
                       )}
                     >
@@ -512,8 +526,32 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                           })()}
                         </div>
                       )}
-                      {t === "date" && <DateCell value={v} onSave={save} tone={tone} />}
-                      {t === "status" && <StatusToggle value={v} options={def.statusOptions} onSave={save} />}
+                      {t === "date" && (
+                        <DateCell
+                          value={v}
+                          onSave={save}
+                          tone={tone}
+                          appliedStatus={
+                            // Pair Exact Expiration with its status column (DMV / Queries Applied).
+                            def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci) >= 0
+                              ? row.cells[
+                                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci)
+                                ]
+                              : undefined
+                          }
+                        />
+                      )}
+                      {t === "status" && (
+                        <StatusToggle
+                          value={v}
+                          options={def.statusOptions}
+                          onSave={save}
+                          expiryValue={(() => {
+                            const exp = statusExpiryCol(sectionId, ci);
+                            return exp != null ? row.cells[exp] : undefined;
+                          })()}
+                        />
+                      )}
                       {t === "active" && <ActiveToggle value={v} onSave={save} />}
                       {t === "score" && <ScoreBar value={complianceScore(row)} />}
                     </td>

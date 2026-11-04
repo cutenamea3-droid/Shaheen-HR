@@ -4,12 +4,23 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import { getPortalAccount, PORTAL_EMAIL, signInPortalAccount, updatePortalProfile, type PortalAccount } from "@/lib/cloud";
+import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { AboutPanel } from "./AboutPanel";
+
+export { isPreviewIsolated } from "@/lib/preview-isolated";
 
 const PortalAccountContext = createContext<{
   account: PortalAccount;
   updateDisplayName: (name: string) => Promise<void>;
 } | null>(null);
+
+const PREVIEW_ACCOUNT: PortalAccount = {
+  user_id: "preview-isolated-local",
+  email: "preview@local.isolated",
+  display_name: "Preview (isolated)",
+  role: "admin",
+  active: true,
+};
 
 export function useOptionalPortalAccount() {
   return useContext(PortalAccountContext);
@@ -24,7 +35,10 @@ export function usePortalAccount() {
 export function lockPortal() {
   localStorage.removeItem("shaheen-unlocked");
   localStorage.removeItem("shaheen-pass");
-  void supabase.auth.signOut();
+  // Isolated preview never talks to Auth/Supabase.
+  if (!isPreviewIsolated() && isSupabaseConfigured()) {
+    void supabase.auth.signOut();
+  }
   window.dispatchEvent(new Event("shaheen-lock"));
 }
 
@@ -40,6 +54,23 @@ export function LockGate({ children }: { children: ReactNode }) {
     let active = true;
     localStorage.removeItem("shaheen-pass");
     localStorage.removeItem("shaheen-unlocked");
+
+    // Safe local UI preview: seed/mock account, no Supabase session, no cloud sync login.
+    if (isPreviewIsolated()) {
+      setAccount(PREVIEW_ACCOUNT);
+      setEmail(PREVIEW_ACCOUNT.email);
+      setError("");
+      setReady(true);
+      const onLock = () => {
+        if (active) setAccount(PREVIEW_ACCOUNT);
+      };
+      window.addEventListener("shaheen-lock", onLock);
+      return () => {
+        active = false;
+        window.removeEventListener("shaheen-lock", onLock);
+      };
+    }
+
     // Missing VITE_SUPABASE_* must not crash the SPA into the root error UI —
     // show the sign-in card with a clear message; localStorage data stays intact.
     if (!isSupabaseConfigured()) {
@@ -120,6 +151,10 @@ export function LockGate({ children }: { children: ReactNode }) {
   }, []);
 
   const updateDisplayName = async (name: string) => {
+    if (isPreviewIsolated()) {
+      setAccount((current) => (current ? { ...current, display_name: name.trim() || current.display_name } : current));
+      return;
+    }
     const saved = await updatePortalProfile(name);
     setAccount((current) => current ? { ...current, display_name: saved } : current);
   };
@@ -128,6 +163,14 @@ export function LockGate({ children }: { children: ReactNode }) {
   if (account) {
     return (
       <PortalAccountContext.Provider value={{ account, updateDisplayName }}>
+        {isPreviewIsolated() && (
+          <div
+            role="status"
+            className="tracker-no-print sticky top-0 z-[60] border-b border-warn/40 bg-warn-soft px-3 py-1.5 text-center text-xs font-bold text-warn"
+          >
+            Isolated preview — mock account + seed/localStorage only. Supabase URL is non-routable; cloud sync cannot connect.
+          </div>
+        )}
         {children}
       </PortalAccountContext.Provider>
     );

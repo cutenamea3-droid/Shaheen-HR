@@ -10,7 +10,7 @@ export function Performance() {
   const { employees, depts, records, perf, settings, setPerf } = useApp();
   const list = employees.filter((e) => records[date]?.[e.id]);
   return (
-    <div>
+    <div className="space-y-4">
       <SectionTitle
         title="Daily performance"
         sub={`${prettyDate(date)} · Violations from attendance appear automatically.`}
@@ -24,9 +24,9 @@ export function Performance() {
           const tone = ratingTone(p.rating);
           const auto = autoNote(c);
           return (
-            <div key={e.id} className="panel">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="font-bold">
+            <div key={e.id} className="admin-emp-card">
+              <div className="admin-emp-head">
+                <span className="font-bold tracking-tight">
                   <span className="mr-2 text-muted-foreground">{employees.indexOf(e) + 1}.</span>
                   {e.name}
                 </span>

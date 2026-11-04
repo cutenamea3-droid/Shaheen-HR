@@ -14,6 +14,7 @@ import {
   rowAlertsMuted,
   rowDriverStatus,
   rowIsActive,
+  statusExpiryCol,
   suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
@@ -132,27 +133,26 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
   const th = "px-4 py-3 text-left text-xs font-extrabold tracking-wider uppercase";
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden p-5">
-      <div className="tracker-no-print flex flex-wrap items-center gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+    <div className="flex h-full flex-col gap-4 overflow-hidden px-3 py-3 sm:p-5">
+      <div className="tracker-no-print tracker-toolbar">
+        <div className="relative max-w-md min-w-56 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search driver, CDL or phone…"
-            className="h-10 w-full rounded-xl border bg-card pr-3 pl-9 text-base"
+            className="tracker-search"
+            aria-label="Search drivers"
           />
         </div>
-        <div className="inline-flex flex-wrap rounded-xl border-2 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group" role="group" aria-label="Driver status filter">
           {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setStatusFilter(f)}
-              className={cn(
-                "ui-press rounded-lg px-3 py-1.5 text-sm font-bold capitalize",
-                statusFilter === f ? "bg-brand text-primary-foreground shadow-card" : "text-muted-foreground hover:text-foreground",
-              )}
+              aria-pressed={statusFilter === f}
+              className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
             >
               {f}
             </button>
@@ -160,8 +160,8 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
         </div>
         <ExpirationFilter value={exp} onChange={setExp} />
       </div>
-      <div className="ui-lift ui-row-hover min-h-0 flex-1 overflow-auto rounded-2xl border bg-card shadow-card">
-        <table className="w-full border-collapse">
+      <div className="ui-lift ui-row-hover tracker-table-wrap">
+        <table className="w-full min-w-[640px] border-collapse">
           <thead className="sticky top-0 z-10 bg-brand text-primary-foreground">
             <tr>
               <th className={th}>Driver</th>
@@ -204,7 +204,8 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
                         onSave={(v) => setCell(d.statusTarget!.sectionId, d.statusTarget!.rowId, d.statusTarget!.col, v)}
                       />
                     ) : (
-                      <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[d.status])}>
+                      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[d.status])}>
+                        <span className={cn("tracker-status-dot", d.status === "active" ? "bg-ok" : d.status === "leave" ? "bg-warn" : "bg-muted-foreground")} aria-hidden />
                         {formatDriverStatus(d.status)}
                       </span>
                     )}
@@ -215,8 +216,8 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
                   </td>
                   <td className="w-64 px-4 py-3">
                     <div className="font-bold">{pct}% complete</div>
-                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-ok" style={{ width: `${pct}%` }} />
+                    <div className="tracker-doc-bar mt-1" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Documents complete">
+                      <div className="tracker-doc-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
                     <div className={cn("mt-1 text-sm font-bold", d.issues ? "text-danger" : "text-ok")}>
                       {d.issues ? `${d.issues} action item${d.issues > 1 ? "s" : ""}` : "All clear"}
@@ -344,8 +345,8 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
           const sec = data.sections[def.id];
           const row = sec.rows.find((r) => r.driverId === driverId);
           return (
-            <section key={def.id} className="rounded-xl border">
-              <h3 className="border-b bg-muted px-4 py-2 font-display text-base font-extrabold">{def.title}</h3>
+            <section key={def.id} className="tracker-profile-section">
+              <h3 className="tracker-profile-section-h">{def.title}</h3>
               {row ? (
                 <SectionFields sectionId={def.id} row={row} />
               ) : (
@@ -419,8 +420,31 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 {suggestion && <PlanSuggestChip suggestion={suggestion} onApply={() => save(suggestion)} />}
               </div>
             )}
-            {t === "date" && <DateCell value={v} onSave={save} tone={tone} />}
-            {t === "status" && <StatusToggle value={v} options={def.statusOptions} onSave={save} />}
+            {t === "date" && (
+              <DateCell
+                value={v}
+                onSave={save}
+                tone={tone}
+                appliedStatus={
+                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i) >= 0
+                    ? row.cells[
+                        def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i)
+                      ]
+                    : undefined
+                }
+              />
+            )}
+            {t === "status" && (
+              <StatusToggle
+                value={v}
+                options={def.statusOptions}
+                onSave={save}
+                expiryValue={(() => {
+                  const exp = statusExpiryCol(sectionId, i);
+                  return exp != null ? row.cells[exp] : undefined;
+                })()}
+              />
+            )}
             {t === "active" && <ActiveToggle value={v} onSave={save} />}
             {t === "score" && <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>}
           </div>

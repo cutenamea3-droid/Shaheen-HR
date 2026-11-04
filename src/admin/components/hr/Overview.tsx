@@ -30,14 +30,14 @@ export function Overview() {
   ];
   const missed = missedDaily(tasks);
   return (
-    <div>
+    <div className="space-y-4">
       <SectionTitle title="Overview" sub={prettyDate(date)} right={<input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />} />
-      {missed.length > 0 && <div className="panel mb-4 text-sm text-destructive">Daily tasks missed yesterday: {missed.map((t) => t.title).join(", ")}</div>}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {missed.length > 0 && <div className="panel mb-1 text-sm font-semibold text-destructive">Daily tasks missed yesterday: {missed.map((t) => t.title).join(", ")}</div>}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {stats.map(([k, v]) => (
-          <div key={k} className="panel">
-            <p className="lbl">{k}</p>
-            <p className="font-display text-3xl font-bold">{v}</p>
+          <div key={k} className="admin-stat">
+            <p className="admin-stat-label">{k}</p>
+            <p className="admin-stat-value">{v}</p>
           </div>
         ))}
       </div>

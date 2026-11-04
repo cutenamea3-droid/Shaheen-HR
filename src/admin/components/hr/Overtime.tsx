@@ -43,25 +43,34 @@ export function Overtime() {
       />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[["Employees", list.length], ["Overtime hours", fmtHours(tot.ot)], ["Additional days", tot.d], ["Additional day hours", fmtHours(tot.m)]].map(([k, v]) => (
-          <div key={k} className="panel"><p className="lbl">{k}</p><p className="font-display text-3xl font-bold">{v}</p></div>
+          <div key={k} className="admin-stat"><p className="admin-stat-label">{k}</p><p className="admin-stat-value">{v}</p></div>
         ))}
       </div>
       {list.length === 0 && <div className="panel text-sm text-muted-foreground">No overtime or additional days this month.</div>}
       <div className="space-y-3">
         {list.map((x) => (
-          <div key={x.e.id} className="panel">
-            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="font-bold">{x.n}. {x.e.name} <span className="text-sm font-normal text-muted-foreground">· {depts.find((d) => d.id === x.e.deptId)?.name} · {x.e.afterHours ? "After-hours" : "Normal"}</span></h3>
+          <div key={x.e.id} className="admin-emp-card">
+            <div className="admin-emp-head">
+              <h3 className="font-bold tracking-tight">{x.n}. {x.e.name} <span className="text-sm font-normal text-muted-foreground">· {depts.find((d) => d.id === x.e.deptId)?.name} · {x.e.afterHours ? "After-hours" : "Normal"}</span></h3>
               <p className="text-sm">Over time <b>{fmtHours(x.ot)} h</b> · Additional <b>{x.exDays} day(s) / {fmtHours(x.exMin)} h</b></p>
             </div>
-            <table className="w-full text-sm">
-              <thead><tr className="text-left text-muted-foreground"><th className="py-1">Date</th><th>Type</th><th>Hours</th><th>Note</th></tr></thead>
-              <tbody>
-                {x.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-border"><td className="py-1">{prettyDate(r.d)}</td><td>{r.kind}</td><td>{fmtHours(r.min)}</td><td className="whitespace-pre-wrap">{r.note || "—"}</td></tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                <thead className="admin-thead-sticky">
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Hours</th>
+                    <th scope="col">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {x.rows.map((r, i) => (
+                    <tr key={i}><td>{prettyDate(r.d)}</td><td>{r.kind}</td><td>{fmtHours(r.min)}</td><td className="whitespace-pre-wrap">{r.note || "—"}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ))}
       </div>

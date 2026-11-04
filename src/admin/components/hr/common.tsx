@@ -24,14 +24,17 @@ export function TimeInput({ value, onChange, label, disabled }: { value: number 
       setTxt(fmtTime(v));
     }
   };
+  const hintId = bad ? `${label.replace(/\s+/g, "-").toLowerCase()}-time-hint` : undefined;
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="lbl">{label}</span>
       <input
         className={`field ${bad ? "border-destructive" : ""}`}
         placeholder={disabled ? "No break" : "e.g. 5:59 AM"}
         value={disabled ? "" : txt}
         disabled={disabled}
+        aria-invalid={bad || undefined}
+        aria-describedby={hintId}
         onChange={(e) => setTxt(e.target.value)}
         onBlur={(e) => commit(e.target.value)}
         onPaste={(e) => {
@@ -41,6 +44,11 @@ export function TimeInput({ value, onChange, label, disabled }: { value: number 
           commit(t);
         }}
       />
+      {bad && (
+        <span id={hintId} className="admin-form-hint" role="alert">
+          Use a time like 5:59 AM or 17:02
+        </span>
+      )}
     </label>
   );
 }
@@ -62,11 +70,11 @@ export function Tone({ tone, children }: { tone?: "red" | "green" | "blue" | und
 export function SectionTitle({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 className="text-xl font-bold">{title}</h2>
-        {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+      <div className="min-w-0">
+        <h2 className="font-display text-xl font-extrabold tracking-tight">{title}</h2>
+        {sub && <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{sub}</p>}
       </div>
-      {right}
+      {right ? <div className="admin-toolbar">{right}</div> : null}
     </div>
   );
 }

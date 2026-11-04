@@ -7,6 +7,7 @@ import { Overtime } from "@/admin/components/hr/Overtime";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import { getSyncStatus, saveNow, startSync, stopSync, subscribeSync } from "@/admin/lib/cloud-sync";
+import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons } from "@/admin/components/hr/Settings";
 
 function SyncBadge() {
@@ -49,6 +50,42 @@ const TABS = [
   ["team", "Team", Team, Users],
   ["settings", "Settings", SettingsPanel, Settings],
 ] as const;
+
+const OPS_IDS = new Set(["overview", "attendance", "performance", "overtime"]);
+const REPORT_IDS = new Set(["reports", "tasks"]);
+const PEOPLE_IDS = new Set(["team"]);
+const CONFIG_IDS = new Set(["settings"]);
+
+const TAB_TITLE: Record<string, string> = {
+  overview: "Overview",
+  attendance: "Attendance",
+  performance: "Performance",
+  overtime: "Overtime",
+  reports: "CEO Reports",
+  tasks: "Tasks",
+  team: "Team",
+  settings: "Settings",
+  account: "My Account",
+  "team-mgmt": "User Accounts",
+  logs: "Activity Logs",
+};
+
+function adminCrumbs(tab: string): { label: string; current?: boolean }[] {
+  const title = TAB_TITLE[tab] ?? "Overview";
+  let group = "Operations";
+  if (REPORT_IDS.has(tab)) group = "Reports & work";
+  else if (PEOPLE_IDS.has(tab)) group = "People";
+  else if (CONFIG_IDS.has(tab)) group = "Configuration";
+  else if (tab === "account") group = "My Account";
+  else if (tab === "team-mgmt") group = "Team Management";
+  else if (tab === "logs") group = "System";
+  else if (!OPS_IDS.has(tab)) group = "Admin & Attendance";
+  return [
+    { label: "Admin & Attendance" },
+    { label: group },
+    { label: title, current: true },
+  ];
+}
 
 function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
   const [busy, setBusy] = useState(false);
@@ -125,6 +162,13 @@ export function AdminApp() {
   const [localOnly, setLocalOnly] = useState(false);
   const setAuthed = (v: boolean) => {
     if (!v) {
+      if (isPreviewIsolated()) {
+        // Stay signed into mock preview account — never call Auth.
+        setLocalOnly(true);
+        setEmail(HR_EMAIL);
+        setAuthedState(true);
+        return;
+      }
       void import("@/admin/lib/hr-auth-local").then((m) => m.clearHrLocalSession()).catch(() => undefined);
       setLocalOnly(false);
       setAuthedState(false);
@@ -135,6 +179,14 @@ export function AdminApp() {
   const [tab, setTab] = useState<TabId>("overview");
   const [small, setSmall] = useState(false);
   useEffect(() => {
+    if (isPreviewIsolated()) {
+      stopSync();
+      setLocalOnly(true);
+      setEmail(HR_EMAIL);
+      setAuthedState(true);
+      setReady(true);
+      return;
+    }
     const apply = async (uid: string | null, mail: string) => {
       if (uid) {
         await startSync(uid);
@@ -187,56 +239,101 @@ export function AdminApp() {
   const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "overview");
   const current: TabId = !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview")) ? "overview" : tab;
   const Active = TABS.find((t) => t[0] === current)?.[2];
+  const crumbs = adminCrumbs(current);
   const navBtn = (id: TabId, label: string, Icon: typeof Users) => (
     <button
       key={id}
+      type="button"
       title={label}
+      aria-current={current === id ? "page" : undefined}
       onClick={() => setTab(id)}
-      className={`btn h-10 justify-start px-3 ${current === id ? "nav-glow text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}
+      className={`admin-nav btn h-10 justify-start gap-3 px-3 ${current === id ? "admin-nav-active text-primary-foreground" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      {!small && <span className="hidden md:inline">{label}</span>}
+      {!small && <span className="hidden truncate md:inline">{label}</span>}
     </button>
   );
-  const groupLbl = (t: string) => !small && <p className="mt-3 hidden px-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/50 md:block">{t}</p>;
+  const groupLbl = (t: string) => !small && <p className="shell-nav-group hidden md:block">{t}</p>;
+  const renderTabGroup = (ids: Set<string>) =>
+    opsTabs.filter(([id]) => ids.has(id)).map(([id, label, , Icon]) => navBtn(id, label, Icon));
   return (
-    <div className="flex min-h-screen">
-      <TaskGate />
-      <aside className={`sticky top-0 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-visible border-r border-sidebar-border bg-sidebar p-2 text-sidebar-foreground transition-all ${small ? "w-16" : "w-16 md:w-60"}`}>
+    <div className="admin-shell flex min-h-screen">
+      <a href="#admin-main-content" className="shell-skip tracker-no-print">
+        Skip to main content
+      </a>
+      {!isPreviewIsolated() && <TaskGate />}
+      {isPreviewIsolated() && (
+        <div
+          role="status"
+          className="tracker-no-print fixed top-[44px] right-0 left-0 z-[60] border-b border-warn/40 bg-warn-soft px-3 py-1.5 text-center text-xs font-bold text-warn md:left-0"
+        >
+          Isolated preview — Admin mock session + local seed only. Cloud sync disabled; Supabase URL is non-routable.
+        </div>
+      )}
+      <aside
+        className={`admin-aside sticky top-0 flex h-screen shrink-0 flex-col overflow-y-auto overflow-x-visible border-r border-sidebar-border bg-sidebar p-2 text-sidebar-foreground transition-all ${small ? "w-16" : "w-16 md:w-60"}`}
+        aria-label="Admin & Attendance sidebar"
+      >
         <div className="mb-3 flex items-center gap-2 px-1 py-2">
           <img src="/logo.jpg" alt="Shaheen Transport LLC" className="h-10 w-10 shrink-0 rounded-lg object-contain" />
           {!small && <span className="hidden font-display text-sm font-bold leading-tight md:block"><span className="text-primary">SHAHEEN</span><br />HR Dashboard</span>}
         </div>
-        <nav className="flex flex-1 flex-col gap-1">
-          {groupLbl("Dashboard")}
-          {opsTabs.map(([id, label, , Icon]) => navBtn(id, label, Icon))}
+        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Admin & Attendance">
+          {groupLbl("Operations")}
+          {renderTabGroup(OPS_IDS)}
+          {isAdmin && groupLbl("Reports & work")}
+          {isAdmin && renderTabGroup(REPORT_IDS)}
+          {isAdmin && groupLbl("People")}
+          {isAdmin && renderTabGroup(PEOPLE_IDS)}
+          {isAdmin && groupLbl("Configuration")}
+          {isAdmin && renderTabGroup(CONFIG_IDS)}
           {groupLbl("My Account")}
           {navBtn("account", "My Account", UserCog)}
           {isAdmin && groupLbl("Team Management")}
           {isAdmin && navBtn("team-mgmt", "User Accounts", ShieldCheck)}
-          {isAdmin && groupLbl("System Logs")}
+          {isAdmin && groupLbl("System")}
           {isAdmin && navBtn("logs", "Activity Logs", ScrollText)}
         </nav>
-        <button className="btn mt-3 h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent" title="Sign out" onClick={() => setAuthed(false)}>
+        <button type="button" className="btn mt-3 h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent" title="Sign out" onClick={() => setAuthed(false)}>
           <LogOut className="h-4 w-4 shrink-0" />
           {!small && <span className="hidden md:inline">Sign out</span>}
         </button>
-        <button className="btn mt-1 hidden h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent md:inline-flex" title={small ? "Expand" : "Collapse"} onClick={() => setSmall(!small)}>
+        <button type="button" className="btn mt-1 hidden h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent md:inline-flex" title={small ? "Expand" : "Collapse"} onClick={() => setSmall(!small)}>
           {small ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
         </button>
       </aside>
-      <main className="ui-enter min-w-0 flex-1 overflow-x-visible p-3 md:p-6">
-        {localOnly ? (
-          <div className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground">
-            Local session — cloud sync paused until you sign in with Supabase.
+      <main
+        id="admin-main-content"
+        tabIndex={-1}
+        className={`ui-enter admin-main shell-main-pad min-w-0 flex-1 overflow-x-visible outline-none md:px-6 md:pt-5 ${isPreviewIsolated() ? "pt-10" : ""}`}
+      >
+        <header className="shell-page-header tracker-no-print border-b border-border/70 pb-2.5" role="banner">
+          <nav aria-label="Breadcrumb" className="shell-crumb">
+            {crumbs.map((c, i) => (
+              <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
+                {i > 0 && <span className="shell-crumb-sep" aria-hidden>/</span>}
+                <span className={c.current ? "shell-crumb-current" : undefined} aria-current={c.current ? "page" : undefined}>
+                  {c.label}
+                </span>
+              </span>
+            ))}
+          </nav>
+        </header>
+        {isPreviewIsolated() || localOnly ? (
+          <div className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground" role="status">
+            {isPreviewIsolated()
+              ? "Isolated preview — local seed/Zustand only; Save stays on this browser."
+              : "Local session — cloud sync paused until you sign in with Supabase."}
           </div>
         ) : (
           <SyncBadge />
         )}
-        {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
-          : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
-          : current === "logs" ? <SystemLogs />
-          : Active ? <Active /> : null}
+        <div className="admin-page">
+          {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
+            : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
+            : current === "logs" ? <SystemLogs />
+            : Active ? <Active /> : null}
+        </div>
       </main>
     </div>
   );

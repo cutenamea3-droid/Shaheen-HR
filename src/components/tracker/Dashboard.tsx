@@ -32,7 +32,8 @@ const CATS: { id: Cat; label: string; match: (i: Issue) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
   { id: "expired", label: "Expired", match: (i) => i.tone === "danger" && /expired/i.test(i.label) },
   { id: "soon", label: "Expiring soon", match: (i) => i.tone === "warn" },
-  { id: "applied", label: "Applied", match: (i) => i.tone === "info" },
+  // Match by label so Applied + remaining / Expired + Applied stay under Applied (tone may be warn/danger).
+  { id: "applied", label: "Applied", match: (i) => /applied/i.test(i.label) },
   { id: "missing", label: "Missing / Invalid", match: (i) => (i.tone === "danger" && !/expired/i.test(i.label)) || i.tone === "sign" },
   { id: "notes", label: "Notes", match: (i) => i.tone === "note" },
 ];
@@ -68,8 +69,8 @@ export function Dashboard() {
   }, [data]);
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
         <Stat icon={Users} label="Total drivers" value={stats.total} sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`} tone="bg-brand" />
         <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="leave & inactive excluded" tone="bg-danger" />
         <Stat icon={Clock3} label="Already expired" value={stats.expired} sub="act today" tone="bg-warn" />
@@ -77,23 +78,25 @@ export function Dashboard() {
         <Stat icon={CalendarClock} label="Today" value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })} sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })} tone="bg-info" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="tracker-toolbar">
         <div className="relative min-w-72 flex-1">
-          <Search className="absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search a driver across every alert…"
-            className="h-12 w-full rounded-xl border-2 bg-card pr-4 pl-11 text-base shadow-card outline-none focus:border-primary"
+            className="tracker-search h-12"
+            aria-label="Search alerts by driver"
           />
         </div>
-        <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
+        <div className="tracker-filter-group" role="group" aria-label="Active filter">
           {(["active", "inactive", "all"] as ActiveF[]).map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setAf(f)}
-              className={cn("rounded-lg px-4 py-2 text-sm font-bold capitalize", af === f ? "bg-brand text-primary-foreground" : "text-muted-foreground")}
+              aria-pressed={af === f}
+              className={cn("tracker-filter-btn capitalize", af === f && "tracker-filter-btn-on")}
             >
               {f === "all" ? "Show all" : f}
             </button>
@@ -213,7 +216,7 @@ function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: s
           </button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 px-5 pt-4">
+      <div className="tracker-toolbar gap-2 px-5 pt-4">
         {CATS.map((c) => {
           const n = c.id === "all" ? items.length : catCount(c.id);
           if (c.id !== "all" && !n) return null;
@@ -222,8 +225,9 @@ function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: s
               key={c.id}
               type="button"
               onClick={() => setCat(c.id)}
+              aria-pressed={cat === c.id}
               className={cn(
-                "rounded-lg border-2 px-3 py-1.5 text-sm font-bold",
+                "tracker-filter-btn border-2 border-transparent",
                 cat === c.id ? "border-primary bg-primary text-primary-foreground" : "bg-muted/60 hover:border-primary/50",
               )}
             >

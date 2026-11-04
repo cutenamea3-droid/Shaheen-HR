@@ -110,8 +110,8 @@ export function Records() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-hidden p-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="flex h-full flex-col gap-3 overflow-hidden px-2 py-2 sm:p-3">
+      <div className="tracker-toolbar gap-2">
         {RECORD_TABS.map((t) => {
           const docs = data.sections[t.id]?.rows.length ?? 0;
           const peopleN = personCount(data.sections[t.id]?.rows);
@@ -120,6 +120,7 @@ export function Records() {
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
+              aria-pressed={tab === t.id}
               className={cn(
                 "ui-press rounded-xl border-2 px-4 py-2 text-base font-bold",
                 tab === t.id ? "border-primary bg-brand text-primary-foreground" : "bg-card hover:border-primary",
@@ -134,30 +135,29 @@ export function Records() {
           );
         })}
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm leading-snug text-muted-foreground">
         Grouped by person — expand a card to edit documents. Use Move to shift someone between Driver Extra Docs, Owner Operator, and Mechanic without losing files.
       </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-64">
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="tracker-toolbar gap-2">
+        <div className="relative w-full max-w-xs min-w-48">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search…"
-            className="h-10 w-full rounded-xl border bg-card pr-3 pl-9"
+            className="tracker-search"
+            aria-label="Search records"
           />
         </div>
         {ownersTab && (
-          <div className="inline-flex rounded-xl border-2 bg-card p-1 shadow-card">
+          <div className="tracker-filter-group" role="group" aria-label="Owner status filter">
             {(["active", "inactive", "all"] as ActiveFilter[]).map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setActiveFilter(f)}
-                className={cn(
-                  "ui-press rounded-lg px-3 py-1.5 text-sm font-bold capitalize",
-                  activeFilter === f ? "bg-brand text-primary-foreground shadow-card" : "text-muted-foreground hover:text-foreground",
-                )}
+                aria-pressed={activeFilter === f}
+                className={cn("tracker-filter-btn ui-press capitalize", activeFilter === f && "tracker-filter-btn-on")}
               >
                 {f}
               </button>

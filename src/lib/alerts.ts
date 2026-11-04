@@ -111,9 +111,120 @@ function dateIssue(v: string, days: number, col: number, what: string): Issue | 
   return null;
 }
 
-function statusIssue(v: string, col: number, header: string): Issue | null {
+/**
+ * Status column → paired Exact Expiration column for sections that offer Applied.
+ * Applied must never imply Valid/Renewed — expiry stays visible beside Applied.
+ */
+export function statusExpiryCol(sectionId: string, statusCol: number): number | null {
+  if (sectionId === "dmv" && statusCol === 2) return 3;
+  if (sectionId === "queries" && statusCol === 1) return 2;
+  if (sectionId === "queries" && statusCol === 3) return 4;
+  return null;
+}
+
+/** Expiration axis derived from Exact Expiration date — independent of Application (Applied). */
+export type ExpirationAxis = "Valid" | "Expiring Soon" | "Expired";
+
+export type AppliedExpiryView = {
+  /** Always "Applied" here — stored cell is never rewritten to Valid/Renewed. */
+  application: "Applied";
+  /** From the paired expiry date only (not from the status dropdown). */
+  expiration: ExpirationAxis | null;
+  /** Alert/list label after the header, e.g. "Applied + 10 Days Remaining" / "Expired + Applied". */
+  label: string;
+  /**
+   * Second line under Application on the status control:
+   * expiration status + countdown (e.g. "Expiring Soon · 10 Days Remaining").
+   */
+  hint: string;
+  /** Under the date cell: countdown / overdue only (date already visible). */
+  dateHint: string;
+  tone: Tone;
+  daysLeft: number | null;
+};
+
+/** Days-left threshold for "Expiring Soon" on the expiration axis (display only). */
+export const APPLIED_EXPIRING_SOON_DAYS = 30;
+
+/**
+ * Display/alert enrichment when Application status is Applied.
+ * Application and Expiration are independent axes — Applied never implies Valid/Renewed,
+ * never rewrites the stored status or expiry date, and countdown keeps running.
+ */
+export function appliedExpiryView(
+  expiryRaw: string,
+  soonDays = APPLIED_EXPIRING_SOON_DAYS,
+): AppliedExpiryView | null {
+  if (isOldExpiry(expiryRaw)) {
+    return {
+      application: "Applied",
+      expiration: null,
+      label: "Applied",
+      hint: "Old expiry (no countdown)",
+      dateHint: "Old expiry",
+      tone: "info",
+      daysLeft: null,
+    };
+  }
+  const d = parseISO(expiryRaw);
+  if (!d) {
+    return {
+      application: "Applied",
+      expiration: null,
+      label: "Applied",
+      hint: "No parseable expiry date",
+      dateHint: "",
+      tone: "info",
+      daysLeft: null,
+    };
+  }
+  const left = daysUntil(d);
+  if (left < 0) {
+    const overdue = `${-left}d overdue`;
+    return {
+      application: "Applied",
+      expiration: "Expired",
+      label: `Expired + Applied`,
+      hint: `Expired · ${overdue}`,
+      dateHint: overdue,
+      tone: "danger",
+      daysLeft: left,
+    };
+  }
+  if (left === 0) {
+    return {
+      application: "Applied",
+      expiration: "Expiring Soon",
+      label: `Applied + Expires today`,
+      hint: `Expiring Soon · Expires today`,
+      dateHint: `Expires today`,
+      tone: "warn",
+      daysLeft: 0,
+    };
+  }
+  const expiration: ExpirationAxis = left <= soonDays ? "Expiring Soon" : "Valid";
+  const countdown = `${left} Days Remaining`;
+  return {
+    application: "Applied",
+    expiration,
+    label: `Applied + ${countdown}`,
+    hint: `${expiration} · ${countdown}`,
+    dateHint: countdown,
+    tone: expiration === "Expiring Soon" ? "warn" : "info",
+    daysLeft: left,
+  };
+}
+
+function statusIssue(v: string, col: number, header: string, expiryRaw?: string): Issue | null {
   const s = normStatus(v);
-  if (s === "Applied") return { tone: "info", label: `${header.trim()}: Applied`, col };
+  if (s === "Applied") {
+    const view = expiryRaw != null ? appliedExpiryView(expiryRaw) : null;
+    if (view) {
+      // Tone follows the expiration axis; Application stays Applied in the label.
+      return { tone: view.tone, label: `${header.trim()}: ${view.label}`, col };
+    }
+    return { tone: "info", label: `${header.trim()}: Applied`, col };
+  }
   if (s === "Missing" || s === "Invalid" || s === "Expired")
     return { tone: "danger", label: `${header.trim()}: ${s}`, col };
   if (s === "Sign Missing") return { tone: "sign", label: `${header.trim()}: Sign missing`, col };
@@ -134,7 +245,8 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
     });
   switch (def.id) {
     case "dmv": {
-      push(statusIssue(c[2], 2, "DMV Pull Notice"));
+      // Applied keeps expiry visible — never treat Applied as Valid/Renewed.
+      push(statusIssue(c[2], 2, "DMV Pull Notice", c[3]));
       const di = dateIssue(c[3], dmvDays(c[8]), 3, "DMV");
       push(di);
       if (di) issues.push({ tone: di.tone, label: "Future plan: apply now", col: 7 });
@@ -154,10 +266,10 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
     }
     case "queries": {
       // Annual (cols 1–2) and Pre-Employment (cols 3–4) evaluated independently.
-      push(statusIssue(c[1], 1, "Annual Query"));
+      push(statusIssue(c[1], 1, "Annual Query", c[2]));
       const qa = dateIssue(c[2], 14, 2, "Annual Query");
       push(qa);
-      push(statusIssue(c[3], 3, "Pre-Employment Query"));
+      push(statusIssue(c[3], 3, "Pre-Employment Query", c[4]));
       const qp = dateIssue(c[4], 14, 4, "Pre-Emp Query");
       push(qp);
       if (qa) issues.push({ tone: qa.tone, label: "Annual future plan: apply now", col: 6 });
