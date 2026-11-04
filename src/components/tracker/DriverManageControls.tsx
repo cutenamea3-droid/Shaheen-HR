@@ -14,6 +14,7 @@ import { useViewMode } from "@/lib/viewmode";
 /**
  * Company ↔ Owner Operator + Move to Active Drivers controls.
  * Confirm before every change. History kept on the same driver rows (no delete/recreate).
+ * UI: neutral panel on brand header — solid selected/unselected (never text-brand clip).
  */
 export function DriverManageControls({ driverId, name }: { driverId: string; name: string }) {
   const data = useData();
@@ -25,12 +26,12 @@ export function DriverManageControls({ driverId, name }: { driverId: string; nam
 
   if (view) {
     return (
-      <div className="mt-3 space-y-2 rounded-xl bg-primary-foreground/10 p-3">
-        <div className="text-xs font-extrabold tracking-widest uppercase opacity-90">Management</div>
-        <div className="text-sm font-bold">
+      <div className="tracker-manage-panel space-y-2">
+        <div className="tracker-manage-title">Management</div>
+        <div className="text-sm font-bold text-foreground">
           {isNew ? "New Driver (onboarding)" : formatDriverClass(klass)}
         </div>
-        <p className="text-xs opacity-80">Management class is not a legal exemption.</p>
+        <p className="tracker-manage-hint mt-0">Management class is not a legal exemption.</p>
       </div>
     );
   }
@@ -69,21 +70,21 @@ export function DriverManageControls({ driverId, name }: { driverId: string; nam
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl bg-primary-foreground/10 p-3">
-      <div className="text-xs font-extrabold tracking-widest uppercase opacity-90">Management</div>
-      <p className="text-xs leading-snug opacity-85">
-        New = onboarding · Company / Owner Op = class · Active / Leave / Inactive = employment. Class ≠ legal
-        exemption.
-      </p>
+    <div className="tracker-manage-panel space-y-3">
+      <div>
+        <div className="tracker-manage-title">Management</div>
+        <p className="tracker-manage-hint">
+          New = onboarding · Company / Owner Op = class · Active / Leave / Inactive = employment. Class ≠ legal
+          exemption.
+        </p>
+      </div>
 
       {isNew ? (
         <div className="space-y-2">
-          <div className="inline-flex rounded-lg bg-info/20 px-2.5 py-1 text-sm font-bold">New Driver</div>
-          <button
-            type="button"
-            onClick={moveToActive}
-            className="flex h-9 w-full items-center justify-center rounded-lg border-2 border-primary-foreground/40 bg-primary-foreground/15 px-3 text-sm font-bold hover:bg-primary-foreground/25"
-          >
+          <div className="inline-flex rounded-lg border-2 border-info/30 bg-info-soft px-2.5 py-1.5 text-sm font-bold text-info">
+            New Driver
+          </div>
+          <button type="button" onClick={moveToActive} className="tracker-manage-action">
             Move to Active Drivers
           </button>
         </div>
@@ -96,23 +97,14 @@ export function DriverManageControls({ driverId, name }: { driverId: string; nam
                 type="button"
                 onClick={() => confirmClass(c)}
                 aria-pressed={klass === c}
-                className={cn(
-                  "rounded-lg border-2 px-3 py-1.5 text-sm font-bold transition",
-                  klass === c
-                    ? "border-primary-foreground bg-primary-foreground text-brand"
-                    : "border-primary-foreground/35 bg-transparent hover:bg-primary-foreground/15",
-                )}
+                className={cn("tracker-manage-btn", klass === c && "tracker-manage-btn-on")}
               >
                 {formatDriverClass(c)}
               </button>
             ))}
           </div>
           {rosterKindOf(data, driverId) === "roster" && (
-            <button
-              type="button"
-              onClick={reverseToNew}
-              className="text-xs font-semibold underline-offset-2 opacity-80 hover:underline"
-            >
+            <button type="button" onClick={reverseToNew} className="tracker-manage-action">
               Return to New Drivers
             </button>
           )}
@@ -120,8 +112,8 @@ export function DriverManageControls({ driverId, name }: { driverId: string; nam
       )}
 
       {history.length > 0 && (
-        <details className="text-xs opacity-85">
-          <summary className="cursor-pointer font-bold">Classification history ({history.length})</summary>
+        <details className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer font-bold text-foreground">Classification history ({history.length})</summary>
           <ul className="mt-1.5 space-y-1 pl-1">
             {[...history].reverse().map((h, i) => (
               <li key={`${h.at}-${i}`}>

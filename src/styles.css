@@ -408,20 +408,136 @@ tr.row-selected > td.freeze-edge {
 }
 @utility tracker-filter-btn {
   border-radius: 0.5rem;
+  border: 2px solid transparent;
   padding: 0.4rem 0.85rem;
-  font-size: 0.875rem;
+  font-size: 0.875rem; /* ≥14px */
   font-weight: 700;
   line-height: 1.2;
   color: var(--muted-foreground);
-  transition: background-color 140ms ease, color 140ms ease;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
-.tracker-filter-btn:hover {
+.tracker-filter-btn:hover:not(:disabled) {
   color: var(--foreground);
+  background-color: color-mix(in oklab, var(--primary) 8%, var(--card));
+}
+.tracker-filter-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 @utility tracker-filter-btn-on {
-  background-image: var(--gradient-brand);
+  /* Solid dark-orange + cream text — avoids gradient/text-brand clip (invisible on brand) */
+  border-color: color-mix(in oklab, var(--primary) 70%, black);
+  background-color: color-mix(in oklab, var(--primary) 72%, black);
+  background-image: none;
   color: var(--primary-foreground);
   box-shadow: var(--shadow-card);
+}
+.tracker-filter-btn-on:hover:not(:disabled) {
+  color: var(--primary-foreground);
+  background-color: color-mix(in oklab, var(--primary) 62%, black);
+}
+
+/* Driver file Management panel — neutral card on brand header (WCAG AA) */
+@utility tracker-manage-panel {
+  margin-top: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+  background-color: var(--card);
+  color: var(--foreground);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-card);
+}
+@utility tracker-manage-title {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--foreground) 72%, transparent);
+}
+@utility tracker-manage-hint {
+  margin-top: 0.35rem;
+  font-size: 0.875rem; /* ≥14px */
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+}
+@utility tracker-manage-btn {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 2px solid var(--border);
+  background-color: var(--card);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem; /* ≥14px */
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--foreground);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+.tracker-manage-btn:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--primary) 50%, var(--border));
+  background-color: color-mix(in oklab, var(--primary) 10%, var(--card));
+}
+.tracker-manage-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 80%, white);
+  outline-offset: 2px;
+}
+.tracker-manage-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+@utility tracker-manage-btn-on {
+  border-color: color-mix(in oklab, var(--primary) 70%, black);
+  background-color: color-mix(in oklab, var(--primary) 72%, black);
+  background-image: none;
+  color: var(--primary-foreground);
+  box-shadow: var(--shadow-card);
+}
+.tracker-manage-btn-on:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--primary) 62%, black);
+  background-color: color-mix(in oklab, var(--primary) 62%, black);
+  color: var(--primary-foreground);
+}
+@utility tracker-manage-action {
+  display: flex;
+  width: 100%;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 2px solid color-mix(in oklab, var(--primary) 45%, var(--border));
+  background-color: color-mix(in oklab, var(--primary) 12%, var(--card));
+  padding: 0.45rem 0.85rem;
+  font-size: 0.875rem; /* ≥14px — full action, not tiny link */
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--foreground);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+.tracker-manage-action:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--primary) 65%, var(--border));
+  background-color: color-mix(in oklab, var(--primary) 18%, var(--card));
+}
+.tracker-manage-action:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary) 80%, white);
+  outline-offset: 2px;
+}
+.tracker-manage-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 @utility tracker-table-wrap {
   min-height: 0;
