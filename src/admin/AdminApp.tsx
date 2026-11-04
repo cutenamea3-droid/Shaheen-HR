@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BarChart3, CalendarClock, ChevronsLeft, ChevronsRight, FileText, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
@@ -7,6 +7,7 @@ import { Overtime } from "@/admin/components/hr/Overtime";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import { getSyncStatus, saveNow, startSync, stopSync, subscribeSync } from "@/admin/lib/cloud-sync";
+import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons } from "@/admin/components/hr/Settings";
 
@@ -87,11 +88,27 @@ function adminCrumbs(tab: string): { label: string; current?: boolean }[] {
   ];
 }
 
-function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
+function Login({
+  onLocalAuth,
+  onCloudAuth,
+}: {
+  onLocalAuth: (email: string) => void;
+  onCloudAuth: (email: string, uid: string) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState(HR_EMAIL);
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  // Synchronous guards: React `busy` alone allows a second submit before re-render.
+  const busyRef = useRef(false);
+  const attemptRef = useRef(0);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passRef = useRef<HTMLInputElement>(null);
+
+  const clearErrOnEdit = () => {
+    if (err) setErr("");
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
      <div className="grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
@@ -100,9 +117,21 @@ function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
         className="panel ui-glow order-1 mx-auto w-full max-w-sm space-y-4 lg:order-2"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (busyRef.current) return;
+          busyRef.current = true;
+          const attempt = ++attemptRef.current;
+          const isStale = () => attempt !== attemptRef.current;
           setBusy(true);
           setErr("");
-          const mail = email.trim().toLowerCase();
+
+          // Prefer live DOM values so browser autofill that skipped onChange still signs in.
+          const form = e.currentTarget;
+          const fd = new FormData(form);
+          const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
+          const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
+          if (mailRaw !== email) setEmail(mailRaw);
+          if (passRaw !== pass) setPass(passRaw);
+
           try {
             const {
               hasHrLocalPassword,
@@ -110,34 +139,65 @@ function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
               writeHrLocalSession,
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
-            const hasLocal = hasHrLocalPassword(mail);
-            const localOk = hasLocal && (await verifyHrLocalPassword(mail, pass));
 
-            const { error } = await supabase.auth.signInWithPassword({ email: mail, password: pass });
-            if (!error) {
-              // A prior My Account change may have saved a newer password locally while
-              // cloud still had the old one. Do not let the stale cloud password win.
-              if (hasLocal && !localOk) {
-                await supabase.auth.signOut();
-                setBusy(false);
-                setErr("Wrong email or password");
+            const result = await attemptHrLogin(mailRaw, passRaw, {
+              signInWithPassword: async (creds) => {
+                const { error } = await supabase.auth.signInWithPassword(creds);
+                return {
+                  error: error
+                    ? {
+                        message: error.message,
+                        status: error.status,
+                        name: error.name,
+                        code: typeof error.code === "string" ? error.code : undefined,
+                      }
+                    : null,
+                };
+              },
+              signOut: () => supabase.auth.signOut(),
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+              isStale,
+            });
+
+            if (isStale()) return;
+
+            if (result.ok) {
+              setErr("");
+              const normalized = mailRaw.trim().toLowerCase();
+              if (result.mode === "local") {
+                onLocalAuth(normalized);
+                // Keep busy until parent swaps to the dashboard (local path).
                 return;
               }
-              clearHrLocalSession();
+              // Open dashboard from the session now — do not wait solely on onAuthStateChange
+              // (that race left the form briefly interactive and sometimes showed a stale error).
+              const { data } = await supabase.auth.getSession();
+              if (isStale()) return;
+              const uid = data.session?.user.id;
+              if (uid) {
+                onCloudAuth(data.session?.user.email?.toLowerCase() || normalized, uid);
+                return;
+              }
+              // Session should exist after a successful cloud sign-in; treat as network-ish failure.
+              setErr("Couldn't reach the server. Try again.");
+              busyRef.current = false;
               setBusy(false);
               return;
             }
-            if (localOk) {
-              writeHrLocalSession(mail);
-              onLocalAuth(mail);
-              setBusy(false);
-              return;
-            }
+
+            if (result.kind === "stale") return;
+            setErr(result.message);
+            busyRef.current = false;
+            setBusy(false);
           } catch {
-            /* fall through */
+            if (isStale()) return;
+            setErr("Couldn't reach the server. Try again.");
+            busyRef.current = false;
+            setBusy(false);
           }
-          setBusy(false);
-          setErr("Wrong email or password");
         }}
       >
         <div className="text-center">
@@ -145,10 +205,41 @@ function Login({ onLocalAuth }: { onLocalAuth: (email: string) => void }) {
           <h1 className="text-2xl font-bold">HR Attendance</h1>
           <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
-        <label className="block"><span className="lbl">Email</span><input className="field" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" /></label>
-        <label className="block"><span className="lbl">Password</span><input type="password" className="field" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus autoComplete="current-password" /></label>
-        {err && <p className="text-sm text-destructive">{err}</p>}
-        <button className="btn-primary w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        <label className="block">
+          <span className="lbl">Email</span>
+          <input
+            ref={emailRef}
+            name="email"
+            type="email"
+            className="field"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearErrOnEdit();
+            }}
+            autoComplete="username"
+          />
+        </label>
+        <label className="block">
+          <span className="lbl">Password</span>
+          <input
+            ref={passRef}
+            name="password"
+            type="password"
+            className="field"
+            value={pass}
+            onChange={(e) => {
+              setPass(e.target.value);
+              clearErrOnEdit();
+            }}
+            autoFocus
+            autoComplete="current-password"
+          />
+        </label>
+        {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
+        <button type="submit" className="btn-primary w-full" disabled={busy} aria-busy={busy}>
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
       </form>
      </div>
     </div>
@@ -232,6 +323,13 @@ export function AdminApp() {
           setLocalOnly(true);
           setEmail(mail);
           setAuthedState(true);
+        }}
+        onCloudAuth={(mail, uid) => {
+          void startSync(uid).then(() => {
+            setLocalOnly(false);
+            setEmail(mail);
+            setAuthedState(true);
+          });
         }}
       />
     );
