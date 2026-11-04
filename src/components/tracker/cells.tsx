@@ -420,8 +420,8 @@ export function ActiveToggle({
               onSave(o);
             }}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-bold transition",
-              on ? onCls : "text-muted-foreground hover:text-foreground",
+              "rounded-md px-3 py-1.5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/80 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-55",
+              on ? onCls : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
             )}
           >
             {o}

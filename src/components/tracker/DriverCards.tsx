@@ -358,8 +358,8 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
           CDL {cdl || "—"}
         </p>
         {statusInfo && (
-          <div className="mt-4 rounded-xl bg-primary-foreground/10 p-3">
-            <div className="mb-2 text-xs font-extrabold tracking-widest uppercase opacity-90">Employment status</div>
+          <div className="tracker-manage-panel mt-4">
+            <div className="tracker-manage-title mb-2">Employment status</div>
             {view ? (
               <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[statusInfo.status])}>
                 {formatDriverStatus(statusInfo.status)}
