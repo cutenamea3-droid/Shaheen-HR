@@ -14,6 +14,7 @@ import {
   fmtDate,
   matchesExpFilter,
   rowAlertsMuted,
+  rowOrdinaryComplianceMuted,
   rowIsActive,
   today,
   type ExpFilter,
@@ -21,6 +22,7 @@ import {
   type Issue,
   type Tone,
 } from "@/lib/alerts";
+import { isNewDriver, isOwnerOperator } from "@/lib/driver-meta";
 import { downloadReportPdf } from "@/lib/pdf";
 import { useData } from "@/lib/store";
 import { Chip } from "./cells";
@@ -48,31 +50,32 @@ export function Dashboard() {
   const stats = useMemo(() => {
     const dmv = data.sections.dmv.rows;
     const def = SECTIONS[0];
-    const active = dmv.filter((r) => rowIsActive(def, r, data) && !rowAlertsMuted(def, r, data)).length;
-    const leave = dmv.filter((r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data)).length;
-    const inactive = dmv.filter((r) => !rowIsActive(def, r, data)).length;
-    // Compliance % excludes leave/inactive drivers.
-    const docs = data.sections.docs.rows.filter((r) => !rowAlertsMuted(SECTIONS[4], r, data));
+    // Ordinary company roster — New Drivers and Owner Operators excluded from these counts.
+    const roster = dmv.filter((r) => !isNewDriver(data, r.driverId) && !isOwnerOperator(data, r.driverId));
+    const active = roster.filter((r) => rowIsActive(def, r, data) && !rowAlertsMuted(def, r, data)).length;
+    const leave = roster.filter((r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data)).length;
+    const inactive = roster.filter((r) => !rowIsActive(def, r, data)).length;
+    const docs = data.sections.docs.rows.filter((r) => !rowOrdinaryComplianceMuted(SECTIONS[4], r, data));
     const avg = docs.length ? Math.round(docs.reduce((a, r) => a + complianceScore(r), 0) / docs.length) : 0;
     let alerts = 0;
     let expired = 0;
     for (const d of SECTIONS) {
       const sec = data.sections[d.id];
       for (const r of sec.rows) {
-        if (rowAlertsMuted(d, r, data)) continue;
+        if (rowOrdinaryComplianceMuted(d, r, data)) continue;
         const { issues } = analyzeRow(d, sec.headers, r);
         if (issues.length) alerts++;
         if (issues.some((i) => /expired/i.test(i.label))) expired++;
       }
     }
-    return { total: dmv.length, active, leave, inactive, avg, alerts, expired };
+    return { total: roster.length, active, leave, inactive, avg, alerts, expired };
   }, [data]);
 
   return (
     <div className="space-y-5 sm:space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
-        <Stat icon={Users} label="Total drivers" value={stats.total} sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`} tone="bg-brand" />
-        <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="leave & inactive excluded" tone="bg-danger" />
+        <Stat icon={Users} label="Company drivers" value={stats.total} sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`} tone="bg-brand" />
+        <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="New, Owner Op, leave & inactive excluded" tone="bg-danger" />
         <Stat icon={Clock3} label="Already expired" value={stats.expired} sub="act today" tone="bg-warn" />
         <Stat icon={ShieldCheck} label="Avg document compliance" value={`${stats.avg}%`} sub="Other Documents · active only" tone="bg-eagle" />
         <Stat icon={CalendarClock} label="Today" value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })} sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })} tone="bg-info" />
@@ -163,12 +166,14 @@ function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: s
     () =>
       sec.rows
         .filter((r) => {
+          // Ordinary company alerts — New Drivers excluded from Show all; OO has dedicated scope on Cards/DMV.
+          if (isNewDriver(data, r.driverId) || isOwnerOperator(data, r.driverId)) return false;
           const a = rowIsActive(def, r, data);
           const muted = rowAlertsMuted(def, r, data);
           // Active filter = truly active (leave muted from alert lists); inactive = not employed.
           if (af === "active") return a && !muted;
           if (af === "inactive") return !a;
-          return true;
+          return true; // Show all — still excludes New (and OO above)
         })
         .filter((r) => matchesExpFilter(data, r.driverId, exp))
         .map((r) => ({ row: r, issues: analyzeRow(def, sec.headers, r).issues }))
@@ -531,8 +536,8 @@ function TodayPanel() {
       if (def.id === "inactive") continue;
       const sec = data.sections[def.id];
       for (const r of sec.rows) {
-        // Leave / inactive excluded from compliance % and urgent counters.
-        if (rowAlertsMuted(def, r, data)) continue;
+        // Leave / inactive / New / Owner Op excluded from ordinary compliance & urgent counters.
+        if (rowOrdinaryComplianceMuted(def, r, data)) continue;
         const name = r.cells[0].trim();
         names.add(name.toLowerCase());
         for (const i of analyzeRow(def, sec.headers, r).issues) {

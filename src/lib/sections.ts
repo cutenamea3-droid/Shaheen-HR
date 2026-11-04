@@ -134,6 +134,22 @@ export const sectionById = (id: string) => SECTIONS.find((s) => s.id === id);
 /** Driver employment status. Optional on stored rows — missing/empty means active. */
 export type DriverStatus = "active" | "leave" | "inactive";
 
+/** Management classification (company vs owner operator). Missing → company. Persisted in tracker_sections jsonb. */
+export type DriverClass = "company" | "owner_operator";
+/** Onboarding vs roster. Missing → roster (never auto-mark seed drivers as New). */
+export type RosterKind = "new" | "roster";
+
+export interface ClassHistoryEntry {
+  at: number;
+  from: DriverClass;
+  to: DriverClass;
+}
+export interface RosterHistoryEntry {
+  at: number;
+  from: RosterKind;
+  to: RosterKind;
+}
+
 export interface Row {
   id: string;
   driverId: string;
@@ -146,6 +162,18 @@ export interface Row {
    * when both are missing, treat as active (backward compatible).
    */
   status?: DriverStatus;
+  /**
+   * Management class — Company Driver vs Owner Operator.
+   * Orthogonal to employment Active/Leave/Inactive. Missing = company.
+   * Not a legal exemption; Records `rec_owners` remains a separate document store.
+   */
+  driverClass?: DriverClass;
+  /** Onboarding category. "new" = exclusive New Drivers list. Missing = roster. */
+  rosterKind?: RosterKind;
+  /** Full history of Company ↔ Owner Operator changes (no delete/recreate). */
+  classHistory?: ClassHistoryEntry[];
+  /** History of New ↔ roster (Move to Active / reverse). */
+  rosterHistory?: RosterHistoryEntry[];
 }
 
 /** Parse employment status from a cell or optional Row.status. Empty → active. */

@@ -18,11 +18,15 @@ import {
   suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
+import { listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { printDriverDossier } from "@/lib/driver-dossier";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { ExpirationFilter } from "./ExpirationFilter";
+import { ListScopeFilter } from "./ListScopeFilter";
+import { TempNotesBadge } from "./TempNotesBadge";
+import { DriverManageControls } from "./DriverManageControls";
 
 // The cards read and write the exact same rows as the sections — no copies.
 const CARD_SECTIONS = SECTIONS.filter((s) => s.id !== "inactive");
@@ -38,6 +42,7 @@ interface Driver {
   state: string;
   valid: number;
   total: number;
+  scope: ListScope;
   /** Section/row/col to write employment status from the cards list. */
   statusTarget?: { sectionId: string; rowId: string; col: number };
 }
@@ -55,6 +60,7 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [listScope, setListScope] = useState<ListScope>("company");
   const [exp, setExp] = useState<ExpFilter>("all");
   const view = useViewMode();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -77,14 +83,17 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
             state: "",
             valid: 0,
             total: 0,
+            scope: listScopeOf(data, r.driverId),
           };
           map.set(r.driverId, d);
         }
         // Always refresh status from latest row so toggles apply immediately.
         d.active = rowIsActive(def, r, data);
         d.status = rowDriverStatus(def, r, data);
+        d.scope = listScopeOf(data, r.driverId);
         if (!d.name.trim()) d.name = r.cells[0] ?? "";
-        const muted = rowAlertsMuted(def, r, data);
+        // Issue counts only for ordinary company lists (New/OO have dedicated scopes).
+        const muted = rowAlertsMuted(def, r, data) || d.scope !== "company";
         if (!muted) d.issues += analyzeRow(def, sec.headers, r).issues.length;
         const aidx = def.types.indexOf("active");
         if (aidx >= 0 && !d.statusTarget) d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
@@ -102,17 +111,30 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
     return [...map.values()].sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
   }, [data]);
 
+  const scopeCounts = useMemo(() => {
+    const c: Record<ListScope, number> = { company: 0, owner_operator: 0, new: 0 };
+    for (const d of allDrivers) c[d.scope]++;
+    return c;
+  }, [allDrivers]);
+
   const drivers = useMemo(() => {
     return allDrivers
-      .filter((d) => statusFilter === "all" || d.status === statusFilter)
+      .filter((d) => matchesListScope(data, d.driverId, listScope))
+      // Show all / Active / Leave / Inactive never include New when viewing company or OO.
+      .filter((d) => {
+        if (listScope === "new") return true;
+        if (statusFilter === "all") return true;
+        return d.status === statusFilter;
+      })
       .filter((d) => matchesExpFilter(data, d.driverId, exp))
       .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()));
-  }, [allDrivers, data, q, statusFilter, exp]);
+  }, [allDrivers, data, q, statusFilter, listScope, exp]);
 
   // Quick Find / deep link: clear filters, open sheet, scroll+flash the row.
   useEffect(() => {
     if (!focusDriver) return;
     setStatusFilter("all");
+    setListScope(listScopeOf(data, focusDriver));
     setExp("all");
     setQ("");
     setOpenId(focusDriver);
@@ -145,19 +167,22 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
             aria-label="Search drivers"
           />
         </div>
-        <div className="tracker-filter-group" role="group" aria-label="Driver status filter">
-          {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setStatusFilter(f)}
-              aria-pressed={statusFilter === f}
-              className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
+        <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
+        {listScope !== "new" && (
+          <div className="tracker-filter-group" role="group" aria-label="Driver employment filter">
+            {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setStatusFilter(f)}
+                aria-pressed={statusFilter === f}
+                className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
+              >
+                {f === "all" ? "Show all" : f}
+              </button>
+            ))}
+          </div>
+        )}
         <ExpirationFilter value={exp} onChange={setExp} />
       </div>
       <div className="ui-lift ui-row-hover tracker-table-wrap">
@@ -191,7 +216,20 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
                         {d.name.trim().charAt(0).toUpperCase() || "?"}
                       </div>
                       <div>
-                        <div data-driver-name className="font-extrabold">{d.name.trim() || "—"}</div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <div data-driver-name className="font-extrabold">{d.name.trim() || "—"}</div>
+                          <TempNotesBadge driverId={d.driverId} />
+                          {d.scope === "owner_operator" && (
+                            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
+                              Owner Op
+                            </span>
+                          )}
+                          {d.scope === "new" && (
+                            <span className="rounded-md bg-info/15 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-info uppercase">
+                              New
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-muted-foreground">{d.phone || "—"}</div>
                         {mute && <div className="mt-1 text-xs font-semibold text-warn">{mute}</div>}
                       </div>
@@ -334,6 +372,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
             )}
           </div>
         )}
+        <DriverManageControls driverId={driverId} name={name} />
       </div>
       {mute && (
         <div className="border-b border-warn/30 bg-warn-soft px-6 py-3 text-sm font-bold text-warn" role="status">

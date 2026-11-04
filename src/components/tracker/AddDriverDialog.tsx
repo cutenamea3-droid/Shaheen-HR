@@ -57,7 +57,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
       });
     }
     addDriver(out);
-    toast.success(`${base.name.trim()} added to all sections`);
+    toast.success(`${base.name.trim()} added as New Driver (onboarding) — use Move to Active when ready`);
     onOpenChange(false);
     reset();
   }

@@ -3,17 +3,20 @@ import { Search, Columns3, Info, ChevronUp, Trash2, Pencil, Check, X, Bell, User
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol, suggestApplyPlan } from "@/lib/alerts";
+import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { sectionById } from "@/lib/sections";
 import { addRowForDriver, deleteDriver, patchSection, setCell, setRowHeight, useData } from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { AddDriverDialog } from "./AddDriverDialog";
+import { ListScopeFilter } from "./ListScopeFilter";
+import { TempNotesBadge } from "./TempNotesBadge";
 import { useWorkMode } from "@/lib/workmode";
 import { useViewMode } from "@/lib/viewmode";
 import { setResizeLock, useResizeLock } from "@/lib/resizelock";
 import { Lock, Unlock } from "lucide-react";
 
-type Filter = "all" | "active" | "inactive" | "new";
-const NEW_DAYS = 15;
+/** Employment filter — "Show all" excludes New Drivers (use New scope instead). */
+type Filter = "all" | "active" | "inactive";
 /** The six main sections that must list the same drivers line by line. */
 const CORE = ["dmv", "medical", "queries", "ssccdl", "docs", "info"];
 
@@ -26,9 +29,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   const sec = data.sections[sectionId];
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>(() => defaultFilter(sectionId));
+  const [listScope, setListScope] = useState<ListScope>("company");
   const [alertsOnly, setAlertsOnlyState] = useState(false);
   useEffect(() => {
     setFilter(defaultFilter(sectionId));
+    setListScope("company");
     setAlertsOnlyState(localStorage.getItem(`shaheen-issues-only-${sectionId}`) === "1");
   }, [sectionId]);
   // rows shown under "Only Issues" stay on screen after being fixed, until Refresh
@@ -69,14 +74,20 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
     return m;
   }, [data]);
   const canon = (r: { driverId: string; cells: string[] }) => nameOf.get(r.driverId) ?? (r.cells[0] ?? "").trim();
-  const isNew = (r: { addedAt?: number }) => !!r.addedAt && Date.now() - r.addedAt < NEW_DAYS * 864e5;
-  const newCount = analyzed.filter((a) => isNew(a.row)).length;
+  const scopeCounts = useMemo(() => {
+    const c: Record<ListScope, number> = { company: 0, owner_operator: 0, new: 0 };
+    for (const a of analyzed) c[listScopeOf(data, a.row.driverId)]++;
+    return c;
+  }, [analyzed, data]);
   const rows = analyzed.filter((a) => {
     // reactivated drivers no longer appear in Inactive Drivers
     if (sectionId === "inactive" && a.active) return false;
-    if (filter === "active" && !a.active) return false;
-    if (filter === "inactive" && a.active) return false;
-    if (filter === "new" && !isNew(a.row)) return false;
+    // New Drivers never appear in company/OO employment lists (including Show all).
+    if (!matchesListScope(data, a.row.driverId, listScope)) return false;
+    if (listScope !== "new") {
+      if (filter === "active" && !a.active) return false;
+      if (filter === "inactive" && a.active) return false;
+    }
     if (alertsOnly) {
       if (a.issues.length) keepRef.current.add(a.row.id);
       else if (!keepRef.current.has(a.row.id)) return false;
@@ -95,10 +106,15 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
     if (!CORE.includes(sectionId)) return [];
     const here = new Set([...sec.rows.map((r) => r.driverId), ...(sec.dismissed ?? [])]);
     const out = new Map<string, string>();
-    for (const id of CORE) for (const r of data.sections[id]?.rows ?? []) if (!here.has(r.driverId) && !out.has(r.driverId)) out.set(r.driverId, nameOf.get(r.driverId) ?? r.cells[0]);
+    for (const id of CORE)
+      for (const r of data.sections[id]?.rows ?? []) {
+        if (here.has(r.driverId) || out.has(r.driverId)) continue;
+        if (!matchesListScope(data, r.driverId, listScope)) continue;
+        out.set(r.driverId, nameOf.get(r.driverId) ?? r.cells[0]);
+      }
     return [...out].map(([driverId, name]) => ({ driverId, name }));
-  }, [data, sec, sectionId, nameOf]);
-  const showMissing = filter === "all" && !alertsOnly;
+  }, [data, sec, sectionId, nameOf, listScope]);
+  const showMissing = listScope !== "new" && filter === "all" && !alertsOnly;
   const shownMissing = showMissing ? missing.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.toLowerCase())) : [];
   type Item = { kind: "row"; a: (typeof rows)[number] } | { kind: "missing"; driverId: string; name: string };
   const items: Item[] = [
@@ -111,7 +127,10 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   });
   void keepTick;
   const fixedIds = new Set(alertsOnly ? rows.filter((a) => !a.issues.length).map((a) => a.row.id) : []);
-  const alertCount = analyzed.filter((a) => a.active && a.issues.length).length;
+  // Ordinary "Only Issues" count: company active only (excludes New + Owner Op).
+  const alertCount = analyzed.filter(
+    (a) => a.active && a.issues.length && matchesListScope(data, a.row.driverId, "company"),
+  ).length;
 
   useEffect(() => {
     if (!focusRow) return;
@@ -209,19 +228,22 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
             aria-label={`Search ${def.title}`}
           />
         </div>
-        <div className="tracker-filter-group" role="group" aria-label="Employment filter">
-          {(["all", "active", "inactive", "new"] as Filter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              aria-pressed={filter === f}
-              className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
-            >
-              {f === "all" ? "Show all" : f === "new" ? `New (${newCount})` : f}
-            </button>
-          ))}
-        </div>
+        <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
+        {listScope !== "new" && (
+          <div className="tracker-filter-group" role="group" aria-label="Employment filter">
+            {(["all", "active", "inactive"] as Filter[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
+              >
+                {f === "all" ? "Show all" : f}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
           <button
             type="button"
@@ -443,7 +465,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
               >
                 <td
                   onClick={() => setSel(sel === row.id ? null : row.id)}
-                  title={isNew(row) ? "New driver (added in last 15 days)" : "Click to select this driver's row"}
+                  title={
+                    isNewDriver(data, row.driverId)
+                      ? "New Driver (onboarding) — not in company lists until Move to Active"
+                      : "Click to select this driver's row"
+                  }
                   className={cn(
                     "sticky left-0 z-10 cursor-pointer select-none border-b border-r border-foreground/35 px-2 py-1.5 align-top text-sm font-bold text-foreground", issues.length > 0 ? "bg-danger-row" : "bg-card",
                     issues.length > 0 && "border-l-4 border-l-danger text-danger",
@@ -451,7 +477,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                 >
                   <div className="relative h-full">
                     {ri + 1}
-                    {isNew(row) && <span className="mt-1 block rounded bg-ok-soft px-1 text-[10px] font-bold text-ok">NEW</span>}
+                    {isNewDriver(data, row.driverId) && (
+                      <span className="mt-1 block rounded bg-info/15 px-1 text-[10px] font-bold text-info">NEW</span>
+                    )}
                     {issues.length > 0 && (
                       <span
                         className="tracker-status-dot mt-1 block bg-danger"
@@ -483,8 +511,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                       )}
                     >
                       {t === "name" && (
-                        <span data-driver-name className="flex items-start gap-1.5">
+                        <span data-driver-name className="flex flex-wrap items-start gap-1.5">
                           <EditableText value={v} onSave={save} bold className="text-base" />
+                          <TempNotesBadge driverId={row.driverId} className="mt-0.5" />
                           {fixedIds.has(row.id) && (
                             <span className="mt-1 shrink-0 rounded-md bg-ok-soft px-1.5 py-0.5 text-xs font-bold text-ok">Fixed ✓</span>
                           )}
