@@ -247,12 +247,15 @@
   .app-switcher { display: none !important; }
   .tracker-no-print,
   .no-print { display: none !important; }
-  .dot-audit-actions { display: none !important; }
-  .dot-audit-print {
+  .dot-audit-actions,
+  .dossier-actions { display: none !important; }
+  .dot-audit-print,
+  .dossier-print {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .dot-audit-header {
+  .dot-audit-header,
+  .dossier-header {
     display: flex;
     align-items: center;
     gap: 12px;
