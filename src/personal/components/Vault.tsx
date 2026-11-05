@@ -16,6 +16,7 @@ import {
   PERSONAL_STORAGE_KEY,
 } from "@/personal/lib/defaults";
 import { todayKey, usePersonal } from "@/personal/lib/store";
+import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
 function subscribeNav(cb: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -235,19 +236,14 @@ export function Vault() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Theme">
-            <select
-              className="hp-field"
-              value={settings.theme}
-              onChange={(e) =>
-                setSettings({ theme: e.target.value as "dark" | "light" })
-              }
-            >
-              <option value="dark">Dark premium</option>
-              <option value="light">Light</option>
-            </select>
-          </Field>
+        <div className="mb-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--hp-muted)]">
+            Appearance
+          </div>
+          <ThemeToggle />
+          <p className="mt-2 text-xs text-[var(--hp-muted)]">
+            Mixed-color enterprise theme — violet / blue / teal accents. Never company orange.
+          </p>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">

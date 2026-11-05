@@ -1222,54 +1222,109 @@ body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.personal-theme)) {
   background-color: var(--brand-soft-white, #F7F8FA);
 }
 
-/* —— HR Personal (isolated study workspace; no company brand tokens) —— */
+/* —— HR Personal (isolated; violet/blue/teal — never company orange) —— */
 html:has(.personal-theme) {
   font-size: 16px;
 }
-body:has(.personal-theme) {
-  background-color: #0b1220;
-}
+/* Shared accent tokens */
 .personal-theme {
-  --hp-bg: #0b1220;
-  --hp-elevated: #172238;
-  --hp-sidebar: #0f172a;
   --hp-violet: #8b5cf6;
+  --hp-violet-soft: #c4b5fd;
   --hp-teal: #2dd4bf;
-  --hp-blue: #60a5fa;
-  --hp-amber: #fbbf24;
-  --hp-ink: #f4f7ff;
-  --hp-muted: #94a3b8;
-  --hp-border: color-mix(in srgb, #94a3b8 28%, #172238);
+  --hp-blue: #3b82f6;
+  --hp-blue-bright: #60a5fa;
+  --hp-amber: #f59e0b;
   --radius: 0.35rem;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, color-mix(in srgb, #8b5cf6 22%, transparent), transparent 60%),
-    radial-gradient(900px 420px at 90% 0%, color-mix(in srgb, #2dd4bf 12%, transparent), transparent 55%),
-    var(--hp-bg);
-  color: var(--hp-ink);
   min-height: calc(100vh - 44px);
   font-family: Manrope, ui-sans-serif, sans-serif;
+  color: var(--hp-ink);
+  background:
+    radial-gradient(1100px 480px at 8% -8%, color-mix(in srgb, var(--hp-violet) var(--hp-glow-a), transparent), transparent 58%),
+    radial-gradient(900px 420px at 92% 0%, color-mix(in srgb, var(--hp-teal) var(--hp-glow-b), transparent), transparent 55%),
+    radial-gradient(700px 360px at 70% 100%, color-mix(in srgb, var(--hp-blue) var(--hp-glow-c), transparent), transparent 50%),
+    var(--hp-bg);
 }
 .personal-theme .hp-title {
   font-family: Sora, Manrope, ui-sans-serif, sans-serif;
+  letter-spacing: -0.02em;
 }
-.personal-theme .hp-light {
-  --hp-bg: #f4f7ff;
+
+/* Dark — navy/charcoal canvas, elevated cards, crisp white ink */
+.personal-theme[data-hp-theme="dark"],
+.personal-theme:not([data-hp-theme]) {
+  --hp-bg: #0f172a;
+  --hp-elevated: #1e293b;
+  --hp-sidebar: #111827;
+  --hp-ink: #f8fafc;
+  --hp-muted: #94a3b8;
+  --hp-border: color-mix(in srgb, #94a3b8 22%, #1e293b);
+  --hp-shadow: 0 12px 32px -20px rgb(0 0 0 / 0.7);
+  --hp-hero-bg: #0b1220;
+  --hp-login-canvas: #1e293b;
+  --hp-login-card: #f8fafc;
+  --hp-login-ink: #0f172a;
+  --hp-login-muted: #475569;
+  --hp-danger-fg: #fca5a5;
+  --hp-glow-a: 24%;
+  --hp-glow-b: 12%;
+  --hp-glow-c: 10%;
+}
+body:has(.personal-theme[data-hp-theme="dark"]),
+body:has(.personal-theme:not([data-hp-theme])) {
+  background-color: #0f172a;
+}
+
+/* Light — soft white/gray canvas, white cards, charcoal text */
+.personal-theme[data-hp-theme="light"] {
+  --hp-bg: #f1f5f9;
   --hp-elevated: #ffffff;
-  --hp-sidebar: #eef2ff;
-  --hp-ink: #0b1220;
+  --hp-sidebar: #ffffff;
+  --hp-ink: #0f172a;
   --hp-muted: #64748b;
-  --hp-border: color-mix(in srgb, #0b1220 12%, #e2e8f0);
-  background:
-    radial-gradient(1000px 420px at 0% 0%, color-mix(in srgb, #8b5cf6 12%, transparent), transparent 55%),
-    var(--hp-bg);
-  color: var(--hp-ink);
+  --hp-border: color-mix(in srgb, #0f172a 10%, #e2e8f0);
+  --hp-shadow: 0 10px 28px -18px rgb(15 23 42 / 0.22);
+  --hp-hero-bg: #0b1220;
+  --hp-login-canvas: #e8eef5;
+  --hp-login-card: #ffffff;
+  --hp-login-ink: #0f172a;
+  --hp-login-muted: #64748b;
+  --hp-danger-fg: #b91c1c;
+  --hp-glow-a: 10%;
+  --hp-glow-b: 8%;
+  --hp-glow-c: 6%;
 }
+body:has(.personal-theme[data-hp-theme="light"]) {
+  background-color: #f1f5f9;
+}
+
 .personal-theme .hp-panel {
   border: 1px solid var(--hp-border);
   border-radius: 0.35rem;
-  background: color-mix(in srgb, var(--hp-elevated) 92%, black);
+  background: var(--hp-elevated);
   padding: 1.05rem 1.15rem;
-  box-shadow: 0 10px 30px -22px rgb(0 0 0 / 0.65);
+  box-shadow: var(--hp-shadow);
+}
+.personal-theme[data-hp-theme="dark"] .hp-panel {
+  background: color-mix(in srgb, var(--hp-elevated) 94%, #0b1220);
+}
+.personal-theme .hp-login-split {
+  min-height: calc(100vh - 44px);
+}
+.personal-theme .hp-login-hero {
+  background-color: var(--hp-hero-bg);
+  color: #f8fafc;
+}
+.personal-theme .hp-login-aside {
+  background: var(--hp-login-canvas);
+}
+.personal-theme .hp-login-card {
+  border: 1px solid color-mix(in srgb, #0f172a 10%, #e2e8f0);
+  background: var(--hp-login-card);
+  color: var(--hp-login-ink);
+  box-shadow: 0 20px 50px -34px rgb(15 23 42 / 0.45);
+}
+.personal-theme .hp-login-card .hp-login-muted {
+  color: var(--hp-login-muted);
 }
 .personal-theme .hp-login-input {
   display: block;
@@ -1281,25 +1336,17 @@ body:has(.personal-theme) {
   padding: 0 0.8rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0b1220;
+  color: #0f172a;
   outline: none;
 }
 .personal-theme .hp-login-input:focus {
-  border-color: #8b5cf6;
+  border-color: var(--hp-violet);
   box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 26%, transparent);
-  background: #fff;
-}
-.personal-theme .hp-login-split {
-  min-height: calc(100vh - 44px);
 }
 @media (max-width: 1023px) {
   .personal-theme .hp-login-split > section:first-child {
     min-height: auto;
   }
-}
-.personal-theme .hp-light .hp-panel {
-  background: var(--hp-elevated);
-  box-shadow: 0 8px 24px -18px rgb(15 23 42 / 0.35);
 }
 .personal-theme .hp-field {
   display: block;
@@ -1307,12 +1354,15 @@ body:has(.personal-theme) {
   height: 2.5rem;
   border-radius: 0.35rem;
   border: 1.5px solid var(--hp-border);
-  background: color-mix(in srgb, var(--hp-bg) 70%, var(--hp-elevated));
+  background: color-mix(in srgb, var(--hp-bg) 55%, var(--hp-elevated));
   padding: 0 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--hp-ink);
   outline: none;
+}
+.personal-theme[data-hp-theme="light"] .hp-field {
+  background: #ffffff;
 }
 .personal-theme .hp-field:focus {
   border-color: var(--hp-violet);
@@ -1324,7 +1374,8 @@ body:has(.personal-theme) {
 .personal-theme .hp-btn-primary,
 .personal-theme .hp-btn-ghost,
 .personal-theme .hp-btn-danger,
-.personal-theme .hp-btn-teal {
+.personal-theme .hp-btn-teal,
+.personal-theme .hp-btn-blue {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -1341,10 +1392,17 @@ body:has(.personal-theme) {
 .personal-theme .hp-btn-primary:hover {
   filter: brightness(1.06);
 }
+.personal-theme .hp-btn-blue {
+  background: var(--hp-blue);
+  color: #fff;
+}
 .personal-theme .hp-btn-teal {
-  background: color-mix(in srgb, var(--hp-teal) 22%, transparent);
-  color: var(--hp-teal);
+  background: color-mix(in srgb, var(--hp-teal) 18%, transparent);
+  color: color-mix(in srgb, var(--hp-teal) 70%, var(--hp-ink));
   border: 1px solid color-mix(in srgb, var(--hp-teal) 45%, transparent);
+}
+.personal-theme[data-hp-theme="dark"] .hp-btn-teal {
+  color: var(--hp-teal);
 }
 .personal-theme .hp-btn-ghost {
   background: transparent;
@@ -1356,12 +1414,13 @@ body:has(.personal-theme) {
   border-color: color-mix(in srgb, var(--hp-violet) 45%, var(--hp-border));
 }
 .personal-theme .hp-btn-danger {
-  background: color-mix(in srgb, #ef4444 18%, transparent);
-  color: #fca5a5;
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+  color: var(--hp-danger-fg);
   border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
 }
 .personal-theme .hp-btn-primary:disabled,
-.personal-theme .hp-btn-teal:disabled {
+.personal-theme .hp-btn-teal:disabled,
+.personal-theme .hp-btn-blue:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -1369,10 +1428,48 @@ body:has(.personal-theme) {
   display: flex;
   flex-direction: column;
 }
+.personal-theme[data-hp-theme="light"] .hp-sidebar {
+  box-shadow: 1px 0 0 var(--hp-border);
+}
+.personal-theme .hp-nav-idle:hover {
+  background: color-mix(in srgb, var(--hp-violet) 8%, transparent);
+  color: var(--hp-ink);
+}
+.personal-theme[data-hp-theme="light"] .hp-nav-idle:hover {
+  background: color-mix(in srgb, var(--hp-violet) 10%, #f8fafc);
+}
 @media (min-width: 1024px) {
   .personal-theme .personal-shell {
     min-height: calc(100vh - 44px);
   }
+}
+
+/* Personal AppSwitcher theming (outside .personal-theme in DOM; driven by html[data-hp-theme]) */
+.app-switcher[data-hp-switcher="personal"] {
+  --hp-sw-violet: #8b5cf6;
+  --hp-sw-teal: #2dd4bf;
+  --hp-sw-soft: #c4b5fd;
+}
+html[data-hp-theme="dark"] .app-switcher[data-hp-switcher="personal"],
+html:not([data-hp-theme]) .app-switcher[data-hp-switcher="personal"] {
+  background: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+html[data-hp-theme="light"] .app-switcher[data-hp-switcher="personal"] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html[data-hp-theme="light"] .app-switcher[data-hp-switcher="personal"] .hp-sw-brand {
+  color: #0f172a !important;
+}
+html[data-hp-theme="light"] .app-switcher[data-hp-switcher="personal"] .hp-sw-sub {
+  color: #64748b !important;
+}
+html[data-hp-theme="light"] .app-switcher[data-hp-switcher="personal"] nav {
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
 }
 /* Admin form labels — consistent weight/contrast */
 .admin-theme .lbl {

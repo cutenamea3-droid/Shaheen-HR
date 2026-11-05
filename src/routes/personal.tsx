@@ -19,9 +19,5 @@ export const Route = createFileRoute("/personal")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  component: () => (
-    <div className="personal-theme">
-      <PersonalApp />
-    </div>
-  ),
+  component: () => <PersonalApp />,
 });

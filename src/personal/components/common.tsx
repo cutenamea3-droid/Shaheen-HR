@@ -50,7 +50,9 @@ export function Stat({
           ? "border-[var(--hp-amber)]/35"
           : "border-[var(--hp-violet)]/35";
   return (
-    <div className={`hp-stat rounded-md border ${ring} bg-[var(--hp-elevated)] p-3 sm:p-4`}>
+    <div
+      className={`hp-stat rounded-md border ${ring} bg-[var(--hp-elevated)] p-3 shadow-[var(--hp-shadow)] sm:p-4`}
+    >
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--hp-muted)]">
         {label}
       </div>

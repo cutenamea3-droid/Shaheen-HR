@@ -65,10 +65,10 @@ export function AppSwitcher() {
       <div className="min-w-0 leading-tight">
         {isPersonal ? (
           <>
-            <span className="hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
+            <span className="hp-sw-brand hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
               HR Personal
             </span>
-            <span className="ml-2 hidden text-[11px] font-semibold text-[#94A3B8] lg:inline">
+            <span className="hp-sw-sub ml-2 hidden text-[11px] font-semibold text-[#94A3B8] lg:inline">
               Private study
             </span>
           </>
