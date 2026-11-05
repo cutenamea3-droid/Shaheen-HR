@@ -1,24 +1,6 @@
-import { useSyncExternalStore } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Brain, FileCheck2, UsersRound } from "lucide-react";
-import { isPersonalNavVisible, PERSONAL_NAV_KEY } from "@/personal/lib/access";
-
-function subscribeNav(cb: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const handler = (e: StorageEvent) => {
-    if (!e.key || e.key === PERSONAL_NAV_KEY) cb();
-  };
-  window.addEventListener("storage", handler);
-  window.addEventListener("hp-nav-change", cb as EventListener);
-  return () => {
-    window.removeEventListener("storage", handler);
-    window.removeEventListener("hp-nav-change", cb as EventListener);
-  };
-}
-
-function readNav(): boolean {
-  return isPersonalNavVisible();
-}
+import { shouldShowPersonalSwitcherLink } from "@/personal/lib/access";
 
 /** Top bar that switches between separate systems. Each keeps its own data. */
 export function AppSwitcher() {
@@ -27,16 +9,13 @@ export function AppSwitcher() {
   const isPersonal = pathname.startsWith("/personal");
   const isCv = pathname === "/cv";
   const isDriver = !isAdmin && !isPersonal && !isCv;
-  const navEnabled = useSyncExternalStore(subscribeNav, readNav, () => false);
-  /** Show Personal link only when already on route or owner opted-in (local flag). */
-  const showPersonal = isPersonal || navEnabled;
+  /** Ordinary company users never see Personal; only while already on /personal. */
+  const showPersonal = shouldShowPersonalSwitcherLink(isPersonal);
 
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
-  /** Company systems keep brand orange when active. */
   const companyOn = "bg-primary text-primary-foreground shadow-sm";
   const companyOff = "text-muted-foreground hover:bg-muted hover:text-foreground";
-  /** HR Personal uses violet / teal palette — never company orange. */
   const personalOn = "bg-[#8B5CF6] text-[#F4F7FF] shadow-sm";
   const personalOff = isPersonal
     ? "text-[#94A3B8] hover:bg-[#8B5CF6]/20 hover:text-[#C4B5FD]"
@@ -64,14 +43,9 @@ export function AppSwitcher() {
       )}
       <div className="min-w-0 leading-tight">
         {isPersonal ? (
-          <>
-            <span className="hp-sw-brand hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
-              HR Personal
-            </span>
-            <span className="hp-sw-sub ml-2 hidden text-[11px] font-semibold text-[#94A3B8] lg:inline">
-              Private study
-            </span>
-          </>
+          <span className="hp-sw-brand hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
+            HR Personal
+          </span>
         ) : (
           <>
             <span className="hidden font-display text-[13px] font-bold tracking-tight text-foreground sm:inline">

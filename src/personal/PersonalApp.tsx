@@ -1,63 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  BookOpen,
-  Brain,
-  CalendarRange,
-  ClipboardList,
-  Gauge,
-  LayoutDashboard,
-  ListTodo,
-  Lock,
-  LogOut,
-  NotebookPen,
-  Timer,
-  Vault as VaultIcon,
-} from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Lock } from "lucide-react";
 import {
   clearPersonalSession,
-  hasPersonalPassword,
+  hasPersonalCredentials,
   readPersonalSession,
-  setPersonalPassword,
-  verifyPersonalPassword,
+  setPersonalCredentials,
+  verifyPersonalCredentials,
   writePersonalSession,
 } from "@/personal/lib/auth";
 import { usePersonal, whenPersonalHydrated } from "@/personal/lib/store";
-import { Overview } from "@/personal/components/Overview";
-import { Courses } from "@/personal/components/Courses";
-import { Backlog } from "@/personal/components/Backlog";
-import { Timetable } from "@/personal/components/Timetable";
-import { Assessments } from "@/personal/components/Assessments";
-import { Focus } from "@/personal/components/Focus";
-import { Notes } from "@/personal/components/Notes";
-import { Analytics } from "@/personal/components/Analytics";
-import { Vault } from "@/personal/components/Vault";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
-const TABS = [
-  ["overview", "Overview", Overview, LayoutDashboard],
-  ["courses", "Courses", Courses, BookOpen],
-  ["backlog", "Backlog", Backlog, ListTodo],
-  ["timetable", "Timetable", Timetable, CalendarRange],
-  ["assessments", "Assessments", Assessments, ClipboardList],
-  ["focus", "Focus", Focus, Timer],
-  ["notes", "Notes", Notes, NotebookPen],
-  ["analytics", "Analytics", Analytics, Gauge],
-  ["vault", "Vault", Vault, VaultIcon],
-] as const;
-
-type TabId = (typeof TABS)[number][0];
+/** Study workspace loads only after successful auth — keeps unauth shell free of study UI. */
+const PersonalWorkspace = lazy(() =>
+  import("@/personal/PersonalWorkspace").then((m) => ({ default: m.PersonalWorkspace })),
+);
 
 function LoginGate({ onAuthed }: { onAuthed: () => void }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(() =>
-    typeof window === "undefined" ? true : !hasPersonalPassword(),
+    typeof window === "undefined" ? true : !hasPersonalCredentials(),
   );
-  const pwRef = useRef<HTMLInputElement>(null);
-  const pw2Ref = useRef<HTMLInputElement>(null);
+  const loginRef = useRef<HTMLInputElement>(null);
+  const passRef = useRef<HTMLInputElement>(null);
+  const pass2Ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setNeedsSetup(!hasPersonalPassword());
+    setNeedsSetup(!hasPersonalCredentials());
   }, []);
 
   return (
@@ -68,57 +38,24 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
           aria-hidden
           style={{
             background:
-              "radial-gradient(820px 480px at 12% 8%, rgba(139,92,246,0.38), transparent 58%), radial-gradient(640px 380px at 88% 78%, rgba(45,212,191,0.16), transparent 52%), radial-gradient(500px 300px at 60% 40%, rgba(59,130,246,0.12), transparent 50%)",
+              "radial-gradient(820px 480px at 12% 8%, rgba(139,92,246,0.32), transparent 58%), radial-gradient(640px 380px at 88% 78%, rgba(45,212,191,0.12), transparent 52%), radial-gradient(500px 300px at 60% 40%, rgba(59,130,246,0.10), transparent 50%)",
           }}
         />
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-1">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8B5CF6] text-[10px] font-bold text-white">
-                HP
-              </span>
-              <span className="hp-title text-sm font-bold tracking-tight text-[#F8FAFC]">
-                HR Personal
-              </span>
-            </div>
-            <span className="rounded-md border border-[#F59E0B]/35 bg-[#F59E0B]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FBBF24]">
-              Prototype · local PIN
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-1">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8B5CF6] text-[10px] font-bold text-white">
+              HP
             </span>
+            <span className="hp-title text-sm font-bold tracking-tight text-[#F8FAFC]">HR Personal</span>
           </div>
         </div>
-        <div className="relative z-10 max-w-xl space-y-4 py-10 lg:py-14">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2DD4BF]">
-            Plan. Focus. Progress.
-          </p>
-          <h1 className="hp-title text-[2.15rem] font-bold leading-[1.05] tracking-tight text-[#F8FAFC] sm:text-5xl lg:text-[3.15rem]">
-            Your future, under control.
+        <div className="relative z-10 max-w-md py-16 lg:py-24">
+          <h1 className="hp-title text-[2.35rem] font-bold leading-[1.08] tracking-tight text-[#F8FAFC] sm:text-5xl">
+            Welcome back
           </h1>
-          <p className="max-w-md text-[13px] leading-relaxed text-[#94A3B8] sm:text-sm">
-            Private study command for VU BS IT — isolated from company systems. No invented grades.
-            No company records in this workspace.
-          </p>
-          <ul className="mt-6 grid gap-2.5 sm:grid-cols-3">
-            {[
-              { icon: Brain, label: "Study Planning", tone: "#8B5CF6" },
-              { icon: Timer, label: "Deep Focus", tone: "#2DD4BF" },
-              { icon: Gauge, label: "Academic Progress", tone: "#60A5FA" },
-            ].map(({ icon: Icon, label, tone }) => (
-              <li
-                key={label}
-                className="rounded-md border border-white/10 bg-[#172238]/80 px-3 py-2.5 backdrop-blur"
-              >
-                <Icon className="mb-1.5 h-4 w-4" style={{ color: tone }} />
-                <div className="text-[11px] font-bold tracking-wide text-[#F8FAFC] sm:text-xs">
-                  {label}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-4 text-sm leading-relaxed text-[#94A3B8]">Sign in to continue</p>
         </div>
-        <p className="relative z-10 max-w-md text-[11px] leading-relaxed text-[#94A3B8]">
-          Not real server auth. Hashed device PIN in this browser only — anyone with the device can
-          still inspect local data.
-        </p>
+        <div className="relative z-10 h-4" aria-hidden />
       </section>
 
       <section className="hp-login-aside relative flex items-center justify-center px-4 py-10 sm:px-8 lg:px-12">
@@ -133,26 +70,25 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             setBusy(true);
             setErr("");
             const fd = new FormData(e.currentTarget);
-            const pw = String(fd.get("password") ?? pwRef.current?.value ?? "");
-            const pw2 = String(fd.get("password2") ?? pw2Ref.current?.value ?? "");
+            const login = String(fd.get("login") ?? loginRef.current?.value ?? "");
+            const password = String(fd.get("password") ?? passRef.current?.value ?? "");
+            const password2 = String(fd.get("password2") ?? pass2Ref.current?.value ?? "");
             try {
-              const { revealPersonalNavForOwner } = await import("@/personal/lib/access");
               if (needsSetup) {
-                if (pw.length < 4) throw new Error("Use at least 4 characters for your PIN.");
-                if (pw !== pw2) throw new Error("PINs do not match.");
-                await setPersonalPassword(pw);
-                writePersonalSession();
-                revealPersonalNavForOwner();
+                if (!login.trim()) throw new Error("Invalid credentials.");
+                if (password.length < 4) throw new Error("Invalid credentials.");
+                if (password !== password2) throw new Error("Invalid credentials.");
+                await setPersonalCredentials(login, password);
+                writePersonalSession(login);
                 onAuthed();
                 return;
               }
-              const ok = await verifyPersonalPassword(pw);
-              if (!ok) throw new Error("Incorrect PIN.");
-              writePersonalSession();
-              revealPersonalNavForOwner();
+              const ok = await verifyPersonalCredentials(login, password);
+              if (!ok) throw new Error("Invalid credentials.");
+              writePersonalSession(login);
               onAuthed();
-            } catch (ex) {
-              setErr(ex instanceof Error ? ex.message : "Unlock failed.");
+            } catch {
+              setErr("Invalid credentials.");
             } finally {
               setBusy(false);
             }
@@ -162,26 +98,33 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             <div className="flex items-center gap-2 text-[var(--hp-violet)]">
               <Lock className="h-4 w-4 shrink-0" />
               <span className="text-[13px] font-bold tracking-wide">
-                {needsSetup ? "Create device PIN" : "Unlock HR Personal"}
+                {needsSetup ? "Create sign-in" : "Sign in"}
               </span>
             </div>
-            <p className="hp-login-muted text-[12px] leading-relaxed">
-              <span className="font-semibold text-[var(--hp-login-ink)]">Prototype gate</span> —
-              SHA-256 hash in <code className="text-[11px]">localStorage</code>, not an account
-              password. Never put real credentials in the repo or{" "}
-              <code className="text-[11px]">VITE_*</code>.
-            </p>
+            <p className="hp-login-muted text-[12px] leading-relaxed">Sign in to continue</p>
           </div>
           <label className="block space-y-1.5">
             <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
-              Device PIN
+              Username or email
             </span>
             <input
-              ref={pwRef}
+              ref={loginRef}
+              className="hp-login-input"
+              name="login"
+              type="text"
+              autoComplete="username"
+              required
+            />
+          </label>
+          <label className="block space-y-1.5">
+            <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
+              Password
+            </span>
+            <input
+              ref={passRef}
               className="hp-login-input"
               name="password"
               type="password"
-              inputMode="text"
               autoComplete={needsSetup ? "new-password" : "current-password"}
               required
             />
@@ -189,10 +132,10 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
           {needsSetup ? (
             <label className="block space-y-1.5">
               <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
-                Confirm PIN
+                Confirm password
               </span>
               <input
-                ref={pw2Ref}
+                ref={pass2Ref}
                 className="hp-login-input"
                 name="password2"
                 type="password"
@@ -207,12 +150,8 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             disabled={busy}
             className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--hp-violet)] px-4 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-55"
           >
-            {busy ? "…" : needsSetup ? "Save PIN & enter" : "Enter workspace"}
+            {busy ? "…" : "Sign In"}
           </button>
-          <p className="hp-login-muted text-[11px] leading-relaxed">
-            Safest next step: dedicated Personal account + httpOnly server session on a separate
-            backend — never company Admin/Driver tables.
-          </p>
         </form>
       </section>
     </div>
@@ -223,9 +162,7 @@ export function PersonalApp() {
   const authed = usePersonal((s) => s.authed);
   const setAuthed = usePersonal((s) => s.setAuthed);
   const settings = usePersonal((s) => s.settings);
-  const [tab, setTab] = useState<TabId>("overview");
   const [ready, setReady] = useState(false);
-  const [navOpen, setNavOpen] = useState(false);
   const theme = settings.theme === "light" ? "light" : "dark";
 
   useEffect(() => {
@@ -242,114 +179,30 @@ export function PersonalApp() {
     };
   }, [theme]);
 
-  const Active = useMemo(() => TABS.find((t) => t[0] === tab)?.[2] ?? Overview, [tab]);
-
   return (
     <div className="personal-theme" data-hp-theme={theme}>
       {!ready ? (
         <div className="flex min-h-[calc(100vh-44px)] items-center justify-center text-sm text-[var(--hp-muted)]">
-          Loading personal workspace…
+          Loading…
         </div>
       ) : !authed ? (
         <LoginGate onAuthed={() => setAuthed(true)} />
       ) : (
-        <div className="personal-shell flex min-h-[calc(100vh-44px)]">
-          <aside
-            className={`hp-sidebar fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-[var(--hp-border)] bg-[var(--hp-sidebar)] pt-[44px] transition lg:static lg:h-auto lg:translate-x-0 lg:pt-0 ${
-              navOpen ? "translate-x-0" : ""
-            }`}
-          >
-            <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--hp-border)] px-4">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[var(--hp-violet)] text-sm font-bold text-white">
-                HP
-              </span>
-              <div className="min-w-0 leading-tight">
-                <div className="hp-title truncate text-sm font-bold text-[var(--hp-ink)]">
-                  HR Personal
-                </div>
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--hp-muted)]">
-                  Study command
-                </div>
-              </div>
+        <Suspense
+          fallback={
+            <div className="flex min-h-[calc(100vh-44px)] items-center justify-center text-sm text-[var(--hp-muted)]">
+              Loading…
             </div>
-            <nav className="min-h-0 flex-1 space-y-0.5 overflow-auto p-2" aria-label="HR Personal">
-              {TABS.map(([id, label, , Icon]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    setTab(id);
-                    setNavOpen(false);
-                  }}
-                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition ${
-                    tab === id
-                      ? "bg-[var(--hp-violet)] text-white shadow-sm"
-                      : "hp-nav-idle text-[var(--hp-muted)]"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                </button>
-              ))}
-            </nav>
-            <div className="shrink-0 space-y-2 border-t border-[var(--hp-border)] p-3">
-              <ThemeToggle compact />
-              <button
-                type="button"
-                data-testid="hp-lock"
-                className="hp-nav-idle flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-[var(--hp-muted)]"
-                onClick={() => {
-                  clearPersonalSession();
-                  usePersonal.setState({ authed: false });
-                  setAuthed(false);
-                }}
-              >
-                <LogOut className="h-4 w-4" /> Lock workspace
-              </button>
-            </div>
-          </aside>
-
-          {navOpen ? (
-            <button
-              type="button"
-              aria-label="Close menu"
-              className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-              onClick={() => setNavOpen(false)}
-            />
-          ) : null}
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-[var(--hp-border)] bg-[color-mix(in_srgb,var(--hp-bg)_88%,transparent)] px-3 backdrop-blur sm:px-5">
-              <button
-                type="button"
-                className="hp-btn-ghost lg:hidden"
-                onClick={() => setNavOpen(true)}
-              >
-                Menu
-              </button>
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--hp-muted)]">
-                  {settings.semester}
-                </div>
-                <h1 className="hp-title truncate text-base font-bold text-[var(--hp-ink)] sm:text-lg">
-                  {TABS.find((t) => t[0] === tab)?.[1] ?? "Overview"}
-                </h1>
-              </div>
-              <div className="ml-auto flex items-center gap-3">
-                <div className="hidden text-right text-xs text-[var(--hp-muted)] sm:block">
-                  <div className="font-semibold text-[var(--hp-ink)]">{settings.program}</div>
-                  <div>
-                    Mon–Sat {settings.weekdayMinutes}m · Sun {settings.sundayMinutes}m
-                  </div>
-                </div>
-                <ThemeToggle />
-              </div>
-            </header>
-            <main className="flex-1 overflow-auto p-3 sm:p-5">
-              <Active />
-            </main>
-          </div>
-        </div>
+          }
+        >
+          <PersonalWorkspace
+            onLock={() => {
+              clearPersonalSession();
+              usePersonal.setState({ authed: false });
+              setAuthed(false);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

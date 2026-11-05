@@ -18,11 +18,7 @@ import {
   modeLabel,
   STUDY_MODE_MINUTES,
 } from "@/personal/lib/schedule";
-import {
-  isPersonalNavVisible,
-  setPersonalNavVisible,
-  PERSONAL_NAV_KEY,
-} from "@/personal/lib/access";
+import { shouldShowPersonalSwitcherLink } from "@/personal/lib/access";
 
 describe("HR Personal isolation", () => {
   it("serves the personal workspace at /personal", () => {
@@ -64,11 +60,9 @@ describe("HR Personal isolation", () => {
     expect(RESCUE_MINUTES).toBe(20);
     expect(STUDY_MODE_MINUTES).toEqual({ normal: 120, busy: 45, rescue: 20 });
 
-    // 2026-11-08 is a Sunday
     expect(isSundayIso("2026-11-08")).toBe(true);
     expect(modeBudgetMinutes("normal", "2026-11-08", s)).toBe(270);
     expect(modeLabel("normal", "2026-11-08")).toBe("Sunday Recovery Mission");
-    // 2026-11-09 is a Monday
     expect(isSundayIso("2026-11-09")).toBe(false);
     expect(modeBudgetMinutes("normal", "2026-11-09", s)).toBe(120);
     expect(modeBudgetMinutes("busy", "2026-11-08", s)).toBe(45);
@@ -82,13 +76,8 @@ describe("HR Personal isolation", () => {
     expect(migrated.theme).toBe("light");
   });
 
-  it("keeps Personal switcher hidden until local opt-in (UX only, not server ACL)", () => {
-    expect(PERSONAL_NAV_KEY).toBe("hr-personal-nav-visible-v1");
-    localStorage.removeItem(PERSONAL_NAV_KEY);
-    expect(isPersonalNavVisible()).toBe(false);
-    setPersonalNavVisible(true);
-    expect(isPersonalNavVisible()).toBe(true);
-    setPersonalNavVisible(false);
-    expect(isPersonalNavVisible()).toBe(false);
+  it("never shows Personal switcher to ordinary company users", () => {
+    expect(shouldShowPersonalSwitcherLink(false)).toBe(false);
+    expect(shouldShowPersonalSwitcherLink(true)).toBe(true);
   });
 });

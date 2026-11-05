@@ -1,16 +1,13 @@
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import {
   clearPersonalSession,
-  hasPersonalPassword,
-  setPersonalPassword,
+  hasPersonalCredentials,
+  setPersonalCredentials,
   PERSONAL_AUTH_KEYS,
+  readPersonalSessionLogin,
 } from "@/personal/lib/auth";
-import {
-  isPersonalNavVisible,
-  PERSONAL_NAV_KEY,
-  setPersonalNavVisible,
-} from "@/personal/lib/access";
+import { PERSONAL_NAV_KEY } from "@/personal/lib/access";
 import {
   FORBIDDEN_COMPANY_KEYS,
   PERSONAL_STORAGE_KEY,
@@ -18,46 +15,19 @@ import {
 import { todayKey, usePersonal } from "@/personal/lib/store";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
-function subscribeNav(cb: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const onStorage = (e: StorageEvent) => {
-    if (!e.key || e.key === PERSONAL_NAV_KEY) cb();
-  };
-  window.addEventListener("storage", onStorage);
-  window.addEventListener("hp-nav-change", cb as EventListener);
-  return () => {
-    window.removeEventListener("storage", onStorage);
-    window.removeEventListener("hp-nav-change", cb as EventListener);
-  };
-}
-
 /**
  * Vault covers truncated Feature 8+ items from the original brief:
  * discipline dashboard, privacy/auth isolation, and reserved slots for follow-up.
  */
 function AccessNavControls() {
-  const visible = useSyncExternalStore(subscribeNav, isPersonalNavVisible, () => false);
   return (
     <div className="mb-4 rounded-md border border-[var(--hp-violet)]/35 bg-[var(--hp-violet)]/10 p-3 text-sm">
-      <div className="font-semibold text-[var(--hp-violet)]">AppSwitcher visibility</div>
+      <div className="font-semibold text-[var(--hp-violet)]">Company switcher policy</div>
       <p className="mt-1 text-xs text-[var(--hp-muted)]">
-        Ordinary company users do not see the HR Personal tab until this device opts in (or you open{" "}
-        <code>/personal</code> directly). This is UX obscurity only — not access control against
-        hosting/repo admins.
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Btn
-          variant={visible ? "teal" : "ghost"}
-          onClick={() => setPersonalNavVisible(true)}
-        >
-          Show in switcher
-        </Btn>
-        <Btn variant={!visible ? "teal" : "ghost"} onClick={() => setPersonalNavVisible(false)}>
-          Hide from company switcher
-        </Btn>
-      </div>
-      <p className="mt-2 text-[11px] text-[var(--hp-muted)]">
-        Status: {visible ? "visible on this browser" : "hidden for company switcher (route still works)"}
+        HR Personal is <strong className="text-[var(--hp-ink)]">never</strong> shown in the company
+        AppSwitcher for ordinary users. The Personal tab appears only while you are already on{" "}
+        <code>/personal</code>. Bookmark the URL to return. This is UX obscurity — not server ACL.
+        Hosting/repo admins who know the path can still open it.
       </p>
     </div>
   );
@@ -190,8 +160,9 @@ export function Vault() {
               <li>No company Admin / Driver credentials reused</li>
               <li>Anyone with device + DevTools can read study data and clear/replace the PIN hash</li>
               <li>
-                Hiding the AppSwitcher link does <strong className="text-[var(--hp-ink)]">not</strong>{" "}
-                hide <code>/personal</code> from hosting/repo admins or anyone who knows the URL
+                Company switcher hide does <strong className="text-[var(--hp-ink)]">not</strong>{" "}
+                block <code>/personal</code> for hosting/repo admins or anyone with the URL — SPA
+                cannot enforce true server ACL without a Personal backend
               </li>
             </ul>
           </div>
@@ -247,7 +218,7 @@ export function Vault() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={hasPersonalPassword() ? "Change device PIN" : "Set device PIN"}>
+          <Field label="Password">
             <input
               className="hp-field"
               type="password"
@@ -256,7 +227,7 @@ export function Vault() {
               autoComplete="new-password"
             />
           </Field>
-          <Field label="Confirm PIN">
+          <Field label="Confirm password">
             <input
               className="hp-field"
               type="password"
@@ -270,20 +241,21 @@ export function Vault() {
           <Btn
             onClick={async () => {
               if (pw.length < 4) {
-                setMsg("Use at least 4 characters.");
+                setMsg("Invalid credentials.");
                 return;
               }
               if (pw !== pw2) {
-                setMsg("PINs do not match.");
+                setMsg("Invalid credentials.");
                 return;
               }
-              await setPersonalPassword(pw);
+              const login = readPersonalSessionLogin() || "owner";
+              await setPersonalCredentials(login, pw);
               setPw("");
               setPw2("");
-              setMsg("Device PIN saved locally (hashed).");
+              setMsg(hasPersonalCredentials() ? "Password updated locally (hashed)." : "Saved.");
             }}
           >
-            Save PIN
+            Save password
           </Btn>
           <Btn
             variant="danger"
@@ -292,7 +264,7 @@ export function Vault() {
               setAuthed(false);
             }}
           >
-            Lock workspace
+            Sign out
           </Btn>
         </div>
         {msg ? <p className="mt-2 text-sm text-[var(--hp-teal)]">{msg}</p> : null}

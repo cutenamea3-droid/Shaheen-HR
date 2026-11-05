@@ -1,15 +1,19 @@
 /**
- * Private device PIN gate for HR Personal — separate keys from company Admin auth.
- * Honesty: this is a local hashed PIN in localStorage, NOT server auth / MFA.
- * Never store real passwords in source, repo, or VITE_* env. Never touch
- * `shaheen-hr-account-*` or Driver lock keys. Propose httpOnly server auth before prod.
+ * Local credential gate for HR Personal — separate from company Admin auth.
+ * Honesty: hashed secrets in localStorage, NOT server auth / MFA.
+ * Never store real passwords in source, repo, or VITE_* env.
  */
 const SECRETS_KEY = "hr-personal-auth-secrets-v1";
 const SESSION_KEY = "hr-personal-auth-session-v1";
 
 type SecretsMap = Record<string, string>;
 
-const DEFAULT_HANDLE = "hr.personal";
+/** Legacy single-gate key from earlier PIN prototype. */
+const LEGACY_HANDLE = "hr.personal";
+
+function normalizeLogin(login: string): string {
+  return login.trim().toLowerCase();
+}
 
 function read(): SecretsMap {
   if (typeof window === "undefined") return {};
@@ -35,29 +39,52 @@ async function hash(value: string): Promise<string> {
     .join("");
 }
 
-export function personalAuthHandle(): string {
-  return DEFAULT_HANDLE;
+export function hasPersonalCredentials(): boolean {
+  return Object.keys(read()).length > 0;
 }
 
+/** @deprecated use hasPersonalCredentials */
 export function hasPersonalPassword(): boolean {
-  return Boolean(read()[DEFAULT_HANDLE]);
+  return hasPersonalCredentials();
 }
 
-export async function setPersonalPassword(password: string) {
+export async function setPersonalCredentials(login: string, password: string) {
+  const key = normalizeLogin(login);
+  if (!key) throw new Error("Enter a username or email.");
+  if (password.length < 4) throw new Error("Use at least 4 characters.");
   const map = read();
-  map[DEFAULT_HANDLE] = await hash(password);
+  map[key] = await hash(password);
+  // Drop legacy anonymous key once a real login is set.
+  delete map[LEGACY_HANDLE];
   write(map);
 }
 
-export async function verifyPersonalPassword(password: string): Promise<boolean> {
-  const stored = read()[DEFAULT_HANDLE];
-  if (!stored) return false;
-  return stored === (await hash(password));
+/** @deprecated */
+export async function setPersonalPassword(password: string) {
+  await setPersonalCredentials(LEGACY_HANDLE, password);
 }
 
-export function writePersonalSession() {
+export async function verifyPersonalCredentials(login: string, password: string): Promise<boolean> {
+  const map = read();
+  const key = normalizeLogin(login);
+  const h = await hash(password);
+  if (key && map[key] === h) return true;
+  // Legacy PIN-only gate (single secret under hr.personal).
+  if (map[LEGACY_HANDLE] === h && (key === LEGACY_HANDLE || Object.keys(map).length === 1)) {
+    return true;
+  }
+  return false;
+}
+
+/** @deprecated */
+export async function verifyPersonalPassword(password: string): Promise<boolean> {
+  return verifyPersonalCredentials(LEGACY_HANDLE, password);
+}
+
+export function writePersonalSession(login: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ handle: DEFAULT_HANDLE, at: Date.now() }));
+  const normalized = normalizeLogin(login) || LEGACY_HANDLE;
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ login: normalized, handle: normalized, at: Date.now() }));
 }
 
 export function clearPersonalSession() {
@@ -70,12 +97,23 @@ export function readPersonalSession(): boolean {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return false;
-    const parsed = JSON.parse(raw) as { handle?: string };
-    return parsed.handle === DEFAULT_HANDLE;
+    const parsed = JSON.parse(raw) as { login?: string; handle?: string };
+    return Boolean(parsed.login || parsed.handle);
   } catch {
     return false;
   }
 }
 
-/** Keys this module owns — used by isolation tests. */
+export function readPersonalSessionLogin(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { login?: string; handle?: string };
+    return parsed.login || parsed.handle || null;
+  } catch {
+    return null;
+  }
+}
+
 export const PERSONAL_AUTH_KEYS = [SECRETS_KEY, SESSION_KEY] as const;
