@@ -17,6 +17,7 @@ import {
   employeeFinancePersistenceGuard,
   useEmployeeFinanceMock,
 } from "./employee-finance-mock";
+import { getEmployeeFinanceMode } from "./employee-finance-mode";
 import { HR_SYNC_KEYS } from "./hr-sync-protect";
 
 describe("pk-iban", () => {
@@ -51,6 +52,17 @@ describe("pk-payment-institutions", () => {
     const jazz = searchPkInstitutions("JazzCash");
     expect(jazz.some((j) => j.id === "jazzcash" && !j.isBank)).toBe(true);
     expect(searchPkInstitutions("Meezan").some((x) => x.id === "meezan")).toBe(true);
+    for (const id of ["easypaisa", "jazzcash", "sadapay", "nayapay"] as const) {
+      const hit = PK_PAYMENT_INSTITUTIONS.find((x) => x.id === id);
+      expect(hit?.kind).toBe("emi_psp");
+      expect(hit?.isBank).toBe(false);
+    }
+  });
+});
+
+describe("employee-finance-mode", () => {
+  it("defaults to mock (secure requires explicit flag + applied migration)", () => {
+    expect(getEmployeeFinanceMode()).toBe("mock");
   });
 });
 
@@ -175,5 +187,24 @@ describe("employee-finance-mock security", () => {
     const row = useEmployeeFinanceMock.getState().payments.find((p) => p.employeeId === "mock-emp-c3" && p.month === "2026-11");
     expect(row?.status).toBe("unpaid");
     expect(row?.amountPaidPkr).toBe(0);
+  });
+
+  it("stores joining date and payment event history without touching sync keys", () => {
+    const s = useEmployeeFinanceMock.getState();
+    expect(s.setJoiningDate("mock-emp-a1", "2024-02-01").ok).toBe(true);
+    expect(useEmployeeFinanceMock.getState().meta["mock-emp-a1"]?.joiningDate).toBe("2024-02-01");
+    const before = s.paymentEvents("pay-b2").length;
+    expect(s.recordPayment("pay-b2", 10000, "2026-11-05").ok).toBe(true);
+    expect(useEmployeeFinanceMock.getState().paymentEvents("pay-b2").length).toBe(before + 1);
+    expect(HR_SYNC_KEYS).toEqual(["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"]);
+  });
+
+  it("reveal keeps plaintext in session memory only", () => {
+    const s = useEmployeeFinanceMock.getState();
+    const r = s.revealAccount("bank-a1");
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.data).toContain("HABB");
+    expect(s.isRevealed("bank-a1")).toBe(true);
+    expect(s.getRevealedPlaintext("bank-a1")).toMatch(/^PK/);
   });
 });

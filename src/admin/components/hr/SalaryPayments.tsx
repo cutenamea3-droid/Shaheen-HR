@@ -8,8 +8,9 @@ import {
   SALARY_PAYMENT_STATUS_LABEL,
   type SalaryPaymentStatus,
 } from "@/admin/lib/employee-finance-types";
+import { employeeFinanceModeLabel, getEmployeeFinanceMode } from "@/admin/lib/employee-finance-mode";
 import { institutionDisplayLabel } from "@/admin/lib/pk-payment-institutions";
-import { maskPkIban, pkIbanLast4 } from "@/admin/lib/pk-iban";
+import { maskPkIban } from "@/admin/lib/pk-iban";
 import { formatPkr, salaryPaymentsCsv, summarizePayments } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
@@ -18,16 +19,19 @@ export function SalaryPayments() {
   const payments = useEmployeeFinanceMock((s) => s.payments);
   const banking = useEmployeeFinanceMock((s) => s.banking);
   const meta = useEmployeeFinanceMock((s) => s.meta);
+  const paymentEvents = useEmployeeFinanceMock((s) => s.paymentEvents);
   const upsertPaymentDue = useEmployeeFinanceMock((s) => s.upsertPaymentDue);
   const recordPayment = useEmployeeFinanceMock((s) => s.recordPayment);
   const setPaymentStatus = useEmployeeFinanceMock((s) => s.setPaymentStatus);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
+  const financeMode = getEmployeeFinanceMode();
 
   const [month, setMonth] = useState("2026-10");
   const [statusFilter, setStatusFilter] = useState<"all" | SalaryPaymentStatus>("all");
   const [payAmount, setPayAmount] = useState<Record<string, string>>({});
   const [dueDraft, setDueDraft] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
+  const [historyFor, setHistoryFor] = useState<string | null>(null);
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -81,7 +85,7 @@ export function SalaryPayments() {
           amountPaidPkr: p.amountPaidPkr,
           status: p.status,
           institution: bank ? institutionDisplayLabel(bank.institutionId, bank.otherLabel) : "",
-          accountLast4: bank ? (bank.isIban ? pkIbanLast4(bank.accountRef) : bank.accountRef.slice(-4)) : "",
+          accountLast4: bank?.accountLast4 ?? "",
           paidOn: p.paidOn ?? "",
           note: p.note,
         };
@@ -117,7 +121,8 @@ export function SalaryPayments() {
       />
 
       <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
-        Mock register only — not synced. Recording a payment updates session memory; it does not move money or touch attendance payroll calc.
+        Mode: {employeeFinanceModeLabel(financeMode)}. Recording a payment does not move money or change attendance payroll calc.
+        Secure RPCs stay off until migration apply + VITE_HR_FINANCE_SECURE=1.
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -212,7 +217,7 @@ export function SalaryPayments() {
                     {bank ? (
                       <>
                         <div className="font-sans text-sm font-medium">{institutionDisplayLabel(bank.institutionId, bank.otherLabel)}</div>
-                        {bank.isIban ? maskPkIban(bank.accountRef) : `••••${bank.accountRef.slice(-4)}`}
+                        {bank.isIban && bank.accountRef ? maskPkIban(bank.accountRef) : `••••${bank.accountLast4}`}
                       </>
                     ) : (
                       <span className="text-muted-foreground">—</span>
@@ -243,7 +248,23 @@ export function SalaryPayments() {
                       >
                         Add
                       </button>
+                      <button type="button" className="btn-ghost px-3" onClick={() => setHistoryFor(historyFor === p.id ? null : p.id)}>
+                        History
+                      </button>
                     </div>
+                    {historyFor === p.id && (
+                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        {paymentEvents(p.id).map((ev) => (
+                          <li key={ev.id}>
+                            {new Date(ev.createdAt).toISOString().slice(0, 10)} · {ev.eventType}
+                            {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
+                            {ev.statusAfter ? ` → ${ev.statusAfter}` : ""}
+                            {ev.note ? ` · ${ev.note}` : ""}
+                          </li>
+                        ))}
+                        {paymentEvents(p.id).length === 0 && <li>No events yet.</li>}
+                      </ul>
+                    )}
                   </td>
                 </tr>
               );

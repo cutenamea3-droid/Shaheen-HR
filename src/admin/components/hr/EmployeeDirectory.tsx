@@ -8,6 +8,7 @@ import {
   EMPLOYMENT_STATUS_LABEL,
   type EmploymentStatus,
 } from "@/admin/lib/employee-finance-types";
+import { employeeFinanceModeLabel, getEmployeeFinanceMode } from "@/admin/lib/employee-finance-mode";
 import {
   PK_INSTITUTION_OTHER_ID,
   PK_PAYMENT_INSTITUTIONS,
@@ -18,6 +19,12 @@ import {
 } from "@/admin/lib/pk-payment-institutions";
 import { formatPkIbanGroups, maskPkIban } from "@/admin/lib/pk-iban";
 import { SectionTitle } from "./common";
+
+function maskedRef(row: { isIban: boolean; accountLast4: string; accountRef?: string }, revealed?: string) {
+  if (revealed) return row.isIban ? formatPkIbanGroups(revealed) : revealed;
+  if (row.accountRef && row.isIban) return maskPkIban(row.accountRef);
+  return `••••${row.accountLast4}`;
+}
 
 type DirectoryRow = {
   id: string;
@@ -37,7 +44,10 @@ export function EmployeeDirectory() {
   const addBankingChange = useEmployeeFinanceMock((s) => s.addBankingChange);
   const toggleReveal = useEmployeeFinanceMock((s) => s.toggleReveal);
   const revealAccountIds = useEmployeeFinanceMock((s) => s.revealAccountIds);
+  const getRevealedPlaintext = useEmployeeFinanceMock((s) => s.getRevealedPlaintext);
+  const setJoiningDate = useEmployeeFinanceMock((s) => s.setJoiningDate);
   const resetMockSeed = useEmployeeFinanceMock((s) => s.resetMockSeed);
+  const financeMode = getEmployeeFinanceMode();
 
   const [statusFilter, setStatusFilter] = useState<"all" | EmploymentStatus>("all");
   const [q, setQ] = useState("");
@@ -102,7 +112,7 @@ export function EmployeeDirectory() {
     <div className="space-y-4">
       <SectionTitle
         title="Employee directory"
-        sub="Reuse Team employee IDs. Employment status + banking are MOCK session memory only — never written to localStorage or cloud app_state."
+        sub="Reuse Team employee IDs. Banking never writes to localStorage or app_state. Secure Admin tables require migration apply + VITE_HR_FINANCE_SECURE=1."
         right={
           <button type="button" className="btn-ghost" onClick={() => resetMockSeed()}>
             Reset mock seed
@@ -111,8 +121,9 @@ export function EmployeeDirectory() {
       />
 
       <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
-        Persistence blocked until secure banking tables are approved. Synthetic MOCK employees include sample IBAN/wallet data for UI tests.
-        Institution list reference date: {PK_PAYMENT_INSTITUTIONS_REF_DATE}.
+        Mode: {employeeFinanceModeLabel(financeMode)}. Synthetic MOCK banking for UI tests.
+        Institution list ref {PK_PAYMENT_INSTITUTIONS_REF_DATE} (incl. Easypaisa, JazzCash, SadaPay, NayaPay wallets).
+        Migration SQL is in-repo awaiting separate production apply approval.
       </div>
 
       <div className="admin-toolbar flex-wrap gap-2">
@@ -151,12 +162,9 @@ export function EmployeeDirectory() {
                     {r.source === "mock" ? " · synthetic" : ""}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
+                    {meta[r.id]?.joiningDate ? `Joined ${meta[r.id]!.joiningDate} · ` : ""}
                     {currentBanking(r.id)
-                      ? `Pay to: ${institutionDisplayLabel(currentBanking(r.id)!.institutionId, currentBanking(r.id)!.otherLabel)} · ${
-                          currentBanking(r.id)!.isIban
-                            ? maskPkIban(currentBanking(r.id)!.accountRef)
-                            : `••••${currentBanking(r.id)!.accountRef.slice(-4)}`
-                        }`
+                      ? `Pay to: ${institutionDisplayLabel(currentBanking(r.id)!.institutionId, currentBanking(r.id)!.otherLabel)} · ${maskedRef(currentBanking(r.id)!)}`
                       : "No banking on file (mock)"}
                   </div>
                 </button>
@@ -200,19 +208,22 @@ export function EmployeeDirectory() {
             <>
               <div className="admin-emp-card space-y-3">
                 <h3 className="font-display text-lg font-extrabold tracking-tight">{selected.name}</h3>
-                <p className="text-sm text-muted-foreground">Banking & wallet destinations — masked by default. History is append-only.</p>
+                <label>
+                  <span className="lbl">Joining date (finance)</span>
+                  <input
+                    type="date"
+                    className="field"
+                    value={meta[selected.id]?.joiningDate ?? ""}
+                    onChange={(e) => e.target.value && setJoiningDate(selected.id, e.target.value)}
+                  />
+                </label>
+                <p className="text-sm text-muted-foreground">Holder, provider, IBAN/account — masked by default. History is append-only.</p>
                 {current ? (
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
                     <div className="font-semibold">{institutionDisplayLabel(current.institutionId, current.otherLabel)}</div>
                     <div>{current.accountTitle}</div>
                     <div className="font-mono text-xs">
-                      {revealAccountIds.has(current.id)
-                        ? current.isIban
-                          ? formatPkIbanGroups(current.accountRef)
-                          : current.accountRef
-                        : current.isIban
-                          ? maskPkIban(current.accountRef)
-                          : `••••${current.accountRef.slice(-4)}`}
+                      {maskedRef(current, revealAccountIds.has(current.id) ? getRevealedPlaintext(current.id) : undefined)}
                     </div>
                     <button type="button" className="btn-ghost mt-2 h-8 px-2 text-xs" onClick={() => toggleReveal(current.id)}>
                       {revealAccountIds.has(current.id) ? "Hide" : "Reveal"} account
@@ -313,13 +324,7 @@ export function EmployeeDirectory() {
                       )}
                     </div>
                     <div className="font-mono text-xs">
-                      {revealAccountIds.has(h.id)
-                        ? h.isIban
-                          ? formatPkIbanGroups(h.accountRef)
-                          : h.accountRef
-                        : h.isIban
-                          ? maskPkIban(h.accountRef)
-                          : `••••${h.accountRef.slice(-4)}`}
+                      {maskedRef(h, revealAccountIds.has(h.id) ? getRevealedPlaintext(h.id) : undefined)}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       From {h.effectiveFrom}

@@ -12,11 +12,12 @@ import type {
   BankingAccountRecord,
   EmployeeDirectoryMeta,
   EmploymentStatus,
+  SalaryPaymentEvent,
   SalaryPaymentRecord,
   SalaryPaymentStatus,
 } from "./employee-finance-types";
 import { applyPartialPayment, assertWholePkr, derivePaymentStatus } from "./salary-payments";
-import { isValidPkIban, normalizePkIban } from "./pk-iban";
+import { isValidPkIban, normalizePkIban, pkIbanLast4 } from "./pk-iban";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -43,9 +44,16 @@ const MOCK_IBANS = {
   danish_new: "PK54BAHL0000001234567005",
 } as const;
 
+function withLast4(row: Omit<BankingAccountRecord, "accountLast4"> & { accountLast4?: string }): BankingAccountRecord {
+  return {
+    ...row,
+    accountLast4: row.accountLast4 ?? (row.isIban ? pkIbanLast4(row.accountRef) : row.accountRef.slice(-4)),
+  };
+}
+
 function seedBanking(): BankingAccountRecord[] {
   return [
-    {
+    withLast4({
       id: "bank-a1",
       employeeId: "mock-emp-a1",
       institutionId: "hbl",
@@ -55,8 +63,8 @@ function seedBanking(): BankingAccountRecord[] {
       effectiveFrom: "2025-01-01",
       supersededAt: null,
       note: "Primary salary account",
-    },
-    {
+    }),
+    withLast4({
       id: "bank-b2",
       employeeId: "mock-emp-b2",
       institutionId: "meezan",
@@ -66,8 +74,8 @@ function seedBanking(): BankingAccountRecord[] {
       effectiveFrom: "2024-06-15",
       supersededAt: null,
       note: "",
-    },
-    {
+    }),
+    withLast4({
       id: "bank-c3",
       employeeId: "mock-emp-c3",
       institutionId: "jazzcash",
@@ -77,8 +85,8 @@ function seedBanking(): BankingAccountRecord[] {
       effectiveFrom: "2025-03-01",
       supersededAt: null,
       note: "Wallet — not a bank",
-    },
-    {
+    }),
+    withLast4({
       id: "bank-d4-old",
       employeeId: "mock-emp-d4",
       institutionId: "bafl",
@@ -88,8 +96,8 @@ function seedBanking(): BankingAccountRecord[] {
       effectiveFrom: "2023-01-01",
       supersededAt: "2025-08-01",
       note: "Superseded — do not pay",
-    },
-    {
+    }),
+    withLast4({
       id: "bank-d4-new",
       employeeId: "mock-emp-d4",
       institutionId: "baah",
@@ -99,7 +107,7 @@ function seedBanking(): BankingAccountRecord[] {
       effectiveFrom: "2025-08-01",
       supersededAt: null,
       note: "Current",
-    },
+    }),
   ];
 }
 
@@ -109,6 +117,7 @@ function seedMeta(): Record<string, EmployeeDirectoryMeta> {
     out[e.id] = {
       employeeId: e.id,
       status: e.id === "mock-emp-d4" ? "leave" : "active",
+      joiningDate: e.id === "mock-emp-a1" ? "2024-02-01" : e.id === "mock-emp-b2" ? "2023-06-15" : e.id === "mock-emp-c3" ? "2025-01-10" : "2022-11-01",
       deactivatedAt: null,
       reactivatedAt: null,
     };
@@ -170,16 +179,29 @@ function seedPayments(): SalaryPaymentRecord[] {
   ];
 }
 
+function seedEvents(): SalaryPaymentEvent[] {
+  return [
+    { id: "ev-a1", paymentId: "pay-a1", eventType: "due_set", amountPkr: 185000, statusAfter: "unpaid", note: "seed", createdAt: Date.now() - 5000 },
+    { id: "ev-a2", paymentId: "pay-a1", eventType: "partial_pay", amountPkr: 185000, statusAfter: "paid", note: "full", createdAt: Date.now() - 4000 },
+    { id: "ev-b1", paymentId: "pay-b2", eventType: "due_set", amountPkr: 210000, statusAfter: "unpaid", note: "seed", createdAt: Date.now() - 3000 },
+    { id: "ev-b2", paymentId: "pay-b2", eventType: "partial_pay", amountPkr: 100000, statusAfter: "partial", note: "partial", createdAt: Date.now() - 2000 },
+    { id: "ev-d1", paymentId: "pay-d4", eventType: "status_change", amountPkr: null, statusAfter: "on_hold", note: "leave hold", createdAt: Date.now() - 1000 },
+  ];
+}
+
 type FinanceState = {
-  /** Banner / mode flag — always mock until secure backend approved. */
+  mode: "mock";
   persistenceBlocked: true;
   meta: Record<string, EmployeeDirectoryMeta>;
   banking: BankingAccountRecord[];
   payments: SalaryPaymentRecord[];
+  events: SalaryPaymentEvent[];
   revealAccountIds: Set<string>;
+  revealedPlaintext: Record<string, string>;
 
   ensureMeta: (employeeId: string) => void;
   setStatus: (employeeId: string, status: EmploymentStatus, confirmDeactivate?: boolean) => { ok: boolean; error?: string };
+  setJoiningDate: (employeeId: string, joiningDate: string) => { ok: boolean; error?: string };
   currentBanking: (employeeId: string) => BankingAccountRecord | undefined;
   bankingHistory: (employeeId: string) => BankingAccountRecord[];
   addBankingChange: (input: {
@@ -193,9 +215,12 @@ type FinanceState = {
     note?: string;
   }) => { ok: boolean; error?: string };
   toggleReveal: (accountId: string) => void;
+  revealAccount: (accountId: string) => { ok: true; data: string } | { ok: false; error: string };
   isRevealed: (accountId: string) => boolean;
+  getRevealedPlaintext: (accountId: string) => string | undefined;
 
   paymentsForMonth: (month: string) => SalaryPaymentRecord[];
+  paymentEvents: (paymentId: string) => SalaryPaymentEvent[];
   upsertPaymentDue: (employeeId: string, month: string, amountDuePkr: number) => { ok: boolean; error?: string };
   recordPayment: (paymentId: string, addPkr: number, paidOn: string) => { ok: boolean; error?: string };
   setPaymentStatus: (paymentId: string, status: SalaryPaymentStatus) => { ok: boolean; error?: string };
@@ -203,18 +228,27 @@ type FinanceState = {
 };
 
 export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
+  mode: "mock",
   persistenceBlocked: true,
   meta: seedMeta(),
   banking: seedBanking(),
   payments: seedPayments(),
+  events: seedEvents(),
   revealAccountIds: new Set(),
+  revealedPlaintext: {},
 
   ensureMeta: (employeeId) => {
     if (get().meta[employeeId]) return;
     set((s) => ({
       meta: {
         ...s.meta,
-        [employeeId]: { employeeId, status: "active", deactivatedAt: null, reactivatedAt: null },
+        [employeeId]: {
+          employeeId,
+          status: "active",
+          joiningDate: null,
+          deactivatedAt: null,
+          reactivatedAt: null,
+        },
       },
     }));
   },
@@ -225,7 +259,6 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
     if (status === "inactive" && cur.status !== "inactive" && !confirmDeactivate) {
       return { ok: false, error: "Confirm deactivation required" };
     }
-    // Reactivate: flip back to active on same employeeId — never create a duplicate employee row.
     const today = new Date().toISOString().slice(0, 10);
     set((s) => ({
       meta: {
@@ -236,6 +269,18 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
           deactivatedAt: status === "inactive" ? today : cur.deactivatedAt,
           reactivatedAt: status === "active" && cur.status === "inactive" ? today : cur.reactivatedAt,
         },
+      },
+    }));
+    return { ok: true };
+  },
+
+  setJoiningDate: (employeeId, joiningDate) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(joiningDate)) return { ok: false, error: "Invalid joining date" };
+    get().ensureMeta(employeeId);
+    set((s) => ({
+      meta: {
+        ...s.meta,
+        [employeeId]: { ...s.meta[employeeId]!, joiningDate },
       },
     }));
     return { ok: true };
@@ -260,7 +305,7 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
       return { ok: false, error: "Label required for Other institution" };
     }
     const today = input.effectiveFrom || new Date().toISOString().slice(0, 10);
-    const newRow: BankingAccountRecord = {
+    const newRow = withLast4({
       id: uid(),
       employeeId: input.employeeId,
       institutionId: input.institutionId,
@@ -271,13 +316,11 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
       effectiveFrom: today,
       supersededAt: null,
       note: input.note?.trim() ?? "",
-    };
+    });
     set((s) => ({
       banking: [
         ...s.banking.map((b) =>
-          b.employeeId === input.employeeId && !b.supersededAt
-            ? { ...b, supersededAt: today }
-            : b,
+          b.employeeId === input.employeeId && !b.supersededAt ? { ...b, supersededAt: today } : b,
         ),
         newRow,
       ],
@@ -286,17 +329,41 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   },
 
   toggleReveal: (accountId) => {
+    const s = get();
+    if (s.revealAccountIds.has(accountId)) {
+      set((st) => {
+        const next = new Set(st.revealAccountIds);
+        next.delete(accountId);
+        const { [accountId]: _, ...rest } = st.revealedPlaintext;
+        return { revealAccountIds: next, revealedPlaintext: rest };
+      });
+      return;
+    }
+    get().revealAccount(accountId);
+  },
+
+  revealAccount: (accountId) => {
+    const row = get().banking.find((b) => b.id === accountId);
+    if (!row) return { ok: false, error: "Account not found" };
     set((s) => {
       const next = new Set(s.revealAccountIds);
-      if (next.has(accountId)) next.delete(accountId);
-      else next.add(accountId);
-      return { revealAccountIds: next };
+      next.add(accountId);
+      return {
+        revealAccountIds: next,
+        revealedPlaintext: { ...s.revealedPlaintext, [accountId]: row.accountRef },
+      };
     });
+    return { ok: true, data: row.accountRef };
   },
 
   isRevealed: (accountId) => get().revealAccountIds.has(accountId),
+  getRevealedPlaintext: (accountId) => get().revealedPlaintext[accountId],
 
   paymentsForMonth: (month) => get().payments.filter((p) => p.month === month),
+  paymentEvents: (paymentId) =>
+    get()
+      .events.filter((e) => e.paymentId === paymentId)
+      .sort((a, b) => b.createdAt - a.createdAt),
 
   upsertPaymentDue: (employeeId, month, amountDuePkr) => {
     try {
@@ -310,15 +377,24 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
               ? {
                   ...p,
                   amountDuePkr: due,
-                  status:
-                    p.status === "on_hold"
-                      ? "on_hold"
-                      : derivePaymentStatus(due, p.amountPaidPkr),
+                  status: p.status === "on_hold" ? "on_hold" : derivePaymentStatus(due, p.amountPaidPkr),
                   bankingAccountId: p.bankingAccountId ?? bank?.id ?? null,
                   updatedAt: Date.now(),
                 }
               : p,
           ),
+          events: [
+            {
+              id: uid(),
+              paymentId: existing.id,
+              eventType: "due_set",
+              amountPkr: due,
+              statusAfter: existing.status,
+              note: "due upsert",
+              createdAt: Date.now(),
+            },
+            ...s.events,
+          ],
         }));
       } else {
         const row: SalaryPaymentRecord = {
@@ -333,7 +409,21 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
           note: "",
           updatedAt: Date.now(),
         };
-        set((s) => ({ payments: [...s.payments, row] }));
+        set((s) => ({
+          payments: [...s.payments, row],
+          events: [
+            {
+              id: uid(),
+              paymentId: row.id,
+              eventType: "due_set",
+              amountPkr: due,
+              statusAfter: "unpaid",
+              note: "due create",
+              createdAt: Date.now(),
+            },
+            ...s.events,
+          ],
+        }));
       }
       return { ok: true };
     } catch (e) {
@@ -346,7 +436,21 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
       const row = get().payments.find((p) => p.id === paymentId);
       if (!row) return { ok: false, error: "Payment row not found" };
       const next = applyPartialPayment(row, addPkr, paidOn);
-      set((s) => ({ payments: s.payments.map((p) => (p.id === paymentId ? next : p)) }));
+      set((s) => ({
+        payments: s.payments.map((p) => (p.id === paymentId ? next : p)),
+        events: [
+          {
+            id: uid(),
+            paymentId,
+            eventType: "partial_pay",
+            amountPkr: addPkr,
+            statusAfter: next.status,
+            note: "",
+            createdAt: Date.now(),
+          },
+          ...s.events,
+        ],
+      }));
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Payment failed" };
@@ -354,28 +458,43 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   },
 
   setPaymentStatus: (paymentId, status) => {
-    set((s) => ({
-      payments: s.payments.map((p) => {
+    set((s) => {
+      const payments = s.payments.map((p) => {
         if (p.id !== paymentId) return p;
         if (status === "on_hold") return { ...p, status, updatedAt: Date.now() };
         if (status === "unpaid") return { ...p, status, amountPaidPkr: 0, paidOn: null, updatedAt: Date.now() };
         if (status === "paid") {
           return {
             ...p,
-            status: "paid",
+            status: "paid" as const,
             amountPaidPkr: p.amountDuePkr,
             paidOn: p.paidOn ?? new Date().toISOString().slice(0, 10),
             updatedAt: Date.now(),
           };
         }
-        // partial — keep amounts; just label
         return {
           ...p,
           status: derivePaymentStatus(p.amountDuePkr, p.amountPaidPkr),
           updatedAt: Date.now(),
         };
-      }),
-    }));
+      });
+      const after = payments.find((p) => p.id === paymentId);
+      return {
+        payments,
+        events: [
+          {
+            id: uid(),
+            paymentId,
+            eventType: "status_change" as const,
+            amountPkr: null,
+            statusAfter: after?.status ?? status,
+            note: "manual status",
+            createdAt: Date.now(),
+          },
+          ...s.events,
+        ],
+      };
+    });
     return { ok: true };
   },
 
@@ -384,7 +503,9 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
       meta: seedMeta(),
       banking: seedBanking(),
       payments: seedPayments(),
+      events: seedEvents(),
       revealAccountIds: new Set(),
+      revealedPlaintext: {},
     }),
 }));
 
