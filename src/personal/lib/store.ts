@@ -5,6 +5,7 @@ import {
   defaultCourses,
   defaultDiscipline,
   defaultSettings,
+  migrateSettings,
   PERSONAL_STORAGE_KEY,
 } from "./defaults";
 import type {
@@ -19,7 +20,7 @@ import type {
   PersonalState,
   StudyMode,
 } from "./types";
-import { STUDY_MODE_MINUTES } from "./types";
+import { modeBudgetMinutes } from "./schedule";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -62,10 +63,12 @@ function emptyPlan(date: string, mode: StudyMode): DayPlan {
 /** Split daily budget across open backlog + courses needing attention — no fake lecture math. */
 function buildBlocks(
   mode: StudyMode,
+  date: string,
   courses: Course[],
   backlog: BacklogItem[],
+  settings: PersonalSettings,
 ): DayPlan["blocks"] {
-  const budget = STUDY_MODE_MINUTES[mode];
+  const budget = modeBudgetMinutes(mode, date, settings);
   const open = backlog.filter((b) => !b.done);
   const blocks: DayPlan["blocks"] = [];
   let left = budget;
@@ -119,7 +122,12 @@ export const usePersonal = create<PersonalStore>()(
       vaultNotes: "",
 
       setAuthed: (authed) => set({ authed }),
-      setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
+      setSettings: (p) =>
+        set((s) => {
+          const next = { ...s.settings, ...p };
+          if (p.weekdayMinutes != null) next.dailyTargetMinutes = p.weekdayMinutes;
+          return { settings: next };
+        }),
       upsertCourse: (c) =>
         set((s) => ({
           courses: s.courses.some((x) => x.id === c.id)
@@ -168,13 +176,13 @@ export const usePersonal = create<PersonalStore>()(
       ensureDayPlan: (date, mode) => {
         const s = get();
         if (s.dayPlans[date]) return;
-        const m = mode ?? (s.settings.dailyTargetMinutes <= 45 ? "busy" : "normal");
+        const m = mode ?? "normal";
         set({
           dayPlans: {
             ...s.dayPlans,
             [date]: {
               ...emptyPlan(date, m),
-              blocks: buildBlocks(m, s.courses, s.backlog),
+              blocks: buildBlocks(m, date, s.courses, s.backlog, s.settings),
             },
           },
         });
@@ -188,7 +196,7 @@ export const usePersonal = create<PersonalStore>()(
             [date]: {
               ...prev,
               mode,
-              blocks: buildBlocks(mode, s.courses, s.backlog),
+              blocks: buildBlocks(mode, date, s.courses, s.backlog, s.settings),
             },
           },
         });
@@ -215,7 +223,7 @@ export const usePersonal = create<PersonalStore>()(
             ...s.dayPlans,
             [date]: {
               ...plan,
-              blocks: buildBlocks(plan.mode, s.courses, s.backlog),
+              blocks: buildBlocks(plan.mode, date, s.courses, s.backlog, s.settings),
             },
           },
         });
@@ -249,6 +257,24 @@ export const usePersonal = create<PersonalStore>()(
         settings: s.settings,
         vaultNotes: s.vaultNotes,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<PersonalState>;
+        return {
+          ...current,
+          ...p,
+          settings: migrateSettings(p.settings),
+          // Preserve user timetable / progress blobs when present.
+          courses: p.courses ?? current.courses,
+          backlog: p.backlog ?? current.backlog,
+          assessments: p.assessments ?? current.assessments,
+          notes: p.notes ?? current.notes,
+          sessions: p.sessions ?? current.sessions,
+          dayPlans: p.dayPlans ?? current.dayPlans,
+          discipline: p.discipline ?? current.discipline,
+          vaultNotes: p.vaultNotes ?? current.vaultNotes,
+          authed: false,
+        };
+      },
     },
   ),
 );

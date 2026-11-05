@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { Btn, Empty, Panel, SectionHead, courseLabel } from "./common";
 import { todayKey, usePersonal } from "@/personal/lib/store";
-import { STUDY_MODE_MINUTES, type StudyMode } from "@/personal/lib/types";
-
-const MODES: { id: StudyMode; blurb: string }[] = [
-  { id: "normal", blurb: "Full workday budget — ~2 hours focused study" },
-  { id: "busy", blurb: "Compressed day — 45 minutes of high-signal work" },
-  { id: "rescue", blurb: "Emergency slice — 20 minutes to protect the streak" },
-];
+import {
+  BUSY_MINUTES,
+  RESCUE_MINUTES,
+  isSundayIso,
+  modeBudgetMinutes,
+  modeLabel,
+} from "@/personal/lib/schedule";
+import type { StudyMode } from "@/personal/lib/types";
 
 export function Timetable() {
   const courses = usePersonal((s) => s.courses);
@@ -19,39 +20,77 @@ export function Timetable() {
   const settings = usePersonal((s) => s.settings);
 
   const today = todayKey();
+  const sunday = isSundayIso(today);
   useEffect(() => {
     ensureDayPlan(today);
   }, [ensureDayPlan, today]);
 
   const plan = dayPlans[today];
   const used = plan?.blocks.reduce((s, b) => s + b.minutes, 0) ?? 0;
-  const budget = plan ? STUDY_MODE_MINUTES[plan.mode] : settings.dailyTargetMinutes;
+  const budget = plan
+    ? modeBudgetMinutes(plan.mode, today, settings)
+    : sunday
+      ? settings.sundayMinutes
+      : settings.weekdayMinutes;
+
+  const modes: { id: StudyMode; blurb: string; minutes: number; title: string }[] = [
+    {
+      id: "normal",
+      title: sunday ? "Sunday Recovery Mission" : "Normal",
+      minutes: sunday ? settings.sundayMinutes : settings.weekdayMinutes,
+      blurb: sunday
+        ? "Extended Sunday recovery — clear lecture backlog with a long focused block"
+        : "Mon–Sat workday budget — steady focused study",
+    },
+    {
+      id: "busy",
+      title: "Busy",
+      minutes: BUSY_MINUTES,
+      blurb: "Compressed day — high-signal work only",
+    },
+    {
+      id: "rescue",
+      title: "Rescue",
+      minutes: RESCUE_MINUTES,
+      blurb: "Emergency slice — protect the streak",
+    },
+  ];
 
   return (
     <div className="space-y-4">
       <Panel>
         <SectionHead
           title="Smart timetable"
-          subtitle="Pick a day mode. Blocks rebuild from backlog — no fake lecture scheduling."
+          subtitle={
+            sunday
+              ? "Sunday Recovery Mission day — Normal defaults to your Sunday budget (adjustable in Vault)"
+              : "Pick a day mode. Blocks rebuild from backlog — no fake lecture scheduling."
+          }
         />
+        {sunday ? (
+          <div className="mb-4 rounded-md border border-[var(--hp-teal)]/35 bg-[var(--hp-teal)]/10 px-3 py-2 text-sm text-[var(--hp-teal)]">
+            Sunday Recovery Mission · default {settings.sundayMinutes}m (Mon–Sat Normal is{" "}
+            {settings.weekdayMinutes}m)
+          </div>
+        ) : null}
         <div className="grid gap-3 md:grid-cols-3">
-          {MODES.map((m) => {
+          {modes.map((m) => {
             const active = plan?.mode === m.id;
             return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => setDayMode(today, m.id)}
-                className={`rounded-lg border p-4 text-left transition ${
+                className={`rounded-md border p-4 text-left transition ${
                   active
                     ? "border-[var(--hp-violet)] bg-[var(--hp-violet)]/15 shadow-[0_0_0_1px_var(--hp-violet)]"
                     : "border-[var(--hp-border)] bg-[var(--hp-elevated)] hover:border-[var(--hp-violet)]/50"
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="hp-title text-lg font-bold capitalize">{m.id}</span>
+                  <span className="hp-title text-base font-bold sm:text-lg">{m.title}</span>
                   <span className="text-2xl font-bold tabular-nums text-[var(--hp-teal)]">
-                    {STUDY_MODE_MINUTES[m.id]}
+                    {m.minutes}
                     <span className="text-sm font-semibold text-[var(--hp-muted)]">m</span>
                   </span>
                 </div>
@@ -62,7 +101,7 @@ export function Timetable() {
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
           <span className="text-[var(--hp-muted)]">
-            Today · allocated {used}m / {budget}m
+            Today · {plan ? modeLabel(plan.mode, today) : "—"} · allocated {used}m / {budget}m
           </span>
           <Btn variant="ghost" onClick={() => rebuildDayBlocks(today)}>
             Rebuild from backlog
@@ -79,7 +118,7 @@ export function Timetable() {
             {plan.blocks.map((b, i) => (
               <li
                 key={b.id}
-                className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--hp-border)] px-3 py-3 ${
+                className={`flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--hp-border)] px-3 py-3 ${
                   b.done ? "opacity-55" : "bg-[var(--hp-elevated)]"
                 }`}
               >

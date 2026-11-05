@@ -4,12 +4,12 @@ import {
   clearPersonalSession,
   hasPersonalPassword,
   setPersonalPassword,
+  PERSONAL_AUTH_KEYS,
 } from "@/personal/lib/auth";
 import {
   FORBIDDEN_COMPANY_KEYS,
   PERSONAL_STORAGE_KEY,
 } from "@/personal/lib/defaults";
-import { PERSONAL_AUTH_KEYS } from "@/personal/lib/auth";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 
 /**
@@ -43,7 +43,7 @@ export function Vault() {
             return (
               <li
                 key={d.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--hp-border)] px-3 py-2"
               >
                 <div>
                   <div className="text-sm font-semibold">{d.label}</div>
@@ -62,57 +62,31 @@ export function Vault() {
 
       <Panel>
         <SectionHead
-          title="Privacy & auth isolation"
-          subtitle="Separate gate and storage from company Admin / Driver systems"
+          title="Schedule budgets"
+          subtitle="Mon–Sat Normal · Sunday Recovery Mission · Busy 45 · Rescue 20 — adjustable"
         />
-        <div className="mb-4 rounded-lg border border-[var(--hp-teal)]/30 bg-[var(--hp-teal)]/10 p-3 text-sm">
-          <div className="font-semibold text-[var(--hp-teal)]">Personal-only keys</div>
-          <ul className="mt-2 list-inside list-disc text-xs text-[var(--hp-muted)]">
-            <li>
-              Data: <code>{PERSONAL_STORAGE_KEY}</code>
-            </li>
-            {PERSONAL_AUTH_KEYS.map((k) => (
-              <li key={k}>
-                Auth: <code>{k}</code>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 font-semibold text-[var(--hp-amber)]">Never touched</div>
-          <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
-            {FORBIDDEN_COMPANY_KEYS.map((k) => (
-              <li key={k}>
-                <code>{k}</code>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-[var(--hp-muted)]">
-            Local-first only. Optional secure cloud sync is deferred — no production migrations
-            without approval (avoids company data bleed).
-          </p>
-        </div>
-
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Theme">
-            <select
-              className="hp-field"
-              value={settings.theme}
-              onChange={(e) =>
-                setSettings({ theme: e.target.value as "dark" | "light" })
-              }
-            >
-              <option value="dark">Dark premium</option>
-              <option value="light">Light</option>
-            </select>
-          </Field>
-          <Field label="Daily target (minutes)">
+          <Field label="Mon–Sat Normal (minutes)">
             <input
               className="hp-field"
               type="number"
               min={20}
-              max={300}
-              value={settings.dailyTargetMinutes}
+              max={480}
+              value={settings.weekdayMinutes}
               onChange={(e) =>
-                setSettings({ dailyTargetMinutes: Number(e.target.value) || 120 })
+                setSettings({ weekdayMinutes: Number(e.target.value) || 120 })
+              }
+            />
+          </Field>
+          <Field label="Sunday Recovery Mission (minutes)">
+            <input
+              className="hp-field"
+              type="number"
+              min={20}
+              max={600}
+              value={settings.sundayMinutes}
+              onChange={(e) =>
+                setSettings({ sundayMinutes: Number(e.target.value) || 270 })
               }
             />
           </Field>
@@ -141,9 +115,83 @@ export function Vault() {
             />
           </Field>
         </div>
+        <p className="mt-3 text-xs text-[var(--hp-muted)]">
+          Busy stays 45m and Rescue stays 20m. Changing budgets does not wipe saved day plans or
+          logged Focus sessions.
+        </p>
+      </Panel>
+
+      <Panel>
+        <SectionHead
+          title="Privacy & auth isolation"
+          subtitle="Honest limits of a local PIN gate — propose server auth before production"
+        />
+        <div className="mb-4 space-y-3 rounded-md border border-[var(--hp-teal)]/30 bg-[var(--hp-teal)]/10 p-3 text-sm">
+          <div>
+            <div className="font-semibold text-[var(--hp-teal)]">What this gate is</div>
+            <p className="mt-1 text-xs text-[var(--hp-muted)]">
+              A device PIN: SHA-256 hash in <code>localStorage</code> on this browser. It slows casual
+              peeking. It is <strong className="text-[var(--hp-ink)]">not</strong> enterprise
+              authentication, MFA, or server-side session security.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-[var(--hp-amber)]">What it is not</div>
+            <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
+              <li>No real passwords in frontend source, repo, or <code>VITE_*</code> env vars</li>
+              <li>No company Admin / Driver credentials reused</li>
+              <li>Anyone with device + DevTools access can read personal study data locally</li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-[var(--hp-violet)]">Before production</div>
+            <p className="mt-1 text-xs text-[var(--hp-muted)]">
+              Prefer dedicated server auth (httpOnly cookie / OAuth) on a Personal-only backend —
+              never company Admin Supabase tables. Hosting a static SPA on shared hosting still
+              exposes client JS; treat notes as private-on-device until a reviewed server path
+              exists. No prod DB migrations in this PR.
+            </p>
+          </div>
+          <div>
+            <div className="font-semibold text-[var(--hp-ink)]">Personal-only keys</div>
+            <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
+              <li>
+                Data: <code>{PERSONAL_STORAGE_KEY}</code>
+              </li>
+              {PERSONAL_AUTH_KEYS.map((k) => (
+                <li key={k}>
+                  Auth: <code>{k}</code>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2 font-semibold text-[var(--hp-amber)]">Never touched</div>
+            <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
+              {FORBIDDEN_COMPANY_KEYS.map((k) => (
+                <li key={k}>
+                  <code>{k}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Theme">
+            <select
+              className="hp-field"
+              value={settings.theme}
+              onChange={(e) =>
+                setSettings({ theme: e.target.value as "dark" | "light" })
+              }
+            >
+              <option value="dark">Dark premium</option>
+              <option value="light">Light</option>
+            </select>
+          </Field>
+        </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Field label={hasPersonalPassword() ? "Change gate password" : "Set gate password"}>
+          <Field label={hasPersonalPassword() ? "Change device PIN" : "Set device PIN"}>
             <input
               className="hp-field"
               type="password"
@@ -152,7 +200,7 @@ export function Vault() {
               autoComplete="new-password"
             />
           </Field>
-          <Field label="Confirm password">
+          <Field label="Confirm PIN">
             <input
               className="hp-field"
               type="password"
@@ -165,21 +213,21 @@ export function Vault() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={async () => {
-              if (pw.length < 6) {
-                setMsg("Use at least 6 characters.");
+              if (pw.length < 4) {
+                setMsg("Use at least 4 characters.");
                 return;
               }
               if (pw !== pw2) {
-                setMsg("Passwords do not match.");
+                setMsg("PINs do not match.");
                 return;
               }
               await setPersonalPassword(pw);
               setPw("");
               setPw2("");
-              setMsg("Personal gate password saved locally.");
+              setMsg("Device PIN saved locally (hashed).");
             }}
           >
-            Save password
+            Save PIN
           </Btn>
           <Btn
             variant="danger"
@@ -188,7 +236,7 @@ export function Vault() {
               setAuthed(false);
             }}
           >
-            Lock &amp; sign out
+            Lock workspace
           </Btn>
         </div>
         {msg ? <p className="mt-2 text-sm text-[var(--hp-teal)]">{msg}</p> : null}
@@ -200,16 +248,16 @@ export function Vault() {
           subtitle="Original prompt cut off mid Feature 8 — reserved slots for the rest"
         />
         <ul className="mb-3 space-y-2 text-sm text-[var(--hp-muted)]">
-          <li className="rounded-lg border border-dashed border-[var(--hp-border)] px-3 py-2">
+          <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
             <span className="font-semibold text-[var(--hp-ink)]">Shipped here:</span> discipline
-            dashboard · privacy/auth isolation · local vault notes
+            dashboard · privacy/auth honesty · schedule budgets · local vault notes
           </li>
-          <li className="rounded-lg border border-dashed border-[var(--hp-border)] px-3 py-2">
+          <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
             <span className="font-semibold text-[var(--hp-amber)]">Follow-up (truncated):</span> any
             remaining Feature 8+ items from the full brief — paste when available; no invented scope
           </li>
-          <li className="rounded-lg border border-dashed border-[var(--hp-border)] px-3 py-2">
-            Deferred: optional encrypted cloud backup (requires separate backend approval — no company
+          <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
+            Deferred: server auth + optional encrypted cloud backup (approval required — no company
             tables)
           </li>
         </ul>
@@ -218,7 +266,7 @@ export function Vault() {
             className="hp-field min-h-[120px] py-2"
             value={vaultNotes}
             onChange={(e) => setVaultNotes(e.target.value)}
-            placeholder="Credentials reminders? Don’t store real passwords here. Use for semester goals / truncated feature notes."
+            placeholder="Do not store real passwords here. Semester goals / truncated feature notes only."
           />
         </Field>
       </Panel>

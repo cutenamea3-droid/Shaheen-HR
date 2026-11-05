@@ -2,9 +2,22 @@ import { describe, expect, it } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "@/routeTree.gen";
-import { FORBIDDEN_COMPANY_KEYS, PERSONAL_STORAGE_KEY, defaultCourses } from "@/personal/lib/defaults";
+import {
+  FORBIDDEN_COMPANY_KEYS,
+  PERSONAL_STORAGE_KEY,
+  defaultCourses,
+  defaultSettings,
+  migrateSettings,
+} from "@/personal/lib/defaults";
 import { PERSONAL_AUTH_KEYS } from "@/personal/lib/auth";
-import { STUDY_MODE_MINUTES } from "@/personal/lib/types";
+import {
+  BUSY_MINUTES,
+  RESCUE_MINUTES,
+  isSundayIso,
+  modeBudgetMinutes,
+  modeLabel,
+  STUDY_MODE_MINUTES,
+} from "@/personal/lib/schedule";
 
 describe("HR Personal isolation", () => {
   it("serves the personal workspace at /personal", () => {
@@ -38,7 +51,29 @@ describe("HR Personal isolation", () => {
     expect(courses.filter((c) => c.isTbd)).toHaveLength(1);
   });
 
-  it("defines smart timetable budgets", () => {
+  it("defines weekday / Sunday Recovery / Busy / Rescue budgets", () => {
+    const s = defaultSettings();
+    expect(s.weekdayMinutes).toBe(120);
+    expect(s.sundayMinutes).toBe(270);
+    expect(BUSY_MINUTES).toBe(45);
+    expect(RESCUE_MINUTES).toBe(20);
     expect(STUDY_MODE_MINUTES).toEqual({ normal: 120, busy: 45, rescue: 20 });
+
+    // 2026-11-08 is a Sunday
+    expect(isSundayIso("2026-11-08")).toBe(true);
+    expect(modeBudgetMinutes("normal", "2026-11-08", s)).toBe(270);
+    expect(modeLabel("normal", "2026-11-08")).toBe("Sunday Recovery Mission");
+    // 2026-11-09 is a Monday
+    expect(isSundayIso("2026-11-09")).toBe(false);
+    expect(modeBudgetMinutes("normal", "2026-11-09", s)).toBe(120);
+    expect(modeBudgetMinutes("busy", "2026-11-08", s)).toBe(45);
+    expect(modeBudgetMinutes("rescue", "2026-11-09", s)).toBe(20);
+  });
+
+  it("migrates older settings without inventing progress fields", () => {
+    const migrated = migrateSettings({ dailyTargetMinutes: 90, theme: "light" });
+    expect(migrated.weekdayMinutes).toBe(90);
+    expect(migrated.sundayMinutes).toBe(270);
+    expect(migrated.theme).toBe("light");
   });
 });

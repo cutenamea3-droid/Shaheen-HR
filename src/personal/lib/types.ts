@@ -2,12 +2,6 @@
 
 export type StudyMode = "normal" | "busy" | "rescue";
 
-export const STUDY_MODE_MINUTES: Record<StudyMode, number> = {
-  normal: 120,
-  busy: 45,
-  rescue: 20,
-};
-
 export type CourseId = string;
 
 export type Course = {
@@ -81,7 +75,12 @@ export type PersonalSettings = {
   studentLabel: string;
   program: string;
   semester: string;
+  /** @deprecated Prefer weekdayMinutes; kept for older local blobs */
   dailyTargetMinutes: number;
+  /** Mon–Sat Normal budget (default 120). Adjustable. */
+  weekdayMinutes: number;
+  /** Sunday Recovery Mission budget (default 270). Adjustable. */
+  sundayMinutes: number;
   pomodoroFocus: number;
   pomodoroBreak: number;
   /** Editable semester exam reference dates — verify on VULMS */

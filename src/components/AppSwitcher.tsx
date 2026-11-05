@@ -10,16 +10,28 @@ export function AppSwitcher() {
   const isDriver = !isAdmin && !isPersonal && !isCv;
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
-  const on = "bg-primary text-primary-foreground shadow-sm";
-  const off = "text-muted-foreground hover:bg-muted hover:text-foreground";
+  /** Company systems keep brand orange when active. */
+  const companyOn = "bg-primary text-primary-foreground shadow-sm";
+  const companyOff = "text-muted-foreground hover:bg-muted hover:text-foreground";
+  /** HR Personal uses violet / teal palette — never company orange. */
+  const personalOn = "bg-[#8B5CF6] text-[#F4F7FF] shadow-sm";
+  const personalOff = isPersonal
+    ? "text-[#94A3B8] hover:bg-[#8B5CF6]/20 hover:text-[#C4B5FD]"
+    : "text-muted-foreground hover:bg-[#8B5CF6]/10 hover:text-[#8B5CF6]";
+
   return (
     <header
-      className="app-switcher sticky top-0 z-50 flex items-center gap-3 border-b border-border bg-card px-3"
+      className={`app-switcher sticky top-0 z-50 flex items-center gap-3 border-b px-3 ${
+        isPersonal
+          ? "border-[#172238] bg-[#0B1220] text-[#F4F7FF]"
+          : "border-border bg-card"
+      }`}
       style={{ height: 44, fontSize: 13 }}
+      data-hp-switcher={isPersonal ? "personal" : "company"}
     >
       {isPersonal ? (
         <span
-          className="inline-flex h-8 w-8 items-center justify-center rounded bg-[#8B5CF6] text-[11px] font-bold text-white"
+          className="inline-flex h-8 w-8 items-center justify-center rounded bg-[#8B5CF6] text-[11px] font-bold text-[#F4F7FF]"
           aria-hidden
         >
           HP
@@ -30,10 +42,10 @@ export function AppSwitcher() {
       <div className="min-w-0 leading-tight">
         {isPersonal ? (
           <>
-            <span className="hidden font-display text-[13px] font-bold tracking-tight text-foreground sm:inline">
+            <span className="hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
               HR Personal
             </span>
-            <span className="ml-2 hidden text-[11px] font-semibold text-muted-foreground lg:inline">
+            <span className="ml-2 hidden text-[11px] font-semibold text-[#94A3B8] lg:inline">
               Private study
             </span>
           </>
@@ -48,13 +60,18 @@ export function AppSwitcher() {
           </>
         )}
       </div>
-      <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
+      <nav
+        aria-label="System switcher"
+        className={`ml-auto flex items-center gap-1 rounded-lg border p-1 sm:ml-4 ${
+          isPersonal ? "border-[#172238] bg-[#172238]/80" : "border-border bg-background"
+        }`}
+      >
         <Link
           to="/"
           aria-label="Driver Compliance"
           title="Driver Compliance"
           aria-current={isDriver ? "page" : undefined}
-          className={`${base} ${isDriver ? on : off}`}
+          className={`${base} ${isDriver ? companyOn : isPersonal ? personalOff : companyOff}`}
         >
           <FileCheck2 className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Driver Compliance</span>
@@ -64,7 +81,7 @@ export function AppSwitcher() {
           aria-label="Admin & Attendance"
           title="Admin & Attendance"
           aria-current={isAdmin ? "page" : undefined}
-          className={`${base} ${isAdmin ? on : off}`}
+          className={`${base} ${isAdmin ? companyOn : isPersonal ? personalOff : companyOff}`}
         >
           <UsersRound className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Admin &amp; Attendance</span>
@@ -74,9 +91,9 @@ export function AppSwitcher() {
           aria-label="HR Personal"
           title="HR Personal"
           aria-current={isPersonal ? "page" : undefined}
-          className={`${base} ${isPersonal ? on : off}`}
+          className={`${base} ${isPersonal ? personalOn : personalOff}`}
         >
-          <Brain className="h-4 w-4 shrink-0" />
+          <Brain className="h-4 w-4 shrink-0 text-[#2DD4BF]" />
           <span className="hidden sm:inline">HR Personal</span>
         </Link>
       </nav>

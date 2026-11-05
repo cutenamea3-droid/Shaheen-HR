@@ -67,10 +67,31 @@ export function defaultSettings(): PersonalSettings {
     program: "BS Information Technology — VU Pakistan",
     semester: "Fall 2026 · Semester 1",
     dailyTargetMinutes: 120,
+    weekdayMinutes: 120,
+    sundayMinutes: 270,
     pomodoroFocus: 25,
     pomodoroBreak: 5,
     midtermRef: "2026-12-07",
     finalsRef: "2027-01-25",
+  };
+}
+
+/** Merge older localStorage blobs without wiping progress / timetable. */
+export function migrateSettings(raw: Partial<PersonalSettings> | undefined): PersonalSettings {
+  const base = defaultSettings();
+  if (!raw) return base;
+  const weekday =
+    typeof raw.weekdayMinutes === "number"
+      ? raw.weekdayMinutes
+      : typeof raw.dailyTargetMinutes === "number"
+        ? raw.dailyTargetMinutes
+        : base.weekdayMinutes;
+  return {
+    ...base,
+    ...raw,
+    weekdayMinutes: weekday,
+    sundayMinutes: typeof raw.sundayMinutes === "number" ? raw.sundayMinutes : base.sundayMinutes,
+    dailyTargetMinutes: weekday,
   };
 }
 

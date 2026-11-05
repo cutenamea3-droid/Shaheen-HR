@@ -6,7 +6,13 @@ import {
   todayKey,
   usePersonal,
 } from "@/personal/lib/store";
-import { STUDY_MODE_MINUTES } from "@/personal/lib/types";
+import {
+  BUSY_MINUTES,
+  RESCUE_MINUTES,
+  isSundayIso,
+  modeBudgetMinutes,
+  modeLabel,
+} from "@/personal/lib/schedule";
 
 export function Overview() {
   const courses = usePersonal((s) => s.courses);
@@ -19,6 +25,7 @@ export function Overview() {
   const setDayMode = usePersonal((s) => s.setDayMode);
 
   const today = todayKey();
+  const sunday = isSundayIso(today);
   useEffect(() => {
     ensureDayPlan(today);
   }, [ensureDayPlan, today]);
@@ -38,12 +45,22 @@ export function Overview() {
     (c) => c.lecturesTotal != null && c.lecturesDone != null && c.lecturesTotal > 0,
   );
 
+  const modeChips: { id: "normal" | "busy" | "rescue"; label: string; mins: number }[] = [
+    {
+      id: "normal",
+      label: sunday ? "Sunday Recovery" : "Normal",
+      mins: sunday ? settings.sundayMinutes : settings.weekdayMinutes,
+    },
+    { id: "busy", label: "Busy", mins: BUSY_MINUTES },
+    { id: "rescue", label: "Rescue", mins: RESCUE_MINUTES },
+  ];
+
   return (
     <div className="space-y-4">
       <Panel>
         <SectionHead
           title="Command center"
-          subtitle={`${settings.program} · ${settings.semester} · ~2h / workday target`}
+          subtitle={`${settings.program} · ${settings.semester} · Mon–Sat ${settings.weekdayMinutes}m · Sunday ${settings.sundayMinutes}m`}
         />
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Stat
@@ -66,8 +83,8 @@ export function Overview() {
           />
           <Stat
             label="Today mode"
-            value={plan ? `${STUDY_MODE_MINUTES[plan.mode]}m` : "—"}
-            hint={plan ? plan.mode : "Preparing plan…"}
+            value={plan ? `${modeBudgetMinutes(plan.mode, today, settings)}m` : "—"}
+            hint={plan ? modeLabel(plan.mode, today) : "Preparing plan…"}
             accent="violet"
           />
         </div>
@@ -80,14 +97,13 @@ export function Overview() {
             subtitle="Built from your backlog — never invents lecture progress"
             action={
               <div className="flex flex-wrap gap-1">
-                {(["normal", "busy", "rescue"] as const).map((m) => (
+                {modeChips.map((m) => (
                   <Btn
-                    key={m}
-                    variant={plan?.mode === m ? "primary" : "ghost"}
-                    className="capitalize"
-                    onClick={() => setDayMode(today, m)}
+                    key={m.id}
+                    variant={plan?.mode === m.id ? "primary" : "ghost"}
+                    onClick={() => setDayMode(today, m.id)}
                   >
-                    {m} {STUDY_MODE_MINUTES[m]}
+                    {m.label} {m.mins}
                   </Btn>
                 ))}
               </div>

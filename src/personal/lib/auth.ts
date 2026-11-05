@@ -1,6 +1,8 @@
 /**
- * Private gate for HR Personal — separate keys from company Admin auth.
- * Never touch `shaheen-hr-account-*` or Driver lock keys.
+ * Private device PIN gate for HR Personal — separate keys from company Admin auth.
+ * Honesty: this is a local hashed PIN in localStorage, NOT server auth / MFA.
+ * Never store real passwords in source, repo, or VITE_* env. Never touch
+ * `shaheen-hr-account-*` or Driver lock keys. Propose httpOnly server auth before prod.
  */
 const SECRETS_KEY = "hr-personal-auth-secrets-v1";
 const SESSION_KEY = "hr-personal-auth-session-v1";
