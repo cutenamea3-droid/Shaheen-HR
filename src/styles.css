@@ -68,65 +68,74 @@
 }
 
 :root {
+  /* Enterprise brand palette (Driver Compliance + shared chrome) */
+  --brand-orange: #E87500;
+  --brand-slate: #202A36;
+  --brand-soft-white: #F7F8FA;
+  --brand-green: #16845B;
+  --brand-blue: #2563EB;
+  --brand-red: #CF3540;
+
   --radius: 0.85rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.1 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.1 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.1 0 0);
-  --primary: oklch(0.65 0.175 48);
-  --primary-foreground: oklch(0.99 0.005 80);
-  --secondary: oklch(0.94 0.04 80);
-  --secondary-foreground: oklch(0.3 0.05 55);
-  --muted: oklch(0.97 0.004 78);
-  --muted-foreground: oklch(0.48 0.025 55);
-  --accent: oklch(0.95 0.05 75);
-  --accent-foreground: oklch(0.32 0.07 50);
-  --destructive: oklch(0.58 0.22 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.92 0.006 75);
-  --input: oklch(0.88 0.025 75);
-  --ring: oklch(0.65 0.175 48);
+  --background: var(--brand-soft-white);
+  --foreground: var(--brand-slate);
+  --card: #ffffff;
+  --card-foreground: var(--brand-slate);
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-slate);
+  --primary: var(--brand-orange);
+  --primary-foreground: #fffaf5;
+  --secondary: color-mix(in srgb, var(--brand-orange) 12%, white);
+  --secondary-foreground: color-mix(in srgb, var(--brand-slate) 82%, var(--brand-orange));
+  --muted: color-mix(in srgb, var(--brand-soft-white) 70%, #e8eaee);
+  --muted-foreground: color-mix(in srgb, var(--brand-slate) 62%, #6b7280);
+  --accent: color-mix(in srgb, var(--brand-orange) 14%, white);
+  --accent-foreground: color-mix(in srgb, var(--brand-slate) 85%, var(--brand-orange));
+  --destructive: var(--brand-red);
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in srgb, var(--brand-slate) 12%, #e5e7eb);
+  --input: color-mix(in srgb, var(--brand-slate) 18%, #e5e7eb);
+  --ring: var(--brand-orange);
 
-  --ok: oklch(0.52 0.14 152);
-  --ok-soft: oklch(0.95 0.05 152);
-  /* Phase 5: subtler warn / issue-row fills (status chips keep readable chroma via soft pairs) */
-  --warn: oklch(0.58 0.125 62);
-  --warn-soft: oklch(0.965 0.04 80);
-  --danger: oklch(0.55 0.18 25);
-  --danger-soft: oklch(0.97 0.028 20);
-  --danger-row: oklch(0.96 0.028 22);
-  --info: oklch(0.52 0.17 255);
-  --info-soft: oklch(0.94 0.04 250);
-  --note: oklch(0.5 0.11 85);
-  --note-soft: oklch(0.97 0.09 98);
-  --sign: oklch(0.55 0.19 350);
-  --sign-soft: oklch(0.95 0.04 350);
-  --gold: oklch(0.83 0.16 85);
-  --eagle: oklch(0.5 0.13 150);
-  --ink: oklch(0.21 0.02 50);
-  --ink-foreground: oklch(0.96 0.01 80);
-  --ink-muted: oklch(0.72 0.03 70);
+  --ok: var(--brand-green);
+  --ok-soft: color-mix(in srgb, var(--brand-green) 12%, white);
+  /* Warn stays amber for expiry windows — not brand red */
+  --warn: #B45309;
+  --warn-soft: #FFF7ED;
+  --danger: var(--brand-red);
+  --danger-soft: color-mix(in srgb, var(--brand-red) 10%, white);
+  --danger-row: color-mix(in srgb, var(--brand-red) 8%, white);
+  --info: var(--brand-blue);
+  --info-soft: color-mix(in srgb, var(--brand-blue) 10%, white);
+  /* Temp notes: neutral slate — never alert-red or warm-warn yellow */
+  --note: color-mix(in srgb, var(--brand-slate) 72%, #64748b);
+  --note-soft: color-mix(in srgb, var(--brand-slate) 6%, #f1f5f9);
+  --sign: #A21CAF;
+  --sign-soft: #FAE8FF;
+  --gold: #E8A317;
+  --eagle: var(--brand-green);
+  --ink: var(--brand-slate);
+  --ink-foreground: #f8fafc;
+  --ink-muted: color-mix(in srgb, var(--brand-slate) 35%, #94a3b8);
 
-  --gradient-brand: linear-gradient(120deg, oklch(0.6 0.18 42), oklch(0.7 0.17 58) 55%, oklch(0.83 0.16 85));
-  --gradient-header: linear-gradient(100deg, oklch(0.27 0.03 50), oklch(0.33 0.06 50));
-  --gradient-sky: linear-gradient(#fff, #fff);
-  --shadow-card: 0 1px 2px oklch(0.4 0.05 50 / 0.06), 0 8px 24px -12px oklch(0.4 0.08 50 / 0.18);
-  --shadow-pop: 0 18px 50px -12px oklch(0.35 0.08 50 / 0.35);
+  --gradient-brand: linear-gradient(120deg, #D46800, var(--brand-orange) 52%, #F0A040);
+  --gradient-header: linear-gradient(100deg, #18202a, var(--brand-slate));
+  --gradient-sky: linear-gradient(var(--brand-soft-white), var(--brand-soft-white));
+  --shadow-card: 0 1px 2px color-mix(in srgb, var(--brand-slate) 6%, transparent), 0 8px 24px -12px color-mix(in srgb, var(--brand-slate) 16%, transparent);
+  --shadow-pop: 0 18px 50px -12px color-mix(in srgb, var(--brand-slate) 28%, transparent);
 
   --chart-1: var(--primary);
   --chart-2: var(--eagle);
   --chart-3: var(--gold);
   --chart-4: var(--info);
   --chart-5: var(--danger);
-  --sidebar: oklch(0.21 0.02 50);
-  --sidebar-foreground: oklch(0.93 0.015 80);
+  --sidebar: var(--brand-slate);
+  --sidebar-foreground: #eef2f6;
   --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.28 0.025 50);
-  --sidebar-accent-foreground: oklch(0.97 0.01 80);
-  --sidebar-border: oklch(0.3 0.02 50);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--brand-slate) 82%, white);
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: color-mix(in srgb, var(--brand-slate) 78%, white);
   --sidebar-ring: var(--primary);
 }
 
@@ -217,7 +226,7 @@
     box-shadow 160ms ease;
 }
 @utility admin-nav-active {
-  background-image: linear-gradient(135deg, var(--primary), oklch(0.8 0.16 75));
+  background-image: linear-gradient(135deg, #D46800, var(--brand-orange, #E87500));
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, white 30%, transparent),
     0 3px 12px -4px color-mix(in oklab, var(--primary) 50%, transparent);
@@ -254,7 +263,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    border-bottom: 3px solid #d9711f;
+    border-bottom: 3px solid var(--brand-orange, #E87500);
     padding-bottom: 12px;
     margin-bottom: 16px;
   }
@@ -263,40 +272,45 @@
 
 /* ---------- Dark Mode (light mode above is untouched) ---------- */
 .dark {
-  --background: oklch(0.2 0.014 255);
-  --foreground: oklch(0.9 0.012 85);
-  --card: oklch(0.235 0.014 255);
-  --card-foreground: oklch(0.9 0.012 85);
-  --popover: oklch(0.25 0.014 255);
-  --popover-foreground: oklch(0.9 0.012 85);
-  --secondary: oklch(0.29 0.014 255);
-  --secondary-foreground: oklch(0.88 0.012 85);
-  --muted: oklch(0.28 0.012 255);
-  --muted-foreground: oklch(0.7 0.015 85);
-  --accent: oklch(0.3 0.03 60);
-  --accent-foreground: oklch(0.9 0.02 75);
-  --border: oklch(0.34 0.012 255);
-  --input: oklch(0.38 0.012 255);
-  --ok-soft: oklch(0.3 0.04 150);
-  --ok: oklch(0.8 0.09 150);
-  --warn-soft: oklch(0.3 0.035 75);
-  --warn: oklch(0.82 0.075 80);
-  --danger: oklch(0.78 0.07 25);
-  --danger-soft: oklch(0.29 0.045 25);
-  --danger-row: oklch(0.25 0.022 25);
-  --info-soft: oklch(0.3 0.04 245);
-  --info: oklch(0.8 0.08 245);
-  --note-soft: oklch(0.3 0.03 90 / 0.55);
-  --note: oklch(0.86 0.05 90);
-  --sign-soft: oklch(0.3 0.045 350);
-  --sign: oklch(0.82 0.08 350);
-  --ink: oklch(0.3 0.012 255);
-  --sidebar: oklch(0.17 0.014 255);
-  --sidebar-border: oklch(0.27 0.012 255);
-  --sidebar-accent: oklch(0.25 0.014 255);
-  --gradient-brand: linear-gradient(120deg, oklch(0.42 0.09 45), oklch(0.48 0.09 58) 55%, oklch(0.55 0.09 80));
+  --background: #161c24;
+  --foreground: #eef2f6;
+  --card: #1c2430;
+  --card-foreground: #eef2f6;
+  --popover: #222b38;
+  --popover-foreground: #eef2f6;
+  --primary: #F08A1A;
+  --primary-foreground: #1a1208;
+  --secondary: #2a3340;
+  --secondary-foreground: #e8edf3;
+  --muted: #252e3a;
+  --muted-foreground: #a8b3c2;
+  --accent: color-mix(in srgb, var(--brand-orange) 28%, #252e3a);
+  --accent-foreground: #ffe8cc;
+  --border: #334155;
+  --input: #3b4658;
+  --ring: #F08A1A;
+  --destructive: #E85A63;
+  --ok-soft: color-mix(in srgb, var(--brand-green) 28%, #1c2430);
+  --ok: #3DB888;
+  --warn-soft: color-mix(in srgb, #B45309 28%, #1c2430);
+  --warn: #F0B060;
+  --danger: #E85A63;
+  --danger-soft: color-mix(in srgb, var(--brand-red) 28%, #1c2430);
+  --danger-row: color-mix(in srgb, var(--brand-red) 18%, #1c2430);
+  --info-soft: color-mix(in srgb, var(--brand-blue) 28%, #1c2430);
+  --info: #6B8FF5;
+  /* Temp notes stay neutral in dark mode too */
+  --note-soft: color-mix(in srgb, #94a3b8 18%, #1c2430);
+  --note: #cbd5e1;
+  --sign-soft: color-mix(in srgb, #A21CAF 28%, #1c2430);
+  --sign: #E879F9;
+  --ink: #121820;
+  --sidebar: #121820;
+  --sidebar-border: #2a3340;
+  --sidebar-accent: #252e3a;
+  --gradient-brand: linear-gradient(120deg, #B85F00, #E87500 55%, #F0A040);
   --gradient-sky: linear-gradient(var(--background), var(--background));
-  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
 .dark tbody td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
@@ -313,11 +327,11 @@
 
 /* Excel-style selected row */
 tr.row-selected {
-  --sel-fill: #E8F0FE;
-  --sel-line: #2563EB;
+  --sel-fill: color-mix(in srgb, var(--brand-blue, #2563EB) 10%, white);
+  --sel-line: var(--brand-blue, #2563EB);
 }
 .dark tr.row-selected {
-  --sel-fill: color-mix(in srgb, #2563EB 28%, var(--card));
+  --sel-fill: color-mix(in srgb, var(--brand-blue, #2563EB) 28%, var(--card));
   --sel-line: #60A5FA;
 }
 tr.row-selected > td {
@@ -558,12 +572,13 @@ tr.row-selected > td.freeze-edge {
 }
 /* Opaque sticky header so scrolled rows never bleed through the brand gradient */
 .tracker-table-wrap thead.sticky th {
-  background-color: oklch(0.52 0.155 48);
+  background-color: var(--brand-orange, #E87500);
   background-image: var(--gradient-brand);
   background-blend-mode: normal;
+  color: var(--primary-foreground);
 }
 .dark .tracker-table-wrap thead.sticky th {
-  background-color: oklch(0.36 0.07 50);
+  background-color: #B85F00;
 }
 .tracker-table-wrap tbody > tr {
   content-visibility: auto;
@@ -808,50 +823,61 @@ tr.row-selected > td.freeze-edge {
   --color-warning: var(--warning);
 }
 html:has(.admin-theme) { font-size: 16px; }
-body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
+body:has(.admin-theme) { background-color: var(--brand-soft-white, #F7F8FA); }
 .admin-theme {
+  /* Admin keeps its own token scope; brand hex aligned (not merged with Driver logic). */
+  --brand-orange: #E87500;
+  --brand-slate: #202A36;
+  --brand-soft-white: #F7F8FA;
+  --brand-green: #16845B;
+  --brand-blue: #2563EB;
+  --brand-red: #CF3540;
   --radius: 0.9rem;
-  --background: oklch(0.985 0.004 70);
-  --foreground: oklch(0.2 0.01 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.03 230);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.03 230);
-  --primary: oklch(0.7 0.18 50);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.04 70);
-  --secondary-foreground: oklch(0.4 0.12 50);
-  --muted: oklch(0.965 0.008 70);
-  --muted-foreground: oklch(0.5 0.03 225);
-  --accent: oklch(0.82 0.13 75);
-  --accent-foreground: oklch(0.25 0.05 60);
-  --destructive: oklch(0.55 0.21 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.55 0.15 150);
-  --info: oklch(0.5 0.17 255);
-  --warning: oklch(0.75 0.15 80);
-  --border: oklch(0.91 0.01 70);
-  --input: oklch(0.89 0.015 70);
-  --ring: oklch(0.7 0.18 50);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.22 0.008 60);
-  --sidebar-foreground: oklch(0.92 0.01 70);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.3 0.01 60);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.3 0.01 60);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --background: var(--brand-soft-white);
+  --foreground: var(--brand-slate);
+  --card: #ffffff;
+  --card-foreground: var(--brand-slate);
+  --popover: #ffffff;
+  --popover-foreground: var(--brand-slate);
+  --primary: var(--brand-orange);
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in srgb, var(--brand-orange) 12%, white);
+  --secondary-foreground: color-mix(in srgb, var(--brand-slate) 78%, var(--brand-orange));
+  --muted: color-mix(in srgb, var(--brand-soft-white) 65%, #e8eaee);
+  --muted-foreground: color-mix(in srgb, var(--brand-slate) 58%, #64748b);
+  --accent: color-mix(in srgb, var(--brand-orange) 16%, white);
+  --accent-foreground: var(--brand-slate);
+  --destructive: var(--brand-red);
+  --destructive-foreground: #ffffff;
+  --success: var(--brand-green);
+  --info: var(--brand-blue);
+  --warning: #B45309;
+  --border: color-mix(in srgb, var(--brand-slate) 12%, #e5e7eb);
+  --input: color-mix(in srgb, var(--brand-slate) 16%, #e5e7eb);
+  --ring: var(--brand-orange);
+  --ok: var(--brand-green);
+  --ok-soft: color-mix(in srgb, var(--brand-green) 12%, white);
+  --danger: var(--brand-red);
+  --danger-soft: color-mix(in srgb, var(--brand-red) 10%, white);
+  --chart-1: var(--brand-orange);
+  --chart-2: var(--brand-green);
+  --chart-3: var(--brand-blue);
+  --chart-4: #E8A317;
+  --chart-5: var(--brand-red);
+  --sidebar: var(--brand-slate);
+  --sidebar-foreground: #eef2f6;
+  --sidebar-primary: var(--brand-orange);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--brand-slate) 82%, white);
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: color-mix(in srgb, var(--brand-slate) 78%, white);
+  --sidebar-ring: var(--brand-orange);
   background-color: var(--background);
   color: var(--foreground);
 }
 .admin-theme h4 { font-family: inherit; }
-@utility brand-gradient { background-image: linear-gradient(135deg, var(--primary), oklch(0.78 0.16 70)); }
-@utility nav-glow { background-image: linear-gradient(135deg, var(--primary), oklch(0.8 0.16 75)); box-shadow: 0 8px 24px -6px color-mix(in oklab, var(--primary) 70%, transparent), inset 0 1px 0 color-mix(in oklab, white 35%, transparent); }
+@utility brand-gradient { background-image: linear-gradient(135deg, #D46800, var(--primary, #E87500) 55%, #F0A040); }
+@utility nav-glow { background-image: linear-gradient(135deg, #D46800, var(--primary, #E87500)); box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--primary, #E87500) 55%, transparent), inset 0 1px 0 color-mix(in srgb, white 35%, transparent); }
 /* panel: rest depth + lift. Note: hover rules also target .panel directly because
    @apply ui-lift only copies utility *properties*, not separate .ui-lift:hover selectors. */
 @utility panel {
@@ -864,18 +890,40 @@ body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
     box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1),
     border-color 150ms ease;
 }
-@utility field { @apply h-10 w-full rounded-lg border border-input bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring; }
+@utility field {
+  @apply h-10 w-full rounded-lg border border-input bg-card px-3 text-sm font-medium text-foreground outline-none;
+  border-width: 1.5px;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+.field:focus,
+.field:focus-visible {
+  border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+}
+.field:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: var(--muted);
+}
 @utility btn {
   @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50;
+  min-height: 2.5rem;
+  border: 1.5px solid transparent;
   transition:
     transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1),
     background-color 150ms ease,
+    border-color 150ms ease,
     opacity 150ms ease;
 }
 @utility btn-primary {
   @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 brand-gradient text-primary-foreground;
-  box-shadow: 0 8px 22px -10px color-mix(in oklab, var(--primary) 55%, transparent);
+  min-height: 2.5rem;
+  border: 1.5px solid color-mix(in srgb, var(--brand-orange, #E87500) 55%, #9a4e00);
+  box-shadow: 0 8px 22px -10px color-mix(in srgb, var(--primary) 50%, transparent);
   transition:
     transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -883,13 +931,20 @@ body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
 }
 @utility btn-ghost {
   @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 border border-border bg-card text-foreground hover:bg-muted;
+  min-height: 2.5rem;
+  border-width: 1.5px;
   transition:
     transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 150ms ease;
+    background-color 150ms ease,
+    border-color 150ms ease;
 }
 @utility btn-danger {
   @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:opacity-50 border border-destructive/40 bg-card text-destructive hover:bg-destructive/10;
+  min-height: 2.5rem;
+  border-width: 1.5px;
+  color: var(--brand-red, #CF3540);
+  border-color: color-mix(in srgb, var(--brand-red, #CF3540) 40%, var(--border));
   transition:
     transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 150ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -964,14 +1019,14 @@ body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
   border-radius: inherit;
   background: linear-gradient(
     120deg,
-    color-mix(in oklab, var(--primary) 75%, white),
-    oklch(0.85 0.12 85),
-    color-mix(in oklab, var(--primary) 55%, oklch(0.7 0.14 35))
+    color-mix(in srgb, var(--brand-orange, #E87500) 70%, white),
+    #F0A040,
+    color-mix(in srgb, var(--brand-orange, #E87500) 55%, #9a4e00)
   );
   background-size: 200% 200%;
   opacity: 0;
-  /* Decorative edge only — keep blur tiny so nearby text stays crisp */
-  filter: blur(2px);
+  /* No filter:blur — soft edge via low opacity only (keeps nearby glyphs sharp) */
+  filter: none;
   transition: opacity 160ms ease;
   pointer-events: none;
 }
@@ -1078,4 +1133,61 @@ body:has(.admin-theme) { background-color: oklch(0.985 0.004 70); }
   .cv-theme { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
   .cv-theme .cv-rise { animation: none !important; opacity: 1 !important; transform: none !important; }
   .cv-nav { position: static !important; box-shadow: none !important; }
+}
+
+/* ---------- Enterprise UI polish (additive; CSS/theme only) ---------- */
+/* Shared chrome clarity — does not alter filters, Applied+Expiry, New/OO, or dark-mode toggle logic */
+.btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible,
+.btn-danger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--brand-orange, #E87500) 85%, white);
+  outline-offset: 2px;
+}
+.btn-primary:disabled,
+.btn:disabled,
+.btn-ghost:disabled,
+.btn-danger:disabled {
+  cursor: not-allowed;
+}
+/* Driver lock / signed-in forms that use raw inputs (not .field) */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+select,
+textarea {
+  color: var(--foreground);
+}
+/* Neutral temp-note chips stay slate; red reserved for real alerts */
+.bg-note-soft {
+  background-color: var(--note-soft);
+  color: var(--note);
+}
+.text-note {
+  color: var(--note);
+}
+.bg-danger,
+.text-danger,
+.bg-danger-soft,
+.bg-danger-row {
+  /* Ensure alert red maps to brand red token */
+  --danger: var(--brand-red, #CF3540);
+}
+/* Subtle page canvas for Driver (soft white) without changing layout */
+body:not(:has(.admin-theme)):not(:has(.cv-theme)) {
+  background-color: var(--brand-soft-white, #F7F8FA);
+}
+/* Admin form labels — consistent weight/contrast */
+.admin-theme .lbl {
+  color: color-mix(in srgb, var(--brand-slate, #202A36) 68%, #64748b);
+  letter-spacing: 0.04em;
+}
+.admin-theme .btn-primary,
+.admin-theme .btn-ghost,
+.admin-theme .btn-danger,
+.admin-theme .field {
+  border-radius: 0.65rem;
+}
+/* Avoid residual glow blur regression */
+.ui-glow::before,
+.panel::before {
+  filter: none;
 }
