@@ -37,6 +37,8 @@ import { Team } from "@/admin/components/hr/Team";
 import { SettingsPanel } from "@/admin/components/hr/Settings";
 import { TaskGate, Tasks } from "@/admin/components/hr/Tasks";
 import { AboutPanel } from "@/admin/components/hr/AboutPanel";
+import { useAdminNav } from "@/admin/lib/admin-nav";
+import { useDensity } from "@/lib/density";
 
 
 const HR_EMAIL = "hr.compliance@gmail.com";
@@ -269,6 +271,15 @@ export function AdminApp() {
   };
   const [tab, setTab] = useState<TabId>("overview");
   const [small, setSmall] = useState(false);
+  // Rehydrate density dataset; honor Overview → Attendance chip requests (UI only).
+  useDensity();
+  const tabRequest = useAdminNav((s) => s.tabRequest);
+  const clearTabRequest = useAdminNav((s) => s.clearTabRequest);
+  useEffect(() => {
+    if (!tabRequest) return;
+    setTab(tabRequest as TabId);
+    clearTabRequest();
+  }, [tabRequest, clearTabRequest]);
   useEffect(() => {
     if (isPreviewIsolated()) {
       stopSync();

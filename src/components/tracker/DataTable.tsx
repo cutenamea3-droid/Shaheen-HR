@@ -10,6 +10,10 @@ import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { AddDriverDialog } from "./AddDriverDialog";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
+import { DensityToggle } from "./DensityToggle";
+import { FilterGroup, FilterRack } from "./FilterRack";
+import { useDensity } from "@/lib/density";
+import { loadDataTablePrefs, saveDataTablePrefs } from "@/lib/uiprefs";
 import { useWorkMode } from "@/lib/workmode";
 import { useViewMode } from "@/lib/viewmode";
 import { setResizeLock, useResizeLock } from "@/lib/resizelock";
@@ -28,14 +32,23 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   const def = sectionById(sectionId)!;
   const sec = data.sections[sectionId];
   const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>(() => defaultFilter(sectionId));
-  const [listScope, setListScope] = useState<ListScope>("company");
+  const [filter, setFilterState] = useState<Filter>(() => loadDataTablePrefs(sectionId).filter ?? defaultFilter(sectionId));
+  const [listScope, setListScopeState] = useState<ListScope>(() => loadDataTablePrefs(sectionId).listScope ?? "company");
   const [alertsOnly, setAlertsOnlyState] = useState(false);
   useEffect(() => {
-    setFilter(defaultFilter(sectionId));
-    setListScope("company");
+    const p = loadDataTablePrefs(sectionId);
+    setFilterState(p.filter ?? defaultFilter(sectionId));
+    setListScopeState(p.listScope ?? "company");
     setAlertsOnlyState(localStorage.getItem(`shaheen-issues-only-${sectionId}`) === "1");
   }, [sectionId]);
+  const setFilter = (v: Filter) => {
+    setFilterState(v);
+    saveDataTablePrefs(sectionId, { filter: v });
+  };
+  const setListScope = (v: ListScope) => {
+    setListScopeState(v);
+    saveDataTablePrefs(sectionId, { listScope: v });
+  };
   // rows shown under "Only Issues" stay on screen after being fixed, until Refresh
   const keepRef = useRef(new Set<string>());
   const [keepTick, setKeepTick] = useState(0);
@@ -50,6 +63,7 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   const [showRules, setShowRules] = useState(true);
   const work = useWorkMode();
   const view = useViewMode();
+  const density = useDensity();
   const rlock = useResizeLock();
   const [editHead, setEditHead] = useState<number | null>(null);
   const [headDraft, setHeadDraft] = useState("");
@@ -190,7 +204,7 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", work ? "gap-2" : "gap-3")}>
+    <div className={cn("flex min-h-0 flex-1 flex-col", work || density === "compact" ? "gap-2" : "gap-3")}>
       {/* Alert rules */}
       {!work && <div className="rounded-xl border border-primary/30 bg-card shadow-card">
         <button
@@ -228,44 +242,55 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
             aria-label={`Search ${def.title}`}
           />
         </div>
-        <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
-        {listScope !== "new" && (
-          <div className="tracker-filter-group" role="group" aria-label="Employment filter">
-            {(["all", "active", "inactive"] as Filter[]).map((f) => (
+        <FilterRack>
+          <FilterGroup label="Scope">
+            <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
+          </FilterGroup>
+          {listScope !== "new" && (
+            <FilterGroup label="Employment">
+              <div className="tracker-filter-group" role="group" aria-label="Employment filter">
+                {(["all", "active", "inactive"] as Filter[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilter(f)}
+                    aria-pressed={filter === f}
+                    className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
+                  >
+                    {f === "all" ? "Show all" : f}
+                  </button>
+                ))}
+              </div>
+            </FilterGroup>
+          )}
+          <FilterGroup label="Issues">
+            <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
               <button
-                key={f}
                 type="button"
-                onClick={() => setFilter(f)}
-                aria-pressed={filter === f}
-                className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
+                onClick={() => setAlertsOnly(false)}
+                aria-pressed={!alertsOnly}
+                className={cn("tracker-filter-btn", !alertsOnly ? "bg-ink text-ink-foreground" : "")}
               >
-                {f === "all" ? "Show all" : f}
+                Show All
               </button>
-            ))}
-          </div>
-        )}
-        <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
-          <button
-            type="button"
-            onClick={() => setAlertsOnly(false)}
-            aria-pressed={!alertsOnly}
-            className={cn("tracker-filter-btn", !alertsOnly ? "bg-ink text-ink-foreground" : "")}
-          >
-            Show All
-          </button>
-          <button
-            type="button"
-            onClick={() => setAlertsOnly(true)}
-            aria-pressed={alertsOnly}
-            title="Show only drivers with expired, expiring, missing, applied or note items"
-            className={cn(
-              "tracker-filter-btn inline-flex items-center gap-1.5",
-              alertsOnly ? "bg-danger text-primary-foreground" : "text-danger",
-            )}
-          >
-            <Bell className="size-4" /> Only Issues ({alertCount})
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={() => setAlertsOnly(true)}
+                aria-pressed={alertsOnly}
+                title="Show only drivers with expired, expiring, missing, applied or note items"
+                className={cn(
+                  "tracker-filter-btn inline-flex items-center gap-1.5",
+                  alertsOnly ? "bg-danger text-primary-foreground" : "text-danger",
+                )}
+              >
+                <Bell className="size-4" /> Only Issues ({alertCount})
+              </button>
+            </div>
+          </FilterGroup>
+          <FilterGroup label="Density">
+            <DensityToggle />
+          </FilterGroup>
+        </FilterRack>
         {alertsOnly && fixedIds.size > 0 && (
           <button
             type="button"
@@ -334,7 +359,7 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
       </p>}
 
       {/* Table */}
-      <div className="ui-lift ui-row-hover tracker-table-wrap">
+      <div className={cn("ui-lift ui-row-hover tracker-table-wrap", density === "compact" && "tracker-table-compact")}>
         <table
           className="tracker-table table-fixed border-separate border-spacing-0"
           style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}

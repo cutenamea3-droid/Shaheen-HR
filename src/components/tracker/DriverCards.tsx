@@ -18,12 +18,16 @@ import {
   suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
-import { listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
+import { countTempNotes, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { printDriverDossier } from "@/lib/driver-dossier";
 import { deleteDriver, setCell, useData } from "@/lib/store";
+import { useDensity } from "@/lib/density";
+import { loadDriverCardsPrefs, saveDriverCardsPrefs } from "@/lib/uiprefs";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
+import { DensityToggle } from "./DensityToggle";
 import { ExpirationFilter } from "./ExpirationFilter";
+import { FilterGroup, FilterRack } from "./FilterRack";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DriverManageControls } from "./DriverManageControls";
@@ -55,15 +59,56 @@ const STATUS_BADGE: Record<DriverStatus, string> = {
   inactive: "bg-muted text-muted-foreground",
 };
 
-export function DriverCards({ focusDriver }: { focusDriver?: string | undefined } = {}) {
+export function DriverCards({
+  focusDriver,
+  initialScope,
+  initialExp,
+  initialTempNotes,
+}: {
+  focusDriver?: string | undefined;
+  initialScope?: ListScope;
+  initialExp?: ExpFilter;
+  initialTempNotes?: boolean;
+} = {}) {
   const data = useData();
   const navigate = useNavigate();
+  const prefs = loadDriverCardsPrefs();
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
-  const [listScope, setListScope] = useState<ListScope>("company");
-  const [exp, setExp] = useState<ExpFilter>("all");
+  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(() => prefs.statusFilter ?? "active");
+  const [listScope, setListScopeState] = useState<ListScope>(() => initialScope ?? prefs.listScope ?? "company");
+  const [exp, setExpState] = useState<ExpFilter>(() => initialExp ?? prefs.exp ?? "all");
+  const [tempNotesOnly, setTempNotesOnlyState] = useState(() => initialTempNotes ?? prefs.tempNotesOnly ?? false);
+  const setStatusFilter = (v: StatusFilter) => {
+    setStatusFilterState(v);
+    saveDriverCardsPrefs({ statusFilter: v });
+  };
+  const setListScope = (v: ListScope) => {
+    setListScopeState(v);
+    saveDriverCardsPrefs({ listScope: v, tempNotesOnly: false });
+    setTempNotesOnlyState(false);
+  };
+  const setExp = (v: ExpFilter) => {
+    setExpState(v);
+    saveDriverCardsPrefs({ exp: v });
+  };
+  const setTempNotesOnly = (v: boolean) => {
+    setTempNotesOnlyState(v);
+    saveDriverCardsPrefs({ tempNotesOnly: v, ...(v ? { statusFilter: "all" as const, exp: "all" as const } : {}) });
+    if (v) {
+      setStatusFilterState("all");
+      setExpState("all");
+    }
+  };
   const view = useViewMode();
+  const density = useDensity();
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Deep-link from Daily Summary chips (scope / exp / temp notes).
+  useEffect(() => {
+    if (initialScope) setListScopeState(initialScope);
+    if (initialExp) setExpState(initialExp);
+    if (initialTempNotes != null) setTempNotesOnlyState(initialTempNotes);
+  }, [initialScope, initialExp, initialTempNotes]);
 
   const allDrivers = useMemo(() => {
     const map = new Map<string, Driver>();
@@ -127,8 +172,10 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
         return d.status === statusFilter;
       })
       .filter((d) => matchesExpFilter(data, d.driverId, exp))
+      // Temp notes filter is UI-only — never an issue/alert category.
+      .filter((d) => !tempNotesOnly || countTempNotes(data, d.driverId) > 0)
       .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()));
-  }, [allDrivers, data, q, statusFilter, listScope, exp]);
+  }, [allDrivers, data, q, statusFilter, listScope, exp, tempNotesOnly]);
 
   // Quick Find / deep link: clear filters, open sheet, scroll+flash the row.
   useEffect(() => {
@@ -155,7 +202,7 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
   const th = "px-4 py-3 text-left text-xs font-extrabold tracking-wider uppercase";
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden px-3 py-3 sm:p-5">
+    <div className={cn("flex h-full flex-col overflow-hidden px-3 py-3 sm:p-5", density === "compact" ? "gap-2" : "gap-4")}>
       <div className="tracker-no-print tracker-toolbar">
         <div className="relative max-w-md min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -167,26 +214,56 @@ export function DriverCards({ focusDriver }: { focusDriver?: string | undefined 
             aria-label="Search drivers"
           />
         </div>
-        <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
-        {listScope !== "new" && (
-          <div className="tracker-filter-group" role="group" aria-label="Driver employment filter">
-            {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
+        <FilterRack>
+          <FilterGroup label="Scope">
+            <ListScopeFilter value={listScope} onChange={setListScope} counts={scopeCounts} />
+          </FilterGroup>
+          {listScope !== "new" && (
+            <FilterGroup label="Employment">
+              <div className="tracker-filter-group" role="group" aria-label="Driver employment filter">
+                {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setStatusFilter(f)}
+                    aria-pressed={statusFilter === f}
+                    className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
+                  >
+                    {f === "all" ? "Show all" : f}
+                  </button>
+                ))}
+              </div>
+            </FilterGroup>
+          )}
+          <FilterGroup label="Reminders">
+            <div className="tracker-filter-group" role="group" aria-label="Temporary notes filter">
               <button
-                key={f}
                 type="button"
-                onClick={() => setStatusFilter(f)}
-                aria-pressed={statusFilter === f}
-                className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
+                onClick={() => setTempNotesOnly(false)}
+                aria-pressed={!tempNotesOnly}
+                className={cn("tracker-filter-btn", !tempNotesOnly && "tracker-filter-btn-on")}
               >
-                {f === "all" ? "Show all" : f}
+                All
               </button>
-            ))}
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => setTempNotesOnly(true)}
+                aria-pressed={tempNotesOnly}
+                title="Show drivers with temporary notes — reminders only, never issues"
+                className={cn("tracker-filter-btn", tempNotesOnly && "tracker-filter-btn-on")}
+              >
+                Temp notes
+              </button>
+            </div>
+          </FilterGroup>
+          <FilterGroup label="Density">
+            <DensityToggle />
+          </FilterGroup>
+        </FilterRack>
         <ExpirationFilter value={exp} onChange={setExp} />
       </div>
       <div className="ui-lift ui-row-hover tracker-table-wrap">
-        <table className="w-full min-w-[640px] border-collapse">
+        <table className={cn("w-full min-w-[640px] border-collapse", density === "compact" && "tracker-table-compact")}>
           <thead className="sticky top-0 z-10 bg-brand text-primary-foreground">
             <tr>
               <th className={th}>Driver</th>
