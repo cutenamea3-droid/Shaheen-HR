@@ -97,9 +97,7 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-[var(--hp-violet)]">
               <Lock className="h-4 w-4 shrink-0" />
-              <span className="text-[13px] font-bold tracking-wide">
-                {needsSetup ? "Create sign-in" : "Sign in"}
-              </span>
+              <span className="text-[13px] font-bold tracking-wide">Sign in</span>
             </div>
             <p className="hp-login-muted text-[12px] leading-relaxed">Sign in to continue</p>
           </div>
