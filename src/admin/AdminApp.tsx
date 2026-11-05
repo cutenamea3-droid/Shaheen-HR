@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BarChart3, CalendarClock, ChevronsLeft, ChevronsRight, FileText, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
+import { Banknote, BarChart3, CalendarClock, ChevronsLeft, ChevronsRight, FileText, FolderKanban, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
 import { Overtime } from "@/admin/components/hr/Overtime";
+import { EmployeeDirectory } from "@/admin/components/hr/EmployeeDirectory";
+import { SalaryPayments } from "@/admin/components/hr/SalaryPayments";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import { getSyncStatus, saveNow, startSync, stopSync, subscribeSync } from "@/admin/lib/cloud-sync";
@@ -49,12 +51,14 @@ const TABS = [
   ["reports", "CEO Reports", Reports, FileText],
   ["tasks", "Tasks", Tasks, ListChecks],
   ["team", "Team", Team, Users],
+  ["directory", "Directory", EmployeeDirectory, FolderKanban],
+  ["salary-pay", "Salary pay", SalaryPayments, Banknote],
   ["settings", "Settings", SettingsPanel, Settings],
 ] as const;
 
 const OPS_IDS = new Set(["overview", "attendance", "performance", "overtime"]);
 const REPORT_IDS = new Set(["reports", "tasks"]);
-const PEOPLE_IDS = new Set(["team"]);
+const PEOPLE_IDS = new Set(["team", "directory", "salary-pay"]);
 const CONFIG_IDS = new Set(["settings"]);
 
 const TAB_TITLE: Record<string, string> = {
@@ -65,6 +69,8 @@ const TAB_TITLE: Record<string, string> = {
   reports: "CEO Reports",
   tasks: "Tasks",
   team: "Team",
+  directory: "Employee directory",
+  "salary-pay": "Salary payments",
   settings: "Settings",
   account: "My Account",
   "team-mgmt": "User Accounts",
