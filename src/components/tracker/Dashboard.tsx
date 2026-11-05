@@ -25,8 +25,12 @@ import {
 import { isNewDriver, isOwnerOperator } from "@/lib/driver-meta";
 import { downloadReportPdf } from "@/lib/pdf";
 import { useData } from "@/lib/store";
+import { loadDashboardPrefs, saveDashboardPrefs } from "@/lib/uiprefs";
 import { Chip } from "./cells";
+import { DailySummary } from "./DailySummary";
+import { DensityToggle } from "./DensityToggle";
 import { ExpirationFilter } from "./ExpirationFilter";
+import { FilterGroup, FilterRack } from "./FilterRack";
 import { SECTION_ICONS } from "./AppShell";
 
 type Cat = "all" | "expired" | "soon" | "applied" | "missing" | "notes";
@@ -43,9 +47,23 @@ type ActiveF = "active" | "inactive" | "all";
 
 export function Dashboard() {
   const data = useData();
-  const [af, setAf] = useState<ActiveF>("active");
-  const [exp, setExp] = useState<ExpFilter>("all");
+  const prefs = loadDashboardPrefs();
+  const [af, setAfState] = useState<ActiveF>(() => prefs.af ?? "active");
+  const [exp, setExpState] = useState<ExpFilter>(() => prefs.exp ?? "all");
+  const [focusCat, setFocusCat] = useState<Cat>(() => prefs.cat ?? "all");
   const [q, setQ] = useState("");
+  const setAf = (v: ActiveF) => {
+    setAfState(v);
+    saveDashboardPrefs({ af: v });
+  };
+  const setExp = (v: ExpFilter) => {
+    setExpState(v);
+    saveDashboardPrefs({ exp: v });
+  };
+  const setAppliedFocus = () => {
+    setFocusCat("applied");
+    saveDashboardPrefs({ cat: "applied" });
+  };
 
   const stats = useMemo(() => {
     const dmv = data.sections.dmv.rows;
@@ -81,6 +99,8 @@ export function Dashboard() {
         <Stat icon={CalendarClock} label="Today" value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })} sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })} tone="bg-info" />
       </div>
 
+      <DailySummary onApplied={setAppliedFocus} />
+
       <div className="tracker-toolbar">
         <div className="relative min-w-72 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
@@ -92,19 +112,26 @@ export function Dashboard() {
             aria-label="Search alerts by driver"
           />
         </div>
-        <div className="tracker-filter-group" role="group" aria-label="Active filter">
-          {(["active", "inactive", "all"] as ActiveF[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setAf(f)}
-              aria-pressed={af === f}
-              className={cn("tracker-filter-btn capitalize", af === f && "tracker-filter-btn-on")}
-            >
-              {f === "all" ? "Show all" : f}
-            </button>
-          ))}
-        </div>
+        <FilterRack>
+          <FilterGroup label="Employment">
+            <div className="tracker-filter-group" role="group" aria-label="Active filter">
+              {(["active", "inactive", "all"] as ActiveF[]).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setAf(f)}
+                  aria-pressed={af === f}
+                  className={cn("tracker-filter-btn capitalize", af === f && "tracker-filter-btn-on")}
+                >
+                  {f === "all" ? "Show all" : f}
+                </button>
+              ))}
+            </div>
+          </FilterGroup>
+          <FilterGroup label="Density">
+            <DensityToggle />
+          </FilterGroup>
+        </FilterRack>
         <button
           type="button"
           onClick={async () => {
@@ -132,7 +159,7 @@ export function Dashboard() {
 
       <div className="grid gap-5 2xl:grid-cols-2">
         {SECTIONS.filter((s) => s.id !== "inactive").map((def) => (
-          <SectionAlerts key={def.id} def={def} af={af} q={q} exp={exp} />
+          <SectionAlerts key={def.id} def={def} af={af} q={q} exp={exp} focusCat={focusCat} onCat={setFocusCat} />
         ))}
       </div>
     </div>
@@ -154,10 +181,28 @@ function Stat({ icon: Icon, label, value, sub, tone }: { icon: typeof Users; lab
   );
 }
 
-function SectionAlerts({ def, af, q, exp }: { def: SectionDef; af: ActiveF; q: string; exp: ExpFilter }) {
+function SectionAlerts({
+  def,
+  af,
+  q,
+  exp,
+  focusCat,
+  onCat,
+}: {
+  def: SectionDef;
+  af: ActiveF;
+  q: string;
+  exp: ExpFilter;
+  focusCat: Cat;
+  onCat: (c: Cat) => void;
+}) {
   const data = useData();
   const navigate = useNavigate();
-  const [cat, setCat] = useState<Cat>("all");
+  const cat = focusCat;
+  const setCat = (c: Cat) => {
+    onCat(c);
+    saveDashboardPrefs({ cat: c });
+  };
   const [report, setReport] = useState<"missing" | "applied" | "all">("missing");
   const sec = data.sections[def.id];
   const Icon = SECTION_ICONS[def.id];

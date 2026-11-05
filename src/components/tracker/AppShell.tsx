@@ -9,10 +9,12 @@ import logo from "@/assets/logo.jpg.asset.json";
 import { cn } from "@/lib/utils";
 import { setWorkMode, useWorkMode } from "@/lib/workmode";
 import { setViewMode, useViewMode } from "@/lib/viewmode";
+import { useDensity } from "@/lib/density";
 import { Activity, Briefcase, Eye, LogOut, ShieldCheck, UserCog } from "lucide-react";
 import { isPreviewIsolated, lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
+import { DensityToggle } from "./DensityToggle";
 import { SECTIONS } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
@@ -88,6 +90,8 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
   const dark = useDarkMode();
   useEffect(() => applyTheme(dark), [dark]);
   const view = useViewMode();
+  // Rehydrate density → documentElement dataset (local UI pref only).
+  useDensity();
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => loadFromStorage(), []);
   const crumbs = useMemo(() => driverCrumbs(loc.pathname, title), [loc.pathname, title]);
@@ -183,6 +187,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
           <div className="flex flex-wrap items-center gap-2">
             <QuickFind />
             <AlertsBell />
+            <DensityToggle />
             <button
               type="button"
               onClick={() => setWorkMode(!work)}

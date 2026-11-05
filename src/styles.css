@@ -1128,6 +1128,52 @@ body:has(.admin-theme) { background-color: var(--brand-soft-white, #F7F8FA); }
   .admin-theme table tbody tr:hover > td { filter: none !important; }
 }
 
+/* ---------- Compact workspace: density + filter grouping (UI prefs only) ---------- */
+@utility tracker-filter-rack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem 1rem;
+}
+@utility tracker-filter-rack-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+@utility tracker-filter-rack-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+html[data-density="compact"] .tracker-filter-btn {
+  padding: 0.28rem 0.65rem;
+  font-size: 0.8125rem;
+}
+html[data-density="compact"] .tracker-search {
+  height: 2.25rem;
+}
+html[data-density="compact"] .tracker-table-compact td,
+html[data-density="compact"] .tracker-table-compact th {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+html[data-density="compact"] .admin-emp-card-compact,
+.admin-emp-card-compact {
+  padding: 0.65rem 0.85rem;
+}
+html[data-density="compact"] .admin-emp-card-compact .admin-emp-head {
+  margin-bottom: 0.35rem;
+}
+html[data-density="compact"] .admin-stat {
+  padding: 0.7rem 0.85rem;
+}
+html[data-density="compact"] .admin-stat-value {
+  font-size: 1.35rem;
+}
+
 @media print {
   .cv-no-print { display: none !important; }
   .cv-theme { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
