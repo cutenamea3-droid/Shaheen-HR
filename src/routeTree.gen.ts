@@ -15,6 +15,7 @@ import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CvRouteImport } from './routes/cv'
 import { Route as DriversRouteImport } from './routes/drivers'
+import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as SSectionIdRouteImport } from './routes/s.$sectionId'
@@ -49,6 +50,11 @@ const DriversRoute = DriversRouteImport.update({
   path: '/drivers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PersonalRoute = PersonalRouteImport.update({
+  id: '/personal',
+  path: '/personal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecordsRoute = RecordsRouteImport.update({
   id: '/records',
   path: '/records',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CvRoute: typeof CvRoute
   DriversRoute: typeof DriversRoute
+  PersonalRoute: typeof PersonalRoute
   RecordsRoute: typeof RecordsRoute
   TeamRoute: typeof TeamRoute
   SSectionIdRoute: typeof SSectionIdRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriversRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/personal': {
+      id: '/personal'
+      path: '/personal'
+      fullPath: '/personal'
+      preLoaderRoute: typeof PersonalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/records': {
       id: '/records'
       path: '/records'
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CvRoute: CvRoute,
   DriversRoute: DriversRoute,
+  PersonalRoute: PersonalRoute,
   RecordsRoute: RecordsRoute,
   TeamRoute: TeamRoute,
   SSectionIdRoute: SSectionIdRoute,

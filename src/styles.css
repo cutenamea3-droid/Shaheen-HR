@@ -1218,8 +1218,135 @@ textarea {
   --danger: var(--brand-red, #CF3540);
 }
 /* Subtle page canvas for Driver (soft white) without changing layout */
-body:not(:has(.admin-theme)):not(:has(.cv-theme)) {
+body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.personal-theme)) {
   background-color: var(--brand-soft-white, #F7F8FA);
+}
+
+/* —— HR Personal (isolated study workspace; no company brand tokens) —— */
+html:has(.personal-theme) {
+  font-size: 16px;
+}
+body:has(.personal-theme) {
+  background-color: #0b1220;
+}
+.personal-theme {
+  --hp-bg: #0b1220;
+  --hp-elevated: #172238;
+  --hp-sidebar: #0f172a;
+  --hp-violet: #8b5cf6;
+  --hp-teal: #2dd4bf;
+  --hp-blue: #60a5fa;
+  --hp-amber: #fbbf24;
+  --hp-ink: #f4f7ff;
+  --hp-muted: #94a3b8;
+  --hp-border: color-mix(in srgb, #94a3b8 28%, #172238);
+  --radius: 0.35rem;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, color-mix(in srgb, #8b5cf6 22%, transparent), transparent 60%),
+    radial-gradient(900px 420px at 90% 0%, color-mix(in srgb, #2dd4bf 12%, transparent), transparent 55%),
+    var(--hp-bg);
+  color: var(--hp-ink);
+  min-height: calc(100vh - 44px);
+  font-family: Manrope, ui-sans-serif, sans-serif;
+}
+.personal-theme .hp-title {
+  font-family: Sora, Manrope, ui-sans-serif, sans-serif;
+}
+.personal-theme .hp-light {
+  --hp-bg: #f4f7ff;
+  --hp-elevated: #ffffff;
+  --hp-sidebar: #eef2ff;
+  --hp-ink: #0b1220;
+  --hp-muted: #64748b;
+  --hp-border: color-mix(in srgb, #0b1220 12%, #e2e8f0);
+  background:
+    radial-gradient(1000px 420px at 0% 0%, color-mix(in srgb, #8b5cf6 12%, transparent), transparent 55%),
+    var(--hp-bg);
+  color: var(--hp-ink);
+}
+.personal-theme .hp-panel {
+  border: 1px solid var(--hp-border);
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--hp-elevated) 92%, black);
+  padding: 1rem;
+  box-shadow: 0 10px 30px -22px rgb(0 0 0 / 0.65);
+}
+.personal-theme .hp-light .hp-panel {
+  background: var(--hp-elevated);
+  box-shadow: 0 8px 24px -18px rgb(15 23 42 / 0.35);
+}
+.personal-theme .hp-field {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 0.35rem;
+  border: 1.5px solid var(--hp-border);
+  background: color-mix(in srgb, var(--hp-bg) 70%, var(--hp-elevated));
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--hp-ink);
+  outline: none;
+}
+.personal-theme .hp-field:focus {
+  border-color: var(--hp-violet);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 28%, transparent);
+}
+.personal-theme textarea.hp-field {
+  height: auto;
+}
+.personal-theme .hp-btn-primary,
+.personal-theme .hp-btn-ghost,
+.personal-theme .hp-btn-danger,
+.personal-theme .hp-btn-teal {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: background-color 140ms ease, border-color 140ms ease, opacity 140ms ease;
+}
+.personal-theme .hp-btn-primary {
+  background: var(--hp-violet);
+  color: #fff;
+}
+.personal-theme .hp-btn-primary:hover {
+  filter: brightness(1.06);
+}
+.personal-theme .hp-btn-teal {
+  background: color-mix(in srgb, var(--hp-teal) 22%, transparent);
+  color: var(--hp-teal);
+  border: 1px solid color-mix(in srgb, var(--hp-teal) 45%, transparent);
+}
+.personal-theme .hp-btn-ghost {
+  background: transparent;
+  color: var(--hp-muted);
+  border: 1px solid var(--hp-border);
+}
+.personal-theme .hp-btn-ghost:hover {
+  color: var(--hp-ink);
+  border-color: color-mix(in srgb, var(--hp-violet) 45%, var(--hp-border));
+}
+.personal-theme .hp-btn-danger {
+  background: color-mix(in srgb, #ef4444 18%, transparent);
+  color: #fca5a5;
+  border: 1px solid color-mix(in srgb, #ef4444 40%, transparent);
+}
+.personal-theme .hp-btn-primary:disabled,
+.personal-theme .hp-btn-teal:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.personal-theme .hp-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .personal-theme .personal-shell {
+    min-height: calc(100vh - 44px);
+  }
 }
 /* Admin form labels — consistent weight/contrast */
 .admin-theme .lbl {
