@@ -1,5 +1,24 @@
+import { useSyncExternalStore } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Brain, FileCheck2, UsersRound } from "lucide-react";
+import { isPersonalNavVisible, PERSONAL_NAV_KEY } from "@/personal/lib/access";
+
+function subscribeNav(cb: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const handler = (e: StorageEvent) => {
+    if (!e.key || e.key === PERSONAL_NAV_KEY) cb();
+  };
+  window.addEventListener("storage", handler);
+  window.addEventListener("hp-nav-change", cb as EventListener);
+  return () => {
+    window.removeEventListener("storage", handler);
+    window.removeEventListener("hp-nav-change", cb as EventListener);
+  };
+}
+
+function readNav(): boolean {
+  return isPersonalNavVisible();
+}
 
 /** Top bar that switches between separate systems. Each keeps its own data. */
 export function AppSwitcher() {
@@ -8,6 +27,10 @@ export function AppSwitcher() {
   const isPersonal = pathname.startsWith("/personal");
   const isCv = pathname === "/cv";
   const isDriver = !isAdmin && !isPersonal && !isCv;
+  const navEnabled = useSyncExternalStore(subscribeNav, readNav, () => false);
+  /** Show Personal link only when already on route or owner opted-in (local flag). */
+  const showPersonal = isPersonal || navEnabled;
+
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
   /** Company systems keep brand orange when active. */
@@ -86,16 +109,18 @@ export function AppSwitcher() {
           <UsersRound className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Admin &amp; Attendance</span>
         </Link>
-        <Link
-          to="/personal"
-          aria-label="HR Personal"
-          title="HR Personal"
-          aria-current={isPersonal ? "page" : undefined}
-          className={`${base} ${isPersonal ? personalOn : personalOff}`}
-        >
-          <Brain className="h-4 w-4 shrink-0 text-[#2DD4BF]" />
-          <span className="hidden sm:inline">HR Personal</span>
-        </Link>
+        {showPersonal ? (
+          <Link
+            to="/personal"
+            aria-label="HR Personal"
+            title="HR Personal"
+            aria-current={isPersonal ? "page" : undefined}
+            className={`${base} ${isPersonal ? personalOn : personalOff}`}
+          >
+            <Brain className="h-4 w-4 shrink-0 text-[#2DD4BF]" />
+            <span className="hidden sm:inline">HR Personal</span>
+          </Link>
+        ) : null}
       </nav>
     </header>
   );

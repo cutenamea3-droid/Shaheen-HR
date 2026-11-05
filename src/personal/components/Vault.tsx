@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import {
   clearPersonalSession,
@@ -7,15 +7,61 @@ import {
   PERSONAL_AUTH_KEYS,
 } from "@/personal/lib/auth";
 import {
+  isPersonalNavVisible,
+  PERSONAL_NAV_KEY,
+  setPersonalNavVisible,
+} from "@/personal/lib/access";
+import {
   FORBIDDEN_COMPANY_KEYS,
   PERSONAL_STORAGE_KEY,
 } from "@/personal/lib/defaults";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 
+function subscribeNav(cb: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const onStorage = (e: StorageEvent) => {
+    if (!e.key || e.key === PERSONAL_NAV_KEY) cb();
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener("hp-nav-change", cb as EventListener);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener("hp-nav-change", cb as EventListener);
+  };
+}
+
 /**
  * Vault covers truncated Feature 8+ items from the original brief:
  * discipline dashboard, privacy/auth isolation, and reserved slots for follow-up.
  */
+function AccessNavControls() {
+  const visible = useSyncExternalStore(subscribeNav, isPersonalNavVisible, () => false);
+  return (
+    <div className="mb-4 rounded-md border border-[var(--hp-violet)]/35 bg-[var(--hp-violet)]/10 p-3 text-sm">
+      <div className="font-semibold text-[var(--hp-violet)]">AppSwitcher visibility</div>
+      <p className="mt-1 text-xs text-[var(--hp-muted)]">
+        Ordinary company users do not see the HR Personal tab until this device opts in (or you open{" "}
+        <code>/personal</code> directly). This is UX obscurity only — not access control against
+        hosting/repo admins.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Btn
+          variant={visible ? "teal" : "ghost"}
+          onClick={() => setPersonalNavVisible(true)}
+        >
+          Show in switcher
+        </Btn>
+        <Btn variant={!visible ? "teal" : "ghost"} onClick={() => setPersonalNavVisible(false)}>
+          Hide from company switcher
+        </Btn>
+      </div>
+      <p className="mt-2 text-[11px] text-[var(--hp-muted)]">
+        Status: {visible ? "visible on this browser" : "hidden for company switcher (route still works)"}
+      </p>
+    </div>
+  );
+}
+
 export function Vault() {
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
@@ -124,11 +170,12 @@ export function Vault() {
       <Panel>
         <SectionHead
           title="Privacy & auth isolation"
-          subtitle="Honest limits of a local PIN gate — propose server auth before production"
+          subtitle="Prototype local PIN — still insecure vs real server auth"
         />
+        <AccessNavControls />
         <div className="mb-4 space-y-3 rounded-md border border-[var(--hp-teal)]/30 bg-[var(--hp-teal)]/10 p-3 text-sm">
           <div>
-            <div className="font-semibold text-[var(--hp-teal)]">What this gate is</div>
+            <div className="font-semibold text-[var(--hp-teal)]">What this gate is (prototype)</div>
             <p className="mt-1 text-xs text-[var(--hp-muted)]">
               A device PIN: SHA-256 hash in <code>localStorage</code> on this browser. It slows casual
               peeking. It is <strong className="text-[var(--hp-ink)]">not</strong> enterprise
@@ -136,24 +183,34 @@ export function Vault() {
             </p>
           </div>
           <div>
-            <div className="font-semibold text-[var(--hp-amber)]">What it is not</div>
+            <div className="font-semibold text-[var(--hp-amber)]">Still insecure</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
               <li>No real passwords in frontend source, repo, or <code>VITE_*</code> env vars</li>
               <li>No company Admin / Driver credentials reused</li>
-              <li>Anyone with device + DevTools access can read personal study data locally</li>
+              <li>Anyone with device + DevTools can read study data and clear/replace the PIN hash</li>
+              <li>
+                Hiding the AppSwitcher link does <strong className="text-[var(--hp-ink)]">not</strong>{" "}
+                hide <code>/personal</code> from hosting/repo admins or anyone who knows the URL
+              </li>
             </ul>
           </div>
           <div>
-            <div className="font-semibold text-[var(--hp-violet)]">Before production</div>
-            <p className="mt-1 text-xs text-[var(--hp-muted)]">
-              Prefer dedicated server auth (httpOnly cookie / OAuth) on a Personal-only backend —
-              never company Admin Supabase tables. Hosting a static SPA on shared hosting still
-              exposes client JS; treat notes as private-on-device until a reviewed server path
-              exists. No prod DB migrations in this PR.
+            <div className="font-semibold text-[var(--hp-violet)]">Path to a real Personal account</div>
+            <ol className="mt-1 list-inside list-decimal text-xs text-[var(--hp-muted)]">
+              <li>Separate Personal auth provider (email magic link / OAuth) — never company Admin users</li>
+              <li>httpOnly secure cookie session; revoke on logout; no token in localStorage</li>
+              <li>
+                Dedicated Personal DB/schema with RLS owner_id — zero company attendance/driver tables
+              </li>
+              <li>Encrypt notes at rest on that Personal store; optional client backup export</li>
+              <li>Server-gated route + role claim before showing nav (UI hide alone is not enough)</li>
+            </ol>
+            <p className="mt-2 text-xs text-[var(--hp-muted)]">
+              No prod DB migrations in this PR. Approval required before any cloud Personal backend.
             </p>
           </div>
           <div>
-            <div className="font-semibold text-[var(--hp-ink)]">Personal-only keys</div>
+            <div className="font-semibold text-[var(--hp-ink)]">Personal-only browser keys</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
               <li>
                 Data: <code>{PERSONAL_STORAGE_KEY}</code>
@@ -163,6 +220,9 @@ export function Vault() {
                   Auth: <code>{k}</code>
                 </li>
               ))}
+              <li>
+                Nav flag: <code>{PERSONAL_NAV_KEY}</code>
+              </li>
             </ul>
             <div className="mt-2 font-semibold text-[var(--hp-amber)]">Never touched</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">

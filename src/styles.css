@@ -1274,23 +1274,28 @@ body:has(.personal-theme) {
 .personal-theme .hp-login-input {
   display: block;
   width: 100%;
-  height: 2.75rem;
+  height: 2.65rem;
   border-radius: 0.35rem;
-  border: 1.5px solid #d0d7e2;
-  background: #f8fafc;
-  padding: 0 0.85rem;
-  font-size: 0.9375rem;
+  border: 1.5px solid #c9d2df;
+  background: #ffffff;
+  padding: 0 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #0b1220;
   outline: none;
 }
 .personal-theme .hp-login-input:focus {
   border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 28%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #8b5cf6 26%, transparent);
   background: #fff;
 }
 .personal-theme .hp-login-split {
   min-height: calc(100vh - 44px);
+}
+@media (max-width: 1023px) {
+  .personal-theme .hp-login-split > section:first-child {
+    min-height: auto;
+  }
 }
 .personal-theme .hp-light .hp-panel {
   background: var(--hp-elevated);

@@ -18,6 +18,11 @@ import {
   modeLabel,
   STUDY_MODE_MINUTES,
 } from "@/personal/lib/schedule";
+import {
+  isPersonalNavVisible,
+  setPersonalNavVisible,
+  PERSONAL_NAV_KEY,
+} from "@/personal/lib/access";
 
 describe("HR Personal isolation", () => {
   it("serves the personal workspace at /personal", () => {
@@ -75,5 +80,15 @@ describe("HR Personal isolation", () => {
     expect(migrated.weekdayMinutes).toBe(90);
     expect(migrated.sundayMinutes).toBe(270);
     expect(migrated.theme).toBe("light");
+  });
+
+  it("keeps Personal switcher hidden until local opt-in (UX only, not server ACL)", () => {
+    expect(PERSONAL_NAV_KEY).toBe("hr-personal-nav-visible-v1");
+    localStorage.removeItem(PERSONAL_NAV_KEY);
+    expect(isPersonalNavVisible()).toBe(false);
+    setPersonalNavVisible(true);
+    expect(isPersonalNavVisible()).toBe(true);
+    setPersonalNavVisible(false);
+    expect(isPersonalNavVisible()).toBe(false);
   });
 });

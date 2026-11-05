@@ -59,36 +59,39 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
   }, []);
 
   return (
-    <div className="hp-login-split grid min-h-[calc(100vh-44px)] lg:grid-cols-2">
-      <section className="relative flex flex-col justify-between overflow-hidden bg-[#0B1220] px-8 py-10 sm:px-12 sm:py-14">
+    <div className="hp-login-split grid min-h-[calc(100vh-44px)] lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative flex flex-col justify-between overflow-hidden bg-[#0B1220] px-6 py-8 sm:px-10 sm:py-12 lg:px-14 lg:py-14">
         <div
-          className="pointer-events-none absolute inset-0 opacity-90"
+          className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{
             background:
-              "radial-gradient(900px 520px at 15% 10%, rgba(139,92,246,0.35), transparent 55%), radial-gradient(700px 420px at 85% 80%, rgba(45,212,191,0.18), transparent 50%)",
+              "radial-gradient(820px 480px at 12% 8%, rgba(139,92,246,0.38), transparent 58%), radial-gradient(640px 380px at 88% 78%, rgba(45,212,191,0.16), transparent 52%)",
           }}
         />
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-2.5 py-1">
             <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8B5CF6] text-[10px] font-bold text-white">
               HP
             </span>
             <span className="hp-title text-sm font-bold tracking-tight text-[#F4F7FF]">HR Personal</span>
           </div>
+          <span className="rounded-md border border-[#FBBF24]/35 bg-[#FBBF24]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#FBBF24]">
+            Prototype · local PIN
+          </span>
         </div>
-        <div className="relative z-10 max-w-lg space-y-5 py-12">
+        <div className="relative z-10 max-w-xl space-y-4 py-10 lg:py-14">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#2DD4BF]">
             Plan. Focus. Progress.
           </p>
-          <h1 className="hp-title text-4xl font-bold leading-[1.08] tracking-tight text-[#F4F7FF] sm:text-5xl">
+          <h1 className="hp-title text-[2.15rem] font-bold leading-[1.05] tracking-tight text-[#F4F7FF] sm:text-5xl lg:text-[3.15rem]">
             Your future, under control.
           </h1>
-          <p className="max-w-md text-sm leading-relaxed text-[#94A3B8]">
-            Private study command center for VU BS IT — isolated from company systems. No invented
-            grades. No shared company data.
+          <p className="max-w-md text-[13px] leading-relaxed text-[#94A3B8] sm:text-sm">
+            Private study command for VU BS IT — isolated from company systems. No invented grades.
+            No company records in this workspace.
           </p>
-          <ul className="mt-8 grid gap-3 sm:grid-cols-3">
+          <ul className="mt-6 grid gap-2.5 sm:grid-cols-3">
             {[
               { icon: Brain, label: "Study Planning", tone: "#8B5CF6" },
               { icon: Timer, label: "Deep Focus", tone: "#2DD4BF" },
@@ -96,22 +99,25 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             ].map(({ icon: Icon, label, tone }) => (
               <li
                 key={label}
-                className="rounded-md border border-white/10 bg-[#172238]/70 px-3 py-3 backdrop-blur"
+                className="rounded-md border border-white/10 bg-[#172238]/75 px-3 py-2.5 backdrop-blur"
               >
-                <Icon className="mb-2 h-4 w-4" style={{ color: tone }} />
-                <div className="text-xs font-bold tracking-wide text-[#F4F7FF]">{label}</div>
+                <Icon className="mb-1.5 h-4 w-4" style={{ color: tone }} />
+                <div className="text-[11px] font-bold tracking-wide text-[#F4F7FF] sm:text-xs">
+                  {label}
+                </div>
               </li>
             ))}
           </ul>
         </div>
-        <p className="relative z-10 text-[11px] text-[#94A3B8]">
-          Local device PIN gate · not enterprise server auth
+        <p className="relative z-10 max-w-md text-[11px] leading-relaxed text-[#94A3B8]">
+          Not real server auth. Hashed device PIN in this browser only — anyone with the device can
+          still inspect local data.
         </p>
       </section>
 
-      <section className="flex items-center justify-center bg-[#F4F7FF] px-6 py-12 sm:px-10">
+      <section className="flex items-center justify-center bg-[#EEF2F7] px-4 py-10 sm:px-8 lg:px-12">
         <form
-          className="hp-login-card w-full max-w-md space-y-5 rounded-md border border-[#E2E8F0] bg-white p-6 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] sm:p-8"
+          className="hp-login-card w-full max-w-[360px] space-y-4 rounded-md border border-[#D8DEE8] bg-[#F8FAFC] p-5 shadow-[0_20px_50px_-34px_rgba(15,23,42,0.55)] sm:p-6"
           onSubmit={async (e) => {
             e.preventDefault();
             if (busy) return;
@@ -121,17 +127,20 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             const pw = String(fd.get("password") ?? pwRef.current?.value ?? "");
             const pw2 = String(fd.get("password2") ?? pw2Ref.current?.value ?? "");
             try {
+              const { revealPersonalNavForOwner } = await import("@/personal/lib/access");
               if (needsSetup) {
                 if (pw.length < 4) throw new Error("Use at least 4 characters for your PIN.");
                 if (pw !== pw2) throw new Error("PINs do not match.");
                 await setPersonalPassword(pw);
                 writePersonalSession();
+                revealPersonalNavForOwner();
                 onAuthed();
                 return;
               }
               const ok = await verifyPersonalPassword(pw);
               if (!ok) throw new Error("Incorrect PIN.");
               writePersonalSession();
+              revealPersonalNavForOwner();
               onAuthed();
             } catch (ex) {
               setErr(ex instanceof Error ? ex.message : "Unlock failed.");
@@ -140,21 +149,22 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             }
           }}
         >
-          <div>
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-[#8B5CF6]">
-              <Lock className="h-5 w-5" />
-              <span className="text-sm font-bold tracking-wide">
+              <Lock className="h-4 w-4 shrink-0" />
+              <span className="text-[13px] font-bold tracking-wide">
                 {needsSetup ? "Create device PIN" : "Unlock HR Personal"}
               </span>
             </div>
-            <p className="mt-2 text-sm text-[#64748B]">
-              Honest local gate: a hashed PIN in this browser only — not server login, and never a
-              real account password in the repo or <code className="text-xs">VITE_*</code> env.
+            <p className="text-[12px] leading-relaxed text-[#64748B]">
+              <span className="font-semibold text-[#0B1220]">Prototype gate</span> — SHA-256 hash in{" "}
+              <code className="text-[11px]">localStorage</code>, not an account password. Never put
+              real credentials in the repo or <code className="text-[11px]">VITE_*</code>.
             </p>
           </div>
           <label className="block space-y-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-              PIN
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+              Device PIN
             </span>
             <input
               ref={pwRef}
@@ -168,7 +178,7 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
           </label>
           {needsSetup ? (
             <label className="block space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
                 Confirm PIN
               </span>
               <input
@@ -181,18 +191,17 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
               />
             </label>
           ) : null}
-          {err ? <p className="text-sm text-red-600">{err}</p> : null}
+          {err ? <p className="text-[12px] font-medium text-red-600">{err}</p> : null}
           <button
             type="submit"
             disabled={busy}
-            className="inline-flex w-full items-center justify-center rounded-md bg-[#8B5CF6] px-4 py-3 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-55"
+            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[#8B5CF6] px-4 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-55"
           >
             {busy ? "…" : needsSetup ? "Save PIN & enter" : "Enter workspace"}
           </button>
           <p className="text-[11px] leading-relaxed text-[#64748B]">
-            Before production: prefer real server auth (httpOnly session). Hosting this SPA still
-            means anyone with device access can inspect localStorage — treat study notes as
-            private-on-device, not vault-grade secrecy.
+            Safest next step: dedicated Personal account + httpOnly server session on a separate
+            backend — never company Admin/Driver tables.
           </p>
         </form>
       </section>
