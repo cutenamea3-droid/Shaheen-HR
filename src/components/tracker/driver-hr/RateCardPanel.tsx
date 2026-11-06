@@ -92,7 +92,7 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
         <div className="space-y-4 border-t border-foreground/10 px-4 py-4">
           <p className="text-xs text-muted-foreground">
             All fields optional including Pay Method — empty or partial save is OK. Blank is not zero.
-            Decimals like 0.550 stay as typed. No attendance / payroll / settlement side effects.
+            Typed decimals are preserved (not rounded). No attendance / payroll / settlement side effects.
           </p>
           {groups.map((group) => (
             <div key={group}>

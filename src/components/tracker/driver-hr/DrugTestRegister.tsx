@@ -96,7 +96,7 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
         <div>
           <h3 className="tracker-profile-section-h !mb-0 !border-0">Drug Test Records</h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Federal Drug · Medical Review · {driverDrugTestModeLabel(mode)}
+            Federal Drug (CCF) · Medical Review (MRO) · {driverDrugTestModeLabel(mode)}
             {events.length ? ` · ${events.length} event${events.length === 1 ? "" : "s"}` : " · none yet"}
           </p>
         </div>

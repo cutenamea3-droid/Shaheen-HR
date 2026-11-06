@@ -1,7 +1,7 @@
 /**
  * Drug Test Records — manual historical event register (NOT document upload / PDF).
  *
- * Short names: Federal Drug · Medical Review.
+ * Short names: Federal Drug (CCF) · Medical Review (MRO).
  * Pairing key: driverId + specimenId + reason + collectionContext (exact).
  * Pairing = document verification ONLY — Matched ≠ Negative / clearance / approval.
  * Never auto-clear medical / On-Duty Hours / pass / DOT / Other Docs.
@@ -12,10 +12,10 @@
 
 export type DrugDocKind = "federal_drug" | "medical_review";
 
-/** UI short names (no CCF/MRO required in labels). */
+/** UI short names. */
 export const DRUG_DOC_KIND_LABEL: Record<DrugDocKind, string> = {
-  federal_drug: "Federal Drug",
-  medical_review: "Medical Review",
+  federal_drug: "Federal Drug (CCF)",
+  medical_review: "Medical Review (MRO)",
 };
 
 export const DRUG_DOC_KIND_SHORT: Record<DrugDocKind, string> = {

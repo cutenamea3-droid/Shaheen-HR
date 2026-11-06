@@ -37,9 +37,9 @@ export interface RateFieldDef {
 
 /** Catalog — all optional; never invent defaults. */
 export const RATE_FIELD_DEFS: readonly RateFieldDef[] = [
-  { key: "loadedCpm", label: "Loaded CPM", group: "general", hint: "Per loaded mile" },
-  { key: "emptyCpm", label: "Empty CPM", group: "general", hint: "Per empty mile" },
-  { key: "percentage", label: "Percentage", group: "general", hint: "e.g. 0.550 or 55" },
+  { key: "loadedCpm", label: "Loaded CPM", group: "general" },
+  { key: "emptyCpm", label: "Empty CPM", group: "general" },
+  { key: "percentage", label: "Percentage", group: "general" },
   { key: "flatTrip", label: "Flat trip", group: "general" },
   { key: "detention", label: "Detention", group: "general" },
   { key: "layover", label: "Layover", group: "general" },
