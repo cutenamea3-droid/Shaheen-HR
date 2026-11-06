@@ -7,16 +7,18 @@
 
 | Path | Role |
 |------|------|
-| `20261106140100_driver_drug_tests_secure.sql` | Events table + audit + admin RPCs |
+| `20261106140100_driver_drug_tests_secure.sql` | Events table + FORCE RLS + admin RPCs + audit |
+| Prefer apply **after** `20261106140000_driver_rate_cards_secure.sql` (shared audit helper) |
 | This README | Operator gate |
 
 ## Target
 
-**Driver Compliance** Supabase only — not Admin Attendance, not PR #8 banking.
+**Driver Compliance** Supabase only (`okzcwctsgurumnnzuxgg` / `VITE_SUPABASE_*`).  
+**Not** Admin Lovable Cloud / PR #8 banking.
 
 ## Rules enforced in app
 
-- Short names: Federal Drug / Medical Review
+- Short names: Federal Drug (CCF) / Medical Review (MRO)
 - Records only — no PDF upload
 - Pairing key: driver + specimen + reason + collection context
 - Specimen IDs are text (leading zeros preserved)

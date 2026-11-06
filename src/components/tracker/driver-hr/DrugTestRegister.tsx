@@ -55,10 +55,16 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
 
   useEffect(() => {
     let alive = true;
-    void listDrugTestsAsync(driverId, actor).then((rows) => {
-      if (alive) setEvents(rows);
-    });
-    const unsub = subscribeDrugTestMock(() => setEvents(listDrugTests(driverId, actor)));
+    const reload = () => {
+      if (getDriverDrugTestMode() !== "secure") {
+        setEvents(listDrugTests(driverId, actor));
+      }
+      void listDrugTestsAsync(driverId, actor).then((rows) => {
+        if (alive) setEvents(rows);
+      });
+    };
+    reload();
+    const unsub = subscribeDrugTestMock(reload);
     return () => {
       alive = false;
       unsub();

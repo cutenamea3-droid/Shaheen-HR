@@ -12,6 +12,7 @@ import {
 } from "./drug-test-secure";
 import type { DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
+import { notifyDriverHrRefresh, subscribeDriverHrRefresh } from "./refresh-bus";
 
 export function listDrugTests(driverId: string, _actor = "portal"): DrugTestEvent[] {
   void _actor;
@@ -37,7 +38,9 @@ export async function addDrugTestEvent(
   actor: string,
 ): Promise<DrugTestEvent> {
   if (getDriverDrugTestMode() === "secure") {
-    return secureAddDrugTest(input);
+    const ev = await secureAddDrugTest(input);
+    notifyDriverHrRefresh();
+    return ev;
   }
   return useDrugTestMock.getState().add(input, actor);
 }
@@ -48,7 +51,9 @@ export async function updateDrugTestEvent(
   actor: string,
 ): Promise<DrugTestEvent | null> {
   if (getDriverDrugTestMode() === "secure") {
-    return secureUpdateDrugTest(id, patch);
+    const ev = await secureUpdateDrugTest(id, patch);
+    notifyDriverHrRefresh();
+    return ev;
   }
   return useDrugTestMock.getState().update(id, patch, actor);
 }
@@ -56,11 +61,18 @@ export async function updateDrugTestEvent(
 export async function deleteDrugTestEvent(id: string, actor: string): Promise<boolean> {
   if (getDriverDrugTestMode() === "secure") {
     await secureDeleteDrugTest(id);
+    notifyDriverHrRefresh();
     return true;
   }
   return useDrugTestMock.getState().remove(id, actor);
 }
 
+/** Mock store + secure refresh bus. */
 export function subscribeDrugTestMock(listener: () => void): () => void {
-  return useDrugTestMock.subscribe(listener);
+  const a = useDrugTestMock.subscribe(listener);
+  const b = subscribeDriverHrRefresh(listener);
+  return () => {
+    a();
+    b();
+  };
 }

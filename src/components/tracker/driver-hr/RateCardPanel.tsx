@@ -39,10 +39,17 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
 
   useEffect(() => {
     let alive = true;
-    void getRateCard(driverId).then((c) => {
-      if (alive) setCard(c);
-    });
-    const unsub = subscribeRateCardMock(() => setCard(peekRateCardMock(driverId)));
+    const reload = () => {
+      if (getDriverRateCardMode() !== "secure") {
+        if (alive) setCard(peekRateCardMock(driverId));
+        return;
+      }
+      void getRateCard(driverId).then((c) => {
+        if (alive) setCard(c);
+      });
+    };
+    reload();
+    const unsub = subscribeRateCardMock(reload);
     return () => {
       alive = false;
       unsub();

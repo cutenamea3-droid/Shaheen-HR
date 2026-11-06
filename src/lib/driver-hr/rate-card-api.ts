@@ -11,6 +11,7 @@ import {
   type RatePayMethod,
 } from "./rate-card-types";
 import { recordSensitiveAudit } from "./sensitive-audit";
+import { notifyDriverHrRefresh, subscribeDriverHrRefresh } from "./refresh-bus";
 
 export async function getRateCard(driverId: string, actor = "portal"): Promise<DriverRateCard> {
   if (getDriverRateCardMode() === "secure") {
@@ -41,8 +42,11 @@ export async function setRateField(
     if (norm === "") delete rates[key];
     else rates[key] = norm;
     const card = await secureUpsertRateCard({ ...prev, rates, updatedAt: Date.now() });
+    // Round-trip get to match DB scrub semantics after apply.
+    const reloaded = await secureGetRateCard(driverId).catch(() => card);
     recordSensitiveAudit({ actor, action: "rate_card_upsert", driverId, detail: key });
-    return { ok: true, card };
+    notifyDriverHrRefresh();
+    return { ok: true, card: reloaded };
   }
   const result = useRateCardMock.getState().setRate(driverId, key, raw);
   if (result.ok) recordSensitiveAudit({ actor, action: "rate_card_upsert", driverId, detail: key });
@@ -57,23 +61,30 @@ export async function setPayMethod(
 ): Promise<DriverRateCard> {
   if (getDriverRateCardMode() === "secure") {
     const prev = await getRateCard(driverId, actor);
-    const card = await secureUpsertRateCard({
+    await secureUpsertRateCard({
       ...prev,
       payMethod,
       payMethodNote: payMethodNote !== undefined ? payMethodNote : prev.payMethodNote,
       updatedAt: Date.now(),
     });
+    const reloaded = await secureGetRateCard(driverId).catch(() => prev);
     recordSensitiveAudit({ actor, action: "rate_card_upsert", driverId, detail: "payMethod" });
-    return card;
+    notifyDriverHrRefresh();
+    return reloaded;
   }
   const card = useRateCardMock.getState().setPayMethod(driverId, payMethod, payMethodNote);
   recordSensitiveAudit({ actor, action: "rate_card_upsert", driverId, detail: "payMethod" });
   return card;
 }
 
-/** Subscribe for mock mode UI reactivity. Secure mode reloads on demand. */
+/** Subscribe for mock + secure refresh reactivity. */
 export function subscribeRateCardMock(listener: () => void): () => void {
-  return useRateCardMock.subscribe(listener);
+  const a = useRateCardMock.subscribe(listener);
+  const b = subscribeDriverHrRefresh(listener);
+  return () => {
+    a();
+    b();
+  };
 }
 
 export function peekRateCardMock(driverId: string): DriverRateCard {

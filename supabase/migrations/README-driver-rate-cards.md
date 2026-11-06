@@ -7,30 +7,32 @@
 
 | Path | Role |
 |------|------|
-| `20261106140000_driver_rate_cards_secure.sql` | Table + FORCE RLS deny-all + admin RPCs |
+| `20261106140000_driver_rate_cards_secure.sql` | Table + FORCE RLS deny-all + scrub blanks + admin RPCs + audit |
 | This README | Operator gate |
 
-## Target
+## Target vs Admin
 
-**Driver Compliance** Supabase project only (`VITE_SUPABASE_*` / `src/integrations/supabase/client.ts`).  
-**Not** Admin Attendance / `app_state` / PR #8 banking.
+| | Driver Compliance | Admin & Attendance |
+|--|-------------------|--------------------|
+| Client | `src/integrations/supabase/client.ts` | `src/admin/integrations/supabase/client.ts` |
+| Host | `VITE_SUPABASE_*` / project `okzcwctsgurumnnzuxgg` | `*.lovable.cloud` |
+| This migration | **YES** | **NO** |
+| PR #8 banking | No | Separate |
 
 ## Before apply
 
-1. Confirm target project is Driver Compliance.
-2. Confirm `driver_portal_is_admin()` already exists (from `20261102090000_driver_full_cloud.sql`).
-3. Backup Driver data.
-4. Do **not** touch `tracker_sections` live rows or Admin DB.
+1. Confirm SQL Editor is the **Driver** project (not Admin Lovable).
+2. Confirm `driver_portal_is_admin()` exists.
+3. Backup Driver data; leave `tracker_sections` compliance rows alone for rates.
+4. Apply once; verify RLS + RPC.
 
 ## After apply
 
-1. Sign in as `hr.compliance@gmail.com` (admin) — rate card RPCs succeed.
-2. Sign in as a **standard** portal user — RPCs raise admin-required; table SELECT denied.
-3. Confirm rate values are **not** present in any `tracker_sections` jsonb.
-4. Only then consider enabling `VITE_DRIVER_RATE_CARD_SECURE=1` on Cloudflare (separate approval).
+1. Admin (`hr.compliance@gmail.com`) — `driver_rate_card_upsert` / `get` succeed; audit rows appear.
+2. Standard portal user — RPCs raise admin-required; table SELECT denied.
+3. Confirm rates **absent** from `tracker_sections` jsonb.
+4. Only then consider `VITE_DRIVER_RATE_CARD_SECURE=1` (separate approval).
 
 ## App defaults
 
-- Without the flag: mock session memory only (rates not cloud-persisted).
-- Rate Card UI is admin-gated in the driver file.
-- Blank ≠ 0; decimals like `0.550` preserved as strings.
+Without the flag: mock session memory only. Rate Card UI is admin-gated.

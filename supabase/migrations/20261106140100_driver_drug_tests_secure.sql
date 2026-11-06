@@ -4,6 +4,14 @@
 -- STATUS: AWAITING SEPARATE PRODUCTION APPLY APPROVAL
 -- DO NOT run against production without explicit human approval for THIS file.
 --
+-- TARGET PROJECT (Driver Compliance ONLY):
+--   Client: src/integrations/supabase/client.ts  (VITE_SUPABASE_*)
+--   Documented Driver project id: okzcwctsgurumnnzuxgg
+--   Apply AFTER 20261106140000_driver_rate_cards_secure.sql (shares audit helper)
+--     OR ensure private.driver_sensitive_audit + audit table already exist.
+--
+-- NOT Admin Lovable Cloud (src/admin/… / *.lovable.cloud / PR #8 banking).
+--
 -- Design:
 --   - Events must NOT live in tracker_sections jsonb / AppData localStorage.
 --   - Admin-only via SECURITY DEFINER RPCs + driver_portal_is_admin().
