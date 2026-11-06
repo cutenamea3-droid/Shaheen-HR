@@ -289,4 +289,137 @@ describe("Isolated PGlite Driver Rate/Drug SQL (admin + ordinary)", () => {
     const after = await db.query<{ data: unknown }>(`SELECT data FROM tracker_sections WHERE id='dmv'`);
     expect(after.rows[0]!.data).toEqual(before.rows[0]!.data);
   });
+
+  it("rejects cross-driver testing_event_id and duplicate active FD/MR; soft-delete frees slot", async () => {
+    const te = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+    await asUser(db, adminId, "hr.compliance@gmail.com", async () => {
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-guard", "federal_drug", "777", "Random", "Lab", "2024-03-01", "", te],
+      );
+
+      // Different driver cannot reuse the same testing_event_id
+      await expect(
+        db.query(
+          `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+          ["drv-other", "medical_review", "777", "Random", "Lab", "2024-03-01", "", te],
+        ),
+      ).rejects.toThrow(/different drivers/);
+
+      // Duplicate active Federal Drug on same testing event
+      await expect(
+        db.query(
+          `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+          ["drv-guard", "federal_drug", "888", "Random", "Lab", "2024-03-01", "", te],
+        ),
+      ).rejects.toThrow(/already has a federal_drug/);
+
+      // MR OK (one of each)
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-guard", "medical_review", "777", "Random", "Lab", "2024-03-01", "", te],
+      );
+      // Duplicate MR rejected
+      await expect(
+        db.query(
+          `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+          ["drv-guard", "medical_review", "777", "Random", "Lab", "2024-03-01", "", te],
+        ),
+      ).rejects.toThrow(/already has a medical_review/);
+
+      // Soft-delete FD frees the active slot; new FD allowed; restore of old FD then conflicts
+      const listed = await db.query<{ id: string; kind: string }>(
+        `SELECT id, kind FROM driver_drug_test_list($1)`,
+        ["drv-guard"],
+      );
+      const fd = listed.rows.find((r) => r.kind === "federal_drug")!;
+      await db.query(`SELECT driver_drug_test_delete($1::uuid)`, [fd.id]);
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-guard", "federal_drug", "999", "Random", "Lab", "2024-03-02", "", te],
+      );
+      await expect(
+        db.query(`SELECT * FROM driver_drug_test_restore($1::uuid)`, [fd.id]),
+      ).rejects.toThrow(/already has a federal_drug/);
+    });
+  });
+
+  it("still allows missing MR, specimen/reason mismatch, and historical Random events", async () => {
+    const teMiss = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+    const teSpec = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+    const teR1 = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+    const teR2 = "12121212-1212-1212-1212-121212121212";
+    await asUser(db, adminId, "hr.compliance@gmail.com", async () => {
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "federal_drug", "A1", "Random", "C1", "2024-04-01", "", teMiss],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "federal_drug", "S1", "Random", "Cx", "2024-04-02", "", teSpec],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "medical_review", "S2", "Random", "Cx", "2024-04-02", "", teSpec],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "federal_drug", "R1", "Random", "Hist1", "2023-01-01", "", teR1],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "medical_review", "R1", "Random", "Hist1", "2023-01-01", "", teR1],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "federal_drug", "R2", "Random", "Hist2", "2023-06-01", "", teR2],
+      );
+      await db.query(
+        `SELECT * FROM driver_drug_test_add($1,$2,$3,$4,$5,$6,$7,$8::uuid)`,
+        ["drv-pair", "medical_review", "R2", "Random", "Hist2", "2023-06-01", "", teR2],
+      );
+
+      // Soft-delete + restore of a historical MR still works when slot free
+      const rows = await db.query<{ id: string; testing_event_id: string; kind: string }>(
+        `SELECT id, testing_event_id, kind FROM driver_drug_test_list($1)`,
+        ["drv-pair"],
+      );
+      const histMr = rows.rows.find((r) => r.testing_event_id === teR2 && r.kind === "medical_review")!;
+      await db.query(`SELECT driver_drug_test_delete($1::uuid)`, [histMr.id]);
+      await db.query(`SELECT * FROM driver_drug_test_restore($1::uuid)`, [histMr.id]);
+    });
+
+    const active = await db.query<{
+      id: string;
+      testing_event_id: string;
+      kind: string;
+      specimen_id: string;
+      reason: string;
+      collection_context: string;
+    }>(
+      `SELECT id, testing_event_id, kind, specimen_id, reason, collection_context
+       FROM driver_drug_test_events
+       WHERE driver_id = 'drv-pair' AND deleted_at IS NULL AND kind IS NOT NULL`,
+    );
+    const { pairDrugTestEvents } = await import("@/lib/driver-hr/drug-tests");
+    const pairs = pairDrugTestEvents(
+      active.rows.map((r) => ({
+        id: r.id,
+        driverId: "drv-pair",
+        testingEventId: r.testing_event_id,
+        kind: r.kind as "federal_drug" | "medical_review",
+        specimenId: r.specimen_id ?? "",
+        reason: r.reason ?? "",
+        collectionContext: r.collection_context ?? "",
+        eventDate: "",
+        notes: "",
+        createdAt: 1,
+      })),
+    );
+    expect(pairs.some((p) => p.status === "missing_mr" && p.testingEventId === teMiss)).toBe(true);
+    expect(pairs.some((p) => p.status === "specimen_mismatch" && p.testingEventId === teSpec)).toBe(true);
+    expect(pairs.filter((p) => p.status === "matched" && (p.testingEventId === teR1 || p.testingEventId === teR2))).toHaveLength(
+      2,
+    );
+  });
 });

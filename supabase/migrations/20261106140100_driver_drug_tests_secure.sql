@@ -17,6 +17,9 @@
 --   - Admin-only via SECURITY DEFINER RPCs + driver_portal_is_admin().
 --   - testing_event_id groups FD+MR for ONE collection/testing event
 --     (multi Random / Follow-up stay independent via distinct ids).
+--   - Safeguards: testing_event_id cannot span drivers; one active testing
+--     event has at most one Federal Drug and one Medical Review (partial unique
+--     index + RPC assert). Soft-deleted rows do not count.
 --   - Soft-delete only (deleted_at) — recoverable; no permanent hard DELETE.
 --   - Corrections (update) audited with before/after detail.
 --   - Incomplete rows remain editable.
@@ -70,6 +73,13 @@ CREATE INDEX IF NOT EXISTS driver_drug_test_events_driver_idx
 CREATE INDEX IF NOT EXISTS driver_drug_test_events_testing_event_idx
   ON public.driver_drug_test_events (driver_id, testing_event_id)
   WHERE deleted_at IS NULL;
+
+-- At most one active FD and one active MR per testing_event_id.
+-- Soft-deleted rows excluded so restore/replace history remains possible after soft-delete.
+DROP INDEX IF EXISTS driver_drug_test_events_one_kind_per_testing_event;
+CREATE UNIQUE INDEX driver_drug_test_events_one_kind_per_testing_event
+  ON public.driver_drug_test_events (testing_event_id, kind)
+  WHERE deleted_at IS NULL AND kind IS NOT NULL;
 
 ALTER TABLE public.driver_drug_test_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.driver_drug_test_events FORCE ROW LEVEL SECURITY;
@@ -127,6 +137,47 @@ $$;
 
 REVOKE ALL ON FUNCTION private.driver_sensitive_audit(text, text, text) FROM PUBLIC;
 
+-- Enforce: testing_event_id is single-driver; no duplicate active FD/MR on one event.
+CREATE OR REPLACE FUNCTION private.driver_drug_test_assert_group(
+  p_driver_id text,
+  p_testing_event_id uuid,
+  p_kind text,
+  p_exclude_id uuid DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+SET row_security = off
+AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.driver_drug_test_events e
+    WHERE e.testing_event_id = p_testing_event_id
+      AND e.deleted_at IS NULL
+      AND e.driver_id IS DISTINCT FROM p_driver_id
+      AND (p_exclude_id IS NULL OR e.id IS DISTINCT FROM p_exclude_id)
+  ) THEN
+    RAISE EXCEPTION 'testing_event_id cannot group records from different drivers';
+  END IF;
+
+  IF p_kind IS NOT NULL AND btrim(p_kind) <> '' AND EXISTS (
+    SELECT 1
+    FROM public.driver_drug_test_events e
+    WHERE e.testing_event_id = p_testing_event_id
+      AND e.deleted_at IS NULL
+      AND e.kind = p_kind
+      AND (p_exclude_id IS NULL OR e.id IS DISTINCT FROM p_exclude_id)
+  ) THEN
+    RAISE EXCEPTION 'Active testing event already has a % record', p_kind;
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION private.driver_drug_test_assert_group(text, uuid, text, uuid) FROM PUBLIC;
+
 -- VOLATILE: performs audit INSERT. Must NOT be STABLE.
 CREATE OR REPLACE FUNCTION public.driver_drug_test_list(p_driver_id text)
 RETURNS SETOF public.driver_drug_test_events
@@ -170,21 +221,25 @@ AS $$
 DECLARE
   new_id uuid;
   group_id uuid := coalesce(p_testing_event_id, gen_random_uuid());
+  clean_kind text := nullif(btrim(coalesce(p_kind, '')), '');
+  clean_driver text := btrim(p_driver_id);
 BEGIN
   IF auth.uid() IS NULL OR NOT public.driver_portal_is_admin() THEN
     RAISE EXCEPTION 'Admin Driver Compliance account required for drug test records.';
   END IF;
-  IF p_driver_id IS NULL OR btrim(p_driver_id) = '' THEN
+  IF p_driver_id IS NULL OR clean_driver = '' THEN
     RAISE EXCEPTION 'driver_id required';
   END IF;
+
+  PERFORM private.driver_drug_test_assert_group(clean_driver, group_id, clean_kind, NULL);
 
   INSERT INTO public.driver_drug_test_events (
     driver_id, testing_event_id, kind, specimen_id, reason, collection_context,
     event_date, notes, created_by
   ) VALUES (
-    btrim(p_driver_id),
+    clean_driver,
     group_id,
-    nullif(btrim(coalesce(p_kind, '')), ''),
+    clean_kind,
     -- text: preserve leading zeros; never cast to numeric
     nullif(p_specimen_id, ''),
     nullif(p_reason, ''),
@@ -225,18 +280,25 @@ AS $$
 DECLARE
   did text;
   prev jsonb;
+  next_kind text;
+  next_te uuid;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.driver_portal_is_admin() THEN
     RAISE EXCEPTION 'Admin Driver Compliance account required for drug test records.';
   END IF;
 
-  SELECT to_jsonb(e), e.driver_id INTO prev, did
+  SELECT to_jsonb(e), e.driver_id,
+         CASE WHEN p_kind IS NULL THEN e.kind ELSE nullif(btrim(coalesce(p_kind, '')), '') END,
+         coalesce(p_testing_event_id, e.testing_event_id)
+    INTO prev, did, next_kind, next_te
   FROM public.driver_drug_test_events e
   WHERE e.id = p_id AND e.deleted_at IS NULL;
 
   IF did IS NULL THEN
     RAISE EXCEPTION 'Event not found';
   END IF;
+
+  PERFORM private.driver_drug_test_assert_group(did, next_te, next_kind, p_id);
 
   UPDATE public.driver_drug_test_events e
   SET
@@ -301,20 +363,29 @@ SET row_security = off
 AS $$
 DECLARE
   did text;
+  te uuid;
+  k text;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.driver_portal_is_admin() THEN
     RAISE EXCEPTION 'Admin Driver Compliance account required for drug test records.';
   END IF;
 
-  UPDATE public.driver_drug_test_events
-  SET deleted_at = NULL, deleted_by = NULL, updated_at = now()
-  WHERE id = p_id
-    AND deleted_at IS NOT NULL
-  RETURNING driver_id INTO did;
+  SELECT e.driver_id, e.testing_event_id, e.kind
+    INTO did, te, k
+  FROM public.driver_drug_test_events e
+  WHERE e.id = p_id AND e.deleted_at IS NOT NULL;
 
   IF did IS NULL THEN
     RAISE EXCEPTION 'Soft-deleted event not found';
   END IF;
+
+  -- Refuse restore that would create cross-driver or duplicate active FD/MR.
+  PERFORM private.driver_drug_test_assert_group(did, te, k, p_id);
+
+  UPDATE public.driver_drug_test_events
+  SET deleted_at = NULL, deleted_by = NULL, updated_at = now()
+  WHERE id = p_id
+    AND deleted_at IS NOT NULL;
 
   PERFORM private.driver_sensitive_audit('drug_test_restore', did, p_id::text);
   RETURN QUERY SELECT * FROM public.driver_drug_test_events WHERE id = p_id;

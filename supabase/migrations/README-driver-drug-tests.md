@@ -22,6 +22,7 @@
 2. **Soft-delete only** (`deleted_at` / `driver_drug_test_restore`) — no hard DELETE of history via RPC.
 3. **`testing_event_id`** groups FD+MR for one individual testing event; multi Random/Follow-up stay independent.
 4. **Updates audited** with before/correction detail; incomplete rows remain editable.
+5. **Safeguards:** `testing_event_id` cannot span drivers; one active testing event ≤1 FD and ≤1 MR (partial unique index + `private.driver_drug_test_assert_group`). Soft-deleted rows do not count.
 
 ## Rules enforced in app
 
