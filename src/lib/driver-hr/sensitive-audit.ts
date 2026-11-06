@@ -10,6 +10,8 @@ export type SensitiveAuditAction =
   | "drug_test_add"
   | "drug_test_update"
   | "drug_test_delete"
+  | "drug_test_soft_delete"
+  | "drug_test_restore"
   | "drug_test_list";
 
 export interface SensitiveAuditEntry {

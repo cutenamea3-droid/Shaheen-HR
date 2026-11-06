@@ -24,6 +24,7 @@ import { buildSeed } from "@/lib/sections";
 function ev(partial: Partial<DrugTestEvent> & Pick<DrugTestEvent, "id" | "kind">): DrugTestEvent {
   return {
     driverId: "d1",
+    testingEventId: "",
     specimenId: "",
     reason: "",
     collectionContext: "",
@@ -176,21 +177,114 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     pairDrugTestEvents([f]);
     expect(f).toEqual(snap);
     const a = useDrugTestMock.getState().add(
-      { driverId: "d1", kind: "federal_drug", specimenId: "1", reason: "Random", collectionContext: "C", eventDate: "", notes: "" },
+      {
+        driverId: "d1",
+        testingEventId: "",
+        kind: "federal_drug",
+        specimenId: "1",
+        reason: "Random",
+        collectionContext: "C",
+        eventDate: "",
+        notes: "",
+      },
       "tester",
     );
     const b = useDrugTestMock.getState().add(
-      { driverId: "d1", kind: "medical_review", specimenId: "1", reason: "Random", collectionContext: "C", eventDate: "", notes: "" },
+      {
+        driverId: "d1",
+        testingEventId: "",
+        kind: "medical_review",
+        specimenId: "1",
+        reason: "Random",
+        collectionContext: "C",
+        eventDate: "",
+        notes: "",
+      },
       "tester",
     );
     expect(a.id).not.toBe(b.id);
     expect(useDrugTestMock.getState().listForDriver("d1")).toHaveLength(2);
   });
 
+  it("10b. testingEventId links FD/MR; distinct ids keep multi Random independent", () => {
+    const te1 = "te-random-1";
+    const te2 = "te-follow-2";
+    const rows = pairDrugTestEvents([
+      ev({
+        id: "f1",
+        kind: "federal_drug",
+        testingEventId: te1,
+        specimenId: "SAME",
+        reason: "Random",
+        collectionContext: "C",
+      }),
+      ev({
+        id: "m1",
+        kind: "medical_review",
+        testingEventId: te1,
+        specimenId: "SAME",
+        reason: "Random",
+        collectionContext: "C",
+      }),
+      ev({
+        id: "f2",
+        kind: "federal_drug",
+        testingEventId: te2,
+        specimenId: "SAME",
+        reason: "Random",
+        collectionContext: "C",
+      }),
+      ev({
+        id: "m2",
+        kind: "medical_review",
+        testingEventId: te2,
+        specimenId: "SAME",
+        reason: "Random",
+        collectionContext: "C",
+      }),
+    ]);
+    expect(rows.filter((r) => r.status === "matched")).toHaveLength(2);
+    expect(rows.find((r) => r.federal?.id === "f1")?.medical?.id).toBe("m1");
+    expect(rows.find((r) => r.federal?.id === "f2")?.medical?.id).toBe("m2");
+  });
+
+  it("10c. Soft-delete is recoverable; corrections auditable; incomplete editable", () => {
+    const draft = useDrugTestMock.getState().add(
+      {
+        driverId: "d1",
+        testingEventId: "",
+        kind: "",
+        specimenId: "",
+        reason: "",
+        collectionContext: "",
+        eventDate: "",
+        notes: "draft",
+      },
+      "admin",
+    );
+    expect(isEventIncomplete(draft)).toBe(true);
+    const fixed = useDrugTestMock.getState().update(
+      draft.id,
+      { kind: "federal_drug", specimenId: "01234", reason: "Random", collectionContext: "Site" },
+      "admin",
+    );
+    expect(fixed?.specimenId).toBe("01234");
+    expect(listSensitiveAudit().some((a) => a.action === "drug_test_update" && a.detail.includes("correction"))).toBe(
+      true,
+    );
+    expect(useDrugTestMock.getState().remove(draft.id, "admin")).toBe(true);
+    expect(useDrugTestMock.getState().listForDriver("d1")).toHaveLength(0);
+    expect(useDrugTestMock.getState().restore(draft.id, "admin")?.specimenId).toBe("01234");
+    expect(useDrugTestMock.getState().listForDriver("d1")).toHaveLength(1);
+    expect(listSensitiveAudit().some((a) => a.action === "drug_test_soft_delete")).toBe(true);
+    expect(listSensitiveAudit().some((a) => a.action === "drug_test_restore")).toBe(true);
+  });
+
   it("10. Sensitive audit records drug mutations; mock store not in AppData shape", () => {
     useDrugTestMock.getState().add(
       {
         driverId: "d9",
+        testingEventId: "",
         kind: "federal_drug",
         specimenId: "99",
         reason: "Random",

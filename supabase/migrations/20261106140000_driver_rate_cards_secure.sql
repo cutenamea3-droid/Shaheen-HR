@@ -19,12 +19,14 @@
 --   2. public.driver_portal_is_admin() already exists (full cloud migration).
 --   3. Backup Driver DB. Do not touch tracker_sections live rows for rates.
 --
--- Design:
+-- Design / changes (vs earlier draft):
 --   - Rate cards must NOT live in tracker_sections jsonb (broadly readable).
 --   - Admin-only via SECURITY DEFINER RPCs + driver_portal_is_admin().
 --   - FORCE RLS + deny-all policies; no table GRANT to authenticated.
---   - Audited upserts into driver_sensitive_audit_log (created here if missing).
+--   - Audited upserts/views into driver_sensitive_audit_log.
 --   - Blank rates omitted from jsonb — never invent 0.
+--   - VOLATILITY: driver_rate_card_get is VOLATILE (not STABLE) because it
+--     writes an audit row. STABLE+write is incorrect and can be optimized away.
 -- =============================================================================
 
 CREATE SCHEMA IF NOT EXISTS private;
@@ -57,6 +59,7 @@ CREATE OR REPLACE FUNCTION private.driver_sensitive_audit(
 )
 RETURNS void
 LANGUAGE plpgsql
+VOLATILE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 SET row_security = off
@@ -116,6 +119,7 @@ DROP POLICY IF EXISTS driver_rate_cards_deny_all ON public.driver_rate_cards;
 CREATE POLICY driver_rate_cards_deny_all ON public.driver_rate_cards
   FOR ALL TO authenticated USING (false) WITH CHECK (false);
 
+-- VOLATILE: performs audit INSERT. Must NOT be STABLE.
 CREATE OR REPLACE FUNCTION public.driver_rate_card_get(p_driver_id text)
 RETURNS TABLE (
   driver_id text,
@@ -125,11 +129,12 @@ RETURNS TABLE (
   updated_at timestamptz
 )
 LANGUAGE plpgsql
-STABLE
+VOLATILE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 SET row_security = off
 AS $$
+#variable_conflict use_column
 BEGIN
   IF auth.uid() IS NULL OR NOT public.driver_portal_is_admin() THEN
     RAISE EXCEPTION 'Admin Driver Compliance account required for rate cards.';
@@ -156,14 +161,17 @@ RETURNS TABLE (
   updated_at timestamptz
 )
 LANGUAGE plpgsql
+VOLATILE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 SET row_security = off
 AS $$
+#variable_conflict use_column
 DECLARE
   clean_method text := nullif(btrim(coalesce(p_pay_method, '')), '');
   clean_note text := coalesce(p_pay_method_note, '');
   clean_rates jsonb := private.driver_rate_scrub_rates(p_rates);
+  prev jsonb;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.driver_portal_is_admin() THEN
     RAISE EXCEPTION 'Admin Driver Compliance account required for rate cards.';
@@ -176,6 +184,10 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Invalid pay_method';
   END IF;
+
+  SELECT to_jsonb(r) INTO prev
+  FROM public.driver_rate_cards r
+  WHERE r.driver_id = btrim(p_driver_id);
 
   INSERT INTO public.driver_rate_cards AS t (
     driver_id, rates, pay_method, pay_method_note, updated_at, updated_by
@@ -194,7 +206,11 @@ BEGIN
     updated_at = now(),
     updated_by = auth.uid();
 
-  PERFORM private.driver_sensitive_audit('rate_card_upsert', btrim(p_driver_id), '');
+  PERFORM private.driver_sensitive_audit(
+    'rate_card_upsert',
+    btrim(p_driver_id),
+    jsonb_build_object('before', coalesce(prev, 'null'::jsonb), 'after_rates', clean_rates)::text
+  );
 
   RETURN QUERY
   SELECT r.driver_id, r.rates, r.pay_method, r.pay_method_note, r.updated_at

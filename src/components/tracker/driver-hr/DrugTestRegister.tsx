@@ -111,9 +111,10 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
       {open && (
         <div className="space-y-3 border-t border-foreground/10 px-4 py-4">
           <p className="text-xs text-muted-foreground">
-            Records only (no PDF). Pairing uses driver + specimen + reason + collection context.
+            Records only (no PDF). FD/MR link by testing event id (then specimen + reason + collection).
             Matched means documents line up — not Negative, clearance, or approval. Other Documents /
-            medical / duty stay untouched. Partial Federal Drug or Medical Review entries are OK.
+            medical / duty stay untouched. Incomplete entries stay editable. Remove is soft-delete
+            (recoverable) — history is not permanently erased.
           </p>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -150,6 +151,12 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
 
           {adding && !view && (
             <EventEditor
+              linkOptions={events
+                .filter((e) => e.kind === "federal_drug" && e.testingEventId)
+                .map((e) => ({
+                  id: e.testingEventId,
+                  label: `Link FD ${e.specimenId || "incomplete"} · ${e.reason || "—"}`,
+                }))}
               onCancel={() => setAdding(false)}
               onSave={async (draft) => {
                 await addDrugTestEvent({ ...draft, driverId }, actor);
@@ -195,9 +202,10 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                           {row.federal && (
                             <button
                               type="button"
-                              aria-label="Delete Federal Drug event"
+                              aria-label="Soft-delete Federal Drug event"
+                              title="Soft-delete (recoverable)"
                               onClick={async () => {
-                                if (confirm("Delete this Federal Drug event?")) {
+                                if (confirm("Soft-delete this Federal Drug event? History stays recoverable.")) {
                                   await deleteDrugTestEvent(row.federal!.id, actor);
                                 }
                               }}
@@ -209,9 +217,10 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                           {row.medical && (
                             <button
                               type="button"
-                              aria-label="Delete Medical Review event"
+                              aria-label="Soft-delete Medical Review event"
+                              title="Soft-delete (recoverable)"
                               onClick={async () => {
-                                if (confirm("Delete this Medical Review event?")) {
+                                if (confirm("Soft-delete this Medical Review event? History stays recoverable.")) {
                                   await deleteDrugTestEvent(row.medical!.id, actor);
                                 }
                               }}
@@ -267,11 +276,13 @@ function EventMini({ ev, actor, view }: { ev: DrugTestEvent; actor: string; view
 
 function EventEditor({
   initial,
+  linkOptions = [],
   onSave,
   onCancel,
 }: {
   initial?: DrugTestEvent;
-  onSave: (draft: Omit<DrugTestEvent, "id" | "driverId" | "createdAt">) => void | Promise<void>;
+  linkOptions?: { id: string; label: string }[];
+  onSave: (draft: Omit<DrugTestEvent, "id" | "driverId" | "createdAt" | "deletedAt">) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [kind, setKind] = useState<DrugDocKind | "">(initial?.kind ?? "");
@@ -280,6 +291,7 @@ function EventEditor({
   const [collectionContext, setCollectionContext] = useState(initial?.collectionContext ?? "");
   const [eventDate, setEventDate] = useState(initial?.eventDate ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [testingEventId, setTestingEventId] = useState(initial?.testingEventId ?? "");
 
   return (
     <div className="space-y-2 rounded-lg border border-primary/30 bg-card p-3">
@@ -339,6 +351,26 @@ function EventEditor({
           />
         </label>
         <label className="block text-xs sm:col-span-2">
+          <span className="mb-1 block font-bold text-muted-foreground">Testing event link</span>
+          <select
+            value={testingEventId}
+            onChange={(e) => setTestingEventId(e.target.value)}
+            className="w-full rounded-lg border px-2 py-1.5 text-sm"
+          >
+            <option value="">New testing event (independent)</option>
+            {initial?.testingEventId ? (
+              <option value={initial.testingEventId}>Keep current · {initial.testingEventId.slice(0, 8)}…</option>
+            ) : null}
+            {linkOptions
+              .filter((o) => o.id !== initial?.testingEventId)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label className="block text-xs sm:col-span-2">
           <span className="mb-1 block font-bold text-muted-foreground">Notes</span>
           <input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg border px-2 py-1.5 text-sm" />
         </label>
@@ -346,7 +378,9 @@ function EventEditor({
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => void onSave({ kind, specimenId, reason, collectionContext, eventDate, notes })}
+          onClick={() =>
+            void onSave({ kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId })
+          }
           className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-primary-foreground"
         >
           Save event

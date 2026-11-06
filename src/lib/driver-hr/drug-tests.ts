@@ -2,11 +2,13 @@
  * Drug Test Records — manual historical event register (NOT document upload / PDF).
  *
  * Short names: Federal Drug (CCF) · Medical Review (MRO).
- * Pairing key: driverId + specimenId + reason + collectionContext (exact).
+ * Pairing prefers testingEventId (one individual collection/testing event).
+ * Fallback key (legacy / ungrouped): driverId + specimenId + reason + collectionContext.
+ * Multi Random / Follow-up stay independent via distinct testingEventId values.
  * Pairing = document verification ONLY — Matched ≠ Negative / clearance / approval.
  * Never auto-clear medical / On-Duty Hours / pass / DOT / Other Docs.
  *
- * Progressive incomplete OK. Multiple Random / Follow-up events allowed (1:1 pairs).
+ * Progressive incomplete OK. Soft-delete is recoverable (deletedAt set).
  * Specimen IDs are strings — leading zeros preserved; never Number()-coerced.
  */
 
@@ -52,31 +54,43 @@ export const DRUG_PAIR_STATUS_LABEL: Record<DrugPairStatus, string> = {
 export interface DrugTestEvent {
   id: string;
   driverId: string;
+  /**
+   * Groups FD + MR for one individual testing/collection event.
+   * Distinct ids keep separate Random / Follow-up events independent.
+   */
+  testingEventId: string;
   /** Empty allowed while progressive entry. */
   kind: DrugDocKind | "";
   /** String — preserve leading zeros (e.g. "01234"). Never coerce to number. */
   specimenId: string;
   reason: string;
   /**
-   * Collection context (date/site/lab batch text). Part of pairing key with
-   * driver + specimen + reason. Empty allowed on incomplete records.
+   * Collection context (date/site/lab batch text). Part of fallback pairing key.
+   * Empty allowed on incomplete records.
    */
   collectionContext: string;
   /** Optional display date; not a substitute for collectionContext. */
   eventDate: string;
   notes: string;
   createdAt: number;
+  /** Soft-delete timestamp (ms). Active rows omit / 0. */
+  deletedAt?: number;
 }
 
 export interface DrugPairRow {
   id: string;
   status: DrugPairStatus;
+  testingEventId: string;
   federal?: DrugTestEvent | undefined;
   medical?: DrugTestEvent | undefined;
   specimenId: string;
   reason: string;
   collectionContext: string;
   eventDate: string;
+}
+
+export function newTestingEventId(): string {
+  return crypto.randomUUID?.() ?? `te_${Math.random().toString(36).slice(2)}_${Date.now()}`;
 }
 
 export function parseDrugDocKind(raw: string | undefined | null): DrugDocKind | "" {
@@ -114,23 +128,41 @@ export function isEventIncomplete(ev: DrugTestEvent): boolean {
   return false;
 }
 
+function statusForLinkedPair(fd: DrugTestEvent, mr: DrugTestEvent): DrugPairStatus {
+  const fs = normalizeSpecimenId(fd.specimenId);
+  const ms = normalizeSpecimenId(mr.specimenId);
+  const fr = normKey(fd.reason);
+  const mrR = normKey(mr.reason);
+  const fc = normalizeCollectionContext(fd.collectionContext);
+  const mc = normalizeCollectionContext(mr.collectionContext);
+  if (fs && ms && fs !== ms) return "specimen_mismatch";
+  if (fr && mrR && fr !== mrR) return "reason_mismatch";
+  // Same testing event + same (or one-sided blank) specimen/reason/context → Matched
+  if (fs && ms && fr && mrR && fc === mc) return "matched";
+  if (fs && ms && fr && mrR) return "matched";
+  return "incomplete";
+}
+
 type Side = { ev: DrugTestEvent; used: boolean };
 
 /**
  * Pair FD ↔ MR for one driver.
- * Matched only when specimen + reason + collectionContext all match (and driver).
- * Partial FD or MR alone → Missing MR / Missing FD (if enough fields to classify).
+ * Prefer same testingEventId (individual testing event).
+ * Fallback: specimen + reason + collectionContext (exact) for ungrouped rows.
+ * Soft-deleted rows should be filtered out before calling.
  */
 export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
+  const active = events.filter((e) => !e.deletedAt);
   const incomplete: DrugPairRow[] = [];
   const fds: Side[] = [];
   const mrs: Side[] = [];
 
-  for (const ev of events) {
+  for (const ev of active) {
     if (isEventIncomplete(ev)) {
       incomplete.push({
         id: `inc_${ev.id}`,
         status: "incomplete",
+        testingEventId: ev.testingEventId || "",
         federal: ev.kind === "federal_drug" ? ev : undefined,
         medical: ev.kind === "medical_review" ? ev : undefined,
         specimenId: ev.specimenId,
@@ -153,6 +185,7 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
   ): DrugPairRow => ({
     id: `pair_${fd?.id ?? "x"}_${mr?.id ?? "x"}`,
     status,
+    testingEventId: (fd?.testingEventId || mr?.testingEventId || "").trim(),
     federal: fd,
     medical: mr,
     specimenId: (fd?.specimenId || mr?.specimenId || "").trim(),
@@ -161,16 +194,37 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
     eventDate: (fd?.eventDate || mr?.eventDate || "").trim(),
   });
 
-  // Pass 1 — exact specimen + reason + collection context → Matched
+  // Pass 0 — same testingEventId → linked to that individual testing event
+  for (const f of fds) {
+    if (f.used) continue;
+    const tid = (f.ev.testingEventId || "").trim();
+    if (!tid) continue;
+    const m = mrs.find((x) => !x.used && (x.ev.testingEventId || "").trim() === tid);
+    if (!m) continue;
+    f.used = true;
+    m.used = true;
+    pairs.push(takePair(statusForLinkedPair(f.ev, m.ev), f.ev, m.ev));
+  }
+
+  /** Classic key pairing only when ids are not both set to different testing events. */
+  const classicCompatible = (a: DrugTestEvent, b: DrugTestEvent) => {
+    const ta = (a.testingEventId || "").trim();
+    const tb = (b.testingEventId || "").trim();
+    if (ta && tb && ta !== tb) return false; // independent testing events
+    return true;
+  };
+
+  // Pass 1 — exact specimen + reason + collection context → Matched (legacy / ungrouped)
   for (const f of fds) {
     if (f.used) continue;
     const fs = normalizeSpecimenId(f.ev.specimenId);
     const fr = normKey(f.ev.reason);
     const fc = normalizeCollectionContext(f.ev.collectionContext);
-    if (!fs || !fr) continue; // need specimen+reason for a full match attempt
+    if (!fs || !fr) continue;
     const m = mrs.find(
       (x) =>
         !x.used &&
+        classicCompatible(f.ev, x.ev) &&
         normalizeSpecimenId(x.ev.specimenId) === fs &&
         normKey(x.ev.reason) === fr &&
         normalizeCollectionContext(x.ev.collectionContext) === fc,
@@ -190,6 +244,7 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
     const m = mrs.find(
       (x) =>
         !x.used &&
+        classicCompatible(f.ev, x.ev) &&
         normalizeSpecimenId(x.ev.specimenId) === fs &&
         normalizeCollectionContext(x.ev.collectionContext) === fc &&
         normKey(x.ev.reason) !== normKey(f.ev.reason),
@@ -209,6 +264,7 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
     if (!fr) continue;
     const m = mrs.find((x) => {
       if (x.used) return false;
+      if (!classicCompatible(f.ev, x.ev)) return false;
       if (normKey(x.ev.reason) !== fr) return false;
       if (normalizeCollectionContext(x.ev.collectionContext) !== fc) return false;
       const ms = normalizeSpecimenId(x.ev.specimenId);
@@ -256,6 +312,7 @@ export function filterDrugPairs(
       r.reason,
       r.collectionContext,
       r.eventDate,
+      r.testingEventId,
       r.federal?.notes,
       r.medical?.notes,
       DRUG_PAIR_STATUS_LABEL[r.status],

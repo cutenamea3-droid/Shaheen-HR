@@ -11,6 +11,7 @@ const db = supabase as any;
 function mapRow(row: {
   id: string;
   driver_id: string;
+  testing_event_id?: string | null;
   kind: string | null;
   specimen_id: string | null;
   reason: string | null;
@@ -18,10 +19,13 @@ function mapRow(row: {
   event_date: string | null;
   notes: string | null;
   created_at: string;
+  deleted_at?: string | null;
 }): DrugTestEvent {
-  return {
+  const deletedMs = row.deleted_at ? Date.parse(row.deleted_at) : NaN;
+  const base: DrugTestEvent = {
     id: row.id,
     driverId: row.driver_id,
+    testingEventId: row.testing_event_id ?? row.id,
     kind: parseDrugDocKind(row.kind) as DrugDocKind | "",
     specimenId: row.specimen_id ?? "",
     reason: row.reason ?? "",
@@ -30,6 +34,8 @@ function mapRow(row: {
     notes: row.notes ?? "",
     createdAt: Date.parse(row.created_at) || 0,
   };
+  if (Number.isFinite(deletedMs)) base.deletedAt = deletedMs;
+  return base;
 }
 
 export async function secureListDrugTests(driverId: string): Promise<DrugTestEvent[]> {
@@ -39,7 +45,9 @@ export async function secureListDrugTests(driverId: string): Promise<DrugTestEve
   return rows.map(mapRow);
 }
 
-export async function secureAddDrugTest(ev: Omit<DrugTestEvent, "id" | "createdAt">): Promise<DrugTestEvent> {
+export async function secureAddDrugTest(
+  ev: Omit<DrugTestEvent, "id" | "createdAt">,
+): Promise<DrugTestEvent> {
   const { data, error } = await db.rpc("driver_drug_test_add", {
     p_driver_id: ev.driverId,
     p_kind: ev.kind || null,
@@ -48,6 +56,7 @@ export async function secureAddDrugTest(ev: Omit<DrugTestEvent, "id" | "createdA
     p_collection_context: ev.collectionContext || null,
     p_event_date: ev.eventDate || null,
     p_notes: ev.notes || null,
+    p_testing_event_id: ev.testingEventId || null,
   });
   if (error) throw new Error(error.message);
   const row = Array.isArray(data) ? data[0] : data;
@@ -56,7 +65,12 @@ export async function secureAddDrugTest(ev: Omit<DrugTestEvent, "id" | "createdA
 
 export async function secureUpdateDrugTest(
   id: string,
-  patch: Partial<Pick<DrugTestEvent, "kind" | "specimenId" | "reason" | "collectionContext" | "eventDate" | "notes">>,
+  patch: Partial<
+    Pick<
+      DrugTestEvent,
+      "kind" | "specimenId" | "reason" | "collectionContext" | "eventDate" | "notes" | "testingEventId"
+    >
+  >,
 ): Promise<DrugTestEvent> {
   const { data, error } = await db.rpc("driver_drug_test_update", {
     p_id: id,
@@ -66,13 +80,22 @@ export async function secureUpdateDrugTest(
     p_collection_context: patch.collectionContext,
     p_event_date: patch.eventDate,
     p_notes: patch.notes,
+    p_testing_event_id: patch.testingEventId || undefined,
   });
   if (error) throw new Error(error.message);
   const row = Array.isArray(data) ? data[0] : data;
   return mapRow(row);
 }
 
+/** Soft-delete (recoverable). */
 export async function secureDeleteDrugTest(id: string): Promise<void> {
   const { error } = await db.rpc("driver_drug_test_delete", { p_id: id });
   if (error) throw new Error(error.message);
+}
+
+export async function secureRestoreDrugTest(id: string): Promise<DrugTestEvent> {
+  const { data, error } = await db.rpc("driver_drug_test_restore", { p_id: id });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return mapRow(row);
 }

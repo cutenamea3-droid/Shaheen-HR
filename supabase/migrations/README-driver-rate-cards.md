@@ -7,7 +7,7 @@
 
 | Path | Role |
 |------|------|
-| `20261106140000_driver_rate_cards_secure.sql` | Table + FORCE RLS deny-all + scrub blanks + admin RPCs + audit |
+| `20261106140000_driver_rate_cards_secure.sql` | Table + FORCE RLS + scrub blanks + admin RPCs + audit |
 | This README | Operator gate |
 
 ## Target vs Admin
@@ -19,6 +19,12 @@
 | This migration | **YES** | **NO** |
 | PR #8 banking | No | Separate |
 
+## Changes in this migration (vs earlier draft)
+
+1. **`driver_rate_card_get` is VOLATILE** (not STABLE) — authorized reads write audit; STABLE+write is invalid.
+2. Upsert audit includes before/after rates detail.
+3. Blank rates scrubbed (`private.driver_rate_scrub_rates`) — blank ≠ 0.
+
 ## Before apply
 
 1. Confirm SQL Editor is the **Driver** project (not Admin Lovable).
@@ -28,7 +34,7 @@
 
 ## After apply
 
-1. Admin (`hr.compliance@gmail.com`) — `driver_rate_card_upsert` / `get` succeed; audit rows appear.
+1. Admin (`hr.compliance@gmail.com`) — upsert/get succeed; audit rows appear on **get** and upsert.
 2. Standard portal user — RPCs raise admin-required; table SELECT denied.
 3. Confirm rates **absent** from `tracker_sections` jsonb.
 4. Only then consider `VITE_DRIVER_RATE_CARD_SECURE=1` (separate approval).

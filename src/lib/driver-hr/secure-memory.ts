@@ -3,7 +3,7 @@
  *
  * NOT prod. NOT tracker_sections. NOT AppData localStorage.
  * Simulates independent persistent tables so save → “reload” → still present,
- * without writing live Supabase.
+ * without writing live Supabase. Soft-delete + testingEventId grouping included.
  */
 import {
   emptyRateCard,
@@ -11,7 +11,7 @@ import {
   type DriverRateCard,
   type RatePayMethod,
 } from "./rate-card-types";
-import type { DrugTestEvent } from "./drug-tests";
+import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 
 function scrubRates(rates: Record<string, string>): Record<string, string> {
@@ -116,7 +116,7 @@ export function memorySetPayMethod(
 export function memoryListDrugTests(driverId: string, actor = "test"): DrugTestEvent[] {
   recordSensitiveAudit({ actor, action: "drug_test_list", driverId });
   return [...drugEvents.values()]
-    .filter((e) => e.driverId === driverId)
+    .filter((e) => e.driverId === driverId && !e.deletedAt)
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((e) => ({ ...e }));
 }
@@ -128,6 +128,7 @@ export function memoryAddDrugTest(
   const ev: DrugTestEvent = {
     ...input,
     id: crypto.randomUUID?.() ?? `mem_${Math.random().toString(36).slice(2)}`,
+    testingEventId: input.testingEventId?.trim() || newTestingEventId(),
     specimenId: input.specimenId ?? "",
     reason: input.reason ?? "",
     collectionContext: input.collectionContext ?? "",
@@ -140,7 +141,7 @@ export function memoryAddDrugTest(
     actor,
     action: "drug_test_add",
     driverId: ev.driverId,
-    detail: `specimen=${ev.specimenId}`,
+    detail: `specimen=${ev.specimenId};te=${ev.testingEventId}`,
   });
   emit();
   return { ...ev };
@@ -148,11 +149,16 @@ export function memoryAddDrugTest(
 
 export function memoryUpdateDrugTest(
   id: string,
-  patch: Partial<Pick<DrugTestEvent, "kind" | "specimenId" | "reason" | "collectionContext" | "eventDate" | "notes">>,
+  patch: Partial<
+    Pick<
+      DrugTestEvent,
+      "kind" | "specimenId" | "reason" | "collectionContext" | "eventDate" | "notes" | "testingEventId"
+    >
+  >,
   actor = "test",
 ): DrugTestEvent | null {
   const prev = drugEvents.get(id);
-  if (!prev) return null;
+  if (!prev || prev.deletedAt) return null;
   const next: DrugTestEvent = {
     ...prev,
     kind: patch.kind !== undefined ? patch.kind : prev.kind,
@@ -161,18 +167,39 @@ export function memoryUpdateDrugTest(
     collectionContext: patch.collectionContext !== undefined ? patch.collectionContext : prev.collectionContext,
     eventDate: patch.eventDate !== undefined ? patch.eventDate : prev.eventDate,
     notes: patch.notes !== undefined ? patch.notes : prev.notes,
+    testingEventId:
+      patch.testingEventId !== undefined && patch.testingEventId.trim()
+        ? patch.testingEventId.trim()
+        : prev.testingEventId,
   };
   drugEvents.set(id, next);
-  recordSensitiveAudit({ actor, action: "drug_test_update", driverId: next.driverId, detail: id });
+  recordSensitiveAudit({
+    actor,
+    action: "drug_test_update",
+    driverId: next.driverId,
+    detail: JSON.stringify({ id, before: prev, correction: true }),
+  });
   emit();
   return { ...next };
 }
 
-export function memoryDeleteDrugTest(id: string, actor = "test"): boolean {
+export function memorySoftDeleteDrugTest(id: string, actor = "test"): boolean {
   const prev = drugEvents.get(id);
-  if (!prev) return false;
-  drugEvents.delete(id);
-  recordSensitiveAudit({ actor, action: "drug_test_delete", driverId: prev.driverId, detail: id });
+  if (!prev || prev.deletedAt) return false;
+  drugEvents.set(id, { ...prev, deletedAt: Date.now() });
+  recordSensitiveAudit({ actor, action: "drug_test_soft_delete", driverId: prev.driverId, detail: id });
   emit();
   return true;
+}
+
+export function memoryRestoreDrugTest(id: string, actor = "test"): DrugTestEvent | null {
+  const prev = drugEvents.get(id);
+  if (!prev?.deletedAt) return null;
+  const { deletedAt: _removed, ...rest } = prev;
+  void _removed;
+  const next: DrugTestEvent = { ...rest };
+  drugEvents.set(id, next);
+  recordSensitiveAudit({ actor, action: "drug_test_restore", driverId: prev.driverId, detail: id });
+  emit();
+  return { ...next };
 }

@@ -8,8 +8,10 @@ import {
   memoryAddDrugTest,
   memoryGetRateCard,
   memoryListDrugTests,
+  memoryRestoreDrugTest,
   memorySetPayMethod,
   memorySetRateField,
+  memorySoftDeleteDrugTest,
   memoryUpdateDrugTest,
   restoreSecureMemory,
   snapshotSecureMemory,
@@ -29,9 +31,8 @@ describe("Secure persistence harness (isolated)", () => {
     const a = memorySetRateField("d1", "percentage", "0.550", "admin@test");
     expect(a.ok).toBe(true);
     memorySetPayMethod("d1", "percentage", "", "admin@test");
-    memorySetRateField("d1", "loadedCpm", "", "admin@test"); // blank clears / never invents 0
+    memorySetRateField("d1", "loadedCpm", "", "admin@test");
 
-    // Simulate reload
     const snap = snapshotSecureMemory();
     clearSecureMemory();
     expect(memoryGetRateCard("d1").rates).toEqual({});
@@ -41,14 +42,15 @@ describe("Secure persistence harness (isolated)", () => {
     expect(card.rates.percentage).toBe("0.550");
     expect(card.rates.loadedCpm).toBeUndefined();
     expect(card.payMethod).toBe("percentage");
-    // Drug table untouched
     expect(memoryListDrugTests("d1")).toHaveLength(0);
   });
 
-  it("drug events persist independently; pairing + leading zeros + partial after reload", () => {
+  it("drug events persist with testingEventId; pairing + soft-delete + leading zeros", () => {
+    const te = "te-01234-random";
     memoryAddDrugTest(
       {
         driverId: "d1",
+        testingEventId: te,
         kind: "federal_drug",
         specimenId: "01234",
         reason: "Random",
@@ -61,6 +63,7 @@ describe("Secure persistence harness (isolated)", () => {
     memoryAddDrugTest(
       {
         driverId: "d1",
+        testingEventId: te,
         kind: "medical_review",
         specimenId: "01234",
         reason: "Random",
@@ -70,10 +73,10 @@ describe("Secure persistence harness (isolated)", () => {
       },
       "admin@test",
     );
-    // Partial / incomplete progressive
     const partial = memoryAddDrugTest(
       {
         driverId: "d1",
+        testingEventId: "",
         kind: "federal_drug",
         specimenId: "",
         reason: "",
@@ -93,16 +96,23 @@ describe("Secure persistence harness (isolated)", () => {
     expect(rows.some((r) => r.specimenId === "01234")).toBe(true);
 
     const pairs = pairDrugTestEvents(rows);
-    expect(pairs.some((p) => p.status === "matched")).toBe(true);
+    expect(pairs.some((p) => p.status === "matched" && p.testingEventId === te)).toBe(true);
     expect(pairs.some((p) => p.status === "incomplete")).toBe(true);
 
-    // Edit specimen history without overwrite-delete of sibling
-    memoryUpdateDrugTest(partial.id, { specimenId: "99", reason: "Follow-up", collectionContext: "Site B" }, "admin@test");
+    memoryUpdateDrugTest(
+      partial.id,
+      { specimenId: "99", reason: "Follow-up", collectionContext: "Site B" },
+      "admin@test",
+    );
     const after = pairDrugTestEvents(memoryListDrugTests("d1"));
     expect(after.filter((p) => p.status === "matched")).toHaveLength(1);
     expect(after.some((p) => p.status === "missing_mr")).toBe(true);
 
-    // Rate card still empty (independent)
+    expect(memorySoftDeleteDrugTest(partial.id, "admin@test")).toBe(true);
+    expect(memoryListDrugTests("d1")).toHaveLength(2);
+    expect(memoryRestoreDrugTest(partial.id, "admin@test")?.specimenId).toBe("99");
+    expect(listSensitiveAudit().some((a) => a.action === "drug_test_soft_delete")).toBe(true);
+
     expect(memoryGetRateCard("d1").rates).toEqual({});
   });
 
@@ -110,6 +120,7 @@ describe("Secure persistence harness (isolated)", () => {
     memorySetRateField("d9", "percentage", "0.550");
     memoryAddDrugTest({
       driverId: "d9",
+      testingEventId: "",
       kind: "federal_drug",
       specimenId: "1",
       reason: "Random",
