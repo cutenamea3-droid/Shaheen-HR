@@ -19,6 +19,7 @@ import {
   type ExpFilter,
 } from "@/lib/alerts";
 import { countTempNotes, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
+import { dateOfHireOf, formatHireDateDisplay, lengthOfService } from "@/lib/driver-hr/hire-date";
 import { printDriverDossier } from "@/lib/driver-dossier";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useDensity } from "@/lib/density";
@@ -31,6 +32,9 @@ import { FilterGroup, FilterRack } from "./FilterRack";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DriverManageControls } from "./DriverManageControls";
+import { DrugTestRegister } from "./driver-hr/DrugTestRegister";
+import { HireDateField } from "./driver-hr/HireDateField";
+import { RateCardPanel } from "./driver-hr/RateCardPanel";
 
 // The cards read and write the exact same rows as the sections — no copies.
 const CARD_SECTIONS = SECTIONS.filter((s) => s.id !== "inactive");
@@ -269,6 +273,7 @@ export function DriverCards({
               <th className={th}>Driver</th>
               <th className={th}>Status</th>
               <th className={th}>CDL</th>
+              <th className={th}>Hire</th>
               <th className={th}>Documents</th>
               <th className={cn(th, "tracker-no-print")}>Action</th>
             </tr>
@@ -328,6 +333,18 @@ export function DriverCards({
                   <td className="px-4 py-3">
                     <div className="font-semibold">{d.cdl || "—"}</div>
                     <div className="text-sm text-muted-foreground">{d.state || "—"}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      const hire = dateOfHireOf(data, d.driverId);
+                      const los = lengthOfService(hire);
+                      return (
+                        <>
+                          <div className="font-semibold">{hire ? formatHireDateDisplay(hire) : "—"}</div>
+                          {los && <div className="text-sm text-muted-foreground">{los.label}</div>}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="w-64 px-4 py-3">
                     <div className="font-bold">{pct}% complete</div>
@@ -457,6 +474,9 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
         </div>
       )}
       <div className="space-y-4 px-6 py-5">
+        <HireDateField driverId={driverId} />
+        <RateCardPanel driverId={driverId} />
+        <DrugTestRegister driverId={driverId} driverName={name} />
         {CARD_SECTIONS.map((def) => {
           const sec = data.sections[def.id];
           const row = sec.rows.find((r) => r.driverId === driverId);
