@@ -4,40 +4,33 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOptionalPortalAccount } from "@/components/tracker/LockGate";
 import { useViewMode } from "@/lib/viewmode";
-import { parseISO } from "@/lib/alerts";
 import {
   addDrugTestEvent,
   deleteDrugTestEvent,
-  listDrugTests,
   listDrugTestsAsync,
+  restoreDrugTestEvent,
   subscribeDrugTestMock,
   updateDrugTestEvent,
 } from "@/lib/driver-hr/drug-test-api";
-import { driverDrugTestModeLabel, getDriverDrugTestMode } from "@/lib/driver-hr/drug-test-mode";
 import {
-  DRUG_DOC_KIND_LABEL,
+  canPersistDrugTests,
+  driverDrugTestModeLabel,
+  drugTestPersistBlockedReason,
+  getDriverDrugTestMode,
+} from "@/lib/driver-hr/drug-test-mode";
+import {
   DRUG_PAIR_STATUS_LABEL,
-  DRUG_REASON_SUGGESTIONS,
   filterDrugPairs,
   formatDrugDocKind,
   pairDrugTestEvents,
-  parseDrugDocKind,
-  type DrugDocKind,
   type DrugPairStatus,
   type DrugTestEvent,
 } from "@/lib/driver-hr/drug-tests";
-
-const STATUS_TONE: Record<DrugPairStatus, string> = {
-  matched: "bg-ok-soft text-ok",
-  missing_fd: "bg-warn-soft text-warn",
-  missing_mr: "bg-warn-soft text-warn",
-  specimen_mismatch: "bg-danger-soft text-danger",
-  reason_mismatch: "bg-danger-soft text-danger",
-  incomplete: "bg-muted text-muted-foreground",
-};
+import { DrugTestEventEditor, DRUG_STATUS_TONE } from "./DrugTestForm";
 
 /**
  * Drug Test Records — admin-authorized register (not PDF upload).
+ * Same secure RPCs as the sidebar Drug Test Records page.
  * Pairing verifies paperwork only — Matched ≠ Negative / clearance / approval.
  */
 export function DrugTestRegister({ driverId, driverName }: { driverId: string; driverName: string }) {
@@ -49,18 +42,27 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
   const [statusFilter, setStatusFilter] = useState<DrugPairStatus | "all">("all");
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
-  const [events, setEvents] = useState<DrugTestEvent[]>(() => listDrugTests(driverId, actor));
+  const [events, setEvents] = useState<DrugTestEvent[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const mode = getDriverDrugTestMode();
+  const persistOk = canPersistDrugTests();
+  const blocked = drugTestPersistBlockedReason(mode);
   void driverName;
 
   useEffect(() => {
     let alive = true;
     const reload = () => {
-      if (getDriverDrugTestMode() !== "secure") {
-        setEvents(listDrugTests(driverId, actor));
+      if (!persistOk) {
+        if (alive) {
+          setEvents([]);
+          setLoadError(blocked);
+        }
+        return;
       }
-      void listDrugTestsAsync(driverId, actor).then((rows) => {
-        if (alive) setEvents(rows);
+      void listDrugTestsAsync(driverId, actor).then((res) => {
+        if (!alive) return;
+        setEvents(res.events);
+        setLoadError(res.error);
       });
     };
     reload();
@@ -69,7 +71,7 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
       alive = false;
       unsub();
     };
-  }, [driverId, actor]);
+  }, [driverId, actor, persistOk, blocked]);
 
   const pairs = useMemo(() => pairDrugTestEvents(events), [events]);
   const filtered = useMemo(
@@ -114,8 +116,15 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
             Records only (no PDF). FD/MR link by testing event id (then specimen + reason + collection).
             Matched means documents line up — not Negative, clearance, or approval. Other Documents /
             medical / duty stay untouched. Incomplete entries stay editable. Remove is soft-delete
-            (recoverable) — history is not permanently erased.
+            (recoverable) — history is not permanently erased. Same records as the Drug Test Records
+            sidebar page.
           </p>
+
+          {(blocked || loadError) && (
+            <div role="alert" className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2 text-xs font-semibold text-danger">
+              {blocked ?? loadError}
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -141,8 +150,9 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
             {!view && (
               <button
                 type="button"
+                disabled={!persistOk}
                 onClick={() => setAdding(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-bold hover:border-primary"
+                className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-bold hover:border-primary disabled:opacity-50"
               >
                 <Plus className="size-4" /> Add event
               </button>
@@ -150,7 +160,8 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
           </div>
 
           {adding && !view && (
-            <EventEditor
+            <DrugTestEventEditor
+              disabled={!persistOk}
               linkOptions={events
                 .filter((e) => e.kind === "federal_drug" && e.testingEventId)
                 .map((e) => ({
@@ -159,9 +170,13 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                 }))}
               onCancel={() => setAdding(false)}
               onSave={async (draft) => {
-                await addDrugTestEvent({ ...draft, driverId }, actor);
-                setAdding(false);
-                toast.success("Event saved");
+                try {
+                  await addDrugTestEvent({ ...draft, driverId }, actor);
+                  setAdding(false);
+                  toast.success("Event saved");
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Save failed");
+                }
               }}
             />
           )}
@@ -183,15 +198,23 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                 {filtered.map((row) => (
                   <tr key={row.id} className="border-t border-foreground/10 align-top">
                     <td className="px-3 py-2">
-                      <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-bold", STATUS_TONE[row.status])}>
+                      <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-bold", DRUG_STATUS_TONE[row.status])}>
                         {DRUG_PAIR_STATUS_LABEL[row.status]}
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      {row.federal ? <EventMini ev={row.federal} actor={actor} view={view} /> : <span className="text-muted-foreground">—</span>}
+                      {row.federal ? (
+                        <EventMini ev={row.federal} actor={actor} view={view} persistOk={persistOk} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
-                      {row.medical ? <EventMini ev={row.medical} actor={actor} view={view} /> : <span className="text-muted-foreground">—</span>}
+                      {row.medical ? (
+                        <EventMini ev={row.medical} actor={actor} view={view} persistOk={persistOk} />
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs font-semibold">{row.specimenId || "—"}</td>
                     <td className="px-3 py-2">{row.reason || "—"}</td>
@@ -204,12 +227,28 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                               type="button"
                               aria-label="Soft-delete Federal Drug event"
                               title="Soft-delete (recoverable)"
+                              disabled={!persistOk}
                               onClick={async () => {
                                 if (confirm("Soft-delete this Federal Drug event? History stays recoverable.")) {
-                                  await deleteDrugTestEvent(row.federal!.id, actor);
+                                  try {
+                                    await deleteDrugTestEvent(row.federal!.id, actor);
+                                    toast.success("Soft-deleted", {
+                                      action: {
+                                        label: "Restore",
+                                        onClick: () => {
+                                          void restoreDrugTestEvent(row.federal!.id, actor).then(
+                                            () => toast.success("Restored"),
+                                            (e) => toast.error(e instanceof Error ? e.message : "Restore failed"),
+                                          );
+                                        },
+                                      },
+                                    });
+                                  } catch (e) {
+                                    toast.error(e instanceof Error ? e.message : "Delete failed");
+                                  }
                                 }
                               }}
-                              className="rounded p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                              className="rounded p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40"
                             >
                               <Trash2 className="size-3.5" />
                             </button>
@@ -219,12 +258,28 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                               type="button"
                               aria-label="Soft-delete Medical Review event"
                               title="Soft-delete (recoverable)"
+                              disabled={!persistOk}
                               onClick={async () => {
                                 if (confirm("Soft-delete this Medical Review event? History stays recoverable.")) {
-                                  await deleteDrugTestEvent(row.medical!.id, actor);
+                                  try {
+                                    await deleteDrugTestEvent(row.medical!.id, actor);
+                                    toast.success("Soft-deleted", {
+                                      action: {
+                                        label: "Restore",
+                                        onClick: () => {
+                                          void restoreDrugTestEvent(row.medical!.id, actor).then(
+                                            () => toast.success("Restored"),
+                                            (e) => toast.error(e instanceof Error ? e.message : "Restore failed"),
+                                          );
+                                        },
+                                      },
+                                    });
+                                  } catch (e) {
+                                    toast.error(e instanceof Error ? e.message : "Delete failed");
+                                  }
                                 }
                               }}
-                              className="rounded p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                              className="rounded p-1 text-muted-foreground hover:bg-danger-soft hover:text-danger disabled:opacity-40"
                             >
                               <Trash2 className="size-3.5" />
                             </button>
@@ -240,7 +295,9 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
               <p className="px-3 py-4 text-sm text-muted-foreground">
                 {events.length
                   ? "No rows match this filter."
-                  : "No events yet — add Federal Drug and/or Medical Review manually. Nothing is invented."}
+                  : persistOk
+                    ? "No events yet — add Federal Drug and/or Medical Review manually. Nothing is invented."
+                    : "Saving disabled until secure backend is enabled."}
               </p>
             )}
           </div>
@@ -250,145 +307,46 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
   );
 }
 
-function EventMini({ ev, actor, view }: { ev: DrugTestEvent; actor: string; view: boolean }) {
+function EventMini({
+  ev,
+  actor,
+  view,
+  persistOk,
+}: {
+  ev: DrugTestEvent;
+  actor: string;
+  view: boolean;
+  persistOk: boolean;
+}) {
   const [edit, setEdit] = useState(false);
   if (edit && !view) {
     return (
-      <EventEditor
+      <DrugTestEventEditor
         initial={ev}
+        disabled={!persistOk}
         onCancel={() => setEdit(false)}
         onSave={async (draft) => {
-          await updateDrugTestEvent(ev.id, draft, actor);
-          setEdit(false);
-          toast.success("Event updated");
+          try {
+            await updateDrugTestEvent(ev.id, draft, actor);
+            setEdit(false);
+            toast.success("Event updated");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Update failed");
+          }
         }}
       />
     );
   }
   return (
-    <button type="button" disabled={view} onClick={() => setEdit(true)} className="text-left text-xs hover:underline">
+    <button
+      type="button"
+      disabled={view || !persistOk}
+      onClick={() => setEdit(true)}
+      className="text-left text-xs hover:underline disabled:no-underline disabled:opacity-70"
+    >
       <div className="font-bold">{formatDrugDocKind(ev.kind) || "Incomplete"}</div>
       <div className="font-mono text-muted-foreground">{ev.specimenId || "no specimen"}</div>
       <div className="text-muted-foreground">{ev.reason || "no reason"}</div>
     </button>
-  );
-}
-
-function EventEditor({
-  initial,
-  linkOptions = [],
-  onSave,
-  onCancel,
-}: {
-  initial?: DrugTestEvent;
-  linkOptions?: { id: string; label: string }[];
-  onSave: (draft: Omit<DrugTestEvent, "id" | "driverId" | "createdAt" | "deletedAt">) => void | Promise<void>;
-  onCancel: () => void;
-}) {
-  const [kind, setKind] = useState<DrugDocKind | "">(initial?.kind ?? "");
-  const [specimenId, setSpecimenId] = useState(initial?.specimenId ?? "");
-  const [reason, setReason] = useState(initial?.reason ?? "");
-  const [collectionContext, setCollectionContext] = useState(initial?.collectionContext ?? "");
-  const [eventDate, setEventDate] = useState(initial?.eventDate ?? "");
-  const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [testingEventId, setTestingEventId] = useState(initial?.testingEventId ?? "");
-
-  return (
-    <div className="space-y-2 rounded-lg border border-primary/30 bg-card p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <label className="block text-xs">
-          <span className="mb-1 block font-bold text-muted-foreground">Doc type</span>
-          <select
-            value={kind}
-            onChange={(e) => setKind(parseDrugDocKind(e.target.value) || ("" as const))}
-            className="w-full rounded-lg border px-2 py-1.5 text-sm"
-          >
-            <option value="">— (incomplete)</option>
-            <option value="federal_drug">{DRUG_DOC_KIND_LABEL.federal_drug}</option>
-            <option value="medical_review">{DRUG_DOC_KIND_LABEL.medical_review}</option>
-          </select>
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block font-bold text-muted-foreground">Event date</span>
-          <input
-            type="date"
-            value={parseISO(eventDate) ? eventDate : ""}
-            onChange={(e) => setEventDate(e.target.value)}
-            className="w-full rounded-lg border px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block font-bold text-muted-foreground">Specimen ID</span>
-          <input
-            value={specimenId}
-            onChange={(e) => setSpecimenId(e.target.value)}
-            placeholder="Leading zeros kept (e.g. 01234)"
-            className="w-full rounded-lg border px-2 py-1.5 font-mono text-sm"
-          />
-        </label>
-        <label className="block text-xs">
-          <span className="mb-1 block font-bold text-muted-foreground">Reason</span>
-          <input
-            list="drug-reason-suggestions"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Random, Follow-up, …"
-            className="w-full rounded-lg border px-2 py-1.5 text-sm"
-          />
-          <datalist id="drug-reason-suggestions">
-            {DRUG_REASON_SUGGESTIONS.map((r) => (
-              <option key={r} value={r} />
-            ))}
-          </datalist>
-        </label>
-        <label className="block text-xs sm:col-span-2">
-          <span className="mb-1 block font-bold text-muted-foreground">Collection context</span>
-          <input
-            value={collectionContext}
-            onChange={(e) => setCollectionContext(e.target.value)}
-            placeholder="Collection date / site / batch — part of pairing key"
-            className="w-full rounded-lg border px-2 py-1.5 text-sm"
-          />
-        </label>
-        <label className="block text-xs sm:col-span-2">
-          <span className="mb-1 block font-bold text-muted-foreground">Testing event link</span>
-          <select
-            value={testingEventId}
-            onChange={(e) => setTestingEventId(e.target.value)}
-            className="w-full rounded-lg border px-2 py-1.5 text-sm"
-          >
-            <option value="">New testing event (independent)</option>
-            {initial?.testingEventId ? (
-              <option value={initial.testingEventId}>Keep current · {initial.testingEventId.slice(0, 8)}…</option>
-            ) : null}
-            {linkOptions
-              .filter((o) => o.id !== initial?.testingEventId)
-              .map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="block text-xs sm:col-span-2">
-          <span className="mb-1 block font-bold text-muted-foreground">Notes</span>
-          <input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg border px-2 py-1.5 text-sm" />
-        </label>
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            void onSave({ kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId })
-          }
-          className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-primary-foreground"
-        >
-          Save event
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-lg border px-3 py-1.5 text-sm font-bold">
-          Cancel
-        </button>
-      </div>
-    </div>
   );
 }

@@ -22,7 +22,7 @@ describe("Combined site", () => {
     expect(router.matchRoutes("/admin").at(-1)?.routeId).toBe("/admin");
   });
 
-  it.each(["/cv", "/account", "/team", "/activity", "/drivers", "/records", "/s/dmv"])(
+  it.each(["/cv", "/account", "/team", "/activity", "/drivers", "/drug-tests", "/records", "/s/dmv"])(
     "matches the %s route",
     (path) => {
       const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
