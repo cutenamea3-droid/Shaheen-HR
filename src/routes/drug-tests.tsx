@@ -26,7 +26,8 @@ export const Route = createFileRoute("/drug-tests")({
         title="Drug Test Records"
         subtitle="Federal Drug (CCF) · Medical Review (MRO) — paperwork pairing only, not clearance"
       >
-        <div className="mx-auto max-w-7xl p-4 md:p-6">
+        {/* Full-width after sidebar: no max-width/center; ~16–24px via shell-main-pad */}
+        <div className="w-full min-w-0 max-w-none overflow-x-hidden">
           <DrugTestRecordsPage />
         </div>
       </AppShell>

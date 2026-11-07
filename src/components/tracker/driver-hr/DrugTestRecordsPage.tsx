@@ -3,7 +3,7 @@
  * Same secure RPCs as the in-card Drug panel. Matched ≠ clearance.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Lock, Pencil, Plus, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Eye, Lock, Pencil, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOptionalPortalAccount } from "@/components/tracker/LockGate";
@@ -35,7 +35,7 @@ import {
   type DrugTestEvent,
 } from "@/lib/driver-hr/drug-tests";
 import { filterRosterDrivers, listRosterDrivers } from "@/lib/driver-hr/roster-drivers";
-import { DrugTestEventEditor, DRUG_STATUS_TONE } from "./DrugTestForm";
+import { DrugTestEventEditor, DRUG_STATUS_TONE, type DrugEventDraft } from "./DrugTestForm";
 
 type TableRow = DrugPairRow & { driverId: string; driverName: string };
 
@@ -57,7 +57,9 @@ export function DrugTestRecordsPage() {
   const [statusFilter, setStatusFilter] = useState<DrugPairStatus | "all">("all");
   const [reasonFilter, setReasonFilter] = useState("all");
   const [groupByDriver, setGroupByDriver] = useState(false);
+  /** Add panel collapsed by default. */
   const [adding, setAdding] = useState(false);
+  const [addFormKey, setAddFormKey] = useState(0);
   const [driverPickQ, setDriverPickQ] = useState("");
   const [pickedDriverId, setPickedDriverId] = useState("");
   const [addKind, setAddKind] = useState<DrugDocKind | "">("federal_drug");
@@ -166,8 +168,13 @@ export function DrugTestRecordsPage() {
     return rows;
   }, [pairsByDriver, statusFilter, q, reasonFilter]);
 
-  const eventCount = filtered.length;
-  const uniqueDrivers = useMemo(() => new Set(filtered.map((r) => r.driverId)).size, [filtered]);
+  /** Real totals from loaded events (not filter-scoped). */
+  const totalEvents = pairsByDriver.length;
+  const totalDrivers = useMemo(() => new Set(pairsByDriver.map((r) => r.driverId)).size, [pairsByDriver]);
+  const showingEvents = filtered.length;
+  const showingDrivers = useMemo(() => new Set(filtered.map((r) => r.driverId)).size, [filtered]);
+  const isFiltered =
+    q.trim() !== "" || statusFilter !== "all" || reasonFilter !== "all";
 
   const grouped = useMemo(() => {
     if (!groupByDriver) return null;
@@ -189,6 +196,46 @@ export function DrugTestRecordsPage() {
     [roster, driverPickQ],
   );
 
+  const closeAdd = () => {
+    setAdding(false);
+    setDriverPickQ("");
+    setPickedDriverId("");
+    setAddKind("federal_drug");
+  };
+
+  const saveNewEvent = async (draft: DrugEventDraft, addAnother: boolean) => {
+    if (!persistOk) {
+      toast.error(blocked ?? "Saving disabled");
+      return;
+    }
+    if (!pickedDriverId) {
+      toast.error("Pick a driver first");
+      return;
+    }
+    // New independent events always get a fresh id — never overwrite an existing testing_event_id.
+    const testingEventId = draft.testingEventId.trim() || newTestingEventId();
+    try {
+      await addDrugTestEvent(
+        {
+          ...draft,
+          driverId: pickedDriverId,
+          testingEventId,
+        },
+        actor,
+      );
+      toast.success(addAnother ? "Event saved — add another" : "Event saved");
+      if (addAnother) {
+        // Keep driver; remount editor blank with a new independent testing event.
+        setAddKind(draft.kind || "federal_drug");
+        setAddFormKey((k) => k + 1);
+      } else {
+        closeAdd();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    }
+  };
+
   const softDelete = async (ev: DrugTestEvent, label: string) => {
     if (!persistOk) {
       toast.error(blocked ?? "Saving disabled");
@@ -207,7 +254,7 @@ export function DrugTestRecordsPage() {
                 setPendingRestore(null);
                 toast.success("Restored");
               })
-              .catch((e) => toast.error(e instanceof Error ? e.message : "Restore failed"));
+              .catch((err) => toast.error(err instanceof Error ? err.message : "Restore failed"));
           },
         },
       });
@@ -218,7 +265,7 @@ export function DrugTestRecordsPage() {
 
   if (!isAdmin) {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-foreground/10 bg-card p-6 text-sm text-muted-foreground">
+      <div className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-foreground/10 bg-card p-6 text-sm text-muted-foreground">
         <Lock className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden />
         <div>
           <h2 className="font-display text-lg font-extrabold text-foreground">Drug Test Records</h2>
@@ -229,32 +276,53 @@ export function DrugTestRecordsPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <header className="rounded-xl border border-foreground/10 bg-gradient-to-br from-[color-mix(in_srgb,var(--brand-slate)_92%,white)] to-[var(--brand-slate)] px-5 py-4 text-sidebar-foreground shadow-card">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-display text-2xl font-extrabold tracking-tight text-brand">Drug Test Records</h2>
-            <p className="mt-1 max-w-2xl text-sm text-sidebar-foreground/80">
-              Federal Drug (CCF) · Medical Review (MRO). Unlimited testing events per driver. Pairing verifies
-              paperwork only — Matched is not Negative, clearance, or approval. {driverDrugTestModeLabel(mode)}.
-            </p>
+    <div className="flex w-full min-w-0 max-w-none flex-col gap-3 overflow-x-hidden">
+      {/* Thin Shaheen navy/orange summary — real (unfiltered) counts */}
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--brand-slate)] px-3 py-2 text-sidebar-foreground shadow-sm sm:px-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h2 className="font-display text-base font-extrabold tracking-tight text-[var(--brand-orange)] sm:text-lg">
+              Drug Test Records
+            </h2>
+            <span className="text-[11px] font-semibold text-sidebar-foreground/70 sm:text-xs">
+              CCF · MRO · Matched ≠ clearance
+            </span>
           </div>
-          <div className="rounded-lg bg-card/10 px-3 py-2 text-right text-xs font-semibold">
-            <div>
-              <span className="text-brand">{eventCount}</span> event{eventCount === 1 ? "" : "s"}
+          <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/65 sm:text-xs">
+            Paperwork pairing only — not Negative, clearance, or approval. {driverDrugTestModeLabel(mode)}.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3 text-right">
+          <div className="leading-tight">
+            <div className="text-lg font-extrabold tabular-nums text-[var(--brand-orange)] sm:text-xl">
+              {totalEvents}
             </div>
-            <div className="text-sidebar-foreground/70">
-              across <span className="text-sidebar-foreground">{uniqueDrivers}</span> driver
-              {uniqueDrivers === 1 ? "" : "s"}
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+              event{totalEvents === 1 ? "" : "s"}
             </div>
           </div>
+          <div className="h-8 w-px bg-sidebar-foreground/20" aria-hidden />
+          <div className="leading-tight">
+            <div className="text-lg font-extrabold tabular-nums text-sidebar-foreground sm:text-xl">
+              {totalDrivers}
+            </div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+              driver{totalDrivers === 1 ? "" : "s"}
+            </div>
+          </div>
+          {isFiltered && (
+            <div className="hidden rounded bg-card/10 px-2 py-1 text-[10px] font-semibold text-sidebar-foreground/80 sm:block">
+              Showing {showingEvents}/{totalEvents} · {showingDrivers} driver
+              {showingDrivers === 1 ? "" : "s"}
+            </div>
+          )}
         </div>
       </header>
 
       {(blocked || loadError) && (
         <div
           role="alert"
-          className="rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-sm font-semibold text-danger"
+          className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger"
         >
           {blocked ?? loadError}
           {!persistOk && (
@@ -268,7 +336,7 @@ export function DrugTestRecordsPage() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[12rem] flex-1">
+        <div className="relative min-w-[10rem] flex-1 basis-[14rem]">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={q}
@@ -316,15 +384,19 @@ export function DrugTestRecordsPage() {
           <button
             type="button"
             disabled={!persistOk}
+            aria-expanded={adding}
             onClick={() => {
-              setAdding(true);
-              setPickedDriverId("");
-              setDriverPickQ("");
-              setAddKind("federal_drug");
+              if (adding) {
+                closeAdd();
+              } else {
+                setAdding(true);
+                setAddFormKey((k) => k + 1);
+              }
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-orange)] px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
           >
-            <Plus className="size-4" /> Add
+            {adding ? <X className="size-4" /> : <Plus className="size-4" />}
+            {adding ? "Close" : "Add"}
           </button>
         )}
         {pendingRestore && persistOk && !view && (
@@ -345,46 +417,59 @@ export function DrugTestRecordsPage() {
         )}
       </div>
 
+      {/* Compact Add — collapsed by default; CCF-first or MRO-first OK */}
       {adding && !view && (
-        <div className="space-y-3 rounded-xl border border-primary/30 bg-card p-4">
-          <h3 className="font-display text-base font-extrabold text-foreground">Add drug test event</h3>
-          <label className="block text-xs">
-            <span className="mb-1 block font-bold text-muted-foreground">Driver (searchable)</span>
-            <input
-              value={driverPickQ}
-              onChange={(e) => setDriverPickQ(e.target.value)}
-              placeholder="Type driver name…"
-              className="mb-2 w-full rounded-lg border px-2.5 py-1.5 text-sm"
-              aria-label="Search drivers"
-            />
-            <select
-              value={pickedDriverId}
-              onChange={(e) => setPickedDriverId(e.target.value)}
-              className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
-              aria-label="Select driver"
-            >
-              <option value="">Select driver…</option>
-              {driverChoices.map((d) => (
-                <option key={d.driverId} value={d.driverId}>
-                  {d.name || d.driverId}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-xs">
-            <span className="mb-1 block font-bold text-muted-foreground">Starting doc</span>
-            <select
-              value={addKind}
-              onChange={(e) => setAddKind((e.target.value || "") as DrugDocKind | "")}
-              className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
-            >
-              <option value="federal_drug">{DRUG_DOC_KIND_LABEL.federal_drug}</option>
-              <option value="medical_review">{DRUG_DOC_KIND_LABEL.medical_review}</option>
-              <option value="">Incomplete (no kind yet)</option>
-            </select>
-          </label>
+        <div className="w-full min-w-0 space-y-2 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display text-sm font-extrabold text-[var(--brand-slate)]">
+              Add drug test event
+            </h3>
+            <span className="text-[11px] font-semibold text-muted-foreground">
+              CCF-first or MRO-first · new testing event each Add Another
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="block text-xs sm:col-span-2 lg:col-span-2">
+              <span className="mb-1 block font-bold text-muted-foreground">Driver (searchable)</span>
+              <input
+                value={driverPickQ}
+                onChange={(e) => setDriverPickQ(e.target.value)}
+                placeholder="Type driver name…"
+                className="mb-1.5 w-full rounded-lg border px-2.5 py-1.5 text-sm"
+                aria-label="Search drivers"
+              />
+              <select
+                value={pickedDriverId}
+                onChange={(e) => setPickedDriverId(e.target.value)}
+                className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
+                aria-label="Select driver"
+              >
+                <option value="">Select driver…</option>
+                {driverChoices.map((d) => (
+                  <option key={d.driverId} value={d.driverId}>
+                    {d.name || d.driverId}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block font-bold text-muted-foreground">Starting doc</span>
+              <select
+                value={addKind}
+                onChange={(e) => setAddKind((e.target.value || "") as DrugDocKind | "")}
+                className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
+              >
+                <option value="federal_drug">{DRUG_DOC_KIND_LABEL.federal_drug}</option>
+                <option value="medical_review">{DRUG_DOC_KIND_LABEL.medical_review}</option>
+                <option value="">Incomplete (no kind yet)</option>
+              </select>
+            </label>
+          </div>
           {pickedDriverId ? (
             <DrugTestEventEditor
+              key={addFormKey}
+              compact
+              showAddAnother
               disabled={!persistOk}
               initial={{
                 id: "",
@@ -398,26 +483,9 @@ export function DrugTestRecordsPage() {
                 notes: "",
                 createdAt: 0,
               }}
-              onCancel={() => setAdding(false)}
-              onSave={async (draft) => {
-                if (!persistOk) {
-                  toast.error(blocked ?? "Saving disabled");
-                  return;
-                }
-                try {
-                  await addDrugTestEvent(
-                    {
-                      ...draft,
-                      driverId: pickedDriverId,
-                      testingEventId: draft.testingEventId.trim() || newTestingEventId(),
-                    },
-                    actor,
-                  );
-                  setAdding(false);
-                  toast.success("Event saved");
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Save failed");
-                }
+              onCancel={closeAdd}
+              onSave={async (draft, opts) => {
+                await saveNewEvent(draft, Boolean(opts?.addAnother));
               }}
             />
           ) : (
@@ -427,11 +495,12 @@ export function DrugTestRecordsPage() {
       )}
 
       {addSideFor && !view && (
-        <div className="rounded-xl border border-primary/30 bg-card p-4">
-          <h3 className="mb-2 font-display text-base font-extrabold">
+        <div className="w-full min-w-0 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
+          <h3 className="mb-2 font-display text-sm font-extrabold text-[var(--brand-slate)]">
             Add {formatDrugDocKind(addSideFor.kind)} to testing event
           </h3>
           <DrugTestEventEditor
+            compact
             disabled={!persistOk}
             initial={{
               id: "",
@@ -448,6 +517,7 @@ export function DrugTestRecordsPage() {
             onCancel={() => setAddSideFor(null)}
             onSave={async (draft) => {
               try {
+                // Link to the existing testing event — do not mint a replacement id.
                 await addDrugTestEvent(
                   {
                     ...draft,
@@ -468,9 +538,10 @@ export function DrugTestRecordsPage() {
       )}
 
       {editEv && !view && (
-        <div className="rounded-xl border border-primary/30 bg-card p-4">
-          <h3 className="mb-2 font-display text-base font-extrabold">Edit event</h3>
+        <div className="w-full min-w-0 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
+          <h3 className="mb-2 font-display text-sm font-extrabold text-[var(--brand-slate)]">Edit event</h3>
           <DrugTestEventEditor
+            compact
             disabled={!persistOk}
             initial={editEv}
             linkOptions={events
@@ -494,14 +565,18 @@ export function DrugTestRecordsPage() {
       )}
 
       {viewRow && (
-        <div className="rounded-xl border bg-card p-4 text-sm">
+        <div className="w-full min-w-0 rounded-lg border bg-card px-3 py-2.5 text-sm sm:px-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="font-display text-base font-extrabold">View testing event</h3>
-            <button type="button" className="rounded-lg border px-2 py-1 text-xs font-bold" onClick={() => setViewRow(null)}>
+            <h3 className="font-display text-sm font-extrabold text-[var(--brand-slate)]">View testing event</h3>
+            <button
+              type="button"
+              className="rounded-lg border px-2 py-1 text-xs font-bold"
+              onClick={() => setViewRow(null)}
+            >
               Close
             </button>
           </div>
-          <dl className="grid gap-2 sm:grid-cols-2">
+          <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-xs font-bold text-muted-foreground">Driver</dt>
               <dd>{viewRow.driverName}</dd>
@@ -541,18 +616,19 @@ export function DrugTestRecordsPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border bg-card">
-        <table className="w-full min-w-[960px] border-collapse text-sm">
-          <thead className="bg-[color-mix(in_srgb,var(--brand-slate)_6%,white)] text-left text-xs font-extrabold tracking-wider uppercase">
+      {/* Full-width table */}
+      <div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card">
+        <table className="w-full min-w-[920px] border-collapse text-sm">
+          <thead className="bg-[color-mix(in_srgb,var(--brand-slate)_8%,white)] text-left text-[11px] font-extrabold tracking-wider text-[var(--brand-slate)] uppercase">
             <tr>
-              <th className="px-3 py-2.5">Driver</th>
-              <th className="px-3 py-2.5">Reason</th>
-              <th className="px-3 py-2.5">Collection Date</th>
-              <th className="px-3 py-2.5">Specimen</th>
-              <th className="px-3 py-2.5">Federal Drug</th>
-              <th className="px-3 py-2.5">Medical Review</th>
-              <th className="px-3 py-2.5">Pair Status</th>
-              <th className="px-3 py-2.5">Actions</th>
+              <th className="px-3 py-2">Driver</th>
+              <th className="px-3 py-2">Reason</th>
+              <th className="px-3 py-2">Collection Date</th>
+              <th className="px-3 py-2">Specimen</th>
+              <th className="px-3 py-2">Federal Drug</th>
+              <th className="px-3 py-2">Medical Review</th>
+              <th className="px-3 py-2">Pair Status</th>
+              <th className="px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -576,6 +652,7 @@ export function DrugTestRecordsPage() {
                   onAddCcf={() =>
                     setAddSideFor({
                       driverId: row.driverId,
+                      // Prefer existing event id; only mint when the row has none.
                       testingEventId: row.testingEventId || newTestingEventId(),
                       kind: "federal_drug",
                     })
@@ -640,6 +717,13 @@ export function DrugTestRecordsPage() {
           </p>
         )}
       </div>
+
+      {!adding && !view && persistOk && (
+        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <ChevronDown className="size-3.5" aria-hidden />
+          Add stays collapsed until you need it — CCF-first or MRO-first both work.
+        </p>
+      )}
     </div>
   );
 }
@@ -667,11 +751,11 @@ function RecordRow({
 }) {
   return (
     <tr className="border-t border-foreground/10 align-top">
-      <td className="px-3 py-2.5 font-semibold">{hideDriver ? "" : row.driverName}</td>
-      <td className="px-3 py-2.5">{row.reason || "—"}</td>
-      <td className="px-3 py-2.5 text-xs">{row.eventDate || row.collectionContext || "—"}</td>
-      <td className="px-3 py-2.5 font-mono text-xs font-semibold">{row.specimenId || "—"}</td>
-      <td className="px-3 py-2.5 text-xs">
+      <td className="px-3 py-2 font-semibold">{hideDriver ? "" : row.driverName}</td>
+      <td className="px-3 py-2">{row.reason || "—"}</td>
+      <td className="px-3 py-2 text-xs">{row.eventDate || row.collectionContext || "—"}</td>
+      <td className="px-3 py-2 font-mono text-xs font-semibold">{row.specimenId || "—"}</td>
+      <td className="px-3 py-2 text-xs">
         {row.federal ? (
           <button
             type="button"
@@ -686,7 +770,7 @@ function RecordRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs">
+      <td className="px-3 py-2 text-xs">
         {row.medical ? (
           <button
             type="button"
@@ -701,12 +785,12 @@ function RecordRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2">
         <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-bold", DRUG_STATUS_TONE[row.status])}>
           {DRUG_PAIR_STATUS_LABEL[row.status]}
         </span>
       </td>
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2">
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
@@ -738,7 +822,7 @@ function RecordRow({
                   aria-label="Add Federal Drug CCF"
                   disabled={!persistOk}
                   onClick={onAddCcf}
-                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-brand hover:bg-accent disabled:opacity-40"
+                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
                 >
                   +CCF
                 </button>
@@ -750,7 +834,7 @@ function RecordRow({
                   aria-label="Add Medical Review MRO"
                   disabled={!persistOk}
                   onClick={onAddMro}
-                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-brand hover:bg-accent disabled:opacity-40"
+                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
                 >
                   +MRO
                 </button>

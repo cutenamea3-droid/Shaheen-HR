@@ -24,17 +24,25 @@ export const DRUG_STATUS_TONE: Record<DrugPairStatus, string> = {
 
 export type DrugEventDraft = Omit<DrugTestEvent, "id" | "driverId" | "createdAt" | "deletedAt">;
 
+export type DrugEventSaveOpts = { addAnother?: boolean };
+
 export function DrugTestEventEditor({
   initial,
   linkOptions = [],
   disabled = false,
+  showAddAnother = false,
+  compact = false,
   onSave,
   onCancel,
 }: {
   initial?: DrugTestEvent;
   linkOptions?: { id: string; label: string }[];
   disabled?: boolean;
-  onSave: (draft: DrugEventDraft) => void | Promise<void>;
+  /** Show "Save & Add Another" (sidebar Add flow). */
+  showAddAnother?: boolean;
+  /** Denser 2–3 column layout for the full-width page. */
+  compact?: boolean;
+  onSave: (draft: DrugEventDraft, opts?: DrugEventSaveOpts) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const [kind, setKind] = useState<DrugDocKind | "">(initial?.kind ?? "");
@@ -46,9 +54,25 @@ export function DrugTestEventEditor({
   const [testingEventId, setTestingEventId] = useState(initial?.testingEventId ?? "");
   const [busy, setBusy] = useState(false);
 
+  const submit = (addAnother: boolean) => {
+    setBusy(true);
+    void Promise.resolve(
+      onSave(
+        { kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId },
+        { addAnother },
+      ),
+    ).finally(() => setBusy(false));
+  };
+
   return (
-    <div className="space-y-2 rounded-lg border border-primary/30 bg-card p-3">
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className={compact ? "space-y-2" : "space-y-2 rounded-lg border border-primary/30 bg-card p-3"}>
+      <div
+        className={
+          compact
+            ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+            : "grid gap-2 sm:grid-cols-2"
+        }
+      >
         <label className="block text-xs">
           <span className="mb-1 block font-bold text-muted-foreground">Doc type</span>
           <select
@@ -98,7 +122,7 @@ export function DrugTestEventEditor({
             ))}
           </datalist>
         </label>
-        <label className="block text-xs sm:col-span-2">
+        <label className={`block text-xs ${compact ? "lg:col-span-1" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Collection context</span>
           <input
             value={collectionContext}
@@ -108,7 +132,7 @@ export function DrugTestEventEditor({
             className="w-full rounded-lg border px-2 py-1.5 text-sm"
           />
         </label>
-        <label className="block text-xs sm:col-span-2">
+        <label className={`block text-xs ${compact ? "" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Testing event link</span>
           <select
             value={testingEventId}
@@ -129,7 +153,7 @@ export function DrugTestEventEditor({
               ))}
           </select>
         </label>
-        <label className="block text-xs sm:col-span-2">
+        <label className={`block text-xs ${compact ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Notes</span>
           <input
             value={notes}
@@ -139,20 +163,25 @@ export function DrugTestEventEditor({
           />
         </label>
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           disabled={disabled || busy}
-          onClick={() => {
-            setBusy(true);
-            void Promise.resolve(
-              onSave({ kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId }),
-            ).finally(() => setBusy(false));
-          }}
+          onClick={() => submit(false)}
           className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-primary-foreground disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save event"}
+          {busy ? "Saving…" : "Save"}
         </button>
+        {showAddAnother && (
+          <button
+            type="button"
+            disabled={disabled || busy}
+            onClick={() => submit(true)}
+            className="rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_45%,transparent)] bg-[color-mix(in_srgb,var(--brand-orange)_10%,white)] px-3 py-1.5 text-sm font-bold text-[var(--brand-slate)] disabled:opacity-50"
+          >
+            Save & Add Another
+          </button>
+        )}
         <button
           type="button"
           disabled={busy}

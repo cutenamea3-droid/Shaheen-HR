@@ -271,4 +271,59 @@ describe("Drug Test Records section", () => {
       ),
     ).rejects.toThrow(/Secure drug test backend required/);
   });
+
+  it("Save & Add Another mints distinct testing_event_ids; CCF-first and MRO-first both OK", () => {
+    // Mirrors sidebar Add flow: blank testingEventId → newTestingEventId() each save; never reuse.
+    const firstId = newTestingEventId();
+    const secondId = newTestingEventId();
+    expect(firstId).not.toBe(secondId);
+    expect(firstId.length).toBeGreaterThan(8);
+
+    const ccfFirst = pairDrugTestEvents([
+      ev({
+        id: "f1",
+        kind: "federal_drug",
+        testingEventId: firstId,
+        specimenId: "100",
+        reason: "Random",
+        collectionContext: "Lab",
+      }),
+    ]);
+    expect(ccfFirst[0]!.status).toBe("missing_mr");
+
+    const mroFirst = pairDrugTestEvents([
+      ev({
+        id: "m1",
+        kind: "medical_review",
+        testingEventId: secondId,
+        specimenId: "200",
+        reason: "Follow-up",
+        collectionContext: "Lab",
+      }),
+    ]);
+    expect(mroFirst[0]!.status).toBe("missing_fd");
+
+    // Linking MRO to existing CCF keeps the same testing_event_id (no overwrite).
+    const linked = pairDrugTestEvents([
+      ev({
+        id: "f1",
+        kind: "federal_drug",
+        testingEventId: firstId,
+        specimenId: "100",
+        reason: "Random",
+        collectionContext: "Lab",
+      }),
+      ev({
+        id: "m1",
+        kind: "medical_review",
+        testingEventId: firstId,
+        specimenId: "100",
+        reason: "Random",
+        collectionContext: "Lab",
+      }),
+    ]);
+    expect(linked).toHaveLength(1);
+    expect(linked[0]!.testingEventId).toBe(firstId);
+    expect(linked[0]!.status).toBe("matched");
+  });
 });
