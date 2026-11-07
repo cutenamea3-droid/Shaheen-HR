@@ -1,36 +1,74 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, UsersRound } from "lucide-react";
+import { Brain, FileCheck2, UsersRound } from "lucide-react";
+import { shouldShowPersonalSwitcherLink } from "@/personal/lib/access";
 
-/** Top bar that switches between the two separate systems. Each keeps its own data. */
+/** Top bar that switches between separate systems. Each keeps its own data. */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");
+  const isPersonal = pathname.startsWith("/personal");
   const isCv = pathname === "/cv";
+  const isDriver = !isAdmin && !isPersonal && !isCv;
+  /** Ordinary company users never see Personal; only while already on /personal. */
+  const showPersonal = shouldShowPersonalSwitcherLink(isPersonal);
+
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
-  const on = "bg-primary text-primary-foreground shadow-sm";
-  const off = "text-muted-foreground hover:bg-muted hover:text-foreground";
+  const companyOn = "bg-primary text-primary-foreground shadow-sm";
+  const companyOff = "text-muted-foreground hover:bg-muted hover:text-foreground";
+  const personalOn = "bg-[#8B5CF6] text-[#F4F7FF] shadow-sm";
+  const personalOff = isPersonal
+    ? "text-[#94A3B8] hover:bg-[#8B5CF6]/20 hover:text-[#C4B5FD]"
+    : "text-muted-foreground hover:bg-[#8B5CF6]/10 hover:text-[#8B5CF6]";
+
   return (
     <header
-      className="app-switcher sticky top-0 z-50 flex items-center gap-3 border-b border-border bg-card px-3"
+      className={`app-switcher sticky top-0 z-50 flex items-center gap-3 border-b px-3 ${
+        isPersonal
+          ? "border-[#172238] bg-[#0B1220] text-[#F4F7FF]"
+          : "border-border bg-card"
+      }`}
       style={{ height: 44, fontSize: 13 }}
+      data-hp-switcher={isPersonal ? "personal" : "company"}
     >
-      <img src="/logo.jpg" alt="Shaheen Transport LLC" className="h-8 w-8 rounded object-contain" />
+      {isPersonal ? (
+        <span
+          className="inline-flex h-8 w-8 items-center justify-center rounded bg-[#8B5CF6] text-[11px] font-bold text-[#F4F7FF]"
+          aria-hidden
+        >
+          HP
+        </span>
+      ) : (
+        <img src="/logo.jpg" alt="Shaheen Transport LLC" className="h-8 w-8 rounded object-contain" />
+      )}
       <div className="min-w-0 leading-tight">
-        <span className="hidden font-display text-[13px] font-bold tracking-tight text-foreground sm:inline">
-          Shaheen Transport
-        </span>
-        <span className="ml-2 hidden text-[11px] font-semibold text-muted-foreground lg:inline">
-          Management Portal
-        </span>
+        {isPersonal ? (
+          <span className="hp-sw-brand hidden font-display text-[13px] font-bold tracking-tight text-[#F4F7FF] sm:inline">
+            HR Personal
+          </span>
+        ) : (
+          <>
+            <span className="hidden font-display text-[13px] font-bold tracking-tight text-foreground sm:inline">
+              Shaheen Transport
+            </span>
+            <span className="ml-2 hidden text-[11px] font-semibold text-muted-foreground lg:inline">
+              Management Portal
+            </span>
+          </>
+        )}
       </div>
-      <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
+      <nav
+        aria-label="System switcher"
+        className={`ml-auto flex items-center gap-1 rounded-lg border p-1 sm:ml-4 ${
+          isPersonal ? "border-[#172238] bg-[#172238]/80" : "border-border bg-background"
+        }`}
+      >
         <Link
           to="/"
           aria-label="Driver Compliance"
           title="Driver Compliance"
-          aria-current={!isAdmin && !isCv ? "page" : undefined}
-          className={`${base} ${!isAdmin && !isCv ? on : off}`}
+          aria-current={isDriver ? "page" : undefined}
+          className={`${base} ${isDriver ? companyOn : isPersonal ? personalOff : companyOff}`}
         >
           <FileCheck2 className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Driver Compliance</span>
@@ -40,11 +78,23 @@ export function AppSwitcher() {
           aria-label="Admin & Attendance"
           title="Admin & Attendance"
           aria-current={isAdmin ? "page" : undefined}
-          className={`${base} ${isAdmin ? on : off}`}
+          className={`${base} ${isAdmin ? companyOn : isPersonal ? personalOff : companyOff}`}
         >
           <UsersRound className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Admin &amp; Attendance</span>
         </Link>
+        {showPersonal ? (
+          <Link
+            to="/personal"
+            aria-label="HR Personal"
+            title="HR Personal"
+            aria-current={isPersonal ? "page" : undefined}
+            className={`${base} ${isPersonal ? personalOn : personalOff}`}
+          >
+            <Brain className="h-4 w-4 shrink-0 text-[#2DD4BF]" />
+            <span className="hidden sm:inline">HR Personal</span>
+          </Link>
+        ) : null}
       </nav>
     </header>
   );

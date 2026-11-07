@@ -10,6 +10,6 @@
 <!-- LOVABLE:END -->
 
 ## Combined site rules
-- Two separate systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`). Why: user requires both kept verbatim and never merged.
-- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend). Why: data must stay separate.
-- Admin's original colors are scoped under `.admin-theme` in styles.css; don't change either system's logic or look. Why: user requires identical behavior and styling.
+- Three separate systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`), HR Personal lives in `src/personal/` (route `/personal`). Why: user requires each kept verbatim and never merged.
+- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend); HR Personal is local-first with `hr-personal-*` keys only. Why: data must stay separate.
+- Admin's original colors are scoped under `.admin-theme` in styles.css; HR Personal under `.personal-theme`; don't change either company's logic or look. Why: user requires identical behavior and styling for company apps.
