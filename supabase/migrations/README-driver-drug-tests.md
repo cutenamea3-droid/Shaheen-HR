@@ -36,4 +36,4 @@
 
 ## Flag
 
-`VITE_DRIVER_DRUG_TESTS_SECURE=1` — keep off until migration applied.
+`VITE_DRIVER_DRUG_TESTS_SECURE=1` — enable on Cloudflare Pages (Preview/Production) **after** SQL is applied, then redeploy. App disables saving when the flag is off (no mock/localStorage as a real save). Do not commit the flag into `.env.production` from this checklist.
