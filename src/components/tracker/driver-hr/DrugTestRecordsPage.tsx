@@ -265,10 +265,10 @@ export function DrugTestRecordsPage() {
 
   if (!isAdmin) {
     return (
-      <div className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-foreground/10 bg-card p-6 text-sm text-muted-foreground">
+      <div className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-foreground/10 bg-card p-6 text-[15px] text-muted-foreground">
         <Lock className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden />
         <div>
-          <h2 className="font-display text-lg font-extrabold text-foreground">Drug Test Records</h2>
+          <h2 className="font-display text-xl font-extrabold text-foreground sm:text-[22px]">Drug Test Records</h2>
           <p className="mt-1">Authorized admin accounts only. Not stored in shared driver JSON.</p>
         </div>
       </div>
@@ -278,40 +278,40 @@ export function DrugTestRecordsPage() {
   return (
     <div className="flex w-full min-w-0 max-w-none flex-col gap-3 overflow-x-hidden">
       {/* Thin Shaheen navy/orange summary — real (unfiltered) counts */}
-      <header className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--brand-slate)] px-3 py-2 text-sidebar-foreground shadow-sm sm:px-4">
+      <header className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--brand-slate)] px-3 py-2.5 text-sidebar-foreground shadow-sm sm:px-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h2 className="font-display text-base font-extrabold tracking-tight text-[var(--brand-orange)] sm:text-lg">
+            <h2 className="font-display text-xl font-extrabold tracking-tight text-[var(--brand-orange)] sm:text-[22px]">
               Drug Test Records
             </h2>
-            <span className="text-[11px] font-semibold text-sidebar-foreground/70 sm:text-xs">
+            <span className="text-xs font-semibold text-sidebar-foreground/70 sm:text-[13px]">
               CCF · MRO · Matched ≠ clearance
             </span>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/65 sm:text-xs">
+          <p className="mt-0.5 truncate text-xs text-sidebar-foreground/65 sm:text-[13px]">
             Paperwork pairing only — not Negative, clearance, or approval. {driverDrugTestModeLabel(mode)}.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 text-right">
           <div className="leading-tight">
-            <div className="text-lg font-extrabold tabular-nums text-[var(--brand-orange)] sm:text-xl">
+            <div className="text-xl font-extrabold tabular-nums text-[var(--brand-orange)] sm:text-[22px]">
               {totalEvents}
             </div>
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+            <div className="text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
               event{totalEvents === 1 ? "" : "s"}
             </div>
           </div>
           <div className="h-8 w-px bg-sidebar-foreground/20" aria-hidden />
           <div className="leading-tight">
-            <div className="text-lg font-extrabold tabular-nums text-sidebar-foreground sm:text-xl">
+            <div className="text-xl font-extrabold tabular-nums text-sidebar-foreground sm:text-[22px]">
               {totalDrivers}
             </div>
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-sidebar-foreground/60">
+            <div className="text-xs font-semibold uppercase tracking-wide text-sidebar-foreground/60">
               driver{totalDrivers === 1 ? "" : "s"}
             </div>
           </div>
           {isFiltered && (
-            <div className="hidden rounded bg-card/10 px-2 py-1 text-[10px] font-semibold text-sidebar-foreground/80 sm:block">
+            <div className="hidden rounded bg-card/10 px-2 py-1 text-xs font-semibold text-sidebar-foreground/80 sm:block">
               Showing {showingEvents}/{totalEvents} · {showingDrivers} driver
               {showingDrivers === 1 ? "" : "s"}
             </div>
@@ -322,11 +322,11 @@ export function DrugTestRecordsPage() {
       {(blocked || loadError) && (
         <div
           role="alert"
-          className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2.5 text-sm font-semibold text-danger"
+          className="rounded-lg border border-danger/40 bg-danger-soft px-3 py-2.5 text-[15px] font-semibold text-danger"
         >
           {blocked ?? loadError}
           {!persistOk && (
-            <span className="mt-1 block font-normal text-danger/90">
+            <span className="mt-1 block text-[14px] font-normal text-danger/90">
               Enable <code className="font-mono">VITE_DRIVER_DRUG_TESTS_SECURE=1</code> on Cloudflare Pages
               (Preview/Production) after Driver SQL is applied, then redeploy. Do not use mock/localStorage as a
               real save.
@@ -342,14 +342,14 @@ export function DrugTestRecordsPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search driver, specimen, reason, status…"
-            className="w-full rounded-lg border bg-card py-2 pr-3 pl-9 text-sm"
+            className="w-full rounded-lg border bg-card py-2 pr-3 pl-9 text-[14px]"
             aria-label="Search drug test records"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as DrugPairStatus | "all")}
-          className="rounded-lg border bg-card px-2.5 py-2 text-sm font-semibold"
+          className="rounded-lg border bg-card px-2.5 py-2 text-[14px] font-semibold"
           aria-label="Pair status filter"
         >
           <option value="all">All pair statuses</option>
@@ -362,7 +362,7 @@ export function DrugTestRecordsPage() {
         <select
           value={reasonFilter}
           onChange={(e) => setReasonFilter(e.target.value)}
-          className="rounded-lg border bg-card px-2.5 py-2 text-sm font-semibold"
+          className="rounded-lg border bg-card px-2.5 py-2 text-[14px] font-semibold"
           aria-label="Reason filter"
         >
           <option value="all">All reasons</option>
@@ -372,7 +372,7 @@ export function DrugTestRecordsPage() {
             </option>
           ))}
         </select>
-        <label className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-sm font-semibold">
+        <label className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-[14px] font-semibold">
           <input
             type="checkbox"
             checked={groupByDriver}
@@ -393,7 +393,7 @@ export function DrugTestRecordsPage() {
                 setAddFormKey((k) => k + 1);
               }
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-orange)] px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-orange)] px-3 py-2 text-[14px] font-bold text-primary-foreground disabled:opacity-50"
           >
             {adding ? <X className="size-4" /> : <Plus className="size-4" />}
             {adding ? "Close" : "Add"}
@@ -410,7 +410,7 @@ export function DrugTestRecordsPage() {
                 })
                 .catch((e) => toast.error(e instanceof Error ? e.message : "Restore failed"));
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-bold"
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[14px] font-bold"
           >
             <RotateCcw className="size-4" /> Restore last
           </button>
@@ -421,27 +421,27 @@ export function DrugTestRecordsPage() {
       {adding && !view && (
         <div className="w-full min-w-0 space-y-2 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-display text-sm font-extrabold text-[var(--brand-slate)]">
+            <h3 className="font-display text-base font-extrabold text-[var(--brand-slate)] sm:text-lg">
               Add drug test event
             </h3>
-            <span className="text-[11px] font-semibold text-muted-foreground">
+            <span className="text-xs font-semibold text-muted-foreground sm:text-[13px]">
               CCF-first or MRO-first · new testing event each Add Another
             </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="block text-xs sm:col-span-2 lg:col-span-2">
+            <label className="block text-[13px] sm:col-span-2 lg:col-span-2">
               <span className="mb-1 block font-bold text-muted-foreground">Driver (searchable)</span>
               <input
                 value={driverPickQ}
                 onChange={(e) => setDriverPickQ(e.target.value)}
                 placeholder="Type driver name…"
-                className="mb-1.5 w-full rounded-lg border px-2.5 py-1.5 text-sm"
+                className="mb-1.5 w-full rounded-lg border px-2.5 py-1.5 text-[14px]"
                 aria-label="Search drivers"
               />
               <select
                 value={pickedDriverId}
                 onChange={(e) => setPickedDriverId(e.target.value)}
-                className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-[14px]"
                 aria-label="Select driver"
               >
                 <option value="">Select driver…</option>
@@ -452,12 +452,12 @@ export function DrugTestRecordsPage() {
                 ))}
               </select>
             </label>
-            <label className="block text-xs">
+            <label className="block text-[13px]">
               <span className="mb-1 block font-bold text-muted-foreground">Starting doc</span>
               <select
                 value={addKind}
                 onChange={(e) => setAddKind((e.target.value || "") as DrugDocKind | "")}
-                className="w-full rounded-lg border px-2.5 py-1.5 text-sm"
+                className="w-full rounded-lg border px-2.5 py-1.5 text-[14px]"
               >
                 <option value="federal_drug">{DRUG_DOC_KIND_LABEL.federal_drug}</option>
                 <option value="medical_review">{DRUG_DOC_KIND_LABEL.medical_review}</option>
@@ -489,14 +489,14 @@ export function DrugTestRecordsPage() {
               }}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">Pick a driver to continue.</p>
+            <p className="text-[15px] text-muted-foreground">Pick a driver to continue.</p>
           )}
         </div>
       )}
 
       {addSideFor && !view && (
         <div className="w-full min-w-0 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
-          <h3 className="mb-2 font-display text-sm font-extrabold text-[var(--brand-slate)]">
+          <h3 className="mb-2 font-display text-base font-extrabold text-[var(--brand-slate)] sm:text-lg">
             Add {formatDrugDocKind(addSideFor.kind)} to testing event
           </h3>
           <DrugTestEventEditor
@@ -539,7 +539,7 @@ export function DrugTestRecordsPage() {
 
       {editEv && !view && (
         <div className="w-full min-w-0 rounded-lg border border-[color-mix(in_srgb,var(--brand-orange)_35%,transparent)] bg-card px-3 py-2.5 sm:px-4">
-          <h3 className="mb-2 font-display text-sm font-extrabold text-[var(--brand-slate)]">Edit event</h3>
+          <h3 className="mb-2 font-display text-base font-extrabold text-[var(--brand-slate)] sm:text-lg">Edit event</h3>
           <DrugTestEventEditor
             compact
             disabled={!persistOk}
@@ -565,12 +565,12 @@ export function DrugTestRecordsPage() {
       )}
 
       {viewRow && (
-        <div className="w-full min-w-0 rounded-lg border bg-card px-3 py-2.5 text-sm sm:px-4">
+        <div className="w-full min-w-0 rounded-lg border bg-card px-3 py-2.5 text-[15px] sm:px-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="font-display text-sm font-extrabold text-[var(--brand-slate)]">View testing event</h3>
+            <h3 className="font-display text-base font-extrabold text-[var(--brand-slate)] sm:text-lg">View testing event</h3>
             <button
               type="button"
-              className="rounded-lg border px-2 py-1 text-xs font-bold"
+              className="rounded-lg border px-2.5 py-1 text-[14px] font-bold"
               onClick={() => setViewRow(null)}
             >
               Close
@@ -578,39 +578,39 @@ export function DrugTestRecordsPage() {
           </div>
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Driver</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Driver</dt>
               <dd>{viewRow.driverName}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Pair status</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Pair status</dt>
               <dd>{DRUG_PAIR_STATUS_LABEL[viewRow.status]}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Reason</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Reason</dt>
               <dd>{viewRow.reason || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Collection date</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Collection date</dt>
               <dd>{viewRow.eventDate || viewRow.collectionContext || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Specimen</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Specimen</dt>
               <dd className="font-mono">{viewRow.specimenId || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Testing event id</dt>
-              <dd className="font-mono text-xs">{viewRow.testingEventId || "—"}</dd>
+              <dt className="text-[13px] font-bold text-muted-foreground">Testing event id</dt>
+              <dd className="font-mono text-[13px]">{viewRow.testingEventId || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Federal Drug (CCF)</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Federal Drug (CCF)</dt>
               <dd>{viewRow.federal ? formatDrugDocKind(viewRow.federal.kind) : "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-bold text-muted-foreground">Medical Review (MRO)</dt>
+              <dt className="text-[13px] font-bold text-muted-foreground">Medical Review (MRO)</dt>
               <dd>{viewRow.medical ? formatDrugDocKind(viewRow.medical.kind) : "—"}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-muted-foreground sm:text-[13px]">
             Matched means documents line up for this testing event — not clearance or approval.
           </p>
         </div>
@@ -618,17 +618,17 @@ export function DrugTestRecordsPage() {
 
       {/* Full-width table */}
       <div className="w-full min-w-0 overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full min-w-[920px] border-collapse text-sm">
-          <thead className="bg-[color-mix(in_srgb,var(--brand-slate)_8%,white)] text-left text-[11px] font-extrabold tracking-wider text-[var(--brand-slate)] uppercase">
+        <table className="w-full min-w-[920px] border-collapse text-[15px]">
+          <thead className="bg-[color-mix(in_srgb,var(--brand-slate)_8%,white)] text-left text-[13px] font-extrabold tracking-wider text-[var(--brand-slate)] uppercase">
             <tr>
-              <th className="px-3 py-2">Driver</th>
-              <th className="px-3 py-2">Reason</th>
-              <th className="px-3 py-2">Collection Date</th>
-              <th className="px-3 py-2">Specimen</th>
-              <th className="px-3 py-2">Federal Drug</th>
-              <th className="px-3 py-2">Medical Review</th>
-              <th className="px-3 py-2">Pair Status</th>
-              <th className="px-3 py-2">Actions</th>
+              <th className="px-3 py-2.5">Driver</th>
+              <th className="px-3 py-2.5">Reason</th>
+              <th className="px-3 py-2.5">Collection Date</th>
+              <th className="px-3 py-2.5">Specimen</th>
+              <th className="px-3 py-2.5">Federal Drug</th>
+              <th className="px-3 py-2.5">Medical Review</th>
+              <th className="px-3 py-2.5">Pair Status</th>
+              <th className="px-3 py-2.5">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -671,9 +671,9 @@ export function DrugTestRecordsPage() {
               groupByDriver &&
               grouped?.flatMap(([driverId, rows]) => [
                 <tr key={`g_${driverId}`} className="border-t border-foreground/10 bg-muted/40">
-                  <td colSpan={8} className="px-3 py-2 font-extrabold text-foreground">
+                  <td colSpan={8} className="px-3 py-2.5 text-base font-extrabold text-foreground">
                     {nameById.get(driverId) ?? driverId}
-                    <span className="ml-2 text-xs font-semibold text-muted-foreground">
+                    <span className="ml-2 text-[13px] font-semibold text-muted-foreground">
                       {rows.length} event{rows.length === 1 ? "" : "s"}
                     </span>
                   </td>
@@ -708,7 +708,7 @@ export function DrugTestRecordsPage() {
           </tbody>
         </table>
         {!loading && !filtered.length && (
-          <p className="px-3 py-6 text-sm text-muted-foreground">
+          <p className="px-3 py-6 text-[15px] text-muted-foreground">
             {events.length
               ? "No rows match this filter."
               : persistOk
@@ -719,7 +719,7 @@ export function DrugTestRecordsPage() {
       </div>
 
       {!adding && !view && persistOk && (
-        <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground sm:text-[13px]">
           <ChevronDown className="size-3.5" aria-hidden />
           Add stays collapsed until you need it — CCF-first or MRO-first both work.
         </p>
@@ -751,11 +751,11 @@ function RecordRow({
 }) {
   return (
     <tr className="border-t border-foreground/10 align-top">
-      <td className="px-3 py-2 font-semibold">{hideDriver ? "" : row.driverName}</td>
-      <td className="px-3 py-2">{row.reason || "—"}</td>
-      <td className="px-3 py-2 text-xs">{row.eventDate || row.collectionContext || "—"}</td>
-      <td className="px-3 py-2 font-mono text-xs font-semibold">{row.specimenId || "—"}</td>
-      <td className="px-3 py-2 text-xs">
+      <td className="px-3 py-2.5 font-semibold">{hideDriver ? "" : row.driverName}</td>
+      <td className="px-3 py-2.5">{row.reason || "—"}</td>
+      <td className="px-3 py-2.5 text-[14px]">{row.eventDate || row.collectionContext || "—"}</td>
+      <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">{row.specimenId || "—"}</td>
+      <td className="px-3 py-2.5 text-[14px]">
         {row.federal ? (
           <button
             type="button"
@@ -770,7 +770,7 @@ function RecordRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-3 py-2 text-xs">
+      <td className="px-3 py-2.5 text-[14px]">
         {row.medical ? (
           <button
             type="button"
@@ -785,12 +785,12 @@ function RecordRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="px-3 py-2">
-        <span className={cn("inline-flex rounded-md px-2 py-0.5 text-xs font-bold", DRUG_STATUS_TONE[row.status])}>
+      <td className="px-3 py-2.5">
+        <span className={cn("inline-flex rounded-md px-2 py-0.5 text-[13px] font-bold", DRUG_STATUS_TONE[row.status])}>
           {DRUG_PAIR_STATUS_LABEL[row.status]}
         </span>
       </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-2.5">
         <div className="flex flex-wrap gap-1">
           <button
             type="button"
@@ -822,7 +822,7 @@ function RecordRow({
                   aria-label="Add Federal Drug CCF"
                   disabled={!persistOk}
                   onClick={onAddCcf}
-                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
+                  className="rounded px-1.5 py-1 text-[13px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
                 >
                   +CCF
                 </button>
@@ -834,7 +834,7 @@ function RecordRow({
                   aria-label="Add Medical Review MRO"
                   disabled={!persistOk}
                   onClick={onAddMro}
-                  className="rounded px-1.5 py-1 text-[10px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
+                  className="rounded px-1.5 py-1 text-[13px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
                 >
                   +MRO
                 </button>
