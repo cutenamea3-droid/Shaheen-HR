@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AdminOnly } from "@/components/tracker/AdminOnly";
 import { AppShell } from "@/components/tracker/AppShell";
 import { DrugTestRecordsPage } from "@/components/tracker/driver-hr/DrugTestRecordsPage";
 
@@ -20,13 +21,15 @@ export const Route = createFileRoute("/drug-tests")({
     ],
   }),
   component: () => (
-    <AppShell
-      title="Drug Test Records"
-      subtitle="Federal Drug (CCF) · Medical Review (MRO) — paperwork pairing only, not clearance"
-    >
-      <div className="mx-auto max-w-7xl p-4 md:p-6">
-        <DrugTestRecordsPage />
-      </div>
-    </AppShell>
+    <AdminOnly>
+      <AppShell
+        title="Drug Test Records"
+        subtitle="Federal Drug (CCF) · Medical Review (MRO) — paperwork pairing only, not clearance"
+      >
+        <div className="mx-auto max-w-7xl p-4 md:p-6">
+          <DrugTestRecordsPage />
+        </div>
+      </AppShell>
+    </AdminOnly>
   ),
 });

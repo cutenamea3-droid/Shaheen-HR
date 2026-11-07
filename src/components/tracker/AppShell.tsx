@@ -131,13 +131,15 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
           {groupLbl("Overview")}
           <NavItem to="/" active={loc.pathname === "/"} icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/drivers" active={loc.pathname === "/drivers"} icon={IdCard} label="Driver Cards" collapsed={collapsed} />
-          <NavItem
-            to="/drug-tests"
-            active={loc.pathname === "/drug-tests"}
-            icon={FlaskConical}
-            label="Drug Test Records"
-            collapsed={collapsed}
-          />
+          {account.role === "admin" && (
+            <NavItem
+              to="/drug-tests"
+              active={loc.pathname === "/drug-tests"}
+              icon={FlaskConical}
+              label="Drug Test Records"
+              collapsed={collapsed}
+            />
+          )}
           <NavItem to="/records" active={loc.pathname === "/records"} icon={FolderOpen} label="Records" collapsed={collapsed} />
           {groupLbl("Compliance sections")}
           {SECTIONS.map((s) => (
