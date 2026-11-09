@@ -9,6 +9,7 @@ import {
   today,
 } from "./alerts";
 import { driverEmploymentStatus, normName, type AppData } from "./sections";
+import { dateOfHireOf, formatHireDateDisplay } from "./driver-hr/hire-date";
 
 export interface DossierLine {
   label: string;
@@ -32,6 +33,8 @@ export interface DriverDossier {
   name: string;
   cdl: string;
   employment: string;
+  /** Optional Date of Hire display (MM/DD/YYYY); empty when unset — never invent. */
+  dateOfHire: string;
   phone: string;
   email: string;
   state: string;
@@ -134,6 +137,8 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
   const ssccdl = onlyThisDriver(data.sections.ssccdl?.rows, driverId);
   const docs = onlyThisDriver(data.sections.docs?.rows, driverId);
   const info = onlyThisDriver(data.sections.info?.rows, driverId);
+  const hireRaw = dateOfHireOf(data, driverId);
+  const hireDisplay = hireRaw ? formatHireDateDisplay(hireRaw) || hireRaw : "";
 
   const name =
     cell(dmv, 0) ||
@@ -211,6 +216,7 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
     name,
     cdl,
     employment: driverEmploymentStatus(data, driverId),
+    dateOfHire: hireDisplay,
     phone: cell(info, 1) || "—",
     email: cell(info, 2) || "—",
     state: cell(info, 3) || cell(dmv, 8) || "—",
@@ -363,6 +369,7 @@ export function renderDriverDossierHtml(data: AppData, driverId: string, opts?: 
       <div><strong>Driver:</strong> ${esc(name)}</div>
       <div><strong>CDL / License:</strong> ${esc(cdl)}</div>
       <div><strong>Employment:</strong> ${esc(employment)}</div>
+      <div><strong>Date of Hire:</strong> ${esc(dossier.dateOfHire || "—")}</div>
       <div><strong>State:</strong> ${esc(state)}</div>
       <div><strong>Phone:</strong> ${esc(phone)}</div>
       <div><strong>Email:</strong> ${esc(email)}</div>

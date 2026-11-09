@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import {
-  clearPersonalSession,
   hasPersonalCredentials,
   setPersonalCredentials,
   PERSONAL_AUTH_KEYS,
@@ -14,11 +13,26 @@ import {
 } from "@/personal/lib/defaults";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
+import {
+  applyPersonalBackup,
+  downloadPersonalBackup,
+  parsePersonalBackup,
+  PERSONAL_LOCAL_STORAGE_KEYS,
+} from "@/personal/lib/backup";
+import {
+  getPersonalCloudStatus,
+  subscribePersonalCloudStatus,
+} from "@/personal/lib/cloud-sync";
+import {
+  isPersonalSecureEnabled,
+  personalAuthMode,
+  personalSignOut,
+  personalSessionLabel,
+} from "@/personal/lib/session";
+import { updatePersonalSecurePassword } from "@/personal/lib/secure-auth";
+import { PERSONAL_UNSYNCED_KEY } from "@/personal/lib/sync-protect";
+import { PERSONAL_SB_AUTH_STORAGE_KEY } from "@/personal/integrations/supabase/client";
 
-/**
- * Vault covers truncated Feature 8+ items from the original brief:
- * discipline dashboard, privacy/auth isolation, and reserved slots for follow-up.
- */
 function AccessNavControls() {
   return (
     <div className="mb-4 rounded-md border border-[var(--hp-violet)]/35 bg-[var(--hp-violet)]/10 p-3 text-sm">
@@ -26,8 +40,8 @@ function AccessNavControls() {
       <p className="mt-1 text-xs text-[var(--hp-muted)]">
         HR Personal is <strong className="text-[var(--hp-ink)]">never</strong> shown in the company
         AppSwitcher for ordinary users. The Personal tab appears only while you are already on{" "}
-        <code>/personal</code>. Bookmark the URL to return. This is UX obscurity — not server ACL.
-        Hosting/repo admins who know the path can still open it.
+        <code>/personal</code>. Bookmark the URL to return. Hiding the tab is not security — auth
+        still required.
       </p>
     </div>
   );
@@ -45,7 +59,17 @@ export function Vault() {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [msg, setMsg] = useState("");
+  const [sessionLabel, setSessionLabel] = useState<string | null>(null);
+  const [cloudStatus, setCloudStatus] = useState(getPersonalCloudStatus);
+  const fileRef = useRef<HTMLInputElement>(null);
   const today = todayKey();
+  const secure = isPersonalSecureEnabled();
+  const mode = personalAuthMode();
+
+  useEffect(() => subscribePersonalCloudStatus(() => setCloudStatus(getPersonalCloudStatus())), []);
+  useEffect(() => {
+    void personalSessionLabel().then(setSessionLabel);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -132,64 +156,114 @@ export function Vault() {
             />
           </Field>
         </div>
-        <p className="mt-3 text-xs text-[var(--hp-muted)]">
-          Busy stays 45m and Rescue stays 20m. Changing budgets does not wipe saved day plans or
-          logged Focus sessions.
+      </Panel>
+
+      <Panel>
+        <SectionHead
+          title="Backup & restore"
+          subtitle="Personal study JSON only — never company Driver/Attendance backups"
+        />
+        <p className="mb-3 text-xs text-[var(--hp-muted)]">
+          Export a Personal-only file you can keep offline. Restore replaces study data in this
+          workspace (and pushes to Personal cloud when secure mode is on).
         </p>
+        <div className="flex flex-wrap gap-2">
+          <Btn
+            onClick={() => {
+              downloadPersonalBackup();
+              setMsg("Personal backup downloaded.");
+            }}
+          >
+            Download backup
+          </Btn>
+          <Btn variant="ghost" onClick={() => fileRef.current?.click()}>
+            Restore backup…
+          </Btn>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              try {
+                const text = await file.text();
+                const env = parsePersonalBackup(text);
+                applyPersonalBackup(env);
+                setMsg(`Restored Personal backup from ${env.exportedAt}.`);
+              } catch (err) {
+                setMsg(err instanceof Error ? err.message : "Restore failed.");
+              }
+            }}
+          />
+        </div>
       </Panel>
 
       <Panel>
         <SectionHead
           title="Privacy & auth isolation"
-          subtitle="Prototype local PIN — still insecure vs real server auth"
+          subtitle={
+            secure
+              ? "Secure mode — Personal Supabase Auth + personal_study_state (RLS)"
+              : "Local mock gate — enable VITE_PERSONAL_AUTH_SECURE after Personal SQL apply"
+          }
         />
         <AccessNavControls />
         <div className="mb-4 space-y-3 rounded-md border border-[var(--hp-teal)]/30 bg-[var(--hp-teal)]/10 p-3 text-sm">
           <div>
-            <div className="font-semibold text-[var(--hp-teal)]">What this gate is (prototype)</div>
+            <div className="font-semibold text-[var(--hp-teal)]">Auth mode: {mode}</div>
             <p className="mt-1 text-xs text-[var(--hp-muted)]">
-              A device PIN: SHA-256 hash in <code>localStorage</code> on this browser. It slows casual
-              peeking. It is <strong className="text-[var(--hp-ink)]">not</strong> enterprise
-              authentication, MFA, or server-side session security.
+              {secure ? (
+                <>
+                  Signed in as <code>{sessionLabel ?? "…"}</code>. Cloud status:{" "}
+                  <strong className="text-[var(--hp-ink)]">{cloudStatus}</strong>. Study data
+                  persists in Personal-only table <code>personal_study_state</code> — same login on
+                  another browser loads the same records after sign-in.{" "}
+                  <code>{PERSONAL_STORAGE_KEY}</code> is cache only.
+                </>
+              ) : (
+                <>
+                  Feature flag off: device-local hash gate + <code>{PERSONAL_STORAGE_KEY}</code> only.
+                  Cross-browser sync is unavailable until Personal project SQL is applied and{" "}
+                  <code>VITE_PERSONAL_AUTH_SECURE=1</code> is set (Preview first).
+                </>
+              )}
             </p>
           </div>
           <div>
-            <div className="font-semibold text-[var(--hp-amber)]">Still insecure</div>
+            <div className="font-semibold text-[var(--hp-violet)]">Isolation (hard)</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
-              <li>No real passwords in frontend source, repo, or <code>VITE_*</code> env vars</li>
-              <li>No company Admin / Driver credentials reused</li>
-              <li>Anyone with device + DevTools can read study data and clear/replace the PIN hash</li>
+              <li>Personal client uses only <code>VITE_PERSONAL_*</code> — never Driver/Admin URLs</li>
               <li>
-                Company switcher hide does <strong className="text-[var(--hp-ink)]">not</strong>{" "}
-                block <code>/personal</code> for hosting/repo admins or anyone with the URL — SPA
-                cannot enforce true server ACL without a Personal backend
+                Never writes company <code>app_state</code>, <code>tracker_sections</code>, payroll,
+                banking, drug tests, or rate cards
               </li>
+              <li>URL alone never unlocks the vault — credentials required every new browser</li>
             </ul>
           </div>
           <div>
-            <div className="font-semibold text-[var(--hp-violet)]">Path to a real Personal account</div>
-            <ol className="mt-1 list-inside list-decimal text-xs text-[var(--hp-muted)]">
-              <li>Separate Personal auth provider (email magic link / OAuth) — never company Admin users</li>
-              <li>httpOnly secure cookie session; revoke on logout; no token in localStorage</li>
-              <li>
-                Dedicated Personal DB/schema with RLS owner_id — zero company attendance/driver tables
-              </li>
-              <li>Encrypt notes at rest on that Personal store; optional client backup export</li>
-              <li>Server-gated route + role claim before showing nav (UI hide alone is not enough)</li>
-            </ol>
-            <p className="mt-2 text-xs text-[var(--hp-muted)]">
-              No prod DB migrations in this PR. Approval required before any cloud Personal backend.
-            </p>
-          </div>
-          <div>
-            <div className="font-semibold text-[var(--hp-ink)]">Personal-only browser keys</div>
+            <div className="font-semibold text-[var(--hp-ink)]">Personal browser keys (audit)</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
               <li>
-                Data: <code>{PERSONAL_STORAGE_KEY}</code>
+                Study cache: <code>{PERSONAL_LOCAL_STORAGE_KEYS.studyData}</code>
+              </li>
+              <li>
+                Local secrets (mock mode): <code>{PERSONAL_LOCAL_STORAGE_KEYS.authSecrets}</code>
+              </li>
+              <li>
+                Local session (mock mode): <code>{PERSONAL_LOCAL_STORAGE_KEYS.authSession}</code>
+              </li>
+              <li>
+                Unsynced flag: <code>{PERSONAL_UNSYNCED_KEY}</code>
+              </li>
+              <li>
+                Secure auth namespace: <code>{PERSONAL_SB_AUTH_STORAGE_KEY}</code>
               </li>
               {PERSONAL_AUTH_KEYS.map((k) => (
                 <li key={k}>
-                  Auth: <code>{k}</code>
+                  Auth key: <code>{k}</code>
                 </li>
               ))}
               <li>
@@ -240,19 +314,20 @@ export function Vault() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={async () => {
-              if (pw.length < 4) {
+              if (pw.length < 4 || pw !== pw2) {
                 setMsg("Invalid credentials.");
                 return;
               }
-              if (pw !== pw2) {
-                setMsg("Invalid credentials.");
-                return;
+              if (secure) {
+                const r = await updatePersonalSecurePassword(pw);
+                setMsg(r.ok ? "Password updated on Personal Auth." : r.message);
+              } else {
+                const login = readPersonalSessionLogin() || "owner";
+                await setPersonalCredentials(login, pw);
+                setMsg(hasPersonalCredentials() ? "Password updated locally (hashed)." : "Saved.");
               }
-              const login = readPersonalSessionLogin() || "owner";
-              await setPersonalCredentials(login, pw);
               setPw("");
               setPw2("");
-              setMsg(hasPersonalCredentials() ? "Password updated locally (hashed)." : "Saved.");
             }}
           >
             Save password
@@ -260,8 +335,7 @@ export function Vault() {
           <Btn
             variant="danger"
             onClick={() => {
-              clearPersonalSession();
-              setAuthed(false);
+              void personalSignOut().then(() => setAuthed(false));
             }}
           >
             Sign out
@@ -272,21 +346,25 @@ export function Vault() {
 
       <Panel>
         <SectionHead
-          title="Feature vault (truncated follow-up)"
-          subtitle="Original prompt cut off mid Feature 8 — reserved slots for the rest"
+          title="Study options"
+          subtitle="Timetable · Focus · Progress · Notes — all Personal-only"
         />
         <ul className="mb-3 space-y-2 text-sm text-[var(--hp-muted)]">
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Shipped here:</span> discipline
-            dashboard · privacy/auth honesty · schedule budgets · local vault notes
+            <span className="font-semibold text-[var(--hp-ink)]">Timetable</span> — Normal / Busy /
+            Rescue / Sunday Recovery budgets from your backlog
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-amber)]">Follow-up (truncated):</span> any
-            remaining Feature 8+ items from the full brief — paste when available; no invented scope
+            <span className="font-semibold text-[var(--hp-ink)]">Focus</span> — pomodoro sessions
+            logged as real minutes only
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            Deferred: server auth + optional encrypted cloud backup (approval required — no company
-            tables)
+            <span className="font-semibold text-[var(--hp-ink)]">Progress</span> — Analytics from
+            logged sessions; course lecture % only when you enter counts
+          </li>
+          <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
+            <span className="font-semibold text-[var(--hp-ink)]">Notes</span> — revision notes scoped
+            to this Personal account
           </li>
         </ul>
         <Field label="Private vault scratchpad">
@@ -294,7 +372,7 @@ export function Vault() {
             className="hp-field min-h-[120px] py-2"
             value={vaultNotes}
             onChange={(e) => setVaultNotes(e.target.value)}
-            placeholder="Do not store real passwords here. Semester goals / truncated feature notes only."
+            placeholder="Do not store real passwords here. Semester goals only."
           />
         </Field>
       </Panel>

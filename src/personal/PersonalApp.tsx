@@ -1,13 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Lock } from "lucide-react";
 import {
-  clearPersonalSession,
-  hasPersonalCredentials,
-  readPersonalSession,
-  setPersonalCredentials,
-  verifyPersonalCredentials,
-  writePersonalSession,
-} from "@/personal/lib/auth";
+  hydratePersonalAuth,
+  personalNeedsSetup,
+  personalSignIn,
+  personalSignOut,
+  personalAuthMode,
+  isPersonalSignupAllowed,
+} from "@/personal/lib/session";
 import { usePersonal, whenPersonalHydrated } from "@/personal/lib/store";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
@@ -19,16 +19,20 @@ const PersonalWorkspace = lazy(() =>
 function LoginGate({ onAuthed }: { onAuthed: () => void }) {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const mode = personalAuthMode();
   const [needsSetup, setNeedsSetup] = useState(() =>
-    typeof window === "undefined" ? true : !hasPersonalCredentials(),
+    typeof window === "undefined" ? false : personalNeedsSetup(),
   );
   const loginRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
   const pass2Ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setNeedsSetup(!hasPersonalCredentials());
+    setNeedsSetup(personalNeedsSetup());
   }, []);
+
+  const showConfirm =
+    mode === "local" ? needsSetup : needsSetup && isPersonalSignupAllowed();
 
   return (
     <div className="hp-login-split grid min-h-[calc(100vh-44px)] lg:grid-cols-[1.05fr_0.95fr]">
@@ -74,18 +78,12 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             const password = String(fd.get("password") ?? passRef.current?.value ?? "");
             const password2 = String(fd.get("password2") ?? pass2Ref.current?.value ?? "");
             try {
-              if (needsSetup) {
-                if (!login.trim()) throw new Error("Invalid credentials.");
-                if (password.length < 4) throw new Error("Invalid credentials.");
-                if (password !== password2) throw new Error("Invalid credentials.");
-                await setPersonalCredentials(login, password);
-                writePersonalSession(login);
-                onAuthed();
-                return;
-              }
-              const ok = await verifyPersonalCredentials(login, password);
-              if (!ok) throw new Error("Invalid credentials.");
-              writePersonalSession(login);
+              const result = await personalSignIn(
+                login,
+                password,
+                showConfirm ? password2 : undefined,
+              );
+              if (!result.ok) throw new Error(result.message);
               onAuthed();
             } catch {
               setErr("Invalid credentials.");
@@ -123,11 +121,11 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
               className="hp-login-input"
               name="password"
               type="password"
-              autoComplete={needsSetup ? "new-password" : "current-password"}
+              autoComplete={showConfirm ? "new-password" : "current-password"}
               required
             />
           </label>
-          {needsSetup ? (
+          {showConfirm ? (
             <label className="block space-y-1.5">
               <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
                 Confirm password
@@ -164,8 +162,9 @@ export function PersonalApp() {
   const theme = settings.theme === "light" ? "light" : "dark";
 
   useEffect(() => {
-    void whenPersonalHydrated().then(() => {
-      setAuthed(readPersonalSession());
+    void whenPersonalHydrated().then(async () => {
+      const ok = await hydratePersonalAuth();
+      setAuthed(ok);
       setReady(true);
     });
   }, [setAuthed]);
@@ -194,8 +193,8 @@ export function PersonalApp() {
           }
         >
           <PersonalWorkspace
-            onLock={() => {
-              clearPersonalSession();
+            onLock={async () => {
+              await personalSignOut();
               usePersonal.setState({ authed: false });
               setAuthed(false);
             }}

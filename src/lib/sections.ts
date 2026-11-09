@@ -174,6 +174,11 @@ export interface Row {
   classHistory?: ClassHistoryEntry[];
   /** History of New ↔ roster (Move to Active / reverse). */
   rosterHistory?: RosterHistoryEntry[];
+  /**
+   * Optional Date of Hire (ISO YYYY-MM-DD). Empty/missing = unset — never invent.
+   * Orthogonal to addedAt (wizard timestamp). Mirrored by driverId like driverClass.
+   */
+  dateOfHire?: string;
 }
 
 /** Parse employment status from a cell or optional Row.status. Empty → active. */

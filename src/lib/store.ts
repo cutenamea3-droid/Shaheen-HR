@@ -14,6 +14,7 @@ import {
   type SectionData,
 } from "./sections";
 import { applyDriverClass, applyRosterKind } from "./driver-meta";
+import { applyDateOfHire } from "./driver-hr/hire-date";
 import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
 
@@ -487,6 +488,14 @@ export function setDriverClass(driverId: string, next: DriverClass) {
  */
 export function setDriverRosterKind(driverId: string, next: RosterKind) {
   update((d) => applyRosterKind(d, driverId, next));
+}
+
+/**
+ * Set optional Date of Hire (ISO YYYY-MM-DD or ""). Mirrored by driverId.
+ * Independent save — does not invent values or touch rates / drug tests / compliance docs.
+ */
+export function setDriverDateOfHire(driverId: string, next: string) {
+  update((d) => applyDateOfHire(d, driverId, next));
 }
 
 export function resetToSpreadsheet() {

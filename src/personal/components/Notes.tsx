@@ -27,7 +27,7 @@ export function Notes() {
       <Panel>
         <SectionHead
           title="Notes & revision"
-          subtitle="Private local notes — never synced to company Admin or Driver stores"
+          subtitle="Personal-only notes — cloud-synced when secure mode is on; never company stores"
         />
         <div className="grid gap-3">
           <Field label="Course">

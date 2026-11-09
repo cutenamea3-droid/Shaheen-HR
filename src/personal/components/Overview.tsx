@@ -59,9 +59,13 @@ export function Overview() {
     <div className="space-y-4">
       <Panel>
         <SectionHead
-          title="Command center"
+          title="Study overview"
           subtitle={`${settings.program} · ${settings.semester} · Mon–Sat ${settings.weekdayMinutes}m · Sunday ${settings.sundayMinutes}m`}
         />
+        <p className="mb-3 text-xs text-[var(--hp-muted)]">
+          Timetable, Focus, Progress, and Notes live in this Personal workspace — isolated from
+          company Driver and Attendance data.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Stat
             label="Logged (7d)"

@@ -27,11 +27,18 @@ describe("Combined site", () => {
     expect(router.matchRoutes("/personal").at(-1)?.routeId).toBe("/personal");
   });
 
-  it.each(["/cv", "/account", "/team", "/activity", "/drivers", "/records", "/s/dmv", "/personal"])(
-    "matches the %s route",
-    (path) => {
-      const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-      expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
-    },
-  );
+  it.each([
+    "/cv",
+    "/account",
+    "/team",
+    "/activity",
+    "/drivers",
+    "/drug-tests",
+    "/records",
+    "/s/dmv",
+    "/personal",
+  ])("matches the %s route", (path) => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
+  });
 });

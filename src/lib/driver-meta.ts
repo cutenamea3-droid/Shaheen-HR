@@ -186,6 +186,8 @@ export function applyRosterKind(
   });
 }
 
+// Date of Hire lives in driver-hr/hire-date.ts (parse/format/lengthOfService + applyDateOfHire).
+
 /** Class history for a driver (from any row that has it). */
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {

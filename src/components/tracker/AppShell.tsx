@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   LayoutDashboard, FileText, HeartPulse, SearchCheck, IdCard, FolderOpen, Users, UserX,
-  PanelLeftClose, PanelLeftOpen, Download, Upload, RotateCcw, ClipboardList,
+  PanelLeftClose, PanelLeftOpen, Download, Upload, RotateCcw, ClipboardList, FlaskConical,
 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -35,6 +35,7 @@ function driverCrumbs(pathname: string, title: string): Crumb[] {
   if (pathname === "/") return [root, { label: "Dashboard" }];
   if (pathname.startsWith("/s/")) return [root, { label: "Sections" }, { label: title }];
   if (pathname === "/drivers") return [root, { label: "Driver Cards" }];
+  if (pathname === "/drug-tests") return [root, { label: "Drug Test Records" }];
   if (pathname === "/records") return [root, { label: "Records" }];
   if (pathname === "/account") return [root, { label: "My Account" }];
   if (pathname === "/team") return [root, { label: "User Accounts" }];
@@ -130,6 +131,15 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
           {groupLbl("Overview")}
           <NavItem to="/" active={loc.pathname === "/"} icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/drivers" active={loc.pathname === "/drivers"} icon={IdCard} label="Driver Cards" collapsed={collapsed} />
+          {account.role === "admin" && (
+            <NavItem
+              to="/drug-tests"
+              active={loc.pathname === "/drug-tests"}
+              icon={FlaskConical}
+              label="Drug Test Records"
+              collapsed={collapsed}
+            />
+          )}
           <NavItem to="/records" active={loc.pathname === "/records"} icon={FolderOpen} label="Records" collapsed={collapsed} />
           {groupLbl("Compliance sections")}
           {SECTIONS.map((s) => (

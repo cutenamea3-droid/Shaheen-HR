@@ -15,6 +15,7 @@ import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CvRouteImport } from './routes/cv'
 import { Route as DriversRouteImport } from './routes/drivers'
+import { Route as DrugTestsRouteImport } from './routes/drug-tests'
 import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as TeamRouteImport } from './routes/team'
@@ -50,6 +51,11 @@ const DriversRoute = DriversRouteImport.update({
   path: '/drivers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DrugTestsRoute = DrugTestsRouteImport.update({
+  id: '/drug-tests',
+  path: '/drug-tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PersonalRoute = PersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/drug-tests': typeof DrugTestsRoute
   '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/drug-tests': typeof DrugTestsRoute
   '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/cv': typeof CvRoute
   '/drivers': typeof DriversRoute
+  '/drug-tests': typeof DrugTestsRoute
   '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/drug-tests'
     | '/personal'
     | '/records'
     | '/team'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/drug-tests'
     | '/personal'
     | '/records'
     | '/team'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cv'
     | '/drivers'
+    | '/drug-tests'
     | '/personal'
     | '/records'
     | '/team'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CvRoute: typeof CvRoute
   DriversRoute: typeof DriversRoute
+  DrugTestsRoute: typeof DrugTestsRoute
   PersonalRoute: typeof PersonalRoute
   RecordsRoute: typeof RecordsRoute
   TeamRoute: typeof TeamRoute
@@ -204,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriversRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/drug-tests': {
+      id: '/drug-tests'
+      path: '/drug-tests'
+      fullPath: '/drug-tests'
+      preLoaderRoute: typeof DrugTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/personal': {
       id: '/personal'
       path: '/personal'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CvRoute: CvRoute,
   DriversRoute: DriversRoute,
+  DrugTestsRoute: DrugTestsRoute,
   PersonalRoute: PersonalRoute,
   RecordsRoute: RecordsRoute,
   TeamRoute: TeamRoute,
@@ -250,13 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

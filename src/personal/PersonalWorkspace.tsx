@@ -11,7 +11,7 @@ import {
   Timer,
   Vault as VaultIcon,
 } from "lucide-react";
-import { clearPersonalSession } from "@/personal/lib/auth";
+import { personalAuthMode, personalSignOut } from "@/personal/lib/session";
 import { usePersonal } from "@/personal/lib/store";
 import { Overview } from "@/personal/components/Overview";
 import { Courses } from "@/personal/components/Courses";
@@ -59,7 +59,7 @@ export function PersonalWorkspace({ onLock }: { onLock: () => void }) {
           <div className="min-w-0 leading-tight">
             <div className="hp-title truncate text-sm font-bold text-[var(--hp-ink)]">HR Personal</div>
             <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--hp-muted)]">
-              Workspace
+              {personalAuthMode() === "secure" ? "Secure study" : "Study workspace"}
             </div>
           </div>
         </div>
@@ -90,8 +90,7 @@ export function PersonalWorkspace({ onLock }: { onLock: () => void }) {
             data-testid="hp-lock"
             className="hp-nav-idle flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-[var(--hp-muted)]"
             onClick={() => {
-              clearPersonalSession();
-              onLock();
+              void personalSignOut().then(() => onLock());
             }}
           >
             <LogOut className="h-4 w-4" /> Sign out
