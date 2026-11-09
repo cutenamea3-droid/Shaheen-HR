@@ -66,7 +66,12 @@ export function Vault() {
   const secure = isPersonalSecureEnabled();
   const mode = personalAuthMode();
 
-  useEffect(() => subscribePersonalCloudStatus(() => setCloudStatus(getPersonalCloudStatus())), []);
+  useEffect(() => {
+    const unsub = subscribePersonalCloudStatus(() => setCloudStatus(getPersonalCloudStatus()));
+    return () => {
+      unsub();
+    };
+  }, []);
   useEffect(() => {
     void personalSessionLabel().then(setSessionLabel);
   }, []);

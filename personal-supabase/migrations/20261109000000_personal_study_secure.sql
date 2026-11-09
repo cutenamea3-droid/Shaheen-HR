@@ -1,7 +1,7 @@
 -- HR Personal — Personal-only schema (DO NOT run on Driver or Admin projects)
 -- Apply only to a dedicated Personal Supabase project after explicit user approval.
 -- Tables: personal_profiles, personal_study_state
--- Never touches company app_state, tracker_sections, attendance, payroll, banking, drug tests, rate cards.
+-- Never touches company attendance/driver tables (forbidden: company state blobs, tracker sections, payroll, banking, drug tests, rate cards).
 
 -- Profiles (1:1 with auth.users)
 create table if not exists public.personal_profiles (

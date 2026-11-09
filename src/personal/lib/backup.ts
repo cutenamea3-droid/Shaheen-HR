@@ -60,15 +60,17 @@ export function parsePersonalBackup(raw: string): PersonalBackupEnvelope {
     throw new Error("Invalid backup file.");
   }
   if (!parsed || typeof parsed !== "object") throw new Error("Invalid backup file.");
-  const env = parsed as Partial<PersonalBackupEnvelope> & { app?: string };
+  const rawApp = (parsed as { app?: unknown }).app;
+  const appName = typeof rawApp === "string" ? rawApp : "";
 
   // Refuse company backup envelopes
-  if (env.app === "hr-attendance" || env.app === "shaheen-driver") {
+  if (appName === "hr-attendance" || appName === "shaheen-driver") {
     throw new Error("Company backup refused — Personal restore only.");
   }
-  if (env.app !== PERSONAL_BACKUP_APP) {
+  if (appName !== PERSONAL_BACKUP_APP) {
     throw new Error("Not an HR Personal backup.");
   }
+  const env = parsed as Partial<PersonalBackupEnvelope>;
   if (env.version !== PERSONAL_BACKUP_VERSION) {
     throw new Error("Unsupported Personal backup version.");
   }

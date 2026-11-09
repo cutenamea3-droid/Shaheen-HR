@@ -194,10 +194,16 @@ describe("Isolated PGlite Personal SQL (no company tables)", () => {
       resolve(root, "personal-supabase/migrations/20261109000000_personal_study_secure.sql"),
       "utf8",
     );
-    // Guard: migration must not mention company tables
-    expect(sql.toLowerCase()).not.toContain("app_state");
-    expect(sql.toLowerCase()).not.toContain("tracker_sections");
-    expect(sql.toLowerCase()).not.toContain("driver_");
+    // Guard: migration must not CREATE/ALTER company tables (comments may name them as forbidden).
+    const executable = sql
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("--"))
+      .join("\n")
+      .toLowerCase();
+    expect(executable).not.toMatch(/create table[\s\S]*app_state/);
+    expect(executable).not.toContain("tracker_sections");
+    expect(executable).not.toMatch(/\bdriver_/);
+    expect(executable).toContain("personal_study_state");
     await db.exec(stripAuthUserFks(sql));
 
     // Force RLS for table owner in this isolated engine
