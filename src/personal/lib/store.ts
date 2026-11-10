@@ -21,6 +21,8 @@ import type {
   StudyMode,
 } from "./types";
 import { modeBudgetMinutes } from "./schedule";
+import { buildVuSeed } from "./vu-import";
+import { VU_STUDY_PLAN, courseIdFromCode, type VuStudyPlan } from "./vu-plan";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -52,6 +54,8 @@ type Actions = {
   rebuildDayBlocks: (date: string) => void;
   toggleDiscipline: (id: string, date?: string) => void;
   setVaultNotes: (v: string) => void;
+  /** Seed/replace study slices from VU export fixture (local only). */
+  importVuStudyPlan: (plan?: VuStudyPlan) => void;
 };
 
 export type PersonalStore = PersonalState & Actions;
@@ -87,7 +91,6 @@ function buildBlocks(
   }
 
   if (left > 0 && blocks.length === 0) {
-    // Gentle placeholder study slots — not progress claims
     const active = courses.filter((c) => !c.isTbd || c.code !== "TBD");
     const slice = Math.max(15, Math.floor(budget / Math.max(1, Math.min(3, active.length))));
     for (const c of active.slice(0, 3)) {
@@ -120,6 +123,8 @@ export const usePersonal = create<PersonalStore>()(
       discipline: defaultDiscipline(),
       settings: defaultSettings(),
       vaultNotes: "",
+      vuSeededAt: null,
+      vuPlanAsOf: null,
 
       setAuthed: (authed) => set({ authed }),
       setSettings: (p) =>
@@ -242,10 +247,43 @@ export const usePersonal = create<PersonalStore>()(
           }),
         })),
       setVaultNotes: (vaultNotes) => set({ vaultNotes }),
+      importVuStudyPlan: (plan = VU_STUDY_PLAN) => {
+        const seed = buildVuSeed(plan);
+        const s = get();
+        const vaultNotes = s.vaultNotes.includes("VU export seed")
+          ? s.vaultNotes
+          : [s.vaultNotes.trim(), seed.vaultAppendix].filter(Boolean).join("\n\n");
+        set({
+          courses: seed.courses,
+          assessments: seed.assessments,
+          backlog: seed.backlog,
+          settings: { ...s.settings, ...seed.settingsPatch },
+          vaultNotes,
+          vuSeededAt: new Date().toISOString(),
+          vuPlanAsOf: plan.asOf,
+          dayPlans: {},
+        });
+        // Rebuild today after seed
+        const today = todayIso();
+        const next = get();
+        set({
+          dayPlans: {
+            [today]: {
+              ...emptyPlan(today, "normal"),
+              blocks: buildBlocks(
+                "normal",
+                today,
+                next.courses,
+                next.backlog,
+                next.settings,
+              ),
+            },
+          },
+        });
+      },
     }),
     {
       name: PERSONAL_STORAGE_KEY,
-      // Never persist gate state — session key alone unlocks after refresh.
       partialize: (s) => ({
         courses: s.courses,
         backlog: s.backlog,
@@ -256,6 +294,8 @@ export const usePersonal = create<PersonalStore>()(
         discipline: s.discipline,
         settings: s.settings,
         vaultNotes: s.vaultNotes,
+        vuSeededAt: s.vuSeededAt,
+        vuPlanAsOf: s.vuPlanAsOf,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<PersonalState>;
@@ -263,7 +303,6 @@ export const usePersonal = create<PersonalStore>()(
           ...current,
           ...p,
           settings: migrateSettings(p.settings),
-          // Preserve user timetable / progress blobs when present.
           courses: p.courses ?? current.courses,
           backlog: p.backlog ?? current.backlog,
           assessments: p.assessments ?? current.assessments,
@@ -272,6 +311,8 @@ export const usePersonal = create<PersonalStore>()(
           dayPlans: p.dayPlans ?? current.dayPlans,
           discipline: p.discipline ?? current.discipline,
           vaultNotes: p.vaultNotes ?? current.vaultNotes,
+          vuSeededAt: p.vuSeededAt ?? null,
+          vuPlanAsOf: p.vuPlanAsOf ?? null,
           authed: false,
         };
       },
@@ -315,4 +356,29 @@ export function consistencyDays(sessions: FocusSession[], lookbackDays: number):
   return set.size;
 }
 
+export function streakDays(sessions: FocusSession[]): number {
+  if (!sessions.length) return 0;
+  const days = new Set<string>();
+  for (const s of sessions) {
+    const d = new Date(s.endedAt);
+    days.add(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    );
+  }
+  let streak = 0;
+  const cursor = new Date();
+  for (;;) {
+    const key = todayIsoFromDate(cursor);
+    if (!days.has(key)) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function todayIsoFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export { courseIdFromCode };
 export type { DisciplineCheck };

@@ -42,29 +42,30 @@ describe("HR Personal isolation", () => {
       "ENG101",
       "ISL202",
       "MTH202",
+      "PHY101",
       "STA301",
-      "TBD",
+      "VU001",
     ]);
     for (const c of courses) {
       expect(c.lecturesTotal).toBeNull();
       expect(c.lecturesDone).toBeNull();
     }
-    expect(courses.filter((c) => c.isTbd)).toHaveLength(1);
+    expect(courses.filter((c) => c.isTbd)).toHaveLength(0);
   });
 
   it("defines weekday / Sunday Recovery / Busy / Rescue budgets", () => {
     const s = defaultSettings();
-    expect(s.weekdayMinutes).toBe(120);
-    expect(s.sundayMinutes).toBe(270);
+    expect(s.weekdayMinutes).toBe(266);
+    expect(s.sundayMinutes).toBe(330);
     expect(BUSY_MINUTES).toBe(45);
     expect(RESCUE_MINUTES).toBe(20);
     expect(STUDY_MODE_MINUTES).toEqual({ normal: 120, busy: 45, rescue: 20 });
 
     expect(isSundayIso("2026-11-08")).toBe(true);
-    expect(modeBudgetMinutes("normal", "2026-11-08", s)).toBe(270);
+    expect(modeBudgetMinutes("normal", "2026-11-08", s)).toBe(330);
     expect(modeLabel("normal", "2026-11-08")).toBe("Sunday Recovery Mission");
     expect(isSundayIso("2026-11-09")).toBe(false);
-    expect(modeBudgetMinutes("normal", "2026-11-09", s)).toBe(120);
+    expect(modeBudgetMinutes("normal", "2026-11-09", s)).toBe(266);
     expect(modeBudgetMinutes("busy", "2026-11-08", s)).toBe(45);
     expect(modeBudgetMinutes("rescue", "2026-11-09", s)).toBe(20);
   });
@@ -72,7 +73,7 @@ describe("HR Personal isolation", () => {
   it("migrates older settings without inventing progress fields", () => {
     const migrated = migrateSettings({ dailyTargetMinutes: 90, theme: "light" });
     expect(migrated.weekdayMinutes).toBe(90);
-    expect(migrated.sundayMinutes).toBe(270);
+    expect(migrated.sundayMinutes).toBe(330);
     expect(migrated.theme).toBe("light");
   });
 

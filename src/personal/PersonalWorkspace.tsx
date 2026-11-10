@@ -25,7 +25,7 @@ import { Vault } from "@/personal/components/Vault";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
 const TABS = [
-  ["overview", "Overview", Overview, LayoutDashboard],
+  ["overview", "Today", Overview, LayoutDashboard],
   ["courses", "Courses", Courses, BookOpen],
   ["backlog", "Backlog", Backlog, ListTodo],
   ["timetable", "Timetable", Timetable, CalendarRange],
@@ -122,9 +122,10 @@ export function PersonalWorkspace({ onLock }: { onLock: () => void }) {
           </div>
           <div className="ml-auto flex items-center gap-3">
             <div className="hidden text-right text-xs text-[var(--hp-muted)] sm:block">
-              <div className="font-semibold text-[var(--hp-ink)]">{settings.program}</div>
+              <div className="font-semibold text-[var(--hp-ink)]">{settings.studentLabel}</div>
+              <div className="truncate max-w-[220px]">{settings.program}</div>
               <div>
-                Mon–Sat {settings.weekdayMinutes}m · Sun {settings.sundayMinutes}m
+                Today {settings.weekdayMinutes}m · Sun {settings.sundayMinutes}m
               </div>
             </div>
             <ThemeToggle />

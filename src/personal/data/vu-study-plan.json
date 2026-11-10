@@ -1,0 +1,2016 @@
+{
+  "asOf": "2026-11-10",
+  "parsedAt": "2026-11-10T02:24:17Z",
+  "sources": [
+    "my-courses.html",
+    "to-do-calendar.html",
+    "my-study-scheme-v2.html",
+    "my-study-scheme.html",
+    "weekly-lecture-schedule.html",
+    "study-scheme-screenshot.png",
+    "grade-book.html",
+    "student-e-card.pdf",
+    "progress-timeline.html"
+  ],
+  "student": {
+    "name": "Yousaf Shahzad",
+    "studentId": "BC260433937",
+    "alternateStudentId": "026-VU-061004",
+    "fatherName": "S/O SHAHZAD AHMAD",
+    "degree": "BS",
+    "program": "Information Technology",
+    "programFull": "Bachelor of Science in Information Technology (4 year program)",
+    "version": "Fall 2026(2604)",
+    "semesterLabel": "Fall 2026",
+    "eCardValidUntil": "November 2030",
+    "sources": [
+      "student-e-card.pdf",
+      "grade-book.html",
+      "my-study-scheme-v2.html",
+      "my-courses.html"
+    ]
+  },
+  "gradeBook": {
+    "semester": "FALL 2026 - Regular",
+    "totalCreditsRequired": 142,
+    "totalCreditsEarned": 0,
+    "exemptedCourses": 0,
+    "remainingCredits": 142,
+    "cgpa": 0.0,
+    "minimumCgpaForDegree": 2.0,
+    "semesterRecords": [],
+    "midtermResult": [],
+    "notes": [
+      "Grade Book tables show 'No Record Found!' for Semester records and Midterm Result (FALL 2026).",
+      "Projected CGPA Calculator UI defaults (score 50 / grade D) are NOT earned grades \u2014 excluded from marks.",
+      "No course marks, grade points, or percentages are present as actual recorded results."
+    ],
+    "recordedMarks": null
+  },
+  "enrolledCourses": [
+    {
+      "code": "CS101",
+      "title": "Introduction to Computing",
+      "category": "Computer Science/Information Technology",
+      "creditHours": 3,
+      "instructor": "Dr. M. Tanvir Afzal",
+      "semester": "Fall 2026",
+      "type": "Required",
+      "schemeStatus": "Pending",
+      "electiveGroup": null,
+      "semesterNumber": 1
+    },
+    {
+      "code": "ENG101",
+      "title": "English Comprehension",
+      "category": "English",
+      "creditHours": 3,
+      "instructor": "Dr. Surriya Shaffi Mir",
+      "semester": "Fall 2026",
+      "type": "Required",
+      "schemeStatus": "Pending",
+      "electiveGroup": null,
+      "semesterNumber": 1
+    },
+    {
+      "code": "ISL202",
+      "title": "Islamic Studies",
+      "category": "Humanities Distribution",
+      "creditHours": 2,
+      "instructor": "Abdul Quddoos Durrani",
+      "semester": "Fall 2026",
+      "type": "Elective",
+      "schemeStatus": "Pending",
+      "electiveGroup": "ISL202,ETH202 (1)",
+      "semesterNumber": 1
+    },
+    {
+      "code": "MTH202",
+      "title": "Discrete Mathematics",
+      "category": "Mathematics",
+      "creditHours": 3,
+      "instructor": "Dr. Shoaib-ud- Din",
+      "semester": "Fall 2026",
+      "type": "Required",
+      "schemeStatus": "Pending",
+      "electiveGroup": null,
+      "semesterNumber": 1
+    },
+    {
+      "code": "PHY101",
+      "title": "Physics",
+      "category": "Physics",
+      "creditHours": 3,
+      "instructor": "Dr. Pervez Hoodbhoy",
+      "semester": "Fall 2026",
+      "type": "Elective",
+      "schemeStatus": "Pending",
+      "electiveGroup": "PHY101,PHY301 (1)",
+      "semesterNumber": 1
+    },
+    {
+      "code": "STA301",
+      "title": "Statistics and Probability",
+      "category": "Probability & Statistics",
+      "creditHours": 3,
+      "instructor": "Dr. Saleha Naghmi Habibullah",
+      "semester": "Fall 2026",
+      "type": "Required",
+      "schemeStatus": "Pending",
+      "electiveGroup": null,
+      "semesterNumber": 1
+    },
+    {
+      "code": "VU001",
+      "title": "Introduction to e-Learning",
+      "category": "Virtual University",
+      "creditHours": 1,
+      "instructor": "Virtual University of Pakistan",
+      "semester": "Fall 2026",
+      "type": "Required",
+      "schemeStatus": "Pending",
+      "electiveGroup": null,
+      "semesterNumber": 1
+    }
+  ],
+  "studyScheme": {
+    "degree": "BS",
+    "program": "Information Technology",
+    "version": "Fall 2026(2604)",
+    "preferredSource": "my-study-scheme-v2.html",
+    "comparisonNote": "my-study-scheme-v2.html preferred as newer export; course rows identical to my-study-scheme.html (61 courses, 8 semesters, same statuses).",
+    "semesters": {
+      "1": [
+        {
+          "code": "CS101",
+          "title": "Introduction to Computing",
+          "category": "General Education",
+          "subCategory": "Applications of Information and Communication Technologies (ICT)",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "ENG101",
+          "title": "English Comprehension",
+          "category": "General Education",
+          "subCategory": "Functional English",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MTH202",
+          "title": "Discrete Mathematics",
+          "category": "General Education",
+          "subCategory": "Quantitative Reasoning",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "STA301",
+          "title": "Statistics and Probability",
+          "category": "General Education",
+          "subCategory": "Quantitative Reasoning",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "VU001",
+          "title": "Introduction to e-Learning",
+          "category": "University Requirement",
+          "subCategory": "",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 1,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "ISL202",
+          "title": "Islamic Studies",
+          "category": "General Education",
+          "subCategory": "Islamic Studies/Religious Education Studies",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 2,
+          "electiveGroup": "ISL202,ETH202 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "ETH202",
+          "title": "Ethics (for Non-Muslims)",
+          "category": "General Education",
+          "subCategory": "Islamic Studies/Religious Education Studies",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 2,
+          "electiveGroup": "ISL202,ETH202 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "PHY101",
+          "title": "Physics",
+          "category": "General Education",
+          "subCategory": "Natural Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "PHY101,PHY301 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "PHY301",
+          "title": "Circuit Theory",
+          "category": "General Education",
+          "subCategory": "Natural Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "PHY101,PHY301 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "2": [
+        {
+          "code": "ENG201",
+          "title": "Business and Technical English Writing",
+          "category": "General Education",
+          "subCategory": "Expository Writing",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MCM301",
+          "title": "Communication skills",
+          "category": "General Education",
+          "subCategory": "Civics and Community Engagement",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "PAK301",
+          "title": "Pakistan Studies",
+          "category": "General Education",
+          "subCategory": "Pakistan Studies",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 2,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MTH5101",
+          "title": "Calculus I",
+          "category": "Interdisciplinary",
+          "subCategory": "Mathematics Supporting",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS201",
+          "title": "Introduction to Programming",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS201,CS201P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS201P",
+          "title": "Introduction to Programming (Practical)",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Practical",
+          "creditHours": 1,
+          "electiveGroup": "CS201,CS201P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "SOC101",
+          "title": "Introduction to Sociology",
+          "category": "General Education",
+          "subCategory": "Social Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "SOC101,ECO401,MCM101,PSY101 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "ECO401",
+          "title": "Economics",
+          "category": "General Education",
+          "subCategory": "Social Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "SOC101,ECO401,MCM101,PSY101 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MCM101",
+          "title": "Introduction to Mass Communication",
+          "category": "General Education",
+          "subCategory": "Social Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "SOC101,ECO401,MCM101,PSY101 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "PSY101",
+          "title": "Introduction to Psychology",
+          "category": "General Education",
+          "subCategory": "Social Sciences",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "SOC101,ECO401,MCM101,PSY101 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "3": [
+        {
+          "code": "MTH501",
+          "title": "Linear Algebra",
+          "category": "Interdisciplinary",
+          "subCategory": "Mathematics Supporting",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS302",
+          "title": "Digital Logic Design",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MGT602",
+          "title": "Entrepreneurship",
+          "category": "General Education",
+          "subCategory": "Entrepreneurship",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "PAK522",
+          "title": "Ideology and Constitution of Pakistan",
+          "category": "General Education",
+          "subCategory": "Ideology and Constitution of Pakistan",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 2,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS304",
+          "title": "Object Oriented Programming",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS304,CS304P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS304P",
+          "title": "Object Oriented Programming (Practical)",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Practical",
+          "creditHours": 1,
+          "electiveGroup": "CS304,CS304P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS403",
+          "title": "Database Management Systems",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS403,CS403P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS403P",
+          "title": "Database Management Systems (Practical)",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Practical",
+          "creditHours": 1,
+          "electiveGroup": "CS403,CS403P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "4": [
+        {
+          "code": "MTH401",
+          "title": "Differential Equations",
+          "category": "Interdisciplinary",
+          "subCategory": "Mathematics Supporting",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS401",
+          "title": "Computer Architecture and Assembly Language Programming",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS504",
+          "title": "Software Engineering - I",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS601",
+          "title": "Data Communication",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS525",
+          "title": "Professional Practices",
+          "category": "General Education",
+          "subCategory": "",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 2,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS301",
+          "title": "Data Structures",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS301,CS301P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS301P",
+          "title": "Data Structures (Practical)",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Elective",
+          "courseType": "Practical",
+          "creditHours": 1,
+          "electiveGroup": "CS301,CS301P (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "5": [
+        {
+          "code": "CS502",
+          "title": "Fundamentals of Algorithms",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS604",
+          "title": "Operating Systems",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS409",
+          "title": "Introduction to Database Administration",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS306",
+          "title": "Introduction to Python",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS402",
+          "title": "Theory of Automata",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS610",
+          "title": "Computer Networks",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "6": [
+        {
+          "code": "CS607",
+          "title": "Artificial Intelligence",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS205",
+          "title": "Information Security",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "IT601",
+          "title": "System and Network Administration",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS521",
+          "title": "Web Systems and Technologies",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CSI619",
+          "title": "Field Experience / Internship",
+          "category": "Internship",
+          "subCategory": "Field Experience / Internship",
+          "type": "Required",
+          "courseType": "Internship",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS435",
+          "title": "Cloud Computing",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS511",
+          "title": "Web Engineering",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "7": [
+        {
+          "code": "CS699",
+          "title": "Professional Certification",
+          "category": "Major",
+          "subCategory": "Professional Certificate",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS627",
+          "title": "Cyber Security",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "IT602",
+          "title": "Information Technology Infrastructure",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS619",
+          "title": "Final Project - CS619",
+          "category": "Project",
+          "subCategory": "Capstone Project",
+          "type": "Required",
+          "courseType": "Project",
+          "creditHours": 6,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS314",
+          "title": "Introduction to Cellular Networks",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS314,CS315,CS407,CS505,CS642 (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS315",
+          "title": "Network Security",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS314,CS315,CS407,CS505,CS642 (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS407",
+          "title": "Routing and Switching",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS314,CS315,CS407,CS505,CS642 (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS505",
+          "title": "Virtual Systems and Services",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS314,CS315,CS407,CS505,CS642 (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS642",
+          "title": "Next Generation Networks",
+          "category": "Major",
+          "subCategory": "Domain Electives",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "CS314,CS315,CS407,CS505,CS642 (2)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ],
+      "8": [
+        {
+          "code": "MTH603",
+          "title": "Numerical Analysis",
+          "category": "Interdisciplinary",
+          "subCategory": "Mathematics Supporting",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "CS621",
+          "title": "Parallel and Distributed Computing",
+          "category": "Major",
+          "subCategory": "Computing Core",
+          "type": "Required",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": null,
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MGT211",
+          "title": "Introduction To Business",
+          "category": "Interdisciplinary",
+          "subCategory": "Elective Supporting",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "MGT211,MGT502,MGT610 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MGT502",
+          "title": "Organizational Behaviour",
+          "category": "Interdisciplinary",
+          "subCategory": "Elective Supporting",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "MGT211,MGT502,MGT610 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        },
+        {
+          "code": "MGT610",
+          "title": "Business Ethics",
+          "category": "Interdisciplinary",
+          "subCategory": "Elective Supporting",
+          "type": "Elective",
+          "courseType": "Regular",
+          "creditHours": 3,
+          "electiveGroup": "MGT211,MGT502,MGT610 (1)",
+          "specialization": null,
+          "schemeStatus": "Pending"
+        }
+      ]
+    }
+  },
+  "todos": [
+    {
+      "title": "MTH202: Assignment# 1",
+      "courseCode": "MTH202",
+      "kind": "assignment",
+      "start": "2026-11-06",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=MTH202&ActivityType=Assignment",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "PHY101: Assignment# 1",
+      "courseCode": "PHY101",
+      "kind": "assignment",
+      "start": "2026-11-03",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=Assignment",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "STA301: Assignment# 1",
+      "courseCode": "STA301",
+      "kind": "assignment",
+      "start": "2026-10-30",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=Assignment",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 1",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2026-11-03",
+      "due": "2026-11-06",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": true,
+      "statusAsOf": "window_ended",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 2",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2026-11-10",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 3",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2026-12-01",
+      "due": "2026-12-04",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 4",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2026-12-22",
+      "due": "2026-12-25",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 5",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2026-12-29",
+      "due": "2027-01-01",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "CS101: Semester Quiz # 6",
+      "courseCode": "CS101",
+      "kind": "quiz",
+      "start": "2027-01-05",
+      "due": "2027-01-08",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ENG101: Quiz 1",
+      "courseCode": "ENG101",
+      "kind": "quiz",
+      "start": "2026-11-02",
+      "due": "2026-11-05",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+      "isExpiredFlag": true,
+      "statusAsOf": "window_ended",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ENG101: Quiz 2",
+      "courseCode": "ENG101",
+      "kind": "quiz",
+      "start": "2026-11-10",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ENG101: Quiz 3",
+      "courseCode": "ENG101",
+      "kind": "quiz",
+      "start": "2026-11-16",
+      "due": "2026-11-19",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ISL202: Quiz 01",
+      "courseCode": "ISL202",
+      "kind": "quiz",
+      "start": "2026-11-10",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "open_now",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ISL202: Quiz 02",
+      "courseCode": "ISL202",
+      "kind": "quiz",
+      "start": "2026-11-11",
+      "due": "2026-11-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ISL202: Quiz 03",
+      "courseCode": "ISL202",
+      "kind": "quiz",
+      "start": "2026-12-02",
+      "due": "2026-12-04",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ISL202: Quiz 04",
+      "courseCode": "ISL202",
+      "kind": "quiz",
+      "start": "2026-12-23",
+      "due": "2026-12-25",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ISL202: Quiz 05",
+      "courseCode": "ISL202",
+      "kind": "quiz",
+      "start": "2026-12-30",
+      "due": "2027-01-01",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "MTH202: Quiz No. 1",
+      "courseCode": "MTH202",
+      "kind": "quiz",
+      "start": "2026-11-16",
+      "due": "2026-11-18",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=MTH202&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "PHY101: 1st Graded Quiz Physics (PHY101)",
+      "courseCode": "PHY101",
+      "kind": "quiz",
+      "start": "2026-11-04",
+      "due": "2026-11-06",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=QuizList",
+      "isExpiredFlag": true,
+      "statusAsOf": "window_ended",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "PHY101: 2nd Graded Quiz Physics (PHY101)",
+      "courseCode": "PHY101",
+      "kind": "quiz",
+      "start": "2026-11-19",
+      "due": "2026-11-21",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "STA301: Quiz 1 | Lecture 04-09",
+      "courseCode": "STA301",
+      "kind": "quiz",
+      "start": "2026-11-14",
+      "due": "2026-11-17",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "STA301: Quiz 2 | Lecture 10-15",
+      "courseCode": "STA301",
+      "kind": "quiz",
+      "start": "2026-11-21",
+      "due": "2026-11-24",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "STA301: Quiz 3 | Lecture 16-21",
+      "courseCode": "STA301",
+      "kind": "quiz",
+      "start": "2026-11-28",
+      "due": "2026-12-01",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "STA301: Quiz 4 | Lecture 31-36",
+      "courseCode": "STA301",
+      "kind": "quiz",
+      "start": "2027-01-02",
+      "due": "2027-01-05",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=QuizList",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": "Fall 2026"
+    },
+    {
+      "title": "ChallanID: 28123618",
+      "courseCode": null,
+      "kind": "fee",
+      "start": "2026-12-15",
+      "due": "2026-12-16",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?ActivityType=Challan",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": null
+    },
+    {
+      "title": "ChallanID: 28829084",
+      "courseCode": null,
+      "kind": "fee",
+      "start": "2026-11-20",
+      "due": "2026-11-21",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?ActivityType=Challan",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": null
+    },
+    {
+      "title": "ChallanID: 28829085",
+      "courseCode": null,
+      "kind": "fee",
+      "start": "2026-12-10",
+      "due": "2026-12-11",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?ActivityType=Challan",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": null
+    },
+    {
+      "title": "ChallanID: 28829086",
+      "courseCode": null,
+      "kind": "fee",
+      "start": "2027-01-11",
+      "due": "2027-01-12",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?ActivityType=Challan",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": null
+    },
+    {
+      "title": "ChallanID: 28829087",
+      "courseCode": null,
+      "kind": "fee",
+      "start": "2027-02-10",
+      "due": "2027-02-11",
+      "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?ActivityType=Challan",
+      "isExpiredFlag": false,
+      "statusAsOf": "upcoming",
+      "semester": null
+    }
+  ],
+  "weeklyLectureSchedule": {
+    "weekOf": "2026-11-09",
+    "note": "Parsed from weekly-lecture-schedule.html header Mon 11/09 \u2013 Sat 11/14 (year inferred 2026 from Fall 2026 context).",
+    "slots": [
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "09:00 AM",
+        "courseCode": "ISL202",
+        "lectureNumber": 10,
+        "room": "CDROOM-15",
+        "raw": "ISL202 - Lec 10 | CDROOM-15"
+      },
+      {
+        "date": "2026-11-09",
+        "weekday": "Mon",
+        "time": "12:00 PM",
+        "courseCode": "PHY101",
+        "lectureNumber": 13,
+        "room": "CDROOM-9",
+        "raw": "PHY101 - Lec 13 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-11",
+        "weekday": "Wed",
+        "time": "12:00 PM",
+        "courseCode": "PHY101",
+        "lectureNumber": 14,
+        "room": "CDROOM-9",
+        "raw": "PHY101 - Lec 14 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-13",
+        "weekday": "Fri",
+        "time": "12:00 PM",
+        "courseCode": "PHY101",
+        "lectureNumber": 15,
+        "room": "CDROOM-9",
+        "raw": "PHY101 - Lec 15 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-09",
+        "weekday": "Mon",
+        "time": "01:00 PM",
+        "courseCode": "CS101",
+        "lectureNumber": 5,
+        "room": "CDROOM-15",
+        "raw": "CS101 - Lec 5 | CDROOM-15"
+      },
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "03:00 PM",
+        "courseCode": "ENG101",
+        "lectureNumber": 13,
+        "room": "CDROOM-7",
+        "raw": "ENG101 - Lec 13 | CDROOM-7"
+      },
+      {
+        "date": "2026-11-12",
+        "weekday": "Thu",
+        "time": "03:00 PM",
+        "courseCode": "ENG101",
+        "lectureNumber": 14,
+        "room": "CDROOM-7",
+        "raw": "ENG101 - Lec 14 | CDROOM-7"
+      },
+      {
+        "date": "2026-11-14",
+        "weekday": "Sat",
+        "time": "03:00 PM",
+        "courseCode": "ENG101",
+        "lectureNumber": 15,
+        "room": "CDROOM-7",
+        "raw": "ENG101 - Lec 15 | CDROOM-7"
+      },
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "04:00 PM",
+        "courseCode": "MTH202",
+        "lectureNumber": 13,
+        "room": "CDROOM-9",
+        "raw": "MTH202 - Lec 13 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-12",
+        "weekday": "Thu",
+        "time": "04:00 PM",
+        "courseCode": "MTH202",
+        "lectureNumber": 14,
+        "room": "CDROOM-9",
+        "raw": "MTH202 - Lec 14 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-14",
+        "weekday": "Sat",
+        "time": "04:00 PM",
+        "courseCode": "MTH202",
+        "lectureNumber": 15,
+        "room": "CDROOM-9",
+        "raw": "MTH202 - Lec 15 | CDROOM-9"
+      },
+      {
+        "date": "2026-11-09",
+        "weekday": "Mon",
+        "time": "05:00 PM",
+        "courseCode": "STA301",
+        "lectureNumber": 13,
+        "room": "CDROOM-12",
+        "raw": "STA301 - Lec 13 | CDROOM-12"
+      },
+      {
+        "date": "2026-11-11",
+        "weekday": "Wed",
+        "time": "05:00 PM",
+        "courseCode": "STA301",
+        "lectureNumber": 14,
+        "room": "CDROOM-12",
+        "raw": "STA301 - Lec 14 | CDROOM-12"
+      },
+      {
+        "date": "2026-11-13",
+        "weekday": "Fri",
+        "time": "05:00 PM",
+        "courseCode": "STA301",
+        "lectureNumber": 15,
+        "room": "CDROOM-12",
+        "raw": "STA301 - Lec 15 | CDROOM-12"
+      },
+      {
+        "date": "2026-11-09",
+        "weekday": "Mon",
+        "time": "06:00 PM",
+        "courseCode": "ISL202",
+        "lectureNumber": 9,
+        "room": "CDROOM-15",
+        "raw": "ISL202 - Lec 9 | CDROOM-15"
+      }
+    ]
+  },
+  "progressTimeline": {
+    "activeTabInExport": "tabHeadercs101",
+    "limitation": "ASP.NET Progress page only embedded full chart JSON for the active tab (CS101). Other course tabs show empty Assignment/GDB/Quiz fields or missing Attendance/LearningActivity payloads. Re-export after clicking each course tab for complete remaining-work data.",
+    "visibleWeekAttendanceLikelyCs101": [
+      {
+        "week": 1,
+        "status": "Present"
+      },
+      {
+        "week": 2,
+        "status": "Present"
+      },
+      {
+        "week": 3,
+        "status": "Absent"
+      },
+      {
+        "week": 4,
+        "status": "Absent"
+      },
+      {
+        "week": 5,
+        "status": "Absent"
+      }
+    ],
+    "courses": {
+      "CS101": {
+        "code": "CS101",
+        "dataLoaded": true,
+        "attendance": {
+          "presentPct": 12,
+          "absentPct": 88,
+          "raw": [
+            {
+              "Title": "Present",
+              "Attendance": "12"
+            },
+            {
+              "Title": "Absent",
+              "Attendance": "88"
+            }
+          ]
+        },
+        "learningActivityByWeek": [
+          {
+            "week": "Week 1",
+            "topicCompleted": 11
+          },
+          {
+            "week": "Week 2",
+            "topicCompleted": 1
+          },
+          {
+            "week": "Week 3",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 4",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 5",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 6",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 7",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 8",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 9",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 10",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 11",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 12",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 13",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 14",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 15",
+            "topicCompleted": 0
+          },
+          {
+            "week": "Week 16",
+            "topicCompleted": 0
+          }
+        ],
+        "participationByWeek": [
+          {
+            "week": "Week 1",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 2",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 3",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 4",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 5",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 6",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 7",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 8",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 9",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 10",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 11",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 12",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 13",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 14",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 15",
+            "totalDiscussions": 0,
+            "participated": 0
+          },
+          {
+            "week": "Week 16",
+            "totalDiscussions": 0,
+            "participated": 0
+          }
+        ],
+        "selfAssessments": [
+          {
+            "lessonNo": 1,
+            "preAssessment": null,
+            "postAssessment": 100
+          },
+          {
+            "lessonNo": 2,
+            "preAssessment": 100,
+            "postAssessment": 66
+          },
+          {
+            "lessonNo": 3,
+            "preAssessment": 75,
+            "postAssessment": 100
+          },
+          {
+            "lessonNo": 4,
+            "preAssessment": null,
+            "postAssessment": 66
+          },
+          {
+            "lessonNo": 5,
+            "preAssessment": 100,
+            "postAssessment": 75
+          },
+          {
+            "lessonNo": 6,
+            "preAssessment": 100,
+            "postAssessment": 100
+          },
+          {
+            "lessonNo": 7,
+            "preAssessment": 75,
+            "postAssessment": 66
+          },
+          {
+            "lessonNo": 8,
+            "preAssessment": 100,
+            "postAssessment": 50
+          },
+          {
+            "lessonNo": 9,
+            "preAssessment": 75,
+            "postAssessment": null
+          },
+          {
+            "lessonNo": 10,
+            "preAssessment": 100,
+            "postAssessment": 50
+          },
+          {
+            "lessonNo": 11,
+            "preAssessment": 75,
+            "postAssessment": 100
+          },
+          {
+            "lessonNo": 12,
+            "preAssessment": 100,
+            "postAssessment": 75
+          },
+          {
+            "lessonNo": 13,
+            "preAssessment": 100,
+            "postAssessment": null
+          }
+        ],
+        "assignmentsPie": [],
+        "gdbPie": [],
+        "quizzesPie": [
+          {
+            "Column1": "FALL 2026",
+            "Column2": "cs101",
+            "Column3": "bc260433937",
+            "TotalQuizzes": "2",
+            "TotalQuizzesSubmitted": "0",
+            "PassedTotal": "0",
+            "Title": "Attempted"
+          },
+          {
+            "Column1": "FALL 2026",
+            "Column2": "cs101",
+            "Column3": "bc260433937",
+            "TotalQuizzes": "2",
+            "TotalQuizzesSubmitted": "0",
+            "PassedTotal": "2",
+            "Title": "Not Attempted"
+          }
+        ],
+        "notes": [
+          "Self-assessment lesson scores are Progress Timeline practice scores \u2014 not Grade Book course grades."
+        ],
+        "quizSummary": {
+          "totalQuizzes": 2,
+          "submitted": 0,
+          "attemptedCount": 0,
+          "notAttemptedCount": 2
+        }
+      },
+      "ENG101": {
+        "code": "ENG101",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      },
+      "ISL202": {
+        "code": "ISL202",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      },
+      "MTH202": {
+        "code": "MTH202",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      },
+      "PHY101": {
+        "code": "PHY101",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      },
+      "STA301": {
+        "code": "STA301",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      },
+      "VU001": {
+        "code": "VU001",
+        "dataLoaded": false,
+        "attendance": null,
+        "learningActivityByWeek": null,
+        "participationByWeek": null,
+        "selfAssessments": null,
+        "assignmentsPie": null,
+        "gdbPie": null,
+        "quizzesPie": null,
+        "notes": [
+          "No Progress Timeline hidden-field payload for this course in the saved HTML (only active tab CS101 fully populated)."
+        ]
+      }
+    }
+  },
+  "recovery": {
+    "assumptions": {
+      "assignmentMinutes": 90,
+      "quizMinutes": 45,
+      "lectureMinutes": 50,
+      "recoveryDays": 7,
+      "keepUpDaysPerWeek": 6,
+      "cs101LecturesPerAbsentWeek": 3,
+      "completionUnknown": "Exports do not show submitted/done state for most activities; open/ended windows are pendency to clear or verify on VULMS.",
+      "otherCoursesProgressUnknown": "Only CS101 Progress JSON was fully present; do not invent lecture deficits for ENG101/ISL202/MTH202/PHY101/STA301/VU001."
+    },
+    "pendencyOpenOrEndedCount": 9,
+    "overdueWindowEndedCount": 3,
+    "openNowCount": 6,
+    "upcomingAcademicCount": 15,
+    "dueWithin7DaysCount": 8,
+    "feeItemsCount": 5,
+    "thisWeekLectureSlots": 15,
+    "latestLectureByCourse": {
+      "ISL202": 10,
+      "PHY101": 15,
+      "CS101": 5,
+      "ENG101": 15,
+      "MTH202": 15,
+      "STA301": 15
+    },
+    "estimatedWeeksElapsedByLecturePace": 5.0,
+    "estimatedDaysBehindByOldestEndedWindow": 5,
+    "estimatedWeeksBehindByOldestEndedWindow": 0.7,
+    "cs101ProgressCatchUp": {
+      "absentWeeksVisible": 3,
+      "learningActivityNonZeroWeeks": [
+        {
+          "week": "Week 1",
+          "topicCompleted": 11
+        },
+        {
+          "week": "Week 2",
+          "topicCompleted": 1
+        }
+      ],
+      "estimatedCatchUpMinutes": 450,
+      "math": "3 absent weeks \u00d7 3 lectures \u00d7 50m = 450m (CS101 only; from Progress attendance + zero TopicCompleted after week 2)",
+      "quizNotAttempted": 2,
+      "attendancePresentPct": 12,
+      "attendanceAbsentPct": 88
+    },
+    "pendencyMinutesTotal": 540,
+    "weeklyLectureKeepUpMinutes": 750,
+    "recommendedDailyMinutes": {
+      "recoveryPortion": 77,
+      "keepUpPortion": 125,
+      "cs101ProgressCatchUpPortion": 64,
+      "total": 266,
+      "math": "pendency 540m / 7d = 77m + keep-up (15\u00d750m)/6 = 125m + CS101 progress catch-up 450m / 7d = 64m \u2192 266m/day"
+    },
+    "todaySlots": [
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "09:00 AM",
+        "courseCode": "ISL202",
+        "lectureNumber": 10,
+        "room": "CDROOM-15",
+        "raw": "ISL202 - Lec 10 | CDROOM-15"
+      },
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "03:00 PM",
+        "courseCode": "ENG101",
+        "lectureNumber": 13,
+        "room": "CDROOM-7",
+        "raw": "ENG101 - Lec 13 | CDROOM-7"
+      },
+      {
+        "date": "2026-11-10",
+        "weekday": "Tue",
+        "time": "04:00 PM",
+        "courseCode": "MTH202",
+        "lectureNumber": 13,
+        "room": "CDROOM-9",
+        "raw": "MTH202 - Lec 13 | CDROOM-9"
+      }
+    ],
+    "priorityTodos": [
+      {
+        "title": "ENG101: Quiz 1",
+        "courseCode": "ENG101",
+        "kind": "quiz",
+        "start": "2026-11-02",
+        "due": "2026-11-05",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+        "isExpiredFlag": true,
+        "statusAsOf": "window_ended",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "CS101: Semester Quiz # 1",
+        "courseCode": "CS101",
+        "kind": "quiz",
+        "start": "2026-11-03",
+        "due": "2026-11-06",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+        "isExpiredFlag": true,
+        "statusAsOf": "window_ended",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "PHY101: 1st Graded Quiz Physics (PHY101)",
+        "courseCode": "PHY101",
+        "kind": "quiz",
+        "start": "2026-11-04",
+        "due": "2026-11-06",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=QuizList",
+        "isExpiredFlag": true,
+        "statusAsOf": "window_ended",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "CS101: Semester Quiz # 2",
+        "courseCode": "CS101",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "ENG101: Quiz 2",
+        "courseCode": "ENG101",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "ISL202: Quiz 01",
+        "courseCode": "ISL202",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "MTH202: Assignment# 1",
+        "courseCode": "MTH202",
+        "kind": "assignment",
+        "start": "2026-11-06",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=MTH202&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "PHY101: Assignment# 1",
+        "courseCode": "PHY101",
+        "kind": "assignment",
+        "start": "2026-11-03",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "STA301: Assignment# 1",
+        "courseCode": "STA301",
+        "kind": "assignment",
+        "start": "2026-10-30",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      }
+    ],
+    "dueSoon": [
+      {
+        "title": "MTH202: Assignment# 1",
+        "courseCode": "MTH202",
+        "kind": "assignment",
+        "start": "2026-11-06",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=MTH202&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "PHY101: Assignment# 1",
+        "courseCode": "PHY101",
+        "kind": "assignment",
+        "start": "2026-11-03",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=PHY101&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "STA301: Assignment# 1",
+        "courseCode": "STA301",
+        "kind": "assignment",
+        "start": "2026-10-30",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=Assignment",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "CS101: Semester Quiz # 2",
+        "courseCode": "CS101",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=CS101&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "ENG101: Quiz 2",
+        "courseCode": "ENG101",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ENG101&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "ISL202: Quiz 01",
+        "courseCode": "ISL202",
+        "kind": "quiz",
+        "start": "2026-11-10",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "open_now",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "ISL202: Quiz 02",
+        "courseCode": "ISL202",
+        "kind": "quiz",
+        "start": "2026-11-11",
+        "due": "2026-11-16",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=ISL202&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "upcoming",
+        "semester": "Fall 2026"
+      },
+      {
+        "title": "STA301: Quiz 1 | Lecture 04-09",
+        "courseCode": "STA301",
+        "kind": "quiz",
+        "start": "2026-11-14",
+        "due": "2026-11-17",
+        "urlPath": "/ActivityCalendar/OpenActivitySection.aspx?coursecode=STA301&ActivityType=QuizList",
+        "isExpiredFlag": false,
+        "statusAsOf": "upcoming",
+        "semester": "Fall 2026"
+      }
+    ],
+    "unknowns": [
+      "Progress Timeline payloads for ENG101, ISL202, MTH202, PHY101, STA301, VU001 (not fully embedded in this HTML).",
+      "Actual submission/completion for most quizzes/assignments beyond CS101 quiz pie (0 submitted / 2 not attempted).",
+      "Whether TopicCompleted values are percents or counts \u2014 treated as weekly activity signal only.",
+      "Exact midterm/final dates (not confirmed in these files).",
+      "No Grade Book recorded course grades (No Record Found).",
+      "Later semester selections beyond scheme list."
+    ]
+  }
+}

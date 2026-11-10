@@ -18,7 +18,7 @@ export function Courses() {
     <Panel>
       <SectionHead
         title="Courses"
-        subtitle="VU BS IT · Fall 2026 — leave lecture fields blank until you know real counts"
+        subtitle="From My Courses + Study Scheme — leave lecture counts blank unless you know them from Progress/Lessons"
       />
       <div className="space-y-4">
         {courses.map((c) => (
@@ -31,6 +31,7 @@ export function Courses() {
             lecturesDone={c.lecturesDone}
             notes={c.notes}
             isTbd={c.isTbd}
+            {...(c.requirementType ? { requirementType: c.requirementType } : {})}
             onSave={(p) => updateCourse(c.id, p)}
           />
         ))}
@@ -47,6 +48,7 @@ function CourseEditor({
   lecturesDone,
   notes,
   isTbd,
+  requirementType,
   onSave,
 }: {
   id: string;
@@ -56,6 +58,7 @@ function CourseEditor({
   lecturesDone: number | null;
   notes: string;
   isTbd: boolean;
+  requirementType?: "Required" | "Elective" | "unknown";
   onSave: (p: {
     code?: string;
     title?: string;
@@ -76,6 +79,17 @@ function CourseEditor({
         <span className="rounded bg-[var(--hp-violet)]/20 px-2 py-0.5 text-xs font-bold text-[var(--hp-violet)]">
           {isTbd ? "Editable TBD" : id.toUpperCase()}
         </span>
+        {requirementType ? (
+          <span
+            className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              requirementType === "Elective"
+                ? "bg-[var(--hp-teal)]/15 text-[var(--hp-teal)]"
+                : "bg-[var(--hp-blue)]/15 text-[var(--hp-blue-bright)]"
+            }`}
+          >
+            {requirementType}
+          </span>
+        ) : null}
         <span className="text-xs text-[var(--hp-muted)]">Private · local only</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

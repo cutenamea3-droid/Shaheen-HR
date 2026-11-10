@@ -14,6 +14,10 @@ export type Course = {
   notes: string;
   /** Editable TBD slot when true */
   isTbd: boolean;
+  /** From My Study Scheme when seeded from VU exports */
+  requirementType?: "Required" | "Elective" | "unknown";
+  instructor?: string;
+  creditHours?: number | null;
 };
 
 export type BacklogItem = {
@@ -99,4 +103,7 @@ export type PersonalState = {
   discipline: DisciplineCheck[];
   settings: PersonalSettings;
   vaultNotes: string;
+  /** ISO timestamp when VU export fixture was last seeded into local study state */
+  vuSeededAt: string | null;
+  vuPlanAsOf: string | null;
 };

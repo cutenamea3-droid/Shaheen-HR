@@ -1444,6 +1444,85 @@ body:has(.personal-theme[data-hp-theme="light"]) {
   }
 }
 
+/* Today recovery dashboard — calm motion, violet/blue/teal only */
+.personal-theme .hp-today-hero {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--hp-violet) 16%, transparent),
+      color-mix(in srgb, var(--hp-blue) 10%, transparent) 48%,
+      color-mix(in srgb, var(--hp-teal) 12%, transparent)
+    ),
+    var(--hp-elevated);
+  box-shadow: var(--hp-shadow);
+}
+.personal-theme .hp-today-orb {
+  position: absolute;
+  right: -12%;
+  top: -40%;
+  width: 55%;
+  height: 120%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--hp-teal) 22%, transparent),
+    transparent 68%
+  );
+  pointer-events: none;
+  animation: hp-orb-drift 14s ease-in-out infinite alternate;
+}
+@keyframes hp-orb-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-4%, 6%, 0) scale(1.06);
+  }
+}
+.personal-theme .hp-fade-up {
+  animation: hp-fade-up 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.personal-theme .hp-fade-up-delay {
+  animation: hp-fade-up 560ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+@keyframes hp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.personal-theme .hp-schedule-row {
+  animation: hp-fade-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.personal-theme .hp-progress-fill {
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.personal-theme .hp-alert-overdue {
+  animation: hp-alert-pulse 2.8s ease-in-out infinite;
+}
+@keyframes hp-alert-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, #ef4444 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, #ef4444 12%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .personal-theme .hp-today-orb,
+  .personal-theme .hp-fade-up,
+  .personal-theme .hp-fade-up-delay,
+  .personal-theme .hp-schedule-row,
+  .personal-theme .hp-alert-overdue {
+    animation: none !important;
+  }
+}
+
 /* Personal AppSwitcher theming (outside .personal-theme in DOM; driven by html[data-hp-theme]) */
 .app-switcher[data-hp-switcher="personal"] {
   --hp-sw-violet: #8b5cf6;
