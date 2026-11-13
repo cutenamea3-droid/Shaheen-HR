@@ -5,6 +5,7 @@ import {
   defaultCourses,
   defaultDiscipline,
   defaultSettings,
+  migrateDiscipline,
   migrateSettings,
   PERSONAL_STORAGE_KEY,
 } from "./defaults";
@@ -12,13 +13,17 @@ import type {
   Assessment,
   BacklogItem,
   Course,
+  CourseGrade,
   DayPlan,
   DisciplineCheck,
+  ExamPrepTask,
   FocusSession,
+  GradeEntry,
   Note,
   PersonalSettings,
   PersonalState,
   StudyMode,
+  WeeklyReview,
 } from "./types";
 import { normalizeAssessment, withPrepDone, withSubmitted } from "./assessment-phases";
 import { modeBudgetMinutes } from "./schedule";
@@ -58,6 +63,14 @@ type Actions = {
   rebuildDayBlocks: (date: string) => void;
   toggleDiscipline: (id: string, date?: string) => void;
   setVaultNotes: (v: string) => void;
+  upsertGradeEntry: (g: GradeEntry) => void;
+  removeGradeEntry: (id: string) => void;
+  upsertCourseGrade: (g: CourseGrade) => void;
+  removeCourseGrade: (id: string) => void;
+  upsertExamPrepTask: (t: ExamPrepTask) => void;
+  toggleExamPrepTask: (id: string) => void;
+  removeExamPrepTask: (id: string) => void;
+  upsertWeeklyReview: (r: WeeklyReview) => void;
   /** Seed/replace study slices from VU export fixture (local only). */
   importVuStudyPlan: (plan?: VuStudyPlan) => void;
 };
@@ -127,6 +140,10 @@ export const usePersonal = create<PersonalStore>()(
       discipline: defaultDiscipline(),
       settings: defaultSettings(),
       vaultNotes: "",
+      gradeEntries: [],
+      courseGrades: [],
+      examPrepTasks: [],
+      weeklyReviews: {},
       vuSeededAt: null,
       vuPlanAsOf: null,
 
@@ -268,6 +285,40 @@ export const usePersonal = create<PersonalStore>()(
           }),
         })),
       setVaultNotes: (vaultNotes) => set({ vaultNotes }),
+      upsertGradeEntry: (g) =>
+        set((s) => ({
+          gradeEntries: s.gradeEntries.some((x) => x.id === g.id)
+            ? s.gradeEntries.map((x) => (x.id === g.id ? g : x))
+            : [...s.gradeEntries, g],
+        })),
+      removeGradeEntry: (id) =>
+        set((s) => ({ gradeEntries: s.gradeEntries.filter((g) => g.id !== id) })),
+      upsertCourseGrade: (g) =>
+        set((s) => ({
+          courseGrades: s.courseGrades.some((x) => x.id === g.id)
+            ? s.courseGrades.map((x) => (x.id === g.id ? g : x))
+            : [...s.courseGrades, g],
+        })),
+      removeCourseGrade: (id) =>
+        set((s) => ({ courseGrades: s.courseGrades.filter((g) => g.id !== id) })),
+      upsertExamPrepTask: (t) =>
+        set((s) => ({
+          examPrepTasks: s.examPrepTasks.some((x) => x.id === t.id)
+            ? s.examPrepTasks.map((x) => (x.id === t.id ? t : x))
+            : [...s.examPrepTasks, t],
+        })),
+      toggleExamPrepTask: (id) =>
+        set((s) => ({
+          examPrepTasks: s.examPrepTasks.map((t) =>
+            t.id === id ? { ...t, done: !t.done } : t,
+          ),
+        })),
+      removeExamPrepTask: (id) =>
+        set((s) => ({ examPrepTasks: s.examPrepTasks.filter((t) => t.id !== id) })),
+      upsertWeeklyReview: (r) =>
+        set((s) => ({
+          weeklyReviews: { ...s.weeklyReviews, [r.weekStart]: r },
+        })),
       importVuStudyPlan: (plan = VU_STUDY_PLAN) => {
         const seed = buildVuSeed(plan);
         const s = get();
@@ -315,6 +366,10 @@ export const usePersonal = create<PersonalStore>()(
         discipline: s.discipline,
         settings: s.settings,
         vaultNotes: s.vaultNotes,
+        gradeEntries: s.gradeEntries,
+        courseGrades: s.courseGrades,
+        examPrepTasks: s.examPrepTasks,
+        weeklyReviews: s.weeklyReviews,
         vuSeededAt: s.vuSeededAt,
         vuPlanAsOf: s.vuPlanAsOf,
       }),
@@ -332,8 +387,12 @@ export const usePersonal = create<PersonalStore>()(
           notes: p.notes ?? current.notes,
           sessions: p.sessions ?? current.sessions,
           dayPlans: p.dayPlans ?? current.dayPlans,
-          discipline: p.discipline ?? current.discipline,
+          discipline: migrateDiscipline(p.discipline ?? current.discipline),
           vaultNotes: p.vaultNotes ?? current.vaultNotes,
+          gradeEntries: p.gradeEntries ?? [],
+          courseGrades: p.courseGrades ?? [],
+          examPrepTasks: p.examPrepTasks ?? [],
+          weeklyReviews: p.weeklyReviews ?? {},
           vuSeededAt: p.vuSeededAt ?? null,
           vuPlanAsOf: p.vuPlanAsOf ?? null,
           authed: false,

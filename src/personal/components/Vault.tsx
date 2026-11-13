@@ -160,6 +160,30 @@ export function Vault() {
               }
             />
           </Field>
+          <Field label="Deep focus (min)">
+            <input
+              className="hp-field"
+              type="number"
+              min={20}
+              max={120}
+              value={settings.deepFocus}
+              onChange={(e) =>
+                setSettings({ deepFocus: Number(e.target.value) || 50 })
+              }
+            />
+          </Field>
+          <Field label="Deep break (min)">
+            <input
+              className="hp-field"
+              type="number"
+              min={1}
+              max={30}
+              value={settings.deepBreak}
+              onChange={(e) =>
+                setSettings({ deepBreak: Number(e.target.value) || 10 })
+              }
+            />
+          </Field>
         </div>
       </Panel>
 
@@ -360,16 +384,16 @@ export function Vault() {
             Rescue / Sunday Recovery budgets from your backlog
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Focus</span> — pomodoro sessions
-            logged as real minutes only
+            <span className="font-semibold text-[var(--hp-ink)]">Focus Timer</span> — VU presets ·
+            Pomodoro · Deep; logged minutes only
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Progress</span> — Analytics from
-            logged sessions; course lecture % only when you enter counts
+            <span className="font-semibold text-[var(--hp-ink)]">Grades · Review</span> — owner Grade
+            Book / CGPA estimator + Weekly Review (never invent marks)
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Notes</span> — revision notes scoped
-            to this Personal account
+            <span className="font-semibold text-[var(--hp-ink)]">Notes · Links</span> — revision /
+            practice notes + official VU Quick Links
           </li>
         </ul>
         <Field label="Private vault scratchpad">

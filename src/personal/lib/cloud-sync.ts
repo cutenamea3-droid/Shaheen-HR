@@ -79,6 +79,10 @@ function snapshot(): PersonalSyncBlob {
     discipline: s.discipline,
     settings: s.settings,
     vaultNotes: s.vaultNotes,
+    gradeEntries: s.gradeEntries,
+    courseGrades: s.courseGrades,
+    examPrepTasks: s.examPrepTasks,
+    weeklyReviews: s.weeklyReviews,
   };
 }
 
@@ -93,6 +97,10 @@ function applyCloud(blob: Partial<PersonalSyncBlob>) {
   if (blob.discipline) patch.discipline = blob.discipline;
   if (blob.settings) patch.settings = migrateSettings(blob.settings);
   if (typeof blob.vaultNotes === "string") patch.vaultNotes = blob.vaultNotes;
+  if (blob.gradeEntries) patch.gradeEntries = blob.gradeEntries;
+  if (blob.courseGrades) patch.courseGrades = blob.courseGrades;
+  if (blob.examPrepTasks) patch.examPrepTasks = blob.examPrepTasks;
+  if (blob.weeklyReviews) patch.weeklyReviews = blob.weeklyReviews;
   usePersonal.setState(patch);
 }
 

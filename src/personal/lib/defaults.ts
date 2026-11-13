@@ -101,6 +101,8 @@ export function defaultSettings(): PersonalSettings {
     sundayMinutes: 330,
     pomodoroFocus: 25,
     pomodoroBreak: 5,
+    deepFocus: 50,
+    deepBreak: 10,
     /** Empty until owner pastes a date sheet — never invent mid/final windows */
     midtermRef: "",
     finalsRef: "",
@@ -123,6 +125,8 @@ export function migrateSettings(raw: Partial<PersonalSettings> | undefined): Per
     weekdayMinutes: weekday,
     sundayMinutes: typeof raw.sundayMinutes === "number" ? raw.sundayMinutes : base.sundayMinutes,
     dailyTargetMinutes: weekday,
+    deepFocus: typeof raw.deepFocus === "number" ? raw.deepFocus : base.deepFocus,
+    deepBreak: typeof raw.deepBreak === "number" ? raw.deepBreak : base.deepBreak,
   };
 }
 
@@ -140,7 +144,28 @@ export function defaultDiscipline(): DisciplineCheck[] {
     { id: "study-block", label: "Completed planned study block", doneDates: [] },
     { id: "notes-capture", label: "Captured revision notes", doneDates: [] },
     { id: "no-fake", label: "Logged only real work (no invented progress)", doneDates: [] },
+    { id: "recall-after-block", label: "Did 2-minute recall after a Focus block", doneDates: [] },
+    { id: "mistake-review", label: "Weekly: one mistake / weak-topic review pass", doneDates: [] },
+    {
+      id: "past-paper-block",
+      label: "Weekly: past-paper / MCQ practice block (near exams only)",
+      doneDates: [],
+    },
+    { id: "weekly-review", label: "Logged Weekly Review (wins / blockers / next)", doneDates: [] },
   ];
+}
+
+/** Merge legacy discipline lists without wiping doneDates. */
+export function migrateDiscipline(raw: DisciplineCheck[] | undefined): DisciplineCheck[] {
+  const base = defaultDiscipline();
+  if (!raw?.length) return base;
+  const byId = new Map(raw.map((d) => [d.id, d]));
+  return base.map((d) => {
+    const prev = byId.get(d.id);
+    return prev ? { ...d, doneDates: prev.doneDates ?? [] } : d;
+  }).concat(
+    raw.filter((d) => !base.some((b) => b.id === d.id)),
+  );
 }
 
 export const PERSONAL_STORAGE_KEY = "hr-personal-v1";

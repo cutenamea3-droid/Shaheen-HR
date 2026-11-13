@@ -19,6 +19,10 @@ const SYNC_KEYS = [
   "discipline",
   "settings",
   "vaultNotes",
+  "gradeEntries",
+  "courseGrades",
+  "examPrepTasks",
+  "weeklyReviews",
 ] as const;
 
 export type PersonalBackupEnvelope = {
@@ -44,6 +48,10 @@ export function buildPersonalBackup(): PersonalBackupEnvelope {
       discipline: s.discipline,
       settings: s.settings,
       vaultNotes: s.vaultNotes,
+      gradeEntries: s.gradeEntries,
+      courseGrades: s.courseGrades,
+      examPrepTasks: s.examPrepTasks,
+      weeklyReviews: s.weeklyReviews,
     },
   };
 }
@@ -105,6 +113,10 @@ export function applyPersonalBackup(envelope: PersonalBackupEnvelope): void {
     discipline: d.discipline ?? [],
     settings: migrateSettings(d.settings),
     vaultNotes: typeof d.vaultNotes === "string" ? d.vaultNotes : "",
+    gradeEntries: d.gradeEntries ?? [],
+    courseGrades: d.courseGrades ?? [],
+    examPrepTasks: d.examPrepTasks ?? [],
+    weeklyReviews: d.weeklyReviews ?? {},
   };
   usePersonal.setState(patch);
 }
