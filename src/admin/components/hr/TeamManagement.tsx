@@ -17,7 +17,15 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
       <div>
         <p className="lbl">Team management</p>
         <h1 className="font-display text-3xl font-bold">User Accounts</h1>
-        <p className="text-sm text-muted-foreground">Keep a record of who has access and what role they hold.</p>
+        <p className="text-sm text-muted-foreground">
+          Directory of Admin &amp; Attendance seats and roles. This list alone is not backend AuthZ.
+        </p>
+        <p className="mt-2 rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          Soft gate today: roles live in Admin <code>app_state.team</code>. Protected backend ACL is the
+          review-only migration <code>admin-supabase/migrations/20261113180000_hr_portal_accounts.sql</code>{" "}
+          (not applied). Driver Compliance / Dispatch invites use their own portal ACL + edge functions —
+          never bridge Admin JWTs to Driver.
+        </p>
       </div>
       <form
         className="panel grid gap-3 md:grid-cols-[1fr_1fr_160px_auto] md:items-end"

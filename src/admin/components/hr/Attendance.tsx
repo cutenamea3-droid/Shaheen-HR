@@ -81,9 +81,15 @@ export function Attendance() {
 
   const save = async () => {
     setSaveMsg("Saving…");
-    const ok = await saveNow();
-    setSaveMsg(ok ? `✓ Saved — ${prettyDate(date)} is now in reports` : "Save failed, try again");
-    if (ok) setTimeout(() => setSaveMsg(""), 4000);
+    const result = await saveNow();
+    setSaveMsg(
+      result.cloud
+        ? `✓ Cloud Saved — ${prettyDate(date)} is now in reports`
+        : result.ok
+          ? result.message
+          : result.message || "Save failed, try again",
+    );
+    if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };
 
   /** Fill dept start/end for active employees whose punch in & out are empty that day; then sync. */
@@ -115,13 +121,15 @@ export function Attendance() {
     }
 
     setSaveMsg("Saving…");
-    const ok = await saveNow();
+    const result = await saveNow();
     setSaveMsg(
-      ok
-        ? `✓ Filled ${targets.length} · ${prettyDate(date)} synced`
-        : `Filled ${targets.length} locally — sync failed, try Save`,
+      result.cloud
+        ? `✓ Filled ${targets.length} · ${prettyDate(date)} — Cloud Saved`
+        : result.ok
+          ? `Filled ${targets.length} on this browser — ${result.message}`
+          : `Filled ${targets.length} locally — ${result.message || "sync failed, try Save"}`,
     );
-    if (ok) setTimeout(() => setSaveMsg(""), 4000);
+    if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };
 
   const saveBtn = (
