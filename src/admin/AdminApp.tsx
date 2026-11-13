@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Banknote, BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users, Wallet, Scale } from "lucide-react";
+import { Banknote, BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, History, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users, Wallet, Scale } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
@@ -10,6 +10,7 @@ import { MyHrToday } from "@/admin/components/hr/MyHrToday";
 import { SalaryPayments } from "@/admin/components/hr/SalaryPayments";
 import { ExpensesManagement } from "@/admin/components/hr/ExpensesManagement";
 import { PayrollVerify } from "@/admin/components/hr/PayrollVerify";
+import { AuditHistory } from "@/admin/components/hr/AuditHistory";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import {
@@ -226,6 +227,7 @@ const TABS = [
   ["performance", "Performance", Performance, Star],
   ["overtime", "Overtime", Overtime, Timer],
   ["reports", "CEO Reports", Reports, FileText],
+  ["audit-history", "Audit History", AuditHistory, History],
   ["tasks", "Tasks", Tasks, ListChecks],
   ["team", "Team", Team, Users],
   ["directory", "Directory", EmployeeDirectory, FolderKanban],
@@ -236,7 +238,7 @@ const TABS = [
 ] as const;
 
 const OPS_IDS = new Set(["hr-today", "overview", "attendance", "leave", "performance", "overtime"]);
-const REPORT_IDS = new Set(["reports", "tasks"]);
+const REPORT_IDS = new Set(["reports", "audit-history", "tasks"]);
 const PEOPLE_IDS = new Set(["team", "directory"]);
 const FINANCE_IDS = new Set(["salary-pay", "payroll-verify", "expenses"]);
 const CONFIG_IDS = new Set(["settings"]);
@@ -246,9 +248,10 @@ const TAB_TITLE: Record<string, string> = {
   overview: "Overview",
   attendance: "Attendance",
   leave: "Leave Management",
-  performance: "Performance",
+  performance: "Performance & Follow-Ups",
   overtime: "Overtime & Approval",
   reports: "CEO Reports",
+  "audit-history": "HR Audit History",
   tasks: "Tasks",
   team: "Team",
   directory: "Employee Directory",

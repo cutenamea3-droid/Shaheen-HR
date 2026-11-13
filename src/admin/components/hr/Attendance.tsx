@@ -6,6 +6,7 @@ import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/
 import { downloadPayrollCsv } from "@/admin/lib/reports";
 import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { shiftVariance } from "@/admin/lib/shift-variance";
+import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing";
 import { emptyRec, type Status } from "@/admin/lib/types";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useDensity, setDensity } from "@/lib/density";
@@ -44,6 +45,8 @@ export function Attendance() {
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);
   const { employees, depts, records, perf, settings, setRec, resetRec, resetDay } = useApp();
+  const isClosedFn = useMonthClosing((s) => s.isClosed);
+  const monthClosed = isDateInClosedMonth(date, isClosedFn);
   const day = records[date] ?? {};
   const data = { depts, employees, records, perf, settings };
   const density = useDensity();
@@ -212,6 +215,12 @@ export function Attendance() {
           </>
         }
       />
+
+      {monthClosed && (
+        <p className="panel text-sm font-semibold text-destructive">
+          Month {month} is closed. Reopen from CEO Reports before editing. Closing ≠ Paid (salary status unchanged).
+        </p>
+      )}
 
       <div className="tracker-filter-group" role="group" aria-label="Attendance focus filter">
         {FOCUS_CHIPS.map((f) => (
