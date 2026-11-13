@@ -14,6 +14,7 @@ import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as CvRouteImport } from './routes/cv'
 import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as DriversRouteImport } from './routes/drivers'
@@ -46,6 +47,11 @@ const ActivityRoute = ActivityRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertsRoute = AlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CvRoute = CvRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
+  '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
   '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
+  '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
   '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/activity': typeof ActivityRoute
   '/admin': typeof AdminRoute
+  '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
   '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/activity'
     | '/admin'
+    | '/alerts'
     | '/cv'
     | '/dispatch'
     | '/drivers'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/activity'
     | '/admin'
+    | '/alerts'
     | '/cv'
     | '/dispatch'
     | '/drivers'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/activity'
     | '/admin'
+    | '/alerts'
     | '/cv'
     | '/dispatch'
     | '/drivers'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   ActivityRoute: typeof ActivityRoute
   AdminRoute: typeof AdminRoute
+  AlertsRoute: typeof AlertsRoute
   CvRoute: typeof CvRoute
   DispatchRoute: typeof DispatchRoute
   DriversRoute: typeof DriversRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alerts': {
+      id: '/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cv': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   ActivityRoute: ActivityRoute,
   AdminRoute: AdminRoute,
+  AlertsRoute: AlertsRoute,
   CvRoute: CvRoute,
   DispatchRoute: DispatchRoute,
   DriversRoute: DriversRoute,

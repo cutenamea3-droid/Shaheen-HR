@@ -28,6 +28,7 @@ describe("Combined site", () => {
     "/team",
     "/activity",
     "/drivers",
+    "/alerts",
     "/drug-tests",
     "/records",
     "/s/dmv",
