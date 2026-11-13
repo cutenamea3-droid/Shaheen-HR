@@ -2,6 +2,7 @@ import { calcDay } from "./calc";
 import { leaveDaysOnDate, leaveRoster } from "./leave-management";
 import { resolveDeptAsOf } from "./shift-assignment";
 import { shiftVariance } from "./shift-variance";
+import { hrSyncStatusLabel, type HrSyncUi } from "./hr-sync-status";
 import type { DayRec, Dept, Employee, Settings, Task } from "./types";
 
 export type HrTodayIssueKind =
@@ -216,22 +217,13 @@ export function openTasksDue(tasks: Task[], date: string): Task[] {
   });
 }
 
-/** Map main cloud-sync statuses (+ local-only) to Batch 1 style labels without forking #19. */
+/** Map cloud-sync statuses (+ local-only / preview) using Batch 1 labels — no duplicate sync logic. */
 export function hrTodaySyncLabel(opts: {
   previewIsolated: boolean;
   localOnly: boolean;
-  status: "connecting" | "syncing" | "synced" | "error";
+  status: HrSyncUi;
 }): string {
   if (opts.previewIsolated) return "Not Synced";
   if (opts.localOnly) return "Sign In Required";
-  switch (opts.status) {
-    case "synced":
-      return "Cloud Saved";
-    case "syncing":
-      return "Saving";
-    case "error":
-      return "Connection Error";
-    case "connecting":
-      return "Not Synced";
-  }
+  return hrSyncStatusLabel(opts.status);
 }

@@ -65,7 +65,7 @@ describe("buildHrToday", () => {
 });
 
 describe("hrTodaySyncLabel", () => {
-  it("maps local-only and cloud statuses without forking #19 sync", () => {
+  it("maps local-only and full HrSyncUi statuses via Batch 1 labels", () => {
     expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: true, status: "synced" })).toBe(
       "Sign In Required",
     );
@@ -74,6 +74,15 @@ describe("hrTodaySyncLabel", () => {
     );
     expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "error" })).toBe(
       "Connection Error",
+    );
+    expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "conflict" })).toBe(
+      "Not Synced",
+    );
+    expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "paused" })).toBe(
+      "Sign In Required",
+    );
+    expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "unsynced" })).toBe(
+      "Not Synced",
     );
   });
 });
