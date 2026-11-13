@@ -85,14 +85,16 @@ export function isOldExpiry(v: string) {
 }
 
 /**
- * Suggest an apply-on plan from an expiration: expiry − daysBefore.
+ * Suggest an apply-on plan from an expiration: expiry − daysBefore (calendar dates).
  * Example: `"I will Apply on April 23 (Friday), 2027"`.
+ * Default 14d matches Annual/Pre-Emp Query lead. Prefer plan-dates.ts for section-aware leads.
  */
 export function suggestApplyPlan(expiry: string, daysBefore = 14): string | null {
+  // Local calendar arithmetic via shared engine (no UTC day-shift).
   if (!expiry || isOldExpiry(expiry)) return null;
   const d = parseISO(expiry);
   if (!d) return null;
-  const a = new Date(d);
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   a.setDate(a.getDate() - daysBefore);
   const month = a.toLocaleDateString("en-US", { month: "long" });
   const weekday = a.toLocaleDateString("en-US", { weekday: "long" });
