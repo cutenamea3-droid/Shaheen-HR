@@ -41,7 +41,9 @@ import { useAdminNav } from "@/admin/lib/admin-nav";
 import { useDensity } from "@/lib/density";
 
 
-const HR_EMAIL = "hr.compliance@gmail.com";
+import { HR_OWNER_EMAIL, isAdminHrAdmin } from "@/admin/lib/hr-access";
+
+const HR_EMAIL = HR_OWNER_EMAIL;
 
 const TABS = [
   ["overview", "Overview", Overview, BarChart3],
@@ -323,8 +325,9 @@ export function AdminApp() {
     });
     return () => sub.subscription.unsubscribe();
   }, []);
-  // Admin = the HR owner account (email verified by the sign-in server).
-  const isAdmin = email.toLowerCase() === HR_EMAIL;
+  // Admin-HR role: owner email or active TeamMember.role (directory is soft until hr_portal_accounts SQL).
+  const team = useApp((s) => s.team);
+  const isAdmin = isAdminHrAdmin(email, team);
   useActivityLog(authed ? email : "");
   if (!ready) return null;
   if (!authed) {
