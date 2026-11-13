@@ -63,23 +63,31 @@ export type SaveNowResult = {
   message: string;
 };
 
-export function saveNowMessage(kind: "cloud_ok" | "cloud_fail" | "local_only" | "preview"): SaveNowResult {
+export function saveNowMessage(
+  kind: "cloud_ok" | "cloud_fail" | "local_only" | "preview" | "conflict",
+): SaveNowResult {
   switch (kind) {
     case "cloud_ok":
-      return { ok: true, cloud: true, message: "Saved to cloud." };
+      return { ok: true, cloud: true, message: "Cloud Saved." };
     case "cloud_fail":
       return {
         ok: false,
         cloud: false,
-        message: "Cloud save failed — try again. Local copy is still on this browser.",
+        message: "Connection Error — try again. Local copy is still on this browser.",
       };
     case "local_only":
       return {
         ok: true,
         cloud: false,
-        message: "Saved on this browser only — cloud sync paused until you sign in with Supabase.",
+        message: "Saved on this browser only — Sign In Required for cloud sync.",
       };
     case "preview":
       return { ok: true, cloud: false, message: "Saved on this browser only (isolated preview)." };
+    case "conflict":
+      return {
+        ok: false,
+        cloud: false,
+        message: "Not Synced — choose Keep this browser or Use cloud before saving.",
+      };
   }
 }

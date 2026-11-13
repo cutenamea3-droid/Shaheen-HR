@@ -88,11 +88,12 @@ describe("saveNowMessage — never claims cloud without cloud", () => {
     expect(saveNowMessage("local_only")).toEqual({
       ok: true,
       cloud: false,
-      message: "Saved on this browser only — cloud sync paused until you sign in with Supabase.",
+      message: "Saved on this browser only — Sign In Required for cloud sync.",
     });
     expect(saveNowMessage("preview").cloud).toBe(false);
-    expect(saveNowMessage("cloud_ok")).toEqual({ ok: true, cloud: true, message: "Saved to cloud." });
+    expect(saveNowMessage("cloud_ok")).toEqual({ ok: true, cloud: true, message: "Cloud Saved." });
     expect(saveNowMessage("cloud_fail").ok).toBe(false);
     expect(saveNowMessage("cloud_fail").cloud).toBe(false);
+    expect(saveNowMessage("conflict").cloud).toBe(false);
   });
 });

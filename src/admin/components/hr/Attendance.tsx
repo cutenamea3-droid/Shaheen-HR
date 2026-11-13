@@ -84,7 +84,7 @@ export function Attendance() {
     const result = await saveNow();
     setSaveMsg(
       result.cloud
-        ? `✓ Saved to cloud — ${prettyDate(date)} is now in reports`
+        ? `✓ Cloud Saved — ${prettyDate(date)} is now in reports`
         : result.ok
           ? result.message
           : result.message || "Save failed, try again",
@@ -124,7 +124,7 @@ export function Attendance() {
     const result = await saveNow();
     setSaveMsg(
       result.cloud
-        ? `✓ Filled ${targets.length} · ${prettyDate(date)} synced to cloud`
+        ? `✓ Filled ${targets.length} · ${prettyDate(date)} — Cloud Saved`
         : result.ok
           ? `Filled ${targets.length} on this browser — ${result.message}`
           : `Filled ${targets.length} locally — ${result.message || "sync failed, try Save"}`,

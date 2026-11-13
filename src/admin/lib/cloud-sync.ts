@@ -12,13 +12,16 @@ import {
 } from "./hr-local-pending";
 import {
   decideHrSync,
+  isHrMeaningful,
   isHrPayloadEmpty,
   isHrSeedLike,
   refuseSeedOrEmptyPush,
 } from "./hr-sync-protect";
+import { hrPayloadsDiverge, needsExplicitConflictUx, type HrSyncUi } from "./hr-sync-status";
 import { useApp, whenAttendanceHydrated } from "./store";
 
 export type { SaveNowResult } from "./hr-local-pending";
+export { hrSyncStatusLabel } from "./hr-sync-status";
 
 const KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -30,13 +33,16 @@ let currentUser: string | null = null;
 let lastStamp = "";
 let pulling = false;
 let pushing = false;
+/** When set, auto push/pull overwrite is blocked until resolveHrConflict. */
+let conflictCloud: Record<string, unknown> | null = null;
+let conflictCloudStamp = "";
 
 const snapshot = () => {
   const s = useApp.getState();
   return Object.fromEntries(KEYS.map((k) => [k, s[k]]));
 };
 
-export type HrSync = "connecting" | "syncing" | "synced" | "error" | "paused";
+export type HrSync = HrSyncUi;
 let status: HrSync = "connecting";
 const listeners = new Set<() => void>();
 const setStatus = (s: HrSync) => {
@@ -48,6 +54,13 @@ export const subscribeSync = (l: () => void) => {
   listeners.add(l);
   return () => listeners.delete(l);
 };
+export const getConflictCloud = () => conflictCloud;
+export const hasOpenHrConflict = () => conflictCloud != null;
+
+function clearConflict() {
+  conflictCloud = null;
+  conflictCloudStamp = "";
+}
 
 async function readCloudRow(userId: string) {
   const { data, error } = await supabase
@@ -67,6 +80,10 @@ function readPendingUnsynced(): boolean {
 
 async function push(userId: string, attempt = 0): Promise<boolean> {
   if (pushing) return false;
+  if (conflictCloud != null) {
+    setStatus("conflict");
+    return false;
+  }
   const local = snapshot();
 
   // Never auto-upload empty/seed over an existing (or empty) cloud copy.
@@ -114,10 +131,17 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
 /** Pull remote row when this tab has nothing pending. */
 async function pull(userId: string, force = false) {
   if (pulling || pushing || !currentUser) return;
+  if (conflictCloud != null) {
+    setStatus("conflict");
+    return;
+  }
   if (!force && readPendingUnsynced()) {
     const local = snapshot();
     // Seed/empty "unsynced" must not block applying real cloud (and must not push).
-    if (!isHrSeedLike(local) && !isHrPayloadEmpty(local)) return;
+    if (!isHrSeedLike(local) && !isHrPayloadEmpty(local)) {
+      if (status !== "syncing" && status !== "error") setStatus("unsynced");
+      return;
+    }
   }
   pulling = true;
   try {
@@ -125,6 +149,7 @@ async function pull(userId: string, force = false) {
     if (error) {
       setStatus("error");
       console.error("[HR cloud] load failed:", error.message);
+      // Failed read must never clear or replace local state.
       return;
     }
 
@@ -137,7 +162,8 @@ async function pull(userId: string, force = false) {
 
     if (decision === "keep_local") {
       // Missing/empty cloud: never setState — preserves hr-attendance-v1.
-      setStatus("synced");
+      // Pending real local stays Not Synced until push succeeds.
+      setStatus(unsyncedReal ? "unsynced" : "synced");
       return;
     }
     if (decision === "push_local") {
@@ -151,7 +177,10 @@ async function pull(userId: string, force = false) {
         clearHrPendingUnsynced();
         setHrLocalOnlySessionFlag(false);
       }
-      if (readPendingUnsynced()) return;
+      if (readPendingUnsynced()) {
+        setStatus("unsynced");
+        return;
+      }
       // Apply only non-empty meaningful cloud — never wipe localStorage with empties.
       if (isHrPayloadEmpty(cloudData)) {
         setStatus("synced");
@@ -165,6 +194,13 @@ async function pull(userId: string, force = false) {
   } finally {
     pulling = false;
   }
+}
+
+function openConflict(cloudData: unknown, stamp: string) {
+  if (!cloudData || typeof cloudData !== "object" || Array.isArray(cloudData)) return;
+  conflictCloud = cloudData as Record<string, unknown>;
+  conflictCloudStamp = stamp;
+  setStatus("conflict");
 }
 
 /**
@@ -200,33 +236,7 @@ export function stopLocalOnlyGuard() {
   localOnlyUnsub = null;
 }
 
-/** Load the saved data from the cloud, then save every change. */
-export async function startSync(userId: string) {
-  if (isPreviewIsolated()) {
-    stopSync();
-    setStatus("synced");
-    return;
-  }
-  // Capture local-only flag before clearing the guard (reconnect must not wipe pending edits).
-  const pendingBefore = readPendingUnsynced();
-  stopLocalOnlyGuard();
-  setHrLocalOnlySessionFlag(false);
-  if (pendingBefore) markHrPendingUnsynced();
-
-  currentUser = userId;
-  // Wait for localStorage rehydrate so we don't push seed over a newer cloud copy.
-  await whenAttendanceHydrated();
-  const local = snapshot();
-  const unsynced = hasHrPendingUnsynced();
-  // Only push-first when local has real non-seed edits pending.
-  if (unsynced && !isHrSeedLike(local) && !isHrPayloadEmpty(local)) {
-    await push(userId);
-  } else {
-    if (unsynced && (isHrSeedLike(local) || isHrPayloadEmpty(local))) {
-      clearHrPendingUnsynced();
-    }
-    await pull(userId, true);
-  }
+function wireLiveSync(userId: string) {
   unsub?.();
   let last = JSON.stringify(snapshot());
   unsub = useApp.subscribe(() => {
@@ -235,6 +245,11 @@ export async function startSync(userId: string) {
     if (now === last) return;
     last = now;
     markHrPendingUnsynced();
+    if (conflictCloud != null) {
+      setStatus("conflict");
+      return;
+    }
+    setStatus("unsynced");
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => void push(userId), 400);
   });
@@ -245,7 +260,7 @@ export async function startSync(userId: string) {
   if (typeof window !== "undefined" && !flushBound) {
     flushBound = true;
     const flush = () => {
-      if (currentUser && hasHrPendingUnsynced()) void push(currentUser);
+      if (currentUser && hasHrPendingUnsynced() && conflictCloud == null) void push(currentUser);
     };
     window.addEventListener("pagehide", flush);
     window.addEventListener("focus", () => {
@@ -258,6 +273,82 @@ export async function startSync(userId: string) {
   }
 }
 
+/**
+ * Owner chose how to resolve divergent local vs cloud (no silent overwrite).
+ * `keep_local` uploads this browser; `use_cloud` applies the held cloud snapshot.
+ */
+export async function resolveHrConflict(choice: "keep_local" | "use_cloud"): Promise<SaveNowResult> {
+  if (!currentUser || conflictCloud == null) {
+    return saveNowMessage("cloud_fail");
+  }
+  if (choice === "use_cloud") {
+    const held = conflictCloud;
+    const stamp = conflictCloudStamp;
+    clearConflict();
+    clearHrPendingUnsynced();
+    useApp.setState(held as never);
+    lastStamp = stamp || lastStamp;
+    setStatus("synced");
+    return saveNowMessage("cloud_ok");
+  }
+  clearConflict();
+  const pushed = await push(currentUser, 5);
+  return pushed ? saveNowMessage("cloud_ok") : saveNowMessage("cloud_fail");
+}
+
+/** Load the saved data from the cloud, then save every change. */
+export async function startSync(userId: string) {
+  if (isPreviewIsolated()) {
+    stopSync();
+    setStatus("synced");
+    return;
+  }
+  // Capture local-only flag before clearing the guard (reconnect must not wipe pending edits).
+  const pendingBefore = readPendingUnsynced();
+  stopLocalOnlyGuard();
+  setHrLocalOnlySessionFlag(false);
+  if (pendingBefore) markHrPendingUnsynced();
+  clearConflict();
+
+  currentUser = userId;
+  // Wait for localStorage rehydrate so we don't push seed over a newer cloud copy.
+  await whenAttendanceHydrated();
+  const local = snapshot();
+  const unsynced = hasHrPendingUnsynced();
+  // Pending real local vs meaningful divergent cloud → explicit conflict UX (never silent LWW).
+  if (unsynced && !isHrSeedLike(local) && isHrMeaningful(local) && !isHrPayloadEmpty(local)) {
+    const { data, error } = await readCloudRow(userId);
+    if (error) {
+      setStatus("error");
+      console.error("[HR cloud] reconnect read failed:", error.message);
+      wireLiveSync(userId);
+      return;
+    }
+    const cloudData = data?.data;
+    const cloudMeaningful =
+      cloudData != null && isHrMeaningful(cloudData) && !isHrPayloadEmpty(cloudData);
+    if (
+      needsExplicitConflictUx({
+        localMeaningful: true,
+        cloudMeaningful,
+        diverge: hrPayloadsDiverge(local, cloudData, KEYS),
+        pendingUnsynced: true,
+      })
+    ) {
+      openConflict(cloudData, data?.updated_at ?? "");
+      wireLiveSync(userId);
+      return;
+    }
+    await push(userId);
+  } else {
+    if (unsynced && (isHrSeedLike(local) || isHrPayloadEmpty(local))) {
+      clearHrPendingUnsynced();
+    }
+    await pull(userId, true);
+  }
+  wireLiveSync(userId);
+}
+
 export function stopSync() {
   unsub?.();
   unsub = null;
@@ -267,6 +358,7 @@ export function stopSync() {
   pollTimer = null;
   currentUser = null;
   lastStamp = "";
+  clearConflict();
   setStatus("connecting");
 }
 
@@ -277,10 +369,15 @@ export async function saveNow(): Promise<SaveNowResult> {
     setStatus("synced");
     return saveNowMessage("preview");
   }
+  if (conflictCloud != null) {
+    setStatus("conflict");
+    return saveNowMessage("conflict");
+  }
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) {
     // Local zustand persist already holds the copy; do not pretend this is a cloud save.
     markHrPendingUnsynced();
+    setStatus("paused");
     return saveNowMessage("local_only");
   }
   if (timer) clearTimeout(timer);

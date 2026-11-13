@@ -8,6 +8,9 @@ import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import {
   getSyncStatus,
+  hasOpenHrConflict,
+  hrSyncStatusLabel,
+  resolveHrConflict,
   saveNow,
   startLocalOnlyGuard,
   startSync,
@@ -17,34 +20,67 @@ import {
 } from "@/admin/lib/cloud-sync";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
-import { BackupButtons } from "@/admin/components/hr/Settings";
+import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
 
 function SyncBadge() {
   const s = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
-  const label =
-    s === "syncing"
-      ? "Saving to cloud…"
-      : s === "synced"
-        ? "Saved to cloud"
-        : s === "paused"
-          ? "Cloud sync paused"
-          : "Connecting to cloud…";
+  const conflict = s === "conflict" || hasOpenHrConflict();
+  const label = hrSyncStatusLabel(s);
+  const tone =
+    s === "error" || conflict
+      ? "destructive"
+      : s === "unsynced" || s === "connecting"
+        ? "warn"
+        : "primary";
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <BackupButtons />
-      {s === "error" ? (
-        <button
-          type="button"
-          onClick={() => void saveNow()}
-          className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive"
-        >
-          <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> Not saved to cloud — Try again
-        </button>
-      ) : (
-        <span className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-bold text-primary">
-          <span className={`h-2 w-2 rounded-full bg-primary ${s !== "synced" ? "animate-pulse" : ""}`} />
-          {label}
-        </span>
+    <div className="mb-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <BackupButtons />
+        {s === "error" ? (
+          <button
+            type="button"
+            onClick={() => void saveNow()}
+            className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive"
+          >
+            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> {label} — Try again
+          </button>
+        ) : (
+          <span
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-bold ${
+              tone === "destructive"
+                ? "bg-destructive/10 text-destructive"
+                : tone === "warn"
+                  ? "bg-warn-soft text-warn"
+                  : "bg-primary/10 text-primary"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full bg-current ${s !== "synced" ? "animate-pulse" : ""}`} />
+            {label}
+          </span>
+        )}
+      </div>
+      {conflict && (
+        <div className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="alertdialog">
+          <p className="font-semibold text-warn">
+            Not Synced — this browser and the cloud both have attendance changes. Choose one side (download a
+            backup first if unsure). Nothing is overwritten until you choose.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn" onClick={() => downloadBackup()}>
+              Download backup
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => void resolveHrConflict("keep_local")}
+            >
+              Keep this browser (upload)
+            </button>
+            <button type="button" className="btn-danger" onClick={() => void resolveHrConflict("use_cloud")}>
+              Use cloud (replace this browser)
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -67,8 +103,9 @@ function CloudReconnectBanner({
   return (
     <div className="mb-3 space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="status">
       <p className="font-semibold text-warn">
-        Local session — cloud sync paused. Sign in with Supabase to sync this browser’s attendance to the cloud.
-        Pending local edits are kept and uploaded after a successful connect (cloud is not applied over them).
+        Sign In Required — local session; cloud sync paused. Sign in with Supabase to sync this browser’s
+        attendance. Pending local edits are kept; if cloud also changed, you will choose which copy to keep
+        (nothing is overwritten silently).
       </p>
       <form
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
