@@ -1218,8 +1218,114 @@ textarea {
   --danger: var(--brand-red, #CF3540);
 }
 /* Subtle page canvas for Driver (soft white) without changing layout */
-body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.personal-theme)) {
+body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.dispatch-theme)):not(:has(.personal-theme)) {
   background-color: var(--brand-soft-white, #F7F8FA);
+}
+
+/* Dispatch Operations — navy/orange premium desk UI (14–16px) */
+html:has(.dispatch-theme) { font-size: 15px; }
+body:has(.dispatch-theme) {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, color-mix(in srgb, #E87500 18%, transparent), transparent 60%),
+    radial-gradient(900px 400px at 100% 0%, color-mix(in srgb, #202A36 14%, transparent), transparent 55%),
+    #F4F6F9;
+}
+.dispatch-theme {
+  --dispatch-navy: #202A36;
+  --dispatch-orange: #E87500;
+  --dispatch-card: #ffffff;
+  --dispatch-soft: #F3F5F8;
+  --dispatch-border: color-mix(in srgb, #202A36 12%, #e5e7eb);
+  --dispatch-muted: color-mix(in srgb, #202A36 55%, #64748b);
+  --dispatch-danger: #CF3540;
+  --dispatch-ok: #16845B;
+  color: var(--dispatch-navy);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.dispatch-theme .font-display {
+  font-family: Fraunces, "Times New Roman", serif;
+}
+.dispatch-panel {
+  border: 1px solid var(--dispatch-border);
+  border-radius: 1rem;
+  background: var(--dispatch-card);
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 0 color-mix(in srgb, #202A36 4%, transparent);
+}
+.dispatch-field {
+  width: 100%;
+  border: 1px solid var(--dispatch-border);
+  border-radius: 0.65rem;
+  background: #fff;
+  padding: 0.55rem 0.7rem;
+  font-size: 14px;
+  color: var(--dispatch-navy);
+}
+.dispatch-field:focus {
+  outline: 2px solid color-mix(in srgb, var(--dispatch-orange) 55%, white);
+  border-color: color-mix(in srgb, var(--dispatch-orange) 50%, var(--dispatch-border));
+}
+.dispatch-btn-primary,
+.dispatch-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 0.65rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 14px;
+  font-weight: 650;
+  transition: background-color 120ms ease, transform 120ms ease;
+  cursor: pointer;
+}
+.dispatch-btn-primary {
+  background: linear-gradient(135deg, #D46800, var(--dispatch-orange));
+  color: #fff;
+  border: 0;
+}
+.dispatch-btn-primary:hover { filter: brightness(1.03); }
+.dispatch-btn-primary:disabled { opacity: 0.55; }
+.dispatch-btn-ghost {
+  background: var(--dispatch-soft);
+  color: var(--dispatch-navy);
+  border: 1px solid var(--dispatch-border);
+}
+.dispatch-btn-ghost:hover { background: color-mix(in srgb, var(--dispatch-orange) 10%, white); }
+.dispatch-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.78);
+  text-align: left;
+}
+.dispatch-nav:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.dispatch-nav-on {
+  background: color-mix(in srgb, var(--dispatch-orange) 88%, white);
+  color: #fff;
+}
+.dispatch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.dispatch-table th {
+  text-align: left;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dispatch-muted);
+  border-bottom: 1px solid var(--dispatch-border);
+  padding: 0.45rem 0.35rem;
+}
+.dispatch-table td {
+  border-bottom: 1px solid var(--dispatch-border);
+  padding: 0.65rem 0.35rem;
+  vertical-align: top;
 }
 
 /* —— HR Personal (isolated; violet/blue/teal — never company orange) —— */

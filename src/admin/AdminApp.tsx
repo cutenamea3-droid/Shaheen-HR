@@ -1,31 +1,205 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BarChart3, CalendarClock, ChevronsLeft, ChevronsRight, FileText, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
+import { Banknote, BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, History, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users, Wallet, Scale } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
 import { Overtime } from "@/admin/components/hr/Overtime";
+import { EmployeeDirectory } from "@/admin/components/hr/EmployeeDirectory";
+import { LeaveManagement } from "@/admin/components/hr/LeaveManagement";
+import { MyHrToday } from "@/admin/components/hr/MyHrToday";
+import { SalaryPayments } from "@/admin/components/hr/SalaryPayments";
+import { ExpensesManagement } from "@/admin/components/hr/ExpensesManagement";
+import { PayrollVerify } from "@/admin/components/hr/PayrollVerify";
+import { AuditHistory } from "@/admin/components/hr/AuditHistory";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
-import { getSyncStatus, saveNow, startSync, stopSync, subscribeSync } from "@/admin/lib/cloud-sync";
+import {
+  getSyncStatus,
+  hasOpenHrConflict,
+  hrSyncStatusLabel,
+  resolveHrConflict,
+  saveNow,
+  startLocalOnlyGuard,
+  startSync,
+  stopLocalOnlyGuard,
+  stopSync,
+  subscribeSync,
+} from "@/admin/lib/cloud-sync";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
-import { BackupButtons } from "@/admin/components/hr/Settings";
+import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
 
 function SyncBadge() {
   const s = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
+  const conflict = s === "conflict" || hasOpenHrConflict();
+  const label = hrSyncStatusLabel(s);
+  const tone =
+    s === "error" || conflict
+      ? "destructive"
+      : s === "unsynced" || s === "connecting"
+        ? "warn"
+        : "primary";
   return (
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <BackupButtons />
-      {s === "error" ? (
-        <button type="button" onClick={() => void saveNow()} className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> Not saved to cloud — Try again
-        </button>
-      ) : (
-        <span className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-bold text-primary">
-          <span className={`h-2 w-2 rounded-full bg-primary ${s !== "synced" ? "animate-pulse" : ""}`} />
-          {s === "syncing" ? "Saving to cloud…" : s === "synced" ? "Saved to cloud" : "Connecting to cloud…"}
-        </span>
+    <div className="mb-3 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <BackupButtons />
+        {s === "error" ? (
+          <button
+            type="button"
+            onClick={() => void saveNow()}
+            className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive"
+          >
+            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> {label} — Try again
+          </button>
+        ) : (
+          <span
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-bold ${
+              tone === "destructive"
+                ? "bg-destructive/10 text-destructive"
+                : tone === "warn"
+                  ? "bg-warn-soft text-warn"
+                  : "bg-primary/10 text-primary"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full bg-current ${s !== "synced" ? "animate-pulse" : ""}`} />
+            {label}
+          </span>
+        )}
+      </div>
+      {conflict && (
+        <div className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="alertdialog">
+          <p className="font-semibold text-warn">
+            Not Synced — this browser and the cloud both have attendance changes. Choose one side (download a
+            backup first if unsure). Nothing is overwritten until you choose.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn" onClick={() => downloadBackup()}>
+              Download backup
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => void resolveHrConflict("keep_local")}
+            >
+              Keep this browser (upload)
+            </button>
+            <button type="button" className="btn-danger" onClick={() => void resolveHrConflict("use_cloud")}>
+              Use cloud (replace this browser)
+            </button>
+          </div>
+        </div>
       )}
+    </div>
+  );
+}
+
+/** Upgrade a local-only session to Supabase Auth without wiping pending local attendance. */
+function CloudReconnectBanner({
+  email,
+  onConnected,
+}: {
+  email: string;
+  onConnected: (mail: string, uid: string) => void;
+}) {
+  const [pass, setPass] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+  const busyRef = useRef(false);
+
+  return (
+    <div className="mb-3 space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="status">
+      <p className="font-semibold text-warn">
+        Sign In Required — local session; cloud sync paused. Sign in with Supabase to sync this browser’s
+        attendance. Pending local edits are kept; if cloud also changed, you will choose which copy to keep
+        (nothing is overwritten silently).
+      </p>
+      <form
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busyRef.current) return;
+          busyRef.current = true;
+          setBusy(true);
+          setErr("");
+          setMsg("");
+          try {
+            const {
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+            } = await import("@/admin/lib/hr-auth-local");
+
+            const result = await attemptHrLogin(email, pass, {
+              signInWithPassword: async (creds) => {
+                const { error } = await supabase.auth.signInWithPassword(creds);
+                return {
+                  error: error
+                    ? {
+                        message: error.message,
+                        status: error.status,
+                        name: error.name,
+                        code: typeof error.code === "string" ? error.code : undefined,
+                      }
+                    : null,
+                };
+              },
+              signOut: () => supabase.auth.signOut(),
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+            });
+
+            if (!result.ok) {
+              setErr(result.kind === "stale" ? "" : result.message || "Could not connect to cloud.");
+              return;
+            }
+            if (result.mode !== "cloud") {
+              setErr("Cloud sign-in failed — check network and password. Local data is still on this browser.");
+              return;
+            }
+            const { data } = await supabase.auth.getSession();
+            const uid = data.session?.user.id;
+            if (!uid) {
+              setErr("Couldn't reach the server. Try again.");
+              return;
+            }
+            setMsg("Connected — uploading protected local changes when needed…");
+            onConnected(data.session?.user.email?.toLowerCase() || email, uid);
+          } catch {
+            setErr("Couldn't reach the server. Try again.");
+          } finally {
+            busyRef.current = false;
+            setBusy(false);
+          }
+        }}
+      >
+        <label className="block min-w-0 flex-1">
+          <span className="lbl">Supabase password for {email}</span>
+          <input
+            type="password"
+            className="field"
+            value={pass}
+            onChange={(e) => {
+              setPass(e.target.value);
+              if (err) setErr("");
+            }}
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit" className="btn-primary shrink-0" disabled={busy} aria-busy={busy}>
+          {busy ? "Connecting…" : "Connect cloud sync"}
+        </button>
+      </form>
+      {err && (
+        <p role="alert" className="text-destructive">
+          {err}
+        </p>
+      )}
+      {msg && <p className="text-muted-foreground">{msg}</p>}
     </div>
   );
 }
@@ -41,32 +215,49 @@ import { useAdminNav } from "@/admin/lib/admin-nav";
 import { useDensity } from "@/lib/density";
 
 
-const HR_EMAIL = "hr.compliance@gmail.com";
+import { HR_OWNER_EMAIL, isAdminHrAdmin } from "@/admin/lib/hr-access";
+
+const HR_EMAIL = HR_OWNER_EMAIL;
 
 const TABS = [
+  ["hr-today", "My HR Today", MyHrToday, ClipboardList],
   ["overview", "Overview", Overview, BarChart3],
   ["attendance", "Attendance", Attendance, CalendarClock],
+  ["leave", "Leave", LeaveManagement, CalendarDays],
   ["performance", "Performance", Performance, Star],
   ["overtime", "Overtime", Overtime, Timer],
   ["reports", "CEO Reports", Reports, FileText],
+  ["audit-history", "Audit History", AuditHistory, History],
   ["tasks", "Tasks", Tasks, ListChecks],
   ["team", "Team", Team, Users],
+  ["directory", "Directory", EmployeeDirectory, FolderKanban],
+  ["salary-pay", "Salary pay", SalaryPayments, Banknote],
+  ["payroll-verify", "Payroll verify", PayrollVerify, Scale],
+  ["expenses", "Expenses", ExpensesManagement, Wallet],
   ["settings", "Settings", SettingsPanel, Settings],
 ] as const;
 
-const OPS_IDS = new Set(["overview", "attendance", "performance", "overtime"]);
-const REPORT_IDS = new Set(["reports", "tasks"]);
-const PEOPLE_IDS = new Set(["team"]);
+const OPS_IDS = new Set(["hr-today", "overview", "attendance", "leave", "performance", "overtime"]);
+const REPORT_IDS = new Set(["reports", "audit-history", "tasks"]);
+const PEOPLE_IDS = new Set(["team", "directory"]);
+const FINANCE_IDS = new Set(["salary-pay", "payroll-verify", "expenses"]);
 const CONFIG_IDS = new Set(["settings"]);
 
 const TAB_TITLE: Record<string, string> = {
+  "hr-today": "My HR Today",
   overview: "Overview",
   attendance: "Attendance",
-  performance: "Performance",
-  overtime: "Overtime",
+  leave: "Leave Management",
+  performance: "Performance & Follow-Ups",
+  overtime: "Overtime & Approval",
   reports: "CEO Reports",
+  "audit-history": "HR Audit History",
   tasks: "Tasks",
   team: "Team",
+  directory: "Employee Directory",
+  "salary-pay": "Salary payments",
+  "payroll-verify": "Payroll verification",
+  expenses: "Expenses Management",
   settings: "Settings",
   account: "My Account",
   "team-mgmt": "User Accounts",
@@ -78,6 +269,7 @@ function adminCrumbs(tab: string): { label: string; current?: boolean }[] {
   let group = "Operations";
   if (REPORT_IDS.has(tab)) group = "Reports & work";
   else if (PEOPLE_IDS.has(tab)) group = "People";
+  else if (FINANCE_IDS.has(tab)) group = "Finance";
   else if (CONFIG_IDS.has(tab)) group = "Configuration";
   else if (tab === "account") group = "My Account";
   else if (tab === "team-mgmt") group = "Team Management";
@@ -262,6 +454,8 @@ export function AdminApp() {
         setAuthedState(true);
         return;
       }
+      stopSync();
+      stopLocalOnlyGuard();
       void import("@/admin/lib/hr-auth-local").then((m) => m.clearHrLocalSession()).catch(() => undefined);
       setLocalOnly(false);
       setAuthedState(false);
@@ -269,7 +463,7 @@ export function AdminApp() {
       void supabase.auth.signOut();
     }
   };
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("hr-today");
   const [small, setSmall] = useState(false);
   // Rehydrate density dataset; honor Overview → Attendance chip requests (UI only).
   useDensity();
@@ -283,6 +477,7 @@ export function AdminApp() {
   useEffect(() => {
     if (isPreviewIsolated()) {
       stopSync();
+      stopLocalOnlyGuard();
       setLocalOnly(true);
       setEmail(HR_EMAIL);
       setAuthedState(true);
@@ -304,12 +499,15 @@ export function AdminApp() {
             setLocalOnly(true);
             setEmail(localMail);
             setAuthedState(true);
+            void startLocalOnlyGuard();
           } else {
+            stopLocalOnlyGuard();
             setLocalOnly(false);
             setEmail("");
             setAuthedState(false);
           }
         } catch {
+          stopLocalOnlyGuard();
           setLocalOnly(false);
           setEmail("");
           setAuthedState(false);
@@ -321,10 +519,14 @@ export function AdminApp() {
     const { data: sub } = supabase.auth.onAuthStateChange((ev, session) => {
       if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") void apply(session?.user.id ?? null, session?.user.email ?? "");
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      sub.subscription.unsubscribe();
+      stopLocalOnlyGuard();
+    };
   }, []);
-  // Admin = the HR owner account (email verified by the sign-in server).
-  const isAdmin = email.toLowerCase() === HR_EMAIL;
+  // Admin-HR role: owner email or active TeamMember.role (directory is soft until hr_portal_accounts SQL).
+  const team = useApp((s) => s.team);
+  const isAdmin = isAdminHrAdmin(email, team);
   useActivityLog(authed ? email : "");
   if (!ready) return null;
   if (!authed) {
@@ -334,6 +536,7 @@ export function AdminApp() {
           setLocalOnly(true);
           setEmail(mail);
           setAuthedState(true);
+          void startLocalOnlyGuard();
         }}
         onCloudAuth={(mail, uid) => {
           void startSync(uid).then(() => {
@@ -345,8 +548,11 @@ export function AdminApp() {
       />
     );
   }
-  const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "overview");
-  const current: TabId = !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview")) ? "overview" : tab;
+  const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "hr-today" || t[0] === "overview");
+  const current: TabId =
+    !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview" && tab !== "hr-today"))
+      ? "hr-today"
+      : tab;
   const Active = TABS.find((t) => t[0] === current)?.[2];
   const crumbs = adminCrumbs(current);
   const navBtn = (id: TabId, label: string, Icon: typeof Users) => (
@@ -394,6 +600,8 @@ export function AdminApp() {
           {isAdmin && renderTabGroup(REPORT_IDS)}
           {isAdmin && groupLbl("People")}
           {isAdmin && renderTabGroup(PEOPLE_IDS)}
+          {isAdmin && groupLbl("Finance")}
+          {isAdmin && renderTabGroup(FINANCE_IDS)}
           {isAdmin && groupLbl("Configuration")}
           {isAdmin && renderTabGroup(CONFIG_IDS)}
           {groupLbl("My Account")}
@@ -428,12 +636,21 @@ export function AdminApp() {
             ))}
           </nav>
         </header>
-        {isPreviewIsolated() || localOnly ? (
+        {isPreviewIsolated() ? (
           <div className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground" role="status">
-            {isPreviewIsolated()
-              ? "Isolated preview — local seed/Zustand only; Save stays on this browser."
-              : "Local session — cloud sync paused until you sign in with Supabase."}
+            Isolated preview — local seed/Zustand only; Save stays on this browser.
           </div>
+        ) : localOnly ? (
+          <CloudReconnectBanner
+            email={email}
+            onConnected={(mail, uid) => {
+              void startSync(uid).then(() => {
+                setLocalOnly(false);
+                setEmail(mail);
+                setAuthedState(true);
+              });
+            }}
+          />
         ) : (
           <SyncBadge />
         )}
@@ -441,6 +658,7 @@ export function AdminApp() {
           {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
             : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
             : current === "logs" ? <SystemLogs />
+            : current === "hr-today" ? <MyHrToday localOnly={localOnly} />
             : Active ? <Active /> : null}
         </div>
       </main>

@@ -4,7 +4,7 @@ import { PersonalApp } from "@/personal/PersonalApp";
 /**
  * Client route gate for /personal.
  * Honesty: with static Cloudflare Pages (nitro: false), beforeLoad runs in the SPA —
- * it is not an edge/httpOnly ACL. Phase 2 (CF Functions) needs separate approval.
+ * it is not an edge/httpOnly ACL. Secure Personal cloud needs dedicated project + flags.
  */
 export const Route = createFileRoute("/personal")({
   head: () => ({

@@ -33,12 +33,25 @@ describe("Combined site", () => {
     "/team",
     "/activity",
     "/drivers",
+    "/alerts",
     "/drug-tests",
     "/records",
     "/s/dmv",
+    "/dispatch",
     "/personal",
+    "/access-denied",
   ])("matches the %s route", (path) => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
+  });
+
+  it("serves Dispatch Operations at /dispatch", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/dispatch").at(-1)?.routeId).toBe("/dispatch");
+  });
+
+  it("serves Access Denied at /access-denied", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/access-denied").at(-1)?.routeId).toBe("/access-denied");
   });
 });

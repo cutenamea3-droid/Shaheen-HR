@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Columns3, Info, ChevronUp, Trash2, Pencil, Check, X, Bell, UserPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol, suggestApplyPlan } from "@/lib/alerts";
+import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol } from "@/lib/alerts";
+import { suggestPlanForCell } from "@/lib/plan-dates";
 import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { sectionById } from "@/lib/sections";
 import { addRowForDriver, deleteDriver, patchSection, setCell, setRowHeight, useData } from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { AddDriverDialog } from "./AddDriverDialog";
+import { FuturePlanSuggest } from "./FuturePlanSuggest";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DensityToggle } from "./DensityToggle";
@@ -563,21 +565,18 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                                   : "Add note"
                             }
                           />
-                          {t === "plan" && sectionId === "queries" && (() => {
-                            const expiryIdx = ci === 6 ? 2 : ci === 7 ? 4 : -1;
-                            const suggestion = expiryIdx >= 0 ? suggestApplyPlan(row.cells[expiryIdx] ?? "") : null;
-                            if (!suggestion) return null;
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => save(suggestion)}
-                                title="Click to fill this suggested apply date (you can still type freely)"
-                                className="mt-1 inline-flex max-w-full items-center rounded-lg border border-primary/40 bg-primary/10 px-2 py-0.5 text-left text-xs font-semibold text-primary transition hover:bg-primary/20"
-                              >
-                                <span className="truncate">Suggest: {suggestion}</span>
-                              </button>
-                            );
-                          })()}
+                          {t === "plan" && (
+                            <div className="mt-1">
+                              <FuturePlanSuggest
+                                suggestion={suggestPlanForCell(sectionId, ci, row)}
+                                existingPlan={v}
+                                sectionId={sectionId}
+                                rowId={row.id}
+                                planCol={ci}
+                                compact
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                       {t === "date" && (

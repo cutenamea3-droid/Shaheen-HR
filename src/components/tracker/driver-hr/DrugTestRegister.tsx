@@ -18,10 +18,12 @@ import {
   drugTestPersistBlockedReason,
   getDriverDrugTestMode,
 } from "@/lib/driver-hr/drug-test-mode";
+import { resolvePairing, type MatchCandidate } from "@/lib/driver-hr/drug-test-matching";
 import {
   DRUG_PAIR_STATUS_LABEL,
   filterDrugPairs,
   formatDrugDocKind,
+  newTestingEventId,
   pairDrugTestEvents,
   type DrugPairStatus,
   type DrugTestEvent,
@@ -42,12 +44,24 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
   const [statusFilter, setStatusFilter] = useState<DrugPairStatus | "all">("all");
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
+  const [addFormKey, setAddFormKey] = useState(0);
   const [events, setEvents] = useState<DrugTestEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [ambiguousCandidates, setAmbiguousCandidates] = useState<MatchCandidate[] | undefined>();
+  const [similarCandidates, setSimilarCandidates] = useState<MatchCandidate[] | undefined>();
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  const [pairingHint, setPairingHint] = useState<string | null>(null);
   const mode = getDriverDrugTestMode();
   const persistOk = canPersistDrugTests();
   const blocked = drugTestPersistBlockedReason(mode);
   void driverName;
+
+  const clearPairingFeedback = () => {
+    setAmbiguousCandidates(undefined);
+    setSimilarCandidates(undefined);
+    setConflictMessage(null);
+    setPairingHint(null);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -161,20 +175,72 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
 
           {adding && !view && (
             <DrugTestEventEditor
+              key={addFormKey}
               disabled={!persistOk}
-              linkOptions={events
-                .filter((e) => e.kind === "federal_drug" && e.testingEventId)
-                .map((e) => ({
-                  id: e.testingEventId,
-                  label: `Link FD ${e.specimenId || "incomplete"} · ${e.reason || "—"}`,
-                }))}
-              onCancel={() => setAdding(false)}
-              onSave={async (draft) => {
+              enablePairing
+              driverId={driverId}
+              existingEvents={events.filter((e) => !e.deletedAt)}
+              ambiguousCandidates={ambiguousCandidates}
+              similarCandidates={similarCandidates}
+              conflictMessage={conflictMessage}
+              pairingHint={pairingHint}
+              onCancel={() => {
+                setAdding(false);
+                clearPairingFeedback();
+              }}
+              onSave={async (draft, opts) => {
+                clearPairingFeedback();
+                const resolution = resolvePairing({
+                  mode: opts?.pairingMode ?? "automatic",
+                  incoming: {
+                    driverId,
+                    kind: draft.kind,
+                    specimenId: draft.specimenId,
+                    reason: draft.reason,
+                    collectionContext: draft.collectionContext,
+                    eventDate: draft.eventDate,
+                  },
+                  existingEvents: events.filter((e) => !e.deletedAt),
+                  manualTestingEventId: opts?.manualTestingEventId,
+                  selectedTestingEventId: opts?.selectedTestingEventId,
+                  confirmSeparate: opts?.confirmSeparate,
+                });
+                if (resolution.status === "ambiguous") {
+                  setAmbiguousCandidates(resolution.candidates);
+                  setPairingHint(resolution.message);
+                  toast.error(resolution.message);
+                  return;
+                }
+                if (resolution.status === "conflict") {
+                  setConflictMessage(resolution.message);
+                  toast.error(resolution.message);
+                  return;
+                }
+                if (resolution.status === "need_manual_pick" || resolution.status === "blocked") {
+                  setConflictMessage(resolution.message);
+                  toast.error(resolution.message);
+                  return;
+                }
+                if (resolution.status === "need_separate_confirm") {
+                  setSimilarCandidates(resolution.candidates);
+                  setPairingHint(resolution.message);
+                  toast.error(resolution.message);
+                  return;
+                }
+                const testingEventId =
+                  resolution.status === "attach"
+                    ? resolution.testingEventId
+                    : draft.testingEventId.trim() || newTestingEventId();
                 try {
-                  await addDrugTestEvent({ ...draft, driverId }, actor);
+                  await addDrugTestEvent({ ...draft, driverId, testingEventId }, actor);
+                  clearPairingFeedback();
                   setAdding(false);
-                  toast.success("Event saved");
+                  setAddFormKey((k) => k + 1);
+                  toast.success(
+                    resolution.status === "attach" ? resolution.message : "Event saved",
+                  );
                 } catch (e) {
+                  clearPairingFeedback();
                   toast.error(e instanceof Error ? e.message : "Save failed");
                 }
               }}

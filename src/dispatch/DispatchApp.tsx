@@ -1,0 +1,2462 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  ClipboardList,
+  FileText,
+  FileWarning,
+  History,
+  LayoutDashboard,
+  LogOut,
+  MapPin,
+  PhoneCall,
+  RefreshCw,
+  Bell,
+  Truck,
+  Users,
+  UserCog,
+  Handshake,
+  Wrench,
+  Receipt,
+} from "lucide-react";
+import { LoginGate } from "@/dispatch/components/LoginGate";
+import { EmptyHint, SectionHelp, StaleBadge } from "@/dispatch/components/EmptyHint";
+import { DocsBoard, EquipmentBoard, FollowUpsBoard } from "@/dispatch/components/OpsControlsBoards";
+import { AccessorialsBoard } from "@/dispatch/components/CloseoutBoards";
+import {
+  getDispatchAccount,
+  inviteDispatchUser,
+  isDispatchPreviewMode,
+  listDispatchAccounts,
+  setDispatchAccess,
+  signOutDispatch,
+} from "@/dispatch/lib/auth";
+import {
+  addCheckCall,
+  cancelLoad,
+  closeLoad,
+  driverLoadHistory,
+  listAccessorials,
+  listCheckCalls,
+  listCommunications,
+  listExceptions,
+  listFollowUps,
+  listHandovers,
+  listIssues,
+  listLoads,
+  listRosterDrivers,
+  reopenLoad,
+  rescheduleLoad,
+  saveCommunication,
+  saveException,
+  saveHandover,
+  saveIssue,
+  saveLoad,
+  setLoadPaymentStatus,
+  upsertRosterDriver,
+} from "@/dispatch/lib/cloud";
+import {
+  buildCompleteLoadHistory,
+  paymentStatusLabel,
+  validateCloseout,
+  validateCommunication,
+  validateReopen,
+} from "@/dispatch/lib/closeout";
+import {
+  buildHandoverWatchHints,
+  dueFollowUps,
+  moveStop,
+  openEscalations,
+  removeStop,
+  validateCancel,
+  validateReschedule,
+} from "@/dispatch/lib/ops-controls";
+import {
+  exportAccessorialsCsv,
+  exportAccessorialsPdf,
+  exportHandoverPdf,
+  exportLoadHistoryPdf,
+  exportLoadsCsv,
+  exportLoadsPdf,
+} from "@/dispatch/lib/reports";
+import {
+  activeLoadsBoardColumns,
+  filterLoads,
+  homeActionBuckets,
+  isStaleUpdate,
+  statusLabel,
+} from "@/dispatch/lib/status";
+import type {
+  CommunicationKind,
+  DispatchAccount,
+  DispatchFollowUp,
+  DispatchIssue,
+  DispatchLoad,
+  DispatchView,
+  DocStatus,
+  LoadStatus,
+  LoadStop,
+  PaymentStatus,
+  RosterDriver,
+  ShiftHandover,
+} from "@/dispatch/lib/types";
+import { ACTIVE_LOAD_STATUSES, LOAD_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/dispatch/lib/types";
+
+const NAV: { id: DispatchView; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "home", label: "My Dispatch Today", icon: LayoutDashboard },
+  { id: "loads", label: "Active Loads", icon: Truck },
+  { id: "updates", label: "Driver Updates", icon: PhoneCall },
+  { id: "docs", label: "BOL / POD", icon: FileText },
+  { id: "followups", label: "Follow-Ups", icon: Bell },
+  { id: "equipment", label: "Driver / Equipment", icon: Wrench },
+  { id: "accessorials", label: "Detention / Accessorials", icon: Receipt },
+  { id: "handover", label: "Shift Handover", icon: Handshake },
+  { id: "issues", label: "Issues", icon: FileWarning },
+  { id: "roster", label: "Roster", icon: Users },
+  { id: "history", label: "Load history", icon: History },
+  { id: "reports", label: "Reports", icon: ClipboardList },
+  { id: "team", label: "Team", icon: UserCog },
+];
+
+function blankStops(): LoadStop[] {
+  return [
+    {
+      sequence: 1,
+      stop_type: "pickup",
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      planned_at: null,
+      actual_at: null,
+      notes: "",
+    },
+    {
+      sequence: 2,
+      stop_type: "delivery",
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      postal_code: "",
+      planned_at: null,
+      actual_at: null,
+      notes: "",
+    },
+  ];
+}
+
+export function DispatchApp() {
+  const [account, setAccount] = useState<DispatchAccount | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [view, setView] = useState<DispatchView>("home");
+  const [loads, setLoads] = useState<DispatchLoad[]>([]);
+  const [drivers, setDrivers] = useState<RosterDriver[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    const [nextLoads, nextDrivers] = await Promise.all([listLoads(), listRosterDrivers()]);
+    setLoads(nextLoads);
+    setDrivers(nextDrivers);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const acc = await getDispatchAccount();
+        if (cancelled) return;
+        setAccount(acc);
+        if (acc) await refresh();
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load Dispatch.");
+      } finally {
+        if (!cancelled) setBooting(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selected = useMemo(
+    () => loads.find((l) => l.id === selectedId) ?? null,
+    [loads, selectedId],
+  );
+
+  if (booting) {
+    return (
+      <div className="dispatch-theme flex min-h-[calc(100vh-44px)] items-center justify-center text-sm text-[color:var(--dispatch-muted)]">
+        Loading Dispatch…
+      </div>
+    );
+  }
+
+  if (!account) {
+    return (
+      <div className="dispatch-theme">
+        <LoginGate
+          onSignedIn={async (acc) => {
+            setAccount(acc);
+            await refresh();
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="dispatch-theme min-h-[calc(100vh-44px)]">
+      <div className="dispatch-shell mx-auto flex max-w-[1400px] gap-0 md:gap-4 md:px-4 md:py-4">
+        <aside className="dispatch-side hidden w-56 shrink-0 flex-col rounded-2xl border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-navy)] p-3 text-white md:flex">
+          <div className="px-2 pb-3 pt-1">
+            <p className="font-display text-lg font-bold leading-tight">Shaheen</p>
+            <p className="text-xs text-white/70">Dispatch Operations</p>
+          </div>
+          <nav className="flex flex-1 flex-col gap-1" aria-label="Dispatch">
+            {NAV.map((item) => {
+              if (item.id === "team" && account.role !== "admin") return null;
+              const Icon = item.icon;
+              const on =
+                view === item.id ||
+                (item.id === "loads" && view === "load") ||
+                (item.id === "updates" && view === "load");
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`dispatch-nav ${on ? "dispatch-nav-on" : ""}`}
+                  onClick={() => {
+                    setView(item.id);
+                    if (item.id !== "load") setSelectedId(null);
+                  }}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="mt-3 border-t border-white/15 px-2 pt-3 text-xs text-white/70">
+            <p className="font-medium text-white">{account.display_name}</p>
+            <p>{account.role === "admin" ? "Dispatch admin" : "Dispatcher"}</p>
+            {isDispatchPreviewMode() && <p className="mt-1 text-amber-200">Fixture mode</p>}
+            <button
+              type="button"
+              className="mt-3 inline-flex items-center gap-1 text-white/80 hover:text-white"
+              onClick={async () => {
+                await signOutDispatch();
+                setAccount(null);
+              }}
+            >
+              <LogOut className="h-3.5 w-3.5" /> Sign out
+            </button>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-3 py-3 md:px-0 md:py-0">
+          <header className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-card)] px-3 py-2.5">
+            <div>
+              <h1 className="font-display text-xl font-bold text-[color:var(--dispatch-navy)]">
+                Dispatch Operations
+              </h1>
+              <p className="text-sm text-[color:var(--dispatch-muted)]">
+                My Dispatch Today · Active Loads · Manual location &amp; check-calls only (never Live GPS)
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="dispatch-btn-ghost"
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await refresh();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                <RefreshCw className="h-4 w-4" /> Refresh
+              </button>
+              <button
+                type="button"
+                className="dispatch-btn-primary"
+                onClick={() => {
+                  setSelectedId(null);
+                  setView("load");
+                }}
+              >
+                Add Load
+              </button>
+            </div>
+          </header>
+
+          <div className="mb-3 flex gap-1 overflow-x-auto rounded-lg border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-card)] p-1 md:hidden">
+            {NAV.filter((n) => n.id !== "team" || account.role === "admin").map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`whitespace-nowrap rounded-md px-2.5 py-1.5 text-xs font-semibold ${
+                  view === item.id ||
+                  (item.id === "loads" && view === "load") ||
+                  (item.id === "updates" && view === "load")
+                    ? "bg-[color:var(--dispatch-orange)] text-white"
+                    : "text-[color:var(--dispatch-muted)]"
+                }`}
+                onClick={() => setView(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {error && (
+            <p role="alert" className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
+          {view === "home" && (
+            <HomeBoard
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+              onOpenFollowUps={() => setView("followups")}
+              onOpenIssues={() => setView("issues")}
+              onOpenDocs={() => setView("docs")}
+            />
+          )}
+          {view === "loads" && (
+            <LoadsBoard
+              loads={loads}
+              drivers={drivers}
+              onAddLoad={() => {
+                setSelectedId(null);
+                setView("load");
+              }}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "updates" && (
+            <DriverUpdatesBoard
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+              onRefresh={refresh}
+            />
+          )}
+          {view === "docs" && (
+            <DocsBoard
+              loads={loads}
+              onRefresh={refresh}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "followups" && (
+            <FollowUpsBoard
+              loads={loads}
+              onOpenLoad={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "equipment" && (
+            <EquipmentBoard
+              drivers={drivers}
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "accessorials" && (
+            <AccessorialsBoard
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "load" && (
+            <LoadEditor
+              key={selected?.id ?? "new"}
+              load={selected}
+              drivers={drivers}
+              busy={busy}
+              onCancel={() => setView("loads")}
+              onSaved={async (saved) => {
+                setBusy(true);
+                setError(null);
+                try {
+                  const next = await saveLoad(saved);
+                  await refresh();
+                  setSelectedId(next.id);
+                  setView("load");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Could not save load.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              onLoadChanged={async (next) => {
+                await refresh();
+                setSelectedId(next.id);
+              }}
+            />
+          )}
+          {view === "roster" && (
+            <RosterBoard
+              drivers={drivers}
+              onSave={async (row) => {
+                await upsertRosterDriver(row);
+                await refresh();
+              }}
+            />
+          )}
+          {view === "handover" && (
+            <HandoverBoard
+              loads={loads}
+              account={account}
+              onSaved={async () => refresh()}
+            />
+          )}
+          {view === "issues" && <IssuesBoard loads={loads} />}
+          {view === "history" && (
+            <HistoryBoard
+              loads={loads}
+              drivers={drivers}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "reports" && <ReportsBoard loads={loads} drivers={drivers} />}
+          {view === "team" && account.role === "admin" && <TeamBoard account={account} />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function HomeBoard({
+  loads,
+  onOpen,
+  onOpenFollowUps,
+  onOpenIssues,
+  onOpenDocs,
+}: {
+  loads: DispatchLoad[];
+  onOpen: (id: string) => void;
+  onOpenFollowUps: () => void;
+  onOpenIssues: () => void;
+  onOpenDocs: () => void;
+}) {
+  const buckets = homeActionBuckets(loads);
+  const [followUps, setFollowUps] = useState<DispatchFollowUp[]>([]);
+  const [issues, setIssues] = useState<DispatchIssue[]>([]);
+
+  useEffect(() => {
+    void Promise.all([listFollowUps(), listIssues()]).then(([fu, iss]) => {
+      setFollowUps(fu);
+      setIssues(iss);
+    });
+  }, [loads]);
+
+  const due = dueFollowUps(followUps);
+  const openIss = openEscalations(issues);
+  const sections = [
+    { title: "Needs update / check-call", items: buckets.needsUpdate, help: "Stale or missing manual location." },
+    { title: "Open exceptions", items: buckets.openExceptions, help: "Exceptions are separate from load status." },
+    { title: "Awaiting BOL / POD", items: buckets.awaitingDocs, help: "BOL and POD statuses are independent." },
+    { title: "In motion", items: buckets.inMotion, help: "Assigned through at-delivery." },
+  ];
+  return (
+    <div className="grid gap-3">
+      <SectionHelp>
+        My Dispatch Today prioritizes action lists over counters. Delivered ≠ Closed ≠ Paid — close only after file
+        work; payment is separate. No invented ETAs, GPS, HOS, rates, or notifications.
+      </SectionHelp>
+      <section className="dispatch-panel">
+        <h2 className="mb-2 text-base font-semibold text-[color:var(--dispatch-navy)]">
+          Awaiting closeout ({buckets.awaitingCloseout.length})
+        </h2>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Delivered loads still open for file close. Closing does not mark Paid.
+        </p>
+        {!buckets.awaitingCloseout.length ? (
+          <EmptyHint>No delivered loads awaiting closeout.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {buckets.awaitingCloseout.slice(0, 8).map((load) => (
+              <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <p className="font-semibold">
+                    {load.load_number} · {statusLabel(load.status)}
+                  </p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    Payment: {paymentStatusLabel(load.payment_status)} · POD {load.pod_status}
+                  </p>
+                </div>
+                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                  Update Load
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="dispatch-panel">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Follow-ups due</h2>
+          <button type="button" className="dispatch-btn-ghost" onClick={onOpenFollowUps}>
+            Open Follow-Ups
+          </button>
+        </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Desk reminders only — not push/email. {due.length} due.
+        </p>
+        {!due.length ? (
+          <EmptyHint>No follow-ups due.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {due.slice(0, 8).map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <p className="font-semibold">{f.title}</p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    Due {new Date(f.due_at).toLocaleString()}
+                  </p>
+                </div>
+                {f.load_id && (
+                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(f.load_id!)}>
+                    Update Load
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="dispatch-panel">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Open issues & escalations</h2>
+          <div className="flex gap-2">
+            <button type="button" className="dispatch-btn-ghost" onClick={onOpenDocs}>
+              BOL / POD
+            </button>
+            <button type="button" className="dispatch-btn-ghost" onClick={onOpenIssues}>
+              Issues
+            </button>
+          </div>
+        </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Senior Informed is a manual record only. {openIss.length} open.
+        </p>
+        {!openIss.length ? (
+          <EmptyHint>No open issues.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {openIss.slice(0, 8).map((issue) => (
+              <li key={issue.id} className="py-2 text-sm">
+                <p className="font-semibold">{issue.title}</p>
+                <p className="text-xs text-[color:var(--dispatch-muted)]">
+                  {issue.status} · {issue.escalation_level}
+                  {issue.senior_informed ? " · Senior Informed (manual)" : " · Senior Informed: not recorded"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      {sections.map((section) => (
+        <section key={section.title} className="dispatch-panel">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">{section.title}</h2>
+            <span className="text-xs text-[color:var(--dispatch-muted)]">{section.items.length}</span>
+          </div>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">{section.help}</p>
+          {!section.items.length ? (
+            <EmptyHint>Nothing in this list.</EmptyHint>
+          ) : (
+            <ul className="divide-y divide-[color:var(--dispatch-border)]">
+              {section.items.map((load) => (
+                <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {load.load_number}{" "}
+                      <span className="font-normal text-[color:var(--dispatch-muted)]">
+                        · {statusLabel(load.status)}
+                      </span>
+                    </p>
+                    <p className="text-xs text-[color:var(--dispatch-muted)]">
+                      {load.assigned_driver_name || "Unassigned"} · {load.last_manual_location || "No manual location"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isStaleUpdate(load) && <StaleBadge />}
+                    <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                      Update Load
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function LoadsBoard({
+  loads,
+  drivers,
+  onOpen,
+  onAddLoad,
+}: {
+  loads: DispatchLoad[];
+  drivers: RosterDriver[];
+  onOpen: (id: string) => void;
+  onAddLoad: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<LoadStatus | "all" | "active">("active");
+  const [driverId, setDriverId] = useState<string | "all">("all");
+  const [exceptionOnly, setExceptionOnly] = useState(false);
+  const [layout, setLayout] = useState<"table" | "board">("table");
+  const filtered = filterLoads(loads, { q, status, driverId, exceptionOnly });
+  const boardColumns = activeLoadsBoardColumns(
+    filterLoads(loads, { q, status: "active", driverId, exceptionOnly }),
+  );
+
+  return (
+    <section className="dispatch-panel">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <SectionHelp>
+          Active Loads — table or desk board. Cloud-backed when SQL is applied; never invents milestones, locations, or
+          ETAs.
+        </SectionHelp>
+        <div className="flex flex-wrap gap-2">
+          <div className="inline-flex rounded-md border border-[color:var(--dispatch-border)] p-0.5">
+            <button
+              type="button"
+              className={`rounded px-2.5 py-1 text-xs font-semibold ${
+                layout === "table" ? "bg-[color:var(--dispatch-orange)] text-white" : "text-[color:var(--dispatch-muted)]"
+              }`}
+              onClick={() => setLayout("table")}
+            >
+              Table
+            </button>
+            <button
+              type="button"
+              className={`rounded px-2.5 py-1 text-xs font-semibold ${
+                layout === "board" ? "bg-[color:var(--dispatch-orange)] text-white" : "text-[color:var(--dispatch-muted)]"
+              }`}
+              onClick={() => setLayout("board")}
+            >
+              Board
+            </button>
+          </div>
+          <button type="button" className="dispatch-btn-primary" onClick={onAddLoad}>
+            Add Load
+          </button>
+        </div>
+      </div>
+      <div className="mb-3 grid gap-2 sm:grid-cols-4">
+        <input
+          className="dispatch-field sm:col-span-2"
+          placeholder="Search load, customer, driver, location…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select className="dispatch-field" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+          <option value="active">Active</option>
+          <option value="all">All statuses</option>
+          {Object.entries(LOAD_STATUS_LABELS).map(([k, label]) => (
+            <option key={k} value={k}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="dispatch-field"
+          value={driverId}
+          onChange={(e) => setDriverId(e.target.value as typeof driverId)}
+        >
+          <option value="all">All drivers</option>
+          {drivers.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.display_name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <label className="mb-3 inline-flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={exceptionOnly} onChange={(e) => setExceptionOnly(e.target.checked)} />
+        Exceptions only
+      </label>
+      {layout === "board" ? (
+        <div className="dispatch-load-board flex gap-3 overflow-x-auto pb-2">
+          {boardColumns.map((col) => (
+            <div
+              key={col.status}
+              className="w-56 shrink-0 rounded-lg border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-soft)] p-2"
+            >
+              <div className="mb-2 flex items-baseline justify-between gap-2 px-1">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[color:var(--dispatch-navy)]">
+                  {col.label}
+                </h3>
+                <span className="text-[10px] text-[color:var(--dispatch-muted)]">{col.items.length}</span>
+              </div>
+              <ul className="grid gap-2">
+                {col.items.map((load) => (
+                  <li
+                    key={load.id}
+                    className="rounded-md border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-card)] p-2"
+                  >
+                    <p className="text-sm font-semibold">{load.load_number}</p>
+                    <p className="text-xs text-[color:var(--dispatch-muted)]">
+                      {load.assigned_driver_name || "Unassigned"}
+                    </p>
+                    <p className="mt-1 flex items-start gap-1 text-[11px] text-[color:var(--dispatch-muted)]">
+                      <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                      {load.last_manual_location || "No manual location"}
+                    </p>
+                    {isStaleUpdate(load) && (
+                      <div className="mt-1">
+                        <StaleBadge />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="dispatch-btn-primary mt-2 w-full"
+                      onClick={() => onOpen(load.id)}
+                    >
+                      Update Load
+                    </button>
+                  </li>
+                ))}
+                {!col.items.length && <EmptyHint>Empty</EmptyHint>}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : !filtered.length ? (
+        <EmptyHint>No loads match.</EmptyHint>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="dispatch-table">
+            <thead>
+              <tr>
+                <th>Load</th>
+                <th>Status</th>
+                <th>Driver</th>
+                <th>BOL / POD</th>
+                <th>Manual location</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((load) => (
+                <tr key={load.id}>
+                  <td>
+                    <div className="font-semibold">{load.load_number}</div>
+                    <div className="text-xs text-[color:var(--dispatch-muted)]">{load.customer_name}</div>
+                  </td>
+                  <td>
+                    {statusLabel(load.status)}
+                    {load.exception_open && (
+                      <div className="text-xs font-semibold text-amber-800">Exception open</div>
+                    )}
+                    {isStaleUpdate(load) && (
+                      <div className="mt-1">
+                        <StaleBadge />
+                      </div>
+                    )}
+                  </td>
+                  <td>{load.assigned_driver_name || "—"}</td>
+                  <td className="text-xs">
+                    BOL {load.bol_status}
+                    <br />
+                    POD {load.pod_status}
+                  </td>
+                  <td className="text-xs">{load.last_manual_location || "—"}</td>
+                  <td>
+                    <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                      Update Load
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function DriverUpdatesBoard({
+  loads,
+  onOpen,
+  onRefresh,
+}: {
+  loads: DispatchLoad[];
+  onOpen: (id: string) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const active = loads.filter((l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered");
+  const [drafts, setDrafts] = useState<Record<string, { location: string; notes: string }>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function draftFor(id: string) {
+    return drafts[id] ?? { location: "", notes: "" };
+  }
+
+  return (
+    <section className="dispatch-panel grid gap-3">
+      <SectionHelp>
+        Driver Updates are manual-first: enter location and check-call notes from the desk phone. Never labeled Live
+        GPS. No invented milestones or ETAs.
+      </SectionHelp>
+      {error && (
+        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {!active.length ? (
+        <EmptyHint>No active loads for updates.</EmptyHint>
+      ) : (
+        <ul className="grid gap-3">
+          {active.map((load) => {
+            const draft = draftFor(load.id);
+            return (
+              <li
+                key={load.id}
+                className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <p className="text-sm font-semibold">
+                    {load.load_number}{" "}
+                    <span className="font-normal text-[color:var(--dispatch-muted)]">
+                      · {statusLabel(load.status)} · {load.assigned_driver_name || "Unassigned"}
+                    </span>
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-[color:var(--dispatch-muted)]">
+                    <MapPin className="h-3.5 w-3.5" />
+                    Last manual: {load.last_manual_location || "—"}
+                    {load.last_manual_location_at
+                      ? ` · ${new Date(load.last_manual_location_at).toLocaleString()}`
+                      : ""}
+                  </p>
+                  {isStaleUpdate(load) && (
+                    <div className="mt-1">
+                      <StaleBadge />
+                    </div>
+                  )}
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-xs">
+                      Manual location
+                      <input
+                        className="dispatch-field"
+                        value={draft.location}
+                        onChange={(e) =>
+                          setDrafts((d) => ({
+                            ...d,
+                            [load.id]: { ...draftFor(load.id), location: e.target.value },
+                          }))
+                        }
+                        placeholder="City, mile marker, yard…"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-xs">
+                      Check-call notes
+                      <input
+                        className="dispatch-field"
+                        value={draft.notes}
+                        onChange={(e) =>
+                          setDrafts((d) => ({
+                            ...d,
+                            [load.id]: { ...draftFor(load.id), notes: e.target.value },
+                          }))
+                        }
+                        placeholder="What the driver reported"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 sm:items-end">
+                  <button
+                    type="button"
+                    className="dispatch-btn-primary"
+                    disabled={busyId === load.id || (!draft.location.trim() && !draft.notes.trim())}
+                    onClick={async () => {
+                      setBusyId(load.id);
+                      setError(null);
+                      try {
+                        const location = draft.location.trim();
+                        const notes = draft.notes.trim() || "Manual check-call";
+                        await addCheckCall({
+                          load_id: load.id,
+                          notes,
+                          manual_location: location || null,
+                        });
+                        if (location) {
+                          await saveLoad({
+                            id: load.id,
+                            load_number: load.load_number,
+                            status: load.status,
+                            last_manual_location: location,
+                            last_manual_location_at: new Date().toISOString(),
+                            assigned_driver_id: load.assigned_driver_id,
+                            assigned_driver_name: load.assigned_driver_name,
+                          });
+                        }
+                        setDrafts((d) => {
+                          const next = { ...d };
+                          delete next[load.id];
+                          return next;
+                        });
+                        await onRefresh();
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Could not save driver update.");
+                      } finally {
+                        setBusyId(null);
+                      }
+                    }}
+                  >
+                    <PhoneCall className="h-4 w-4" /> Save check-call
+                  </button>
+                  <button type="button" className="dispatch-btn-ghost" onClick={() => onOpen(load.id)}>
+                    Open load
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function LoadEditor({
+  load,
+  drivers,
+  busy,
+  onSaved,
+  onCancel,
+  onLoadChanged,
+}: {
+  load: DispatchLoad | null;
+  drivers: RosterDriver[];
+  busy: boolean;
+  onSaved: (input: Parameters<typeof saveLoad>[0]) => Promise<void>;
+  onCancel: () => void;
+  onLoadChanged: (load: DispatchLoad) => Promise<void>;
+}) {
+  const [form, setForm] = useState(() => ({
+    id: load?.id,
+    load_number: load?.load_number ?? "",
+    customer_name: load?.customer_name ?? "",
+    commodity: load?.commodity ?? "",
+    equipment: load?.equipment ?? "",
+    notes: load?.notes ?? "",
+    status: (load?.status ?? "planned") as LoadStatus,
+    exception_open: load?.exception_open ?? false,
+    bol_status: (load?.bol_status ?? "missing") as DocStatus,
+    pod_status: (load?.pod_status ?? "missing") as DocStatus,
+    assigned_driver_id: load?.assigned_driver_id ?? "",
+    external_ref_label: load?.external_ref_label ?? "",
+    external_ref_url: load?.external_ref_url ?? "",
+    planned_pickup_at: load?.planned_pickup_at?.slice(0, 16) ?? "",
+    actual_pickup_at: load?.actual_pickup_at?.slice(0, 16) ?? "",
+    planned_delivery_at: load?.planned_delivery_at?.slice(0, 16) ?? "",
+    actual_delivery_at: load?.actual_delivery_at?.slice(0, 16) ?? "",
+    last_manual_location: load?.last_manual_location ?? "",
+    cancel_reason: load?.cancel_reason ?? "",
+    reschedule_note: load?.reschedule_note ?? "",
+    closeout_note: load?.closeout_note ?? "",
+    reopen_reason: load?.reopen_reason ?? "",
+    payment_status: (load?.payment_status ?? "unpaid") as PaymentStatus,
+    stale_after_minutes: load?.stale_after_minutes ?? 180,
+    stops: load?.stops?.length ? structuredClone(load.stops) : blankStops(),
+  }));
+  const [checkNotes, setCheckNotes] = useState("");
+  const [checkLocation, setCheckLocation] = useState("");
+  const [calls, setCalls] = useState<Awaited<ReturnType<typeof listCheckCalls>>>([]);
+  const [excKind, setExcKind] = useState("Delay");
+  const [excNotes, setExcNotes] = useState("");
+  const [opsError, setOpsError] = useState<string | null>(null);
+  const [opsBusy, setOpsBusy] = useState(false);
+  const [commKind, setCommKind] = useState<CommunicationKind>("note");
+  const [commSummary, setCommSummary] = useState("");
+  const [commDetail, setCommDetail] = useState("");
+  const [commDecision, setCommDecision] = useState("");
+  const [comms, setComms] = useState<Awaited<ReturnType<typeof listCommunications>>>([]);
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
+
+  useEffect(() => {
+    if (!load?.id) return;
+    void Promise.all([
+      listCheckCalls(load.id),
+      listCommunications(load.id),
+      listAccessorials(load.id),
+    ]).then(([c, com, acc]) => {
+      setCalls(c);
+      setComms(com);
+      setAccessorials(acc);
+    });
+  }, [load?.id]);
+
+  function setStop(i: number, patch: Partial<LoadStop>) {
+    setForm((f) => {
+      const stops = [...f.stops];
+      stops[i] = { ...stops[i], ...patch };
+      return { ...f, stops };
+    });
+  }
+
+  return (
+    <section className="dispatch-panel grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
+          {load ? `Update Load ${load.load_number}` : "Add Load"}
+        </h2>
+        <button type="button" className="dispatch-btn-ghost" onClick={onCancel}>
+          Back to loads
+        </button>
+      </div>
+      <SectionHelp>
+        Keep planned vs actual timestamps. Manual location is dispatcher-entered — never labeled Live GPS. External load
+        apps are reference links only.
+      </SectionHelp>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-sm">
+          Load number
+          <input
+            className="dispatch-field"
+            value={form.load_number}
+            onChange={(e) => setForm({ ...form, load_number: e.target.value })}
+            required
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Status
+          <select
+            className="dispatch-field"
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value as LoadStatus })}
+          >
+            {Object.entries(LOAD_STATUS_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          Customer
+          <input
+            className="dispatch-field"
+            value={form.customer_name}
+            onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Assign roster driver
+          <select
+            className="dispatch-field"
+            value={form.assigned_driver_id}
+            onChange={(e) => setForm({ ...form, assigned_driver_id: e.target.value })}
+          >
+            <option value="">Unassigned</option>
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.display_name}
+                {d.unit_number ? ` · #${d.unit_number}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          Commodity
+          <input
+            className="dispatch-field"
+            value={form.commodity}
+            onChange={(e) => setForm({ ...form, commodity: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Equipment
+          <input
+            className="dispatch-field"
+            value={form.equipment}
+            onChange={(e) => setForm({ ...form, equipment: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          BOL status
+          <select
+            className="dispatch-field"
+            value={form.bol_status}
+            onChange={(e) => setForm({ ...form, bol_status: e.target.value as DocStatus })}
+          >
+            {["missing", "pending", "received", "verified", "exception"].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          POD status
+          <select
+            className="dispatch-field"
+            value={form.pod_status}
+            onChange={(e) => setForm({ ...form, pod_status: e.target.value as DocStatus })}
+          >
+            {["missing", "pending", "received", "verified", "exception"].map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm">
+          Planned pickup
+          <input
+            className="dispatch-field"
+            type="datetime-local"
+            value={form.planned_pickup_at}
+            onChange={(e) => setForm({ ...form, planned_pickup_at: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Actual pickup
+          <input
+            className="dispatch-field"
+            type="datetime-local"
+            value={form.actual_pickup_at}
+            onChange={(e) => setForm({ ...form, actual_pickup_at: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Planned delivery
+          <input
+            className="dispatch-field"
+            type="datetime-local"
+            value={form.planned_delivery_at}
+            onChange={(e) => setForm({ ...form, planned_delivery_at: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          Actual delivery
+          <input
+            className="dispatch-field"
+            type="datetime-local"
+            value={form.actual_delivery_at}
+            onChange={(e) => setForm({ ...form, actual_delivery_at: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm sm:col-span-2">
+          Manual location (never Live GPS)
+          <input
+            className="dispatch-field"
+            value={form.last_manual_location}
+            onChange={(e) => setForm({ ...form, last_manual_location: e.target.value })}
+            placeholder="City, highway mile marker, yard…"
+          />
+        </label>
+        <label className="grid gap-1 text-sm sm:col-span-2">
+          Notes
+          <textarea
+            className="dispatch-field min-h-20"
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          External ref label
+          <input
+            className="dispatch-field"
+            value={form.external_ref_label}
+            onChange={(e) => setForm({ ...form, external_ref_label: e.target.value })}
+            placeholder="TMS / load-app reference"
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          External ref URL
+          <input
+            className="dispatch-field"
+            value={form.external_ref_url}
+            onChange={(e) => setForm({ ...form, external_ref_url: e.target.value })}
+            placeholder="https://…"
+          />
+        </label>
+        <label className="inline-flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={form.exception_open}
+            onChange={(e) => setForm({ ...form, exception_open: e.target.checked })}
+          />
+          Exception open (separate from status — Delivered ≠ Closed)
+        </label>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Multi-stop</h3>
+          <button
+            type="button"
+            className="dispatch-btn-ghost"
+            onClick={() =>
+              setForm((f) => ({
+                ...f,
+                stops: [
+                  ...f.stops,
+                  {
+                    sequence: f.stops.length + 1,
+                    stop_type: "other",
+                    name: "",
+                    address: "",
+                    city: "",
+                    state: "",
+                    postal_code: "",
+                    planned_at: null,
+                    actual_at: null,
+                    notes: "",
+                  },
+                ],
+              }))
+            }
+          >
+            Add stop
+          </button>
+        </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Reorder or remove stops as needed. Planned times are desk-entered — no invented ETAs.
+        </p>
+        <div className="grid gap-3">
+          {form.stops.map((stop, i) => (
+            <div key={i} className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-3">
+              <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
+                <span className="text-xs font-semibold text-[color:var(--dispatch-navy)]">Stop {stop.sequence}</span>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={i === 0}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, -1) }))}
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={i >= form.stops.length - 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, 1) }))}
+                >
+                  Down
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={form.stops.length <= 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: removeStop(f.stops, i) }))}
+                >
+                  Remove
+                </button>
+              </div>
+              <label className="grid gap-1 text-xs">
+                Type
+                <select
+                  className="dispatch-field"
+                  value={stop.stop_type}
+                  onChange={(e) => setStop(i, { stop_type: e.target.value as LoadStop["stop_type"] })}
+                >
+                  <option value="pickup">Pickup</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Name
+                <input className="dispatch-field" value={stop.name} onChange={(e) => setStop(i, { name: e.target.value })} />
+              </label>
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Address
+                <input
+                  className="dispatch-field"
+                  value={stop.address}
+                  onChange={(e) => setStop(i, { address: e.target.value })}
+                />
+              </label>
+              <label className="grid gap-1 text-xs">
+                City / ST / ZIP
+                <div className="flex gap-1">
+                  <input
+                    className="dispatch-field"
+                    value={stop.city}
+                    onChange={(e) => setStop(i, { city: e.target.value })}
+                    placeholder="City"
+                  />
+                  <input
+                    className="dispatch-field w-14"
+                    value={stop.state}
+                    onChange={(e) => setStop(i, { state: e.target.value })}
+                    placeholder="ST"
+                  />
+                  <input
+                    className="dispatch-field w-20"
+                    value={stop.postal_code}
+                    onChange={(e) => setStop(i, { postal_code: e.target.value })}
+                    placeholder="ZIP"
+                  />
+                </div>
+              </label>
+              <label className="grid gap-1 text-xs">
+                Planned
+                <input
+                  className="dispatch-field"
+                  type="datetime-local"
+                  value={stop.planned_at?.slice(0, 16) ?? ""}
+                  onChange={(e) => setStop(i, { planned_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                />
+              </label>
+              <label className="grid gap-1 text-xs">
+                Actual
+                <input
+                  className="dispatch-field"
+                  type="datetime-local"
+                  value={stop.actual_at?.slice(0, 16) ?? ""}
+                  onChange={(e) => setStop(i, { actual_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {load?.id && (
+        <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+          <h3 className="mb-2 text-sm font-semibold">Cancel / Reschedule</h3>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+            Cancel requires a manual reason. Reschedule updates planned times with a desk note — never invents ETAs.
+          </p>
+          {opsError && (
+            <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {opsError}
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Cancel reason
+              <input
+                className="dispatch-field"
+                value={form.cancel_reason}
+                onChange={(e) => setForm({ ...form, cancel_reason: e.target.value })}
+                placeholder="Required to cancel"
+              />
+            </label>
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Reschedule note
+              <input
+                className="dispatch-field"
+                value={form.reschedule_note}
+                onChange={(e) => setForm({ ...form, reschedule_note: e.target.value })}
+                placeholder="Why planned times changed"
+              />
+            </label>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy || load.status === "cancelled" || load.status === "closed"}
+              onClick={async () => {
+                const err = validateCancel(form.cancel_reason);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await cancelLoad(load, form.cancel_reason);
+                  setForm((f) => ({ ...f, status: "cancelled", cancel_reason: next.cancel_reason ?? f.cancel_reason }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Cancel failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Cancel load
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-primary"
+              disabled={opsBusy}
+              onClick={async () => {
+                const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
+                const pickup = toIso(form.planned_pickup_at);
+                const delivery = toIso(form.planned_delivery_at);
+                const err = validateReschedule(form.reschedule_note, pickup, delivery);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await rescheduleLoad(load, {
+                    note: form.reschedule_note,
+                    planned_pickup_at: pickup,
+                    planned_delivery_at: delivery,
+                    stops: form.stops.map((s, idx) => ({ ...s, sequence: idx + 1 })),
+                  });
+                  setForm((f) => ({
+                    ...f,
+                    reschedule_note: next.reschedule_note ?? f.reschedule_note,
+                    status: next.status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Reschedule failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Save reschedule
+            </button>
+          </div>
+        </div>
+      )}
+
+      {load?.id && (
+        <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+          <h3 className="mb-2 text-sm font-semibold">Closeout / Reopen / Payment</h3>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+            Delivered ≠ Closed ≠ Paid. Closing never marks paid; paying never closes. Reopen returns closed →
+            delivered.
+          </p>
+          {opsError && (
+            <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {opsError}
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Closeout note
+              <input
+                className="dispatch-field"
+                value={form.closeout_note}
+                onChange={(e) => setForm({ ...form, closeout_note: e.target.value })}
+                placeholder="Required to close"
+              />
+            </label>
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Reopen reason
+              <input
+                className="dispatch-field"
+                value={form.reopen_reason}
+                onChange={(e) => setForm({ ...form, reopen_reason: e.target.value })}
+                placeholder="Required to reopen closed → delivered"
+              />
+            </label>
+            <label className="grid gap-1 text-xs">
+              Payment status (independent)
+              <select
+                className="dispatch-field"
+                value={form.payment_status}
+                onChange={(e) => setForm({ ...form, payment_status: e.target.value as PaymentStatus })}
+              >
+                {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {PAYMENT_STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="dispatch-btn-primary"
+              disabled={opsBusy || load.status !== "delivered"}
+              onClick={async () => {
+                const err = validateCloseout(form.closeout_note);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await closeLoad(load, form.closeout_note);
+                  setForm((f) => ({
+                    ...f,
+                    status: "closed",
+                    closeout_note: next.closeout_note ?? f.closeout_note,
+                    payment_status: next.payment_status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Closeout failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Close load
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy || load.status !== "closed"}
+              onClick={async () => {
+                const err = validateReopen(form.reopen_reason);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await reopenLoad(load, form.reopen_reason);
+                  setForm((f) => ({
+                    ...f,
+                    status: "delivered",
+                    reopen_reason: next.reopen_reason ?? f.reopen_reason,
+                    payment_status: next.payment_status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Reopen failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Reopen to delivered
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy}
+              onClick={async () => {
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await setLoadPaymentStatus(load, form.payment_status);
+                  setForm((f) => ({ ...f, payment_status: next.payment_status, status: next.status }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Payment update failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Save payment status
+            </button>
+          </div>
+        </div>
+      )}
+
+      {load?.id && (
+        <>
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Communication &amp; decisions</h3>
+            <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+              Desk log only — never sends email, SMS, or push.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs">
+                Kind
+                <select
+                  className="dispatch-field"
+                  value={commKind}
+                  onChange={(e) => setCommKind(e.target.value as CommunicationKind)}
+                >
+                  <option value="call">Call</option>
+                  <option value="email_note">Email note (manual)</option>
+                  <option value="decision">Decision</option>
+                  <option value="note">Note</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Summary
+                <input
+                  className="dispatch-field"
+                  value={commSummary}
+                  onChange={(e) => setCommSummary(e.target.value)}
+                />
+              </label>
+              {commKind === "decision" && (
+                <label className="grid gap-1 text-xs sm:col-span-2">
+                  Decided action
+                  <input
+                    className="dispatch-field"
+                    value={commDecision}
+                    onChange={(e) => setCommDecision(e.target.value)}
+                  />
+                </label>
+              )}
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Detail
+                <input className="dispatch-field" value={commDetail} onChange={(e) => setCommDetail(e.target.value)} />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="dispatch-btn-primary mt-2"
+              disabled={opsBusy}
+              onClick={async () => {
+                const err = validateCommunication({
+                  kind: commKind,
+                  summary: commSummary,
+                  decided_action: commDecision,
+                });
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  await saveCommunication({
+                    load_id: load.id,
+                    kind: commKind,
+                    summary: commSummary,
+                    detail: commDetail || null,
+                    decided_action: commKind === "decision" ? commDecision : null,
+                  });
+                  setCommSummary("");
+                  setCommDetail("");
+                  setCommDecision("");
+                  setComms(await listCommunications(load.id));
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Could not save communication.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Log communication
+            </button>
+            <ul className="mt-3 space-y-2 text-sm">
+              {comms.map((c) => (
+                <li key={c.id} className="rounded-md bg-[color:var(--dispatch-soft)] px-2 py-1.5">
+                  <span className="font-medium">
+                    {c.kind} · {new Date(c.created_at).toLocaleString()}
+                  </span>
+                  {" — "}
+                  {c.summary}
+                  {c.decided_action ? ` · Decision: ${c.decided_action}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Detention / accessorials on this load</h3>
+            <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+              {accessorials.length} claim(s). Use Detention / Accessorials board for full edit — no auto HR expense.
+            </p>
+            {!accessorials.length ? (
+              <EmptyHint>No accessorials on this load.</EmptyHint>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {accessorials.map((a) => (
+                  <li key={a.id}>
+                    {a.kind} · {a.status} · {a.description}
+                    {a.amount_manual == null ? " · amount Needs Policy" : ` · ${a.currency} ${a.amount_manual}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Check-call</h3>
+            <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+              Manual check-call log. Location fields are never Live GPS.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="dispatch-field"
+                placeholder="Manual location"
+                value={checkLocation}
+                onChange={(e) => setCheckLocation(e.target.value)}
+              />
+              <input
+                className="dispatch-field"
+                placeholder="Notes"
+                value={checkNotes}
+                onChange={(e) => setCheckNotes(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="dispatch-btn-primary mt-2"
+              onClick={async () => {
+                if (!checkNotes.trim()) return;
+                await addCheckCall({
+                  load_id: load.id,
+                  notes: checkNotes.trim(),
+                  manual_location: checkLocation.trim() || null,
+                });
+                setCheckNotes("");
+                setCheckLocation("");
+                setCalls(await listCheckCalls(load.id));
+                if (checkLocation.trim()) {
+                  setForm((f) => ({ ...f, last_manual_location: checkLocation.trim() }));
+                }
+              }}
+            >
+              Log check-call
+            </button>
+            <ul className="mt-3 space-y-2 text-sm">
+              {calls.map((c) => (
+                <li key={c.id} className="rounded-md bg-[color:var(--dispatch-soft)] px-2 py-1.5">
+                  <span className="font-medium">{new Date(c.called_at).toLocaleString()}</span>
+                  {c.manual_location ? ` · ${c.manual_location}` : ""} — {c.notes}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Open exception</h3>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input className="dispatch-field" value={excKind} onChange={(e) => setExcKind(e.target.value)} />
+              <input className="dispatch-field" value={excNotes} onChange={(e) => setExcNotes(e.target.value)} placeholder="Notes" />
+            </div>
+            <button
+              type="button"
+              className="dispatch-btn-ghost mt-2"
+              onClick={async () => {
+                await saveException({ load_id: load.id, kind: excKind, notes: excNotes, severity: "medium" });
+                setForm((f) => ({ ...f, exception_open: true }));
+              }}
+            >
+              Record exception
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          disabled={busy || !form.load_number.trim()}
+          onClick={async () => {
+            const driver = drivers.find((d) => d.id === form.assigned_driver_id);
+            const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
+            await onSaved({
+              ...(form.id ? { id: form.id } : {}),
+              load_number: form.load_number.trim(),
+              customer_name: form.customer_name || null,
+              commodity: form.commodity || null,
+              equipment: form.equipment || null,
+              notes: form.notes || null,
+              status: form.status,
+              exception_open: form.exception_open,
+              bol_status: form.bol_status,
+              pod_status: form.pod_status,
+              assigned_driver_id: form.assigned_driver_id || null,
+              assigned_driver_name: driver?.display_name ?? null,
+              external_ref_label: form.external_ref_label || null,
+              external_ref_url: form.external_ref_url || null,
+              planned_pickup_at: toIso(form.planned_pickup_at),
+              actual_pickup_at: toIso(form.actual_pickup_at),
+              planned_delivery_at: toIso(form.planned_delivery_at),
+              actual_delivery_at: toIso(form.actual_delivery_at),
+              last_manual_location: form.last_manual_location || null,
+              last_manual_location_at: form.last_manual_location
+                ? load?.last_manual_location_at ?? new Date().toISOString()
+                : null,
+              cancel_reason: form.cancel_reason || null,
+              reschedule_note: form.reschedule_note || null,
+              closeout_note: form.closeout_note || null,
+              reopen_reason: form.reopen_reason || null,
+              payment_status: form.payment_status,
+              closed_at: load?.closed_at ?? null,
+              reopened_at: load?.reopened_at ?? null,
+              stale_after_minutes: form.stale_after_minutes,
+              stops: form.stops.map((s, i) => ({ ...s, sequence: i + 1 })),
+            });
+          }}
+        >
+          {busy ? "Saving…" : "Save load"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function RosterBoard({
+  drivers,
+  onSave,
+}: {
+  drivers: RosterDriver[];
+  onSave: (row: Partial<RosterDriver> & { display_name: string }) => Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [unit, setUnit] = useState("");
+  return (
+    <section className="dispatch-panel">
+      <SectionHelp>
+        Dispatch-owned roster only. This does <strong>not</strong> read Driver Compliance profiles, drug tests, rate
+        cards, or banking. Cross-module driver picker requires a separate approved integration.
+      </SectionHelp>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <input className="dispatch-field" placeholder="Driver name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="dispatch-field w-28" placeholder="Unit #" value={unit} onChange={(e) => setUnit(e.target.value)} />
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          onClick={async () => {
+            if (!name.trim()) return;
+            await onSave({ display_name: name.trim(), unit_number: unit.trim() || null });
+            setName("");
+            setUnit("");
+          }}
+        >
+          Add roster driver
+        </button>
+      </div>
+      {!drivers.length ? (
+        <EmptyHint>No roster drivers yet.</EmptyHint>
+      ) : (
+        <ul className="divide-y divide-[color:var(--dispatch-border)]">
+          {drivers.map((d) => (
+            <li key={d.id} className="flex justify-between py-2 text-sm">
+              <span className="font-medium">
+                {d.display_name}
+                {d.unit_number ? ` · #${d.unit_number}` : ""}
+              </span>
+              <span className="text-[color:var(--dispatch-muted)]">{d.notes || "Active"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function HandoverBoard({
+  loads,
+  account,
+  onSaved,
+}: {
+  loads: DispatchLoad[];
+  account: DispatchAccount;
+  onSaved: () => Promise<void>;
+}) {
+  const openLoads = loads.filter((l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered");
+  const [rows, setRows] = useState<ShiftHandover[]>([]);
+  const [summary, setSummary] = useState("");
+  const [watch, setWatch] = useState("");
+  const [priorities, setPriorities] = useState("");
+  const [toDispatcher, setToDispatcher] = useState("");
+  const [hintsReady, setHintsReady] = useState(false);
+
+  useEffect(() => {
+    void listHandovers().then(setRows);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [issues, followUps] = await Promise.all([listIssues(), listFollowUps()]);
+      if (cancelled) return;
+      const hints = buildHandoverWatchHints({ loads, issues, followUps });
+      if (hints && !hintsReady) {
+        setWatch((prev) => (prev.trim() ? prev : hints));
+        setHintsReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loads, hintsReady]);
+
+  return (
+    <section className="dispatch-panel grid gap-3">
+      <SectionHelp>
+        Morning continuity: capture open loads, watch items, and next-day priorities before the desk turns over.
+        Watch hints pull BOL/POD awaiting, open issues, due follow-ups, and cancellations — never invents ETAs or
+        GPS.
+      </SectionHelp>
+      <label className="grid gap-1 text-sm">
+        Summary
+        <textarea className="dispatch-field min-h-24" value={summary} onChange={(e) => setSummary(e.target.value)} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Watch items
+        <textarea className="dispatch-field min-h-20" value={watch} onChange={(e) => setWatch(e.target.value)} />
+      </label>
+      <label className="grid gap-1 text-sm">
+        Next-day priorities
+        <textarea
+          className="dispatch-field min-h-20"
+          value={priorities}
+          onChange={(e) => setPriorities(e.target.value)}
+        />
+      </label>
+      <label className="grid gap-1 text-sm">
+        To dispatcher
+        <input className="dispatch-field" value={toDispatcher} onChange={(e) => setToDispatcher(e.target.value)} />
+      </label>
+      <p className="text-xs text-[color:var(--dispatch-muted)]">
+        Open loads included: {openLoads.map((l) => l.load_number).join(", ") || "none"}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          onClick={async () => {
+            const saved = await saveHandover({
+              shift_date: new Date().toISOString().slice(0, 10),
+              from_dispatcher: account.display_name,
+              to_dispatcher: toDispatcher || null,
+              summary,
+              watch_items: watch,
+              next_day_priorities: priorities,
+              open_load_ids: openLoads.map((l) => l.id),
+            });
+            setRows(await listHandovers());
+            await onSaved();
+            exportHandoverPdf(saved, loads);
+          }}
+        >
+          Save handover + PDF
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {rows.map((h) => (
+          <li key={h.id} className="rounded-lg bg-[color:var(--dispatch-soft)] px-3 py-2 text-sm">
+            <p className="font-semibold">
+              {h.shift_date} · {h.from_dispatcher} → {h.to_dispatcher || "—"}
+            </p>
+            <p className="text-[color:var(--dispatch-muted)]">{h.summary}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
+  const [issues, setIssues] = useState<Awaited<ReturnType<typeof listIssues>>>([]);
+  const [exceptions, setExceptions] = useState<Awaited<ReturnType<typeof listExceptions>>>([]);
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [loadId, setLoadId] = useState("");
+  const [level, setLevel] = useState<DispatchIssue["escalation_level"]>("ops");
+  const [seniorNote, setSeniorNote] = useState("");
+
+  async function reload() {
+    setIssues(await listIssues());
+    setExceptions(await listExceptions());
+  }
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  return (
+    <div className="grid gap-3">
+      <section className="dispatch-panel">
+        <h2 className="mb-2 text-base font-semibold">Issues & escalations</h2>
+        <SectionHelp>
+          Escalate desk problems without changing load status by itself.{" "}
+          <strong>Senior Informed</strong> is a manual checkbox/note only — it never sends notifications.
+        </SectionHelp>
+        <div className="mb-3 grid gap-2 sm:grid-cols-2">
+          <input className="dispatch-field" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+            <option value="">No load link</option>
+            {loads.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.load_number}
+              </option>
+            ))}
+          </select>
+          <select
+            className="dispatch-field"
+            value={level}
+            onChange={(e) => setLevel(e.target.value as DispatchIssue["escalation_level"])}
+          >
+            <option value="ops">ops</option>
+            <option value="supervisor">supervisor</option>
+            <option value="manager">manager</option>
+            <option value="critical">critical</option>
+          </select>
+          <input
+            className="dispatch-field"
+            placeholder="Detail"
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          onClick={async () => {
+            if (!title.trim()) return;
+            await saveIssue({
+              title: title.trim(),
+              detail,
+              load_id: loadId || null,
+              escalation_level: level,
+              senior_informed: false,
+            });
+            setTitle("");
+            setDetail("");
+            await reload();
+          }}
+        >
+          Open issue
+        </button>
+        <ul className="mt-3 divide-y divide-[color:var(--dispatch-border)]">
+          {issues.map((issue) => (
+            <li key={issue.id} className="grid gap-2 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{issue.title}</p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    {issue.status} · {issue.escalation_level}
+                    {issue.senior_informed
+                      ? ` · Senior Informed ${issue.senior_informed_at ? new Date(issue.senior_informed_at).toLocaleString() : ""}`
+                      : " · Senior Informed: not recorded"}
+                  </p>
+                  {issue.senior_informed_note && (
+                    <p className="text-xs text-[color:var(--dispatch-muted)]">{issue.senior_informed_note}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {issue.status !== "resolved" && (
+                    <>
+                      <button
+                        type="button"
+                        className="dispatch-btn-ghost"
+                        onClick={async () => {
+                          await saveIssue({ ...issue, status: "escalated" });
+                          await reload();
+                        }}
+                      >
+                        Escalate
+                      </button>
+                      <button
+                        type="button"
+                        className="dispatch-btn-ghost"
+                        onClick={async () => {
+                          await saveIssue({ ...issue, status: "resolved" });
+                          await reload();
+                        }}
+                      >
+                        Resolve
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {issue.status !== "resolved" && !issue.senior_informed && (
+                <div className="flex flex-wrap items-end gap-2 rounded-md bg-[color:var(--dispatch-soft)] p-2">
+                  <label className="grid flex-1 gap-1 text-xs">
+                    Senior Informed note (manual)
+                    <input
+                      className="dispatch-field"
+                      placeholder="Who/when you informed — desk record only"
+                      value={seniorNote}
+                      onChange={(e) => setSeniorNote(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="dispatch-btn-primary"
+                    onClick={async () => {
+                      await saveIssue({
+                        ...issue,
+                        senior_informed: true,
+                        senior_informed_note: seniorNote.trim() || "Marked informed by desk",
+                        senior_informed_at: new Date().toISOString(),
+                      });
+                      setSeniorNote("");
+                      await reload();
+                    }}
+                  >
+                    Mark Senior Informed
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="dispatch-panel">
+        <h2 className="mb-2 text-base font-semibold">Exceptions</h2>
+        <ul className="divide-y divide-[color:var(--dispatch-border)] text-sm">
+          {exceptions.map((ex) => (
+            <li key={ex.id} className="flex justify-between py-2">
+              <span>
+                {ex.kind} · {ex.severity} · {ex.status}
+              </span>
+              {ex.status !== "resolved" && (
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  onClick={async () => {
+                    await saveException({ ...ex, status: "resolved" });
+                    await reload();
+                  }}
+                >
+                  Resolve
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function HistoryBoard({
+  loads,
+  drivers,
+  onOpen,
+}: {
+  loads: DispatchLoad[];
+  drivers: RosterDriver[];
+  onOpen: (id: string) => void;
+}) {
+  const [mode, setMode] = useState<"driver" | "complete">("complete");
+  const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
+  const [loadId, setLoadId] = useState(loads[0]?.id ?? "");
+  const [events, setEvents] = useState<ReturnType<typeof buildCompleteLoadHistory>>([]);
+  const [error, setError] = useState<string | null>(null);
+  const driverHistory = driverId ? driverLoadHistory(loads, driverId) : [];
+  const selectedLoad = loads.find((l) => l.id === loadId) ?? null;
+
+  useEffect(() => {
+    if (mode !== "complete" || !selectedLoad) {
+      setEvents([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [checkCalls, issues, followUps, communications, accessorials] = await Promise.all([
+          listCheckCalls(selectedLoad.id),
+          listIssues(),
+          listFollowUps(),
+          listCommunications(selectedLoad.id),
+          listAccessorials(selectedLoad.id),
+        ]);
+        if (cancelled) return;
+        setEvents(
+          buildCompleteLoadHistory({
+            load: selectedLoad,
+            checkCalls,
+            issues: issues.filter((i) => i.load_id === selectedLoad.id),
+            followUps: followUps.filter((f) => f.load_id === selectedLoad.id),
+            communications,
+            accessorials,
+          }),
+        );
+        setError(null);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not build history.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, selectedLoad]);
+
+  return (
+    <div className="grid gap-3">
+      <SectionHelp>
+        Complete load history combines check-calls, issues, follow-ups, communications, accessorials, and
+        closeout events. Driver filter remains roster-scoped (not Compliance dossier). Delivered ≠ Closed ≠ Paid.
+      </SectionHelp>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={mode === "complete" ? "dispatch-btn-primary" : "dispatch-btn-ghost"}
+          onClick={() => setMode("complete")}
+        >
+          Complete load timeline
+        </button>
+        <button
+          type="button"
+          className={mode === "driver" ? "dispatch-btn-primary" : "dispatch-btn-ghost"}
+          onClick={() => setMode("driver")}
+        >
+          By roster driver
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {mode === "driver" ? (
+        <section className="dispatch-panel">
+          <select
+            className="dispatch-field mb-3 max-w-sm"
+            value={driverId}
+            onChange={(e) => setDriverId(e.target.value)}
+          >
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.display_name}
+              </option>
+            ))}
+          </select>
+          {!driverHistory.length ? (
+            <EmptyHint>No loads for this driver.</EmptyHint>
+          ) : (
+            <ul className="divide-y divide-[color:var(--dispatch-border)]">
+              {driverHistory.map((load) => (
+                <li key={load.id} className="flex items-center justify-between py-2 text-sm">
+                  <span>
+                    {load.load_number} · {statusLabel(load.status)} · pay {paymentStatusLabel(load.payment_status)}
+                  </span>
+                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                    Update Load
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <section className="dispatch-panel">
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <label className="grid gap-1 text-xs">
+              Load
+              <select className="dispatch-field min-w-[14rem]" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+                {loads.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.load_number} · {statusLabel(l.status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedLoad && (
+              <>
+                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(selectedLoad.id)}>
+                  Update Load
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  onClick={() => exportLoadHistoryPdf(selectedLoad, events)}
+                >
+                  Export history PDF
+                </button>
+              </>
+            )}
+          </div>
+          {!events.length ? (
+            <EmptyHint>No timeline events for this load.</EmptyHint>
+          ) : (
+            <ul className="divide-y divide-[color:var(--dispatch-border)]">
+              {events.map((e, i) => (
+                <li key={`${e.at}-${e.source}-${i}`} className="py-2 text-sm">
+                  <p className="font-semibold">
+                    {e.title}{" "}
+                    <span className="text-xs font-normal text-[color:var(--dispatch-muted)]">({e.source})</span>
+                  </p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    {new Date(e.at).toLocaleString()} · {e.detail}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: RosterDriver[] }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | LoadStatus>("all");
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
+  const filtered =
+    statusFilter === "all" ? loads : loads.filter((l) => l.status === statusFilter);
+
+  useEffect(() => {
+    void listAccessorials().then(setAccessorials).catch(() => setAccessorials([]));
+  }, [loads]);
+
+  return (
+    <section className="dispatch-panel grid gap-3">
+      <SectionHelp>
+        Dispatch PDF/CSV exports for desk reporting. Includes payment/closeout columns. No rate cards, free-time
+        calculators, or Admin payroll fields. Accessorial export is manual amounts only.
+      </SectionHelp>
+      <label className="grid max-w-xs gap-1 text-xs">
+        Status filter
+        <select
+          className="dispatch-field"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | LoadStatus)}
+        >
+          <option value="all">All</option>
+          {(Object.keys(LOAD_STATUS_LABELS) as LoadStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {LOAD_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="dispatch-btn-primary" onClick={() => exportLoadsCsv(filtered)}>
+          Loads CSV
+        </button>
+        <button type="button" className="dispatch-btn-ghost" onClick={() => exportLoadsPdf(filtered)}>
+          Loads PDF
+        </button>
+        <button type="button" className="dispatch-btn-ghost" onClick={() => exportAccessorialsCsv(accessorials)}>
+          Accessorials CSV
+        </button>
+        <button
+          type="button"
+          className="dispatch-btn-ghost"
+          onClick={() => exportAccessorialsPdf(accessorials, loads)}
+        >
+          Accessorials PDF
+        </button>
+      </div>
+      <p className="text-sm text-[color:var(--dispatch-muted)]">
+        {filtered.length} loads · {accessorials.length} accessorials · {drivers.length} roster drivers · Delivered ≠
+        Closed ≠ Paid
+      </p>
+    </section>
+  );
+}
+
+function TeamBoard({ account }: { account: DispatchAccount }) {
+  const [rows, setRows] = useState<DispatchAccount[]>([]);
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function reload() {
+    setRows(await listDispatchAccounts());
+  }
+
+  useEffect(() => {
+    void reload().catch((err) => setMsg(err instanceof Error ? err.message : "Could not load team."));
+  }, []);
+
+  return (
+    <section className="dispatch-panel grid gap-3">
+      <SectionHelp>
+        Invite or revoke Dispatch users. Backend edge function + RLS enforce admin. Dedicated dispatcher emails only —
+        never reuse Driver Compliance seats.
+      </SectionHelp>
+      {isDispatchPreviewMode() && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          Invite/revoke needs cloud SQL + create-dispatch-user function (approval gate).
+        </p>
+      )}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input className="dispatch-field" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          className="dispatch-field"
+          placeholder="Display name"
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
+        />
+        <input
+          className="dispatch-field"
+          type="password"
+          placeholder="Temp password (8+)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          onClick={async () => {
+            setMsg(null);
+            try {
+              await inviteDispatchUser({
+                email,
+                displayName,
+                password,
+                role: "dispatcher",
+              });
+              setEmail("");
+              setDisplayName("");
+              setPassword("");
+              setMsg("Invite created.");
+              await reload();
+            } catch (err) {
+              setMsg(err instanceof Error ? err.message : "Invite failed.");
+            }
+          }}
+        >
+          Invite dispatcher
+        </button>
+      </div>
+      {msg && <p className="text-sm">{msg}</p>}
+      <ul className="divide-y divide-[color:var(--dispatch-border)] text-sm">
+        {rows.map((row) => (
+          <li key={row.user_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <div>
+              <p className="font-semibold">
+                {row.display_name} · {row.email}
+              </p>
+              <p className="text-xs text-[color:var(--dispatch-muted)]">
+                {row.role} · {row.active ? "active" : "revoked"}
+              </p>
+            </div>
+            {row.user_id !== account.user_id && (
+              <button
+                type="button"
+                className="dispatch-btn-ghost"
+                onClick={async () => {
+                  await setDispatchAccess(row.user_id, row.role, !row.active);
+                  await reload();
+                }}
+              >
+                {row.active ? "Revoke" : "Restore"}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
