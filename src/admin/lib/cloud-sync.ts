@@ -1,6 +1,16 @@
 import { supabase } from "@/admin/integrations/supabase/client";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import {
+  clearHrPendingUnsynced,
+  hasHrLocalOnlySessionFlag,
+  hasHrPendingUnsynced,
+  markHrPendingUnsynced,
+  reconnectTreatAsUnsynced,
+  saveNowMessage,
+  setHrLocalOnlySessionFlag,
+  type SaveNowResult,
+} from "./hr-local-pending";
+import {
   decideHrSync,
   isHrPayloadEmpty,
   isHrSeedLike,
@@ -8,13 +18,13 @@ import {
 } from "./hr-sync-protect";
 import { useApp, whenAttendanceHydrated } from "./store";
 
+export type { SaveNowResult } from "./hr-local-pending";
+
 const KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
-// Set while this browser has changes the cloud hasn't confirmed yet, so a refresh
-// never overwrites them with an older cloud copy.
-const UNSYNCED = "hr-attendance-unsynced";
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let unsub: (() => void) | null = null;
+let localOnlyUnsub: (() => void) | null = null;
 let flushBound = false;
 let currentUser: string | null = null;
 let lastStamp = "";
@@ -26,7 +36,7 @@ const snapshot = () => {
   return Object.fromEntries(KEYS.map((k) => [k, s[k]]));
 };
 
-export type HrSync = "connecting" | "syncing" | "synced" | "error";
+export type HrSync = "connecting" | "syncing" | "synced" | "error" | "paused";
 let status: HrSync = "connecting";
 const listeners = new Set<() => void>();
 const setStatus = (s: HrSync) => {
@@ -48,6 +58,13 @@ async function readCloudRow(userId: string) {
   return { data, error };
 }
 
+function readPendingUnsynced(): boolean {
+  return reconnectTreatAsUnsynced({
+    unsyncedFlag: hasHrPendingUnsynced(),
+    localOnlyFlag: hasHrLocalOnlySessionFlag(),
+  });
+}
+
 async function push(userId: string, attempt = 0): Promise<boolean> {
   if (pushing) return false;
   const local = snapshot();
@@ -64,7 +81,7 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
     const cloudData = cloudRow?.data;
     if (refuseSeedOrEmptyPush(local, cloudData)) {
       console.warn("[HR cloud] refused seed/empty upload (protects app_state + local)");
-      localStorage.removeItem(UNSYNCED);
+      clearHrPendingUnsynced();
       setStatus("synced");
       return false;
     }
@@ -78,7 +95,7 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
       .from("app_state")
       .upsert({ user_id: userId, data: snapshot() as never, updated_at: stamp });
     if (!error) {
-      localStorage.removeItem(UNSYNCED);
+      clearHrPendingUnsynced();
       lastStamp = stamp;
       setStatus("synced");
       return true;
@@ -97,7 +114,7 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
 /** Pull remote row when this tab has nothing pending. */
 async function pull(userId: string, force = false) {
   if (pulling || pushing || !currentUser) return;
-  if (!force && localStorage.getItem(UNSYNCED) === "1") {
+  if (!force && readPendingUnsynced()) {
     const local = snapshot();
     // Seed/empty "unsynced" must not block applying real cloud (and must not push).
     if (!isHrSeedLike(local) && !isHrPayloadEmpty(local)) return;
@@ -113,7 +130,7 @@ async function pull(userId: string, force = false) {
 
     const cloudData = data?.data;
     const local = snapshot();
-    const unsynced = localStorage.getItem(UNSYNCED) === "1";
+    const unsynced = readPendingUnsynced();
     // Seed/empty unsynced is ignored for decisions (cleared below when applying cloud).
     const unsyncedReal = unsynced && !isHrSeedLike(local) && !isHrPayloadEmpty(local);
     const decision = decideHrSync(local, cloudData ?? null, { unsynced: unsyncedReal });
@@ -131,9 +148,10 @@ async function pull(userId: string, force = false) {
       if (!force && data?.updated_at && data.updated_at <= lastStamp) return;
       // Drop false seed unsynced flag so cloud can hydrate this browser.
       if (unsynced && (isHrSeedLike(local) || isHrPayloadEmpty(local))) {
-        localStorage.removeItem(UNSYNCED);
+        clearHrPendingUnsynced();
+        setHrLocalOnlySessionFlag(false);
       }
-      if (localStorage.getItem(UNSYNCED) === "1") return;
+      if (readPendingUnsynced()) return;
       // Apply only non-empty meaningful cloud — never wipe localStorage with empties.
       if (isHrPayloadEmpty(cloudData)) {
         setStatus("synced");
@@ -149,6 +167,39 @@ async function pull(userId: string, force = false) {
   }
 }
 
+/**
+ * While signed in with a local-only session (no Supabase Auth), mark real local
+ * attendance as pending so a later cloud reconnect never silently applies cloud.
+ */
+export async function startLocalOnlyGuard() {
+  if (isPreviewIsolated()) {
+    stopLocalOnlyGuard();
+    setStatus("paused");
+    return;
+  }
+  stopLocalOnlyGuard();
+  setHrLocalOnlySessionFlag(true);
+  setStatus("paused");
+  await whenAttendanceHydrated();
+  const local = snapshot();
+  // Protect existing meaningful local — local-only never confirmed a cloud match.
+  if (!isHrSeedLike(local) && !isHrPayloadEmpty(local)) {
+    markHrPendingUnsynced();
+  }
+  let last = JSON.stringify(snapshot());
+  localOnlyUnsub = useApp.subscribe(() => {
+    const now = JSON.stringify(snapshot());
+    if (now === last) return;
+    last = now;
+    markHrPendingUnsynced();
+  });
+}
+
+export function stopLocalOnlyGuard() {
+  localOnlyUnsub?.();
+  localOnlyUnsub = null;
+}
+
 /** Load the saved data from the cloud, then save every change. */
 export async function startSync(userId: string) {
   if (isPreviewIsolated()) {
@@ -156,17 +207,23 @@ export async function startSync(userId: string) {
     setStatus("synced");
     return;
   }
+  // Capture local-only flag before clearing the guard (reconnect must not wipe pending edits).
+  const pendingBefore = readPendingUnsynced();
+  stopLocalOnlyGuard();
+  setHrLocalOnlySessionFlag(false);
+  if (pendingBefore) markHrPendingUnsynced();
+
   currentUser = userId;
   // Wait for localStorage rehydrate so we don't push seed over a newer cloud copy.
   await whenAttendanceHydrated();
   const local = snapshot();
-  const unsynced = localStorage.getItem(UNSYNCED) === "1";
+  const unsynced = hasHrPendingUnsynced();
   // Only push-first when local has real non-seed edits pending.
   if (unsynced && !isHrSeedLike(local) && !isHrPayloadEmpty(local)) {
     await push(userId);
   } else {
     if (unsynced && (isHrSeedLike(local) || isHrPayloadEmpty(local))) {
-      localStorage.removeItem(UNSYNCED);
+      clearHrPendingUnsynced();
     }
     await pull(userId, true);
   }
@@ -177,7 +234,7 @@ export async function startSync(userId: string) {
     const now = JSON.stringify(snapshot());
     if (now === last) return;
     last = now;
-    localStorage.setItem(UNSYNCED, "1");
+    markHrPendingUnsynced();
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => void push(userId), 400);
   });
@@ -188,7 +245,7 @@ export async function startSync(userId: string) {
   if (typeof window !== "undefined" && !flushBound) {
     flushBound = true;
     const flush = () => {
-      if (currentUser && localStorage.getItem(UNSYNCED) === "1") void push(currentUser);
+      if (currentUser && hasHrPendingUnsynced()) void push(currentUser);
     };
     window.addEventListener("pagehide", flush);
     window.addEventListener("focus", () => {
@@ -213,15 +270,20 @@ export function stopSync() {
   setStatus("connecting");
 }
 
-/** Save everything to the cloud right now. Returns true on success. */
-export async function saveNow() {
+/** Save everything to the cloud right now. Never claims cloud success without Auth. */
+export async function saveNow(): Promise<SaveNowResult> {
   // Isolated preview: attendance already persists via zustand localStorage — never hit Supabase.
   if (isPreviewIsolated()) {
     setStatus("synced");
-    return true;
+    return saveNowMessage("preview");
   }
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) return false;
+  if (!u.user) {
+    // Local zustand persist already holds the copy; do not pretend this is a cloud save.
+    markHrPendingUnsynced();
+    return saveNowMessage("local_only");
+  }
   if (timer) clearTimeout(timer);
-  return push(u.user.id, 5);
+  const pushed = await push(u.user.id, 5);
+  return pushed ? saveNowMessage("cloud_ok") : saveNowMessage("cloud_fail");
 }
