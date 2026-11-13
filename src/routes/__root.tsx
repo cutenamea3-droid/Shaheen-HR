@@ -12,10 +12,11 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useHydrated } from "../lib/use-hydrated";
 import { Toaster } from "@/components/ui/sonner";
 import { LockGate } from "@/components/tracker/LockGate";
 import { AppSwitcher } from "@/components/AppSwitcher";
-import { ModuleRedirector } from "@/components/ModuleRedirector";
+import { ModuleRedirector, useHomePathAfterProbe } from "@/components/ModuleRedirector";
 import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
@@ -43,6 +44,8 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+  // Probe seats so Admin-only users are not sent to `/` → Access Denied (owner video).
+  const homePath = useHomePathAfterProbe();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -67,7 +70,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             Try again
           </button>
           <a
-            href="/"
+            href={homePath}
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home
@@ -127,13 +130,17 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hydrated = useHydrated();
   const isAdmin = pathname.startsWith("/admin");
   const isDispatch = pathname.startsWith("/dispatch");
   const isPersonal = pathname.startsWith("/personal");
   const isDenied = pathname.startsWith("/access-denied");
   const isPublic = pathname === "/cv";
-  // Dispatch / Personal / Access Denied skip Driver LockGate (Batch 2 / #26).
-  const skipDriverLock = isAdmin || isDispatch || isPersonal || isDenied || isPublic;
+  // SPA shell is prerendered for `/` only. Defer LockGate until after hydration so
+  // `/admin` `/personal` `/dispatch` do not structurally mismatch the shell (React #418).
+  // Dispatch / Personal / Access Denied / Admin skip Driver LockGate (Batch 2 / #26).
+  const useDriverLock =
+    hydrated && !(isAdmin || isDispatch || isPersonal || isDenied || isPublic);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -141,12 +148,12 @@ function RootComponent() {
       <AppSwitcher />
       <ModuleRedirector />
       <div className="with-switcher">
-        {skipDriverLock ? (
-          <Outlet />
-        ) : (
+        {useDriverLock ? (
           <LockGate>
             <Outlet />
           </LockGate>
+        ) : (
+          <Outlet />
         )}
       </div>
       <Toaster richColors position="top-right" />

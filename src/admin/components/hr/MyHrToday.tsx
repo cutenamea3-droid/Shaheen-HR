@@ -49,15 +49,27 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const requestTab = useAdminNav((s) => s.requestTab);
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
   const syncStatus = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
-  const dueReminders = useHrReminders((s) => s.dueOnOrBefore(date));
+  // Select stable store slices — NEVER call dueOnOrBefore/openFollowUps inside the
+  // zustand selector (they allocate a new array every getSnapshot → React #185
+  // "Maximum update depth exceeded" after My HR Today first paint).
+  const reminders = useHrReminders((s) => s.reminders);
   const addReminder = useHrReminders((s) => s.add);
   const completeReminder = useHrReminders((s) => s.complete);
   const recordAudit = useHrAuditHistory((s) => s.record);
-  const openPerfFu = usePerfFollowUps((s) => s.openFollowUps(date));
+  const followUps = usePerfFollowUps((s) => s.followUps);
 
   useEffect(() => {
     for (const e of employees) ensureMeta(e.id);
   }, [employees, ensureMeta]);
+
+  const dueReminders = useMemo(
+    () => reminders.filter((r) => r.status === "open" && r.due <= date),
+    [reminders, date],
+  );
+  const openPerfFu = useMemo(
+    () => followUps.filter((f) => f.status === "open" && f.due <= date),
+    [followUps, date],
+  );
 
   const bankMissingIds = useMemo(() => {
     const ids: string[] = [];

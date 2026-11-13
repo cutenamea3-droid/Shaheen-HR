@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { FileCheck2, ShieldX, Truck, UserRound, UsersRound } from "lucide-react";
 import {
@@ -9,20 +9,30 @@ import {
   type ModuleId,
 } from "@/lib/module-access";
 import { shouldShowPersonalSwitcherLink } from "@/personal/lib/auth-probe";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Top bar that switches between isolated systems.
  * After seats resolve, only permitted modules remain visible
  * (Dispatch-only users do not see Compliance / Admin).
  * Personal appears only when already on `/personal` or seat probe allows (Batch 2 / #26).
+ *
+ * SPA shell is prerendered for `/` only (vite spa.prerender). Path-dependent
+ * active/`aria-current` markup — including TanStack Link's built-in
+ * `data-status`/`aria-current` — must not differ on the first client paint or
+ * React 19 throws hydration #418. Until hydrated we render a static `/` shell
+ * with plain anchors (Driver current); after mount we switch to real Links.
  */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAdmin = pathname.startsWith("/admin");
-  const isDispatch = pathname.startsWith("/dispatch");
-  const isPersonal = pathname.startsWith("/personal");
-  const isCv = pathname === "/cv";
-  const isDenied = pathname.startsWith("/access-denied");
+  const hydrated = useHydrated();
+  // Match the prerendered `/` shell until after hydration (not the real deep path).
+  const path = hydrated ? pathname : "/";
+  const isAdmin = path.startsWith("/admin");
+  const isDispatch = path.startsWith("/dispatch");
+  const isPersonal = path.startsWith("/personal");
+  const isCv = path === "/cv";
+  const isDenied = path.startsWith("/access-denied");
   const isDriver = !isAdmin && !isDispatch && !isPersonal && !isCv && !isDenied;
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
@@ -65,6 +75,66 @@ export function AppSwitcher() {
   const on = "bg-primary text-primary-foreground shadow-sm";
   const off = "text-muted-foreground hover:bg-muted hover:text-foreground";
 
+  /** Plain anchors until hydrated — avoids TanStack Link injecting real-path aria-current. */
+  function ShellLink({
+    href,
+    label,
+    title,
+    current,
+    children,
+  }: {
+    href: string;
+    label: string;
+    title: string;
+    current: boolean;
+    children: ReactNode;
+  }) {
+    return (
+      <a
+        href={href}
+        aria-label={label}
+        title={title}
+        aria-current={current ? "page" : undefined}
+        className={`${base} ${current ? on : off}`}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  function NavLink({
+    to,
+    label,
+    title,
+    current,
+    children,
+  }: {
+    to: "/" | "/admin" | "/dispatch" | "/personal";
+    label: string;
+    title: string;
+    current: boolean;
+    children: ReactNode;
+  }) {
+    if (!hydrated) {
+      return (
+        <ShellLink href={to} label={label} title={title} current={current}>
+          {children}
+        </ShellLink>
+      );
+    }
+    return (
+      <Link
+        to={to}
+        aria-label={label}
+        title={title}
+        aria-current={current ? "page" : undefined}
+        className={`${base} ${current ? on : off}`}
+      >
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <header
       className="app-switcher sticky top-0 z-50 flex items-center gap-3 border-b border-border bg-card px-3"
@@ -81,52 +151,28 @@ export function AppSwitcher() {
       </div>
       <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
         {show("compliance") && (
-          <Link
-            to="/"
-            aria-label="Driver Compliance"
-            title="Driver Compliance"
-            aria-current={isDriver ? "page" : undefined}
-            className={`${base} ${isDriver ? on : off}`}
-          >
+          <NavLink to="/" label="Driver Compliance" title="Driver Compliance" current={isDriver}>
             <FileCheck2 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Driver Compliance</span>
-          </Link>
+          </NavLink>
         )}
         {show("admin-hr") && (
-          <Link
-            to="/admin"
-            aria-label="Admin & Attendance"
-            title="Admin & Attendance"
-            aria-current={isAdmin ? "page" : undefined}
-            className={`${base} ${isAdmin ? on : off}`}
-          >
+          <NavLink to="/admin" label="Admin & Attendance" title="Admin & Attendance" current={isAdmin}>
             <UsersRound className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Admin &amp; Attendance</span>
-          </Link>
+          </NavLink>
         )}
         {show("dispatch") && (
-          <Link
-            to="/dispatch"
-            aria-label="Dispatch Operations"
-            title="Dispatch Operations"
-            aria-current={isDispatch ? "page" : undefined}
-            className={`${base} ${isDispatch ? on : off}`}
-          >
+          <NavLink to="/dispatch" label="Dispatch Operations" title="Dispatch Operations" current={isDispatch}>
             <Truck className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Dispatch</span>
-          </Link>
+          </NavLink>
         )}
         {show("personal") && (
-          <Link
-            to="/personal"
-            aria-label="HR Personal"
-            title="HR Personal"
-            aria-current={isPersonal ? "page" : undefined}
-            className={`${base} ${isPersonal ? on : off}`}
-          >
+          <NavLink to="/personal" label="HR Personal" title="HR Personal" current={isPersonal}>
             <UserRound className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Personal</span>
-          </Link>
+          </NavLink>
         )}
         {isDenied && (
           <span className={`${base} ${on}`} aria-current="page">
