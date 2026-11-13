@@ -8,8 +8,8 @@ function AdminError(props: ErrorComponentProps) {
       <ModuleErrorPanel
         {...props}
         moduleLabel="Admin & Attendance"
-        homeTo="/"
-        homeLabel="Driver Compliance"
+        homeTo="/admin"
+        homeLabel="Admin & Attendance home"
       />
     </div>
   );

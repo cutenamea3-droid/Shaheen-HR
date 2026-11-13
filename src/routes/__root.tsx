@@ -16,7 +16,7 @@ import { useHydrated } from "../lib/use-hydrated";
 import { Toaster } from "@/components/ui/sonner";
 import { LockGate } from "@/components/tracker/LockGate";
 import { AppSwitcher } from "@/components/AppSwitcher";
-import { ModuleRedirector } from "@/components/ModuleRedirector";
+import { ModuleRedirector, useHomePathAfterProbe } from "@/components/ModuleRedirector";
 import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
@@ -44,6 +44,8 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+  // Probe seats so Admin-only users are not sent to `/` → Access Denied (owner video).
+  const homePath = useHomePathAfterProbe();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
@@ -68,7 +70,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             Try again
           </button>
           <a
-            href="/"
+            href={homePath}
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home

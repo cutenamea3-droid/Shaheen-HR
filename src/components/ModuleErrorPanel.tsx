@@ -14,7 +14,8 @@ export function ModuleErrorPanel({
   reset,
 }: ErrorComponentProps & {
   moduleLabel: string;
-  homeTo: "/";
+  /** Module home — must match the crashed module (Admin → /admin), never force Compliance `/`. */
+  homeTo: "/" | "/admin" | "/personal" | "/dispatch";
   homeLabel: string;
 }) {
   useEffect(() => {
