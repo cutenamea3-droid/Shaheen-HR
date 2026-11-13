@@ -40,7 +40,7 @@ describe("Combined site", () => {
     expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
-  it("serves Dispatch shell at /dispatch", () => {
+  it("serves Dispatch Operations at /dispatch", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(router.matchRoutes("/dispatch").at(-1)?.routeId).toBe("/dispatch");
   });

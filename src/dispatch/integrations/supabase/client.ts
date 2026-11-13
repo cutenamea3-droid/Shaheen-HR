@@ -1,7 +1,7 @@
 /**
  * Dispatch-only Supabase client.
- * Reuses company Driver project URL/key by default with a dedicated auth storage key
- * so Dispatch sessions never share Driver LockGate state.
+ * Reuses the existing company Driver project URL/key by default (isolated schema + ACL),
+ * with a dedicated auth storage namespace so Dispatch sessions never share Driver LockGate state.
  * Never imports Admin or Personal clients.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -15,6 +15,7 @@ function readEnv(name: string): string | undefined {
   return undefined;
 }
 
+/** Prefer optional Dispatch overrides; otherwise reuse company Driver publishable env. */
 export function readDispatchSupabaseEnv(): { url: string; key: string } | null {
   const url =
     readEnv("VITE_DISPATCH_SUPABASE_URL") ||

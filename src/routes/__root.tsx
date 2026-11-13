@@ -132,6 +132,7 @@ function RootComponent() {
   const isPersonal = pathname.startsWith("/personal");
   const isDenied = pathname.startsWith("/access-denied");
   const isPublic = pathname === "/cv";
+  // Dispatch / Personal / Access Denied skip Driver LockGate (Batch 2 / #26).
   const skipDriverLock = isAdmin || isDispatch || isPersonal || isDenied || isPublic;
 
   return (

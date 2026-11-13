@@ -10,7 +10,12 @@ import {
 } from "@/lib/module-access";
 import { shouldShowPersonalSwitcherLink } from "@/personal/lib/auth-probe";
 
-/** Top bar that switches between isolated systems. Each keeps its own data and auth. */
+/**
+ * Top bar that switches between isolated systems.
+ * After seats resolve, only permitted modules remain visible
+ * (Dispatch-only users do not see Compliance / Admin).
+ * Personal appears only when already on `/personal` or seat probe allows (Batch 2 / #26).
+ */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");

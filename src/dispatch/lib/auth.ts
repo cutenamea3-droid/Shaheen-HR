@@ -40,10 +40,14 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
     return data as DispatchAccount;
   }
 
+  // Bootstrap path for owner / first admin when migration applied.
   const { data: ensured, error: ensureError } = await dispatchSupabase.rpc("dispatch_ensure_self", {
     p_display_name: user.email?.split("@")[0] ?? "Dispatcher",
   });
-  if (ensureError) return null;
+  if (ensureError) {
+    // No seat and ensure rejected → not a dispatcher.
+    return null;
+  }
   const row = Array.isArray(ensured) ? ensured[0] : ensured;
   if (!row || !row.active) return null;
   return row as DispatchAccount;
@@ -99,7 +103,7 @@ export async function inviteDispatchUser(input: {
   role: DispatchRole;
 }): Promise<void> {
   if (isDispatchPreviewMode()) {
-    throw new Error("Invite is disabled in preview/fixture mode. Apply Dispatch ACL SQL and use cloud auth.");
+    throw new Error("Invite is disabled in preview/fixture mode. Apply Dispatch SQL and use cloud auth.");
   }
   const { data, error } = await dispatchSupabase.functions.invoke("create-dispatch-user", {
     body: {
@@ -115,6 +119,11 @@ export async function inviteDispatchUser(input: {
   }
 }
 
+/** Client-side route isolation helpers (backend RLS is authoritative). */
 export function isDispatchPath(pathname: string): boolean {
   return pathname === "/dispatch" || pathname.startsWith("/dispatch/");
+}
+
+export function forbiddenModulePathsForDispatcher(): string[] {
+  return ["/", "/drivers", "/drug-tests", "/records", "/account", "/team", "/activity", "/admin", "/personal"];
 }

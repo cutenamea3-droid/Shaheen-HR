@@ -1222,12 +1222,13 @@ body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.dispatch-theme)):not
   background-color: var(--brand-soft-white, #F7F8FA);
 }
 
-/* Dispatch theme (Batch 2 shell — navy/orange; full ops UI remains on PR #25) */
+/* Dispatch Operations — navy/orange premium desk UI (14–16px) */
 html:has(.dispatch-theme) { font-size: 15px; }
 body:has(.dispatch-theme) {
   background:
     radial-gradient(1200px 500px at 10% -10%, color-mix(in srgb, #E87500 18%, transparent), transparent 60%),
-    var(--brand-soft-white, #F7F8FA);
+    radial-gradient(900px 400px at 100% 0%, color-mix(in srgb, #202A36 14%, transparent), transparent 55%),
+    #F4F6F9;
 }
 .dispatch-theme {
   --dispatch-navy: #202A36;
@@ -1258,7 +1259,7 @@ body:has(.dispatch-theme) {
   border-radius: 0.65rem;
   background: #fff;
   padding: 0.55rem 0.7rem;
-  font-size: 0.925rem;
+  font-size: 14px;
   color: var(--dispatch-navy);
 }
 .dispatch-field:focus {
@@ -1270,11 +1271,12 @@ body:has(.dispatch-theme) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   border-radius: 0.65rem;
-  padding: 0.55rem 0.9rem;
-  font-size: 0.875rem;
-  font-weight: 600;
+  padding: 0.5rem 0.85rem;
+  font-size: 14px;
+  font-weight: 650;
+  transition: background-color 120ms ease, transform 120ms ease;
   cursor: pointer;
 }
 .dispatch-btn-primary {
@@ -1290,12 +1292,40 @@ body:has(.dispatch-theme) {
   border: 1px solid var(--dispatch-border);
 }
 .dispatch-btn-ghost:hover { background: color-mix(in srgb, var(--dispatch-orange) 10%, white); }
+.dispatch-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.78);
+  text-align: left;
+}
+.dispatch-nav:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.dispatch-nav-on {
+  background: color-mix(in srgb, var(--dispatch-orange) 88%, white);
+  color: #fff;
+}
+.dispatch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
 .dispatch-table th {
   text-align: left;
   font-size: 12px;
-  text-transform: uppercase;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--dispatch-muted);
+  border-bottom: 1px solid var(--dispatch-border);
+  padding: 0.45rem 0.35rem;
+}
+.dispatch-table td {
+  border-bottom: 1px solid var(--dispatch-border);
+  padding: 0.65rem 0.35rem;
+  vertical-align: top;
 }
 
 /* Personal theme shell (Batch 2 landing — full workspace on PR #16) */

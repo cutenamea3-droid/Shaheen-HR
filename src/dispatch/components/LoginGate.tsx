@@ -26,12 +26,12 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
   return (
     <div className="dispatch-login mx-auto flex min-h-[calc(100vh-44px)] max-w-5xl items-stretch px-4 py-8">
       <div className="dispatch-login-panel grid w-full overflow-hidden rounded-2xl border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-card)] shadow-sm md:grid-cols-[1.1fr_0.9fr]">
-        <div className="relative hidden flex-col justify-end bg-[linear-gradient(145deg,#152033_0%,#202A36_48%,#E87500_140%)] p-8 text-white md:flex">
+        <div className="dispatch-login-hero relative hidden flex-col justify-end bg-[linear-gradient(145deg,#152033_0%,#202A36_48%,#E87500_140%)] p-8 text-white md:flex">
           <p className="font-display text-3xl font-bold tracking-tight">Shaheen Transport</p>
           <p className="mt-2 text-base text-white/85">Dispatch Operations</p>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/75">
-            Isolated dispatch desk sign-in. Full loads / handover ops ship on PR #25 after ACL approval — this
-            Batch 2 shell enforces auth isolation only.
+            Morning Shift Handover continuity for US carrier dispatch desks. Manual ops tracker — not a load board,
+            and never Live GPS.
           </p>
         </div>
         <form onSubmit={(e) => void submit(e)} className="flex flex-col justify-center gap-4 p-6 sm:p-8">
@@ -46,7 +46,8 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           </div>
           {preview && (
             <p className="rounded-md border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              Fixture / preview mode: cloud ACL SQL not applied or preview isolated. Not production cloud.
+              Fixture / preview mode: cloud SQL not applied or preview isolated. Data is local fixtures, not production
+              cloud.
             </p>
           )}
           <label className="grid gap-1 text-sm">
@@ -82,7 +83,7 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
             {busy ? "Signing in…" : "Sign in"}
           </button>
           <p className="text-xs leading-relaxed text-[color:var(--dispatch-muted)]">
-            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Use a dedicated
+            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Invite uses a dedicated
             dispatcher login — never share Compliance seats.
           </p>
         </form>
