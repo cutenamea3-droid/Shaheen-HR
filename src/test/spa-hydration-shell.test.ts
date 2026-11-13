@@ -35,10 +35,27 @@ describe("SPA hydration shell safety", () => {
     expect(root).not.toMatch(/skipDriverLock\s*=\s*isAdmin/);
   });
 
-  it("defers AppSwitcher active route until hydrated", () => {
+  it("defers AppSwitcher active route until hydrated (static / shell first paint)", () => {
     const sw = readFileSync(resolve(process.cwd(), "src/components/AppSwitcher.tsx"), "utf8");
     expect(sw).toMatch(/useHydrated/);
-    expect(sw).toMatch(/hydrated && pathname\.startsWith\("\/admin"\)/);
+    // First paint must mirror prerendered `/` — not the real deep-link path.
+    expect(sw).toMatch(/hydrated\s*\?\s*pathname\s*:\s*"\/"/);
+    expect(sw).toMatch(/path\.startsWith\("\/admin"\)/);
+    // Plain anchors until hydrated — TanStack Link injects real-path aria-current/data-status.
+    expect(sw).toMatch(/ShellLink|plain anchors/i);
+    expect(sw).toMatch(/if\s*\(\s*!hydrated\s*\)/);
+  });
+
+  it("pins the Production #418 mismatched shell components", () => {
+    // Owner console: Minified React error #418 on index-CfkCmF_H.js (638cf53).
+    // Mismatch: prerendered `/` shell (Driver aria-current + LockGate tree) vs
+    // first client paint on /admin|/personal|/dispatch (Admin/… active, no LockGate).
+    const root = readFileSync(resolve(process.cwd(), "src/routes/__root.tsx"), "utf8");
+    const sw = readFileSync(resolve(process.cwd(), "src/components/AppSwitcher.tsx"), "utf8");
+    expect(root).toMatch(/useDriverLock/);
+    expect(root).toMatch(/useHydrated/);
+    expect(sw).toMatch(/aria-current/);
+    expect(sw).toContain('prerendered for `/`');
   });
 
   it("isolates Admin / Personal / Dispatch route errors from the root shell", () => {
