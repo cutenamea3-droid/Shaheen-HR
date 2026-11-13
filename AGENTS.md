@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Combined site rules
-- Two separate systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`). Why: user requires both kept verbatim and never merged.
-- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend). Why: data must stay separate.
-- Admin's original colors are scoped under `.admin-theme` in styles.css; don't change either system's logic or look. Why: user requires identical behavior and styling.
+- Isolated systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`), Dispatch Operations lives in `src/dispatch/` (route `/dispatch`). Why: user requires each kept verbatim and never merged.
+- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend); Dispatch uses only `src/dispatch/integrations/supabase/client.ts` with its own auth storage key and `dispatch_*` tables/RLS. Why: data must stay separate.
+- Admin's original colors are scoped under `.admin-theme` in styles.css; Dispatch under `.dispatch-theme`; don't change other systems' logic or look. Why: user requires identical behavior and styling for existing modules.
+- Dispatchers must be blocked by backend auth + RLS (`dispatch_portal_accounts`), not nav hide alone. Never expose compliance docs, banking, salaries, drug tests, rate cards, or Personal study data to Dispatch.
