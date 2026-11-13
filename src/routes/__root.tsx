@@ -15,6 +15,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { LockGate } from "@/components/tracker/LockGate";
 import { AppSwitcher } from "@/components/AppSwitcher";
+import { ModuleRedirector } from "@/components/ModuleRedirector";
 import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
@@ -125,15 +126,21 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const isAdmin = useRouterState({ select: (s) => s.location.pathname.startsWith("/admin") });
-  const isPublic = useRouterState({ select: (s) => s.location.pathname === "/cv" });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = pathname.startsWith("/admin");
+  const isDispatch = pathname.startsWith("/dispatch");
+  const isPersonal = pathname.startsWith("/personal");
+  const isDenied = pathname.startsWith("/access-denied");
+  const isPublic = pathname === "/cv";
+  const skipDriverLock = isAdmin || isDispatch || isPersonal || isDenied || isPublic;
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AppSwitcher />
+      <ModuleRedirector />
       <div className="with-switcher">
-        {isAdmin || isPublic ? (
+        {skipDriverLock ? (
           <Outlet />
         ) : (
           <LockGate>
