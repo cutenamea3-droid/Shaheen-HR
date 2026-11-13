@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
+  FileText,
   FileWarning,
   History,
   LayoutDashboard,
@@ -8,13 +9,16 @@ import {
   MapPin,
   PhoneCall,
   RefreshCw,
+  Bell,
   Truck,
   Users,
   UserCog,
   Handshake,
+  Wrench,
 } from "lucide-react";
 import { LoginGate } from "@/dispatch/components/LoginGate";
 import { EmptyHint, SectionHelp, StaleBadge } from "@/dispatch/components/EmptyHint";
+import { DocsBoard, EquipmentBoard, FollowUpsBoard } from "@/dispatch/components/OpsControlsBoards";
 import {
   getDispatchAccount,
   inviteDispatchUser,
@@ -25,19 +29,31 @@ import {
 } from "@/dispatch/lib/auth";
 import {
   addCheckCall,
+  cancelLoad,
   driverLoadHistory,
   listCheckCalls,
   listExceptions,
+  listFollowUps,
   listHandovers,
   listIssues,
   listLoads,
   listRosterDrivers,
+  rescheduleLoad,
   saveException,
   saveHandover,
   saveIssue,
   saveLoad,
   upsertRosterDriver,
 } from "@/dispatch/lib/cloud";
+import {
+  buildHandoverWatchHints,
+  dueFollowUps,
+  moveStop,
+  openEscalations,
+  removeStop,
+  validateCancel,
+  validateReschedule,
+} from "@/dispatch/lib/ops-controls";
 import { exportHandoverPdf, exportLoadsCsv, exportLoadsPdf } from "@/dispatch/lib/reports";
 import {
   activeLoadsBoardColumns,
@@ -48,6 +64,8 @@ import {
 } from "@/dispatch/lib/status";
 import type {
   DispatchAccount,
+  DispatchFollowUp,
+  DispatchIssue,
   DispatchLoad,
   DispatchView,
   DocStatus,
@@ -62,6 +80,9 @@ const NAV: { id: DispatchView; label: string; icon: typeof LayoutDashboard }[] =
   { id: "home", label: "My Dispatch Today", icon: LayoutDashboard },
   { id: "loads", label: "Active Loads", icon: Truck },
   { id: "updates", label: "Driver Updates", icon: PhoneCall },
+  { id: "docs", label: "BOL / POD", icon: FileText },
+  { id: "followups", label: "Follow-Ups", icon: Bell },
+  { id: "equipment", label: "Driver / Equipment", icon: Wrench },
   { id: "handover", label: "Shift Handover", icon: Handshake },
   { id: "issues", label: "Issues", icon: FileWarning },
   { id: "roster", label: "Roster", icon: Users },
@@ -279,6 +300,9 @@ export function DispatchApp() {
                 setSelectedId(id);
                 setView("load");
               }}
+              onOpenFollowUps={() => setView("followups")}
+              onOpenIssues={() => setView("issues")}
+              onOpenDocs={() => setView("docs")}
             />
           )}
           {view === "loads" && (
@@ -305,6 +329,35 @@ export function DispatchApp() {
               onRefresh={refresh}
             />
           )}
+          {view === "docs" && (
+            <DocsBoard
+              loads={loads}
+              onRefresh={refresh}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "followups" && (
+            <FollowUpsBoard
+              loads={loads}
+              onOpenLoad={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
+          {view === "equipment" && (
+            <EquipmentBoard
+              drivers={drivers}
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
           {view === "load" && (
             <LoadEditor
               key={selected?.id ?? "new"}
@@ -325,6 +378,10 @@ export function DispatchApp() {
                 } finally {
                   setBusy(false);
                 }
+              }}
+              onLoadChanged={async (next) => {
+                await refresh();
+                setSelectedId(next.id);
               }}
             />
           )}
@@ -363,8 +420,32 @@ export function DispatchApp() {
   );
 }
 
-function HomeBoard({ loads, onOpen }: { loads: DispatchLoad[]; onOpen: (id: string) => void }) {
+function HomeBoard({
+  loads,
+  onOpen,
+  onOpenFollowUps,
+  onOpenIssues,
+  onOpenDocs,
+}: {
+  loads: DispatchLoad[];
+  onOpen: (id: string) => void;
+  onOpenFollowUps: () => void;
+  onOpenIssues: () => void;
+  onOpenDocs: () => void;
+}) {
   const buckets = homeActionBuckets(loads);
+  const [followUps, setFollowUps] = useState<DispatchFollowUp[]>([]);
+  const [issues, setIssues] = useState<DispatchIssue[]>([]);
+
+  useEffect(() => {
+    void Promise.all([listFollowUps(), listIssues()]).then(([fu, iss]) => {
+      setFollowUps(fu);
+      setIssues(iss);
+    });
+  }, [loads]);
+
+  const due = dueFollowUps(followUps);
+  const openIss = openEscalations(issues);
   const sections = [
     { title: "Needs update / check-call", items: buckets.needsUpdate, help: "Stale or missing manual location." },
     { title: "Open exceptions", items: buckets.openExceptions, help: "Exceptions are separate from load status." },
@@ -375,8 +456,71 @@ function HomeBoard({ loads, onOpen }: { loads: DispatchLoad[]; onOpen: (id: stri
     <div className="grid gap-3">
       <SectionHelp>
         My Dispatch Today prioritizes action lists over counters. Delivered is not Closed — close only after file work
-        is done. No invented ETAs or GPS.
+        is done. No invented ETAs, GPS, HOS, or notifications.
       </SectionHelp>
+      <section className="dispatch-panel">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Follow-ups due</h2>
+          <button type="button" className="dispatch-btn-ghost" onClick={onOpenFollowUps}>
+            Open Follow-Ups
+          </button>
+        </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Desk reminders only — not push/email. {due.length} due.
+        </p>
+        {!due.length ? (
+          <EmptyHint>No follow-ups due.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {due.slice(0, 8).map((f) => (
+              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <p className="font-semibold">{f.title}</p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    Due {new Date(f.due_at).toLocaleString()}
+                  </p>
+                </div>
+                {f.load_id && (
+                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(f.load_id!)}>
+                    Update Load
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="dispatch-panel">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Open issues & escalations</h2>
+          <div className="flex gap-2">
+            <button type="button" className="dispatch-btn-ghost" onClick={onOpenDocs}>
+              BOL / POD
+            </button>
+            <button type="button" className="dispatch-btn-ghost" onClick={onOpenIssues}>
+              Issues
+            </button>
+          </div>
+        </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Senior Informed is a manual record only. {openIss.length} open.
+        </p>
+        {!openIss.length ? (
+          <EmptyHint>No open issues.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {openIss.slice(0, 8).map((issue) => (
+              <li key={issue.id} className="py-2 text-sm">
+                <p className="font-semibold">{issue.title}</p>
+                <p className="text-xs text-[color:var(--dispatch-muted)]">
+                  {issue.status} · {issue.escalation_level}
+                  {issue.senior_informed ? " · Senior Informed (manual)" : " · Senior Informed: not recorded"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       {sections.map((section) => (
         <section key={section.title} className="dispatch-panel">
           <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -756,12 +900,14 @@ function LoadEditor({
   busy,
   onSaved,
   onCancel,
+  onLoadChanged,
 }: {
   load: DispatchLoad | null;
   drivers: RosterDriver[];
   busy: boolean;
   onSaved: (input: Parameters<typeof saveLoad>[0]) => Promise<void>;
   onCancel: () => void;
+  onLoadChanged: (load: DispatchLoad) => Promise<void>;
 }) {
   const [form, setForm] = useState(() => ({
     id: load?.id,
@@ -782,6 +928,8 @@ function LoadEditor({
     planned_delivery_at: load?.planned_delivery_at?.slice(0, 16) ?? "",
     actual_delivery_at: load?.actual_delivery_at?.slice(0, 16) ?? "",
     last_manual_location: load?.last_manual_location ?? "",
+    cancel_reason: load?.cancel_reason ?? "",
+    reschedule_note: load?.reschedule_note ?? "",
     stale_after_minutes: load?.stale_after_minutes ?? 180,
     stops: load?.stops?.length ? structuredClone(load.stops) : blankStops(),
   }));
@@ -790,6 +938,8 @@ function LoadEditor({
   const [calls, setCalls] = useState<Awaited<ReturnType<typeof listCheckCalls>>>([]);
   const [excKind, setExcKind] = useState("Delay");
   const [excNotes, setExcNotes] = useState("");
+  const [opsError, setOpsError] = useState<string | null>(null);
+  const [opsBusy, setOpsBusy] = useState(false);
 
   useEffect(() => {
     if (!load?.id) return;
@@ -1022,9 +1172,39 @@ function LoadEditor({
             Add stop
           </button>
         </div>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Reorder or remove stops as needed. Planned times are desk-entered — no invented ETAs.
+        </p>
         <div className="grid gap-3">
           {form.stops.map((stop, i) => (
             <div key={i} className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-3">
+              <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
+                <span className="text-xs font-semibold text-[color:var(--dispatch-navy)]">Stop {stop.sequence}</span>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={i === 0}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, -1) }))}
+                >
+                  Up
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={i >= form.stops.length - 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, 1) }))}
+                >
+                  Down
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  disabled={form.stops.length <= 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: removeStop(f.stops, i) }))}
+                >
+                  Remove
+                </button>
+              </div>
               <label className="grid gap-1 text-xs">
                 Type
                 <select
@@ -1094,6 +1274,104 @@ function LoadEditor({
           ))}
         </div>
       </div>
+
+      {load?.id && (
+        <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+          <h3 className="mb-2 text-sm font-semibold">Cancel / Reschedule</h3>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+            Cancel requires a manual reason. Reschedule updates planned times with a desk note — never invents ETAs.
+          </p>
+          {opsError && (
+            <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {opsError}
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Cancel reason
+              <input
+                className="dispatch-field"
+                value={form.cancel_reason}
+                onChange={(e) => setForm({ ...form, cancel_reason: e.target.value })}
+                placeholder="Required to cancel"
+              />
+            </label>
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Reschedule note
+              <input
+                className="dispatch-field"
+                value={form.reschedule_note}
+                onChange={(e) => setForm({ ...form, reschedule_note: e.target.value })}
+                placeholder="Why planned times changed"
+              />
+            </label>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy || load.status === "cancelled" || load.status === "closed"}
+              onClick={async () => {
+                const err = validateCancel(form.cancel_reason);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await cancelLoad(load, form.cancel_reason);
+                  setForm((f) => ({ ...f, status: "cancelled", cancel_reason: next.cancel_reason ?? f.cancel_reason }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Cancel failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Cancel load
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-primary"
+              disabled={opsBusy}
+              onClick={async () => {
+                const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
+                const pickup = toIso(form.planned_pickup_at);
+                const delivery = toIso(form.planned_delivery_at);
+                const err = validateReschedule(form.reschedule_note, pickup, delivery);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await rescheduleLoad(load, {
+                    note: form.reschedule_note,
+                    planned_pickup_at: pickup,
+                    planned_delivery_at: delivery,
+                    stops: form.stops.map((s, idx) => ({ ...s, sequence: idx + 1 })),
+                  });
+                  setForm((f) => ({
+                    ...f,
+                    reschedule_note: next.reschedule_note ?? f.reschedule_note,
+                    status: next.status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Reschedule failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Save reschedule
+            </button>
+          </div>
+        </div>
+      )}
 
       {load?.id && (
         <>
@@ -1197,6 +1475,8 @@ function LoadEditor({
               last_manual_location_at: form.last_manual_location
                 ? load?.last_manual_location_at ?? new Date().toISOString()
                 : null,
+              cancel_reason: form.cancel_reason || null,
+              reschedule_note: form.reschedule_note || null,
               stale_after_minutes: form.stale_after_minutes,
               stops: form.stops.map((s, i) => ({ ...s, sequence: i + 1 })),
             });
@@ -1274,15 +1554,34 @@ function HandoverBoard({
   const [watch, setWatch] = useState("");
   const [priorities, setPriorities] = useState("");
   const [toDispatcher, setToDispatcher] = useState("");
+  const [hintsReady, setHintsReady] = useState(false);
 
   useEffect(() => {
     void listHandovers().then(setRows);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [issues, followUps] = await Promise.all([listIssues(), listFollowUps()]);
+      if (cancelled) return;
+      const hints = buildHandoverWatchHints({ loads, issues, followUps });
+      if (hints && !hintsReady) {
+        setWatch((prev) => (prev.trim() ? prev : hints));
+        setHintsReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loads, hintsReady]);
+
   return (
     <section className="dispatch-panel grid gap-3">
       <SectionHelp>
         Morning continuity: capture open loads, watch items, and next-day priorities before the desk turns over.
+        Watch hints pull BOL/POD awaiting, open issues, due follow-ups, and cancellations — never invents ETAs or
+        GPS.
       </SectionHelp>
       <label className="grid gap-1 text-sm">
         Summary
@@ -1349,6 +1648,8 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [loadId, setLoadId] = useState("");
+  const [level, setLevel] = useState<DispatchIssue["escalation_level"]>("ops");
+  const [seniorNote, setSeniorNote] = useState("");
 
   async function reload() {
     setIssues(await listIssues());
@@ -1363,7 +1664,10 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
     <div className="grid gap-3">
       <section className="dispatch-panel">
         <h2 className="mb-2 text-base font-semibold">Issues & escalations</h2>
-        <SectionHelp>Escalate desk problems without changing load status by itself.</SectionHelp>
+        <SectionHelp>
+          Escalate desk problems without changing load status by itself.{" "}
+          <strong>Senior Informed</strong> is a manual checkbox/note only — it never sends notifications.
+        </SectionHelp>
         <div className="mb-3 grid gap-2 sm:grid-cols-2">
           <input className="dispatch-field" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
           <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
@@ -1374,8 +1678,18 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
               </option>
             ))}
           </select>
+          <select
+            className="dispatch-field"
+            value={level}
+            onChange={(e) => setLevel(e.target.value as DispatchIssue["escalation_level"])}
+          >
+            <option value="ops">ops</option>
+            <option value="supervisor">supervisor</option>
+            <option value="manager">manager</option>
+            <option value="critical">critical</option>
+          </select>
           <input
-            className="dispatch-field sm:col-span-2"
+            className="dispatch-field"
             placeholder="Detail"
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
@@ -1386,7 +1700,13 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
           className="dispatch-btn-primary"
           onClick={async () => {
             if (!title.trim()) return;
-            await saveIssue({ title: title.trim(), detail, load_id: loadId || null, escalation_level: "ops" });
+            await saveIssue({
+              title: title.trim(),
+              detail,
+              load_id: loadId || null,
+              escalation_level: level,
+              senior_informed: false,
+            });
             setTitle("");
             setDetail("");
             await reload();
@@ -1396,24 +1716,75 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
         </button>
         <ul className="mt-3 divide-y divide-[color:var(--dispatch-border)]">
           {issues.map((issue) => (
-            <li key={issue.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-              <div>
-                <p className="font-semibold">{issue.title}</p>
-                <p className="text-xs text-[color:var(--dispatch-muted)]">
-                  {issue.status} · {issue.escalation_level}
-                </p>
+            <li key={issue.id} className="grid gap-2 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{issue.title}</p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    {issue.status} · {issue.escalation_level}
+                    {issue.senior_informed
+                      ? ` · Senior Informed ${issue.senior_informed_at ? new Date(issue.senior_informed_at).toLocaleString() : ""}`
+                      : " · Senior Informed: not recorded"}
+                  </p>
+                  {issue.senior_informed_note && (
+                    <p className="text-xs text-[color:var(--dispatch-muted)]">{issue.senior_informed_note}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {issue.status !== "resolved" && (
+                    <>
+                      <button
+                        type="button"
+                        className="dispatch-btn-ghost"
+                        onClick={async () => {
+                          await saveIssue({ ...issue, status: "escalated" });
+                          await reload();
+                        }}
+                      >
+                        Escalate
+                      </button>
+                      <button
+                        type="button"
+                        className="dispatch-btn-ghost"
+                        onClick={async () => {
+                          await saveIssue({ ...issue, status: "resolved" });
+                          await reload();
+                        }}
+                      >
+                        Resolve
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              {issue.status !== "resolved" && (
-                <button
-                  type="button"
-                  className="dispatch-btn-ghost"
-                  onClick={async () => {
-                    await saveIssue({ ...issue, status: "escalated" });
-                    await reload();
-                  }}
-                >
-                  Escalate
-                </button>
+              {issue.status !== "resolved" && !issue.senior_informed && (
+                <div className="flex flex-wrap items-end gap-2 rounded-md bg-[color:var(--dispatch-soft)] p-2">
+                  <label className="grid flex-1 gap-1 text-xs">
+                    Senior Informed note (manual)
+                    <input
+                      className="dispatch-field"
+                      placeholder="Who/when you informed — desk record only"
+                      value={seniorNote}
+                      onChange={(e) => setSeniorNote(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="dispatch-btn-primary"
+                    onClick={async () => {
+                      await saveIssue({
+                        ...issue,
+                        senior_informed: true,
+                        senior_informed_note: seniorNote.trim() || "Marked informed by desk",
+                        senior_informed_at: new Date().toISOString(),
+                      });
+                      setSeniorNote("");
+                      await reload();
+                    }}
+                  >
+                    Mark Senior Informed
+                  </button>
+                </div>
               )}
             </li>
           ))}

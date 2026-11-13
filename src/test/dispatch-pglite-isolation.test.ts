@@ -174,6 +174,7 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
     });
 
     await exec(db, stripAuthUserFks(migrationSql("20261113170000_dispatch_operations.sql")));
+    await exec(db, stripAuthUserFks(migrationSql("20261113190000_dispatch_ops_controls.sql")));
 
     await exec(
       db,
@@ -185,6 +186,10 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
       INSERT INTO public.dispatch_loads (id, load_number, status, customer_name)
       VALUES ('11111111-1111-1111-1111-111111111111', 'SH-DENY-1', 'planned', 'Acme')
       ON CONFLICT DO NOTHING;
+
+      INSERT INTO public.dispatch_follow_ups (id, title, due_at, status)
+      VALUES ('22222222-2222-2222-2222-222222222222', 'B8 follow-up', now(), 'open')
+      ON CONFLICT DO NOTHING;
       `,
     );
   }, 120_000);
@@ -193,6 +198,9 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
     await asUser(db, dispatcherId, "desk.dispatcher@example.com", async () => {
       const loads = await db.query(`SELECT load_number FROM public.dispatch_loads`);
       expect(loads.rows.length).toBeGreaterThan(0);
+
+      const followUps = await db.query(`SELECT title FROM public.dispatch_follow_ups`);
+      expect(followUps.rows.length).toBeGreaterThan(0);
 
       const sections = await db.query(`SELECT id FROM public.tracker_sections`);
       expect(sections.rows.length).toBe(0);
