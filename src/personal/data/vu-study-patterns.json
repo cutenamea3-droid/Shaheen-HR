@@ -1,0 +1,188 @@
+{
+  "asOf": "2026-11-10",
+  "context": {
+    "university": "Virtual University of Pakistan",
+    "lms": "VULMS",
+    "programContext": "BS Information Technology",
+    "schemeContext": "Fall 2026(2604)",
+    "relatedLocalFiles": [
+      "parsed-study-plan.json",
+      "recovery-plan.md",
+      "vu-deep-research.md"
+    ],
+    "hardRule": "Never invent student grades, due dates, or completion percentages; use exports only."
+  },
+  "terminology": {
+    "GDB": "Graded Discussion Board (students may say GDDB)",
+    "MDB": "Moderated Discussion Board (ungraded tutor Q&A)",
+    "SemesterWork": "Quizzes, GDBs, assignments, mid — typically 40% with final 60%",
+    "aliases": {
+      "GDDB": "GDB",
+      "Graded Discussion": "GDB",
+      "Discussion Board graded": "GDB"
+    }
+  },
+  "assessmentWeights": {
+    "source": "https://handbook.vu.edu.pk/HandBook_Pages/Academic%20Rules%20and%20Regulations.htm",
+    "semesterWorkPercent": 40,
+    "continuousAssessmentBandPercent": [10, 20],
+    "midSemesterBandPercent": [20, 30],
+    "endSemesterExamPercent": 60,
+    "qualifyAggregatePercent": 40,
+    "qualifyFinalMinimumPercent": 20,
+    "qualifySemesterWorkIncludingMidMinimumPercent": 20,
+    "note": "Per-course splits vary; confirm in VULMS grading scheme."
+  },
+  "lmsSurfaces": [
+    "Announcements",
+    "LessonsVideoLectures",
+    "Handouts",
+    "Assignments",
+    "Quizzes",
+    "GDB",
+    "MDB",
+    "ToDoCalendar",
+    "LectureSchedule",
+    "StudyScheme",
+    "ProgressTimeline",
+    "GradeBook",
+    "FeeAccountBook"
+  ],
+  "priorityStackWhenBehind": [
+    "openGradedWindowsClosingSoon",
+    "minimumHandoutOrLectureForThoseWindows",
+    "handoutCoverageCreditHeavyOrHardCourses",
+    "selectiveLectureRewatchForGapsOrPastPaperTopics",
+    "fullChronologicalLectureBacklog"
+  ],
+  "dailyRhythm": {
+    "vulmsCheckMinutes": [5, 15],
+    "coreBlockGuidance": "1–3 finishable targets written the night before",
+    "focusModes": [
+      { "name": "pomodoro", "workMinutes": 25, "breakMinutes": 5 },
+      { "name": "deep", "workMinutes": 50, "breakMinutes": 10 }
+    ],
+    "afterBlock": "2–3 minute active recall without notes",
+    "weekly": [
+      "keepUpOrHandoutFirstByCourseDifficulty",
+      "oneMistakeReviewPass",
+      "protectAtLeastOnePastPaperOrMcqBlockNearExams"
+    ]
+  },
+  "timeBudgetsMinutes": {
+    "lectureClassic": { "min": 48, "max": 60, "defaultPreset": 50, "confidence": "official_production_target_plus_student_experience" },
+    "handoutLessonRead": { "min": 10, "max": 25, "defaultPreset": 20, "confidence": "estimate_student_guides" },
+    "handoutPlusNotesPlusRecall": { "min": 25, "max": 45, "defaultPreset": 35, "confidence": "estimate" },
+    "gdbDraftAndPost": { "min": 15, "max": 40, "defaultPreset": 25, "confidence": "estimate_student_guides" },
+    "assignmentNonProgramming": { "min": 60, "max": 120, "defaultPreset": 90, "confidence": "estimate_student_memoir" },
+    "assignmentProgramming": { "min": 240, "max": 360, "defaultPreset": 300, "confidence": "estimate_student_memoir" },
+    "quizPrepAndAttempt": { "min": 30, "max": 90, "defaultPreset": 45, "confidence": "estimate_matches_local_recovery_plan_assumption" },
+    "shortModule": { "min": 5, "max": 7, "defaultPreset": 6, "confidence": "student_campus_guide" }
+  },
+  "publicContentChannels": [
+    {
+      "name": "VULMS",
+      "url": "https://vulms.vu.edu.pk/",
+      "official": true,
+      "private": true
+    },
+    {
+      "name": "YouTube VU",
+      "url": "https://www.youtube.com/vu",
+      "official": true,
+      "linkPolicy": "searchByCourseCodeOnly_doNotInventVideoIds"
+    },
+    {
+      "name": "YouTube VU handle",
+      "url": "https://www.youtube.com/@thevirtualuniversityofpakistan",
+      "official": true,
+      "linkPolicy": "searchByCourseCodeOnly_doNotInventVideoIds"
+    },
+    {
+      "name": "OpenCourseware",
+      "url": "https://ocw.vu.edu.pk/",
+      "official": true,
+      "linkPolicy": "verifyCourseCodeOnOcwBeforeDeepLink"
+    },
+    {
+      "name": "Dailymotion",
+      "urlPattern": "{COURSE_CODE} Lecture-{NN} Virtual University of Pakistan",
+      "official": true,
+      "linkPolicy": "searchByTitlePattern_doNotInventIds"
+    },
+    {
+      "name": "VUTV",
+      "url": "https://vu.edu.pk/vutv/",
+      "official": true
+    },
+    {
+      "name": "LectureSchedulePublic",
+      "url": "https://vu.edu.pk/studentservices/LectureSchedule",
+      "official": true
+    },
+    {
+      "name": "Bookshop",
+      "url": "https://bookshop.vu.edu.pk/",
+      "official": true
+    }
+  ],
+  "dashboardUx": {
+    "todayPlanOrder": [
+      "gradedClosingSoon",
+      "prepForThoseActivities",
+      "todayLectureScheduleSlots",
+      "lectureOrHandoutBacklog"
+    ],
+    "timerPresets": [
+      { "id": "lecture", "minutes": 50 },
+      { "id": "handout", "minutes": 20 },
+      { "id": "gdb", "minutes": 25 },
+      { "id": "quizPrep", "minutes": 45 },
+      { "id": "assignment", "minutes": 90 },
+      { "id": "break", "minutes": 5 }
+    ],
+    "alertRules": [
+      "gdbOrQuizClosingWithin48h",
+      "assignmentDueWithin72h",
+      "windowEndedStatusUnknown",
+      "progressMultiWeekAbsentWhenKnown",
+      "feeChallanOnTodo",
+      "midFinalDateSheetWhenPublished"
+    ],
+    "forbidden": [
+      "inventedGrades",
+      "inventedCompletionPercent",
+      "treatingProjectedCgpaDefaultsAsEarned",
+      "fabricatedYoutubeOrOcwDeepLinksForExactLessons"
+    ]
+  },
+  "localExportGaps": [
+    "Progress Timeline for non-CS101 enrolled courses",
+    "Most quiz/assignment submission states",
+    "GDB details if any",
+    "Mid/Final dates",
+    "Fee challan payment state",
+    "TopicCompleted field semantics"
+  ],
+  "citations": [
+    "https://vulms.vu.edu.pk/AuthenticateStudent.aspx",
+    "https://handbook.vu.edu.pk/HandBook_Pages/GettingStarted.htm",
+    "https://handbook.vu.edu.pk/HandBook_Pages/LecturesatVU.htm",
+    "https://handbook.vu.edu.pk/HandBook_Pages/Academic%20Rules%20and%20Regulations.htm",
+    "https://handbook.vu.edu.pk/HandBook_Pages/Criteria_for_Qualifying_a_Semester.htm",
+    "https://www.vu.edu.pk/pages/HowVuWorks",
+    "https://www.vu.edu.pk/vss/Pages/LMS.aspx",
+    "https://ocw.vu.edu.pk/",
+    "https://www.youtube.com/vu",
+    "https://bookshop.vu.edu.pk/",
+    "https://pastpapershub.pk/vulms-guide/",
+    "https://pastpapershub.pk/vu-handouts-study-guide/",
+    "https://vuexamprep.com/blog/vulms-guide-login-dashboard-features",
+    "https://lmshandling.com/blog/vu-gdb-graded-discussion-board-guide",
+    "https://lmshandling.com/blog/vu-attendance-guide",
+    "https://vutechgeek.com/pomodoro-technique-vu-lectures/",
+    "https://vutechgeek.com/vu-study-mistakes-system/",
+    "https://vutechgeek.com/vu-lectures-trap-study-smart/",
+    "https://vuharbanspura.pk/how-to-study-at-vu/"
+  ]
+}

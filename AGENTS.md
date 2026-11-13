@@ -10,8 +10,8 @@
 <!-- LOVABLE:END -->
 
 ## Combined site rules
-- Four isolated modules in one site: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …), Admin & Attendance (`src/admin/` → `/admin`), HR Personal shell (`src/personal/` → `/personal`; full secure workspace on PR #16), Dispatch Operations (`src/dispatch/` → `/dispatch`; Batch 7 core ops). Why: user requires systems kept separate and never merged.
-- Never share data, stores, or database clients across Driver ↔ Admin ↔ Personal. Dispatch may reuse the Driver *project* URL/key with dedicated auth storage (`shaheen-dispatch-auth-v1`) + `dispatch_portal_accounts` ACL — never Admin/Personal clients. Why: data and AuthZ must stay separate.
+- Four isolated modules in one site: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …), Admin & Attendance (`src/admin/` → `/admin`), HR Personal (`src/personal/` → `/personal`; secure workspace + `VITE_PERSONAL_*`), Dispatch Operations (`src/dispatch/` → `/dispatch`; Batch 7–9 ops). Why: user requires systems kept separate and never merged.
+- Never share data, stores, or database clients across Driver ↔ Admin ↔ Personal. Dispatch may reuse the Driver *project* URL/key with dedicated auth storage (`shaheen-dispatch-auth-v1`) + `dispatch_portal_accounts` ACL — never Admin/Personal clients. Personal uses only `src/personal/integrations/supabase/client.ts` + `VITE_PERSONAL_*` (or local mock when `VITE_PERSONAL_AUTH_SECURE` is unset) — never company `app_state` / `tracker_sections`. Why: data and AuthZ must stay separate.
 - Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL. Why: Batch 2 security invariant.
 - Admin colors stay under `.admin-theme`; Dispatch under `.dispatch-theme`; Personal under `.personal-theme`. Why: user requires identical per-system look.
 - Dispatchers must be blocked by backend auth + RLS (`dispatch_portal_accounts`), not nav hide alone. Never expose compliance docs, banking, salaries, drug tests, rate cards, or Personal study data to Dispatch.

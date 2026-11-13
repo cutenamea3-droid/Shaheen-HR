@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PersonalLanding } from "@/personal/PersonalLanding";
+import { PersonalApp } from "@/personal/PersonalApp";
 
 /**
- * Client route for /personal.
- * Honesty: static Cloudflare Pages SPA gate ≠ edge ACL. Full secure Personal is PR #16.
+ * Client route gate for /personal.
+ * Honesty: with static Cloudflare Pages (nitro: false), beforeLoad runs in the SPA —
+ * it is not an edge/httpOnly ACL. Secure Personal cloud needs dedicated project + flags.
  */
 export const Route = createFileRoute("/personal")({
   head: () => ({
@@ -11,10 +12,13 @@ export const Route = createFileRoute("/personal")({
       { title: "HR Personal" },
       { name: "description", content: "HR Personal" },
       { property: "og:title", content: "HR Personal" },
+      { property: "og:description", content: "HR Personal" },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
+  // Ensure Personal never inherits Driver LockGate context; study UI still waits on PersonalApp auth.
   beforeLoad: () => ({ personalRoute: true as const }),
-  component: () => <PersonalLanding />,
+  component: () => <PersonalApp />,
 });

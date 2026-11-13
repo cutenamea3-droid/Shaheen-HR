@@ -22,6 +22,11 @@ describe("Combined site", () => {
     expect(router.matchRoutes("/admin").at(-1)?.routeId).toBe("/admin");
   });
 
+  it("serves HR Personal at /personal", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/personal").at(-1)?.routeId).toBe("/personal");
+  });
+
   it.each([
     "/cv",
     "/account",
