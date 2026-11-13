@@ -13,3 +13,9 @@
 - Two separate systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`). Why: user requires both kept verbatim and never merged.
 - Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend). Why: data must stay separate.
 - Admin's original colors are scoped under `.admin-theme` in styles.css; don't change either system's logic or look. Why: user requires identical behavior and styling.
+
+## Stabilization (future sessions)
+- Read `docs/STABILIZATION_PLAN.md` and `docs/stabilization/` before re-auditing.
+- Prefer small batches with acceptance tests in `docs/stabilization/batches.md`.
+- Critical live risk: Admin “Local session — cloud sync paused…” — do not open a competing Attendance sync PR if one is already in flight.
+- Do not merge unrelated open feature PRs (#8 banking, #11/#16/#17 Personal) without explicit owner approval.
