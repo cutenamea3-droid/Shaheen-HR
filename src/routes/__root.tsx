@@ -129,10 +129,11 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");
   const isDispatch = pathname.startsWith("/dispatch");
+  const isPersonal = pathname.startsWith("/personal");
   const isDenied = pathname.startsWith("/access-denied");
   const isPublic = pathname === "/cv";
-  // Dispatch + Access Denied skip Driver LockGate (Batch 2 / #26). Personal route stays on #16.
-  const skipDriverLock = isAdmin || isDispatch || isDenied || isPublic;
+  // Dispatch / Personal / Access Denied skip Driver LockGate (Batch 2 / #26).
+  const skipDriverLock = isAdmin || isDispatch || isPersonal || isDenied || isPublic;
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { calcDay, fmtHours, monthDays, prettyDate } from "@/admin/lib/calc";
+import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useDensity, setDensity } from "@/lib/density";
 import type { DayRec, Dept, Employee, Settings } from "@/admin/lib/types";
@@ -30,7 +31,7 @@ function dayRollup(
     if (rec.status === "leave") leave++;
     else if (rec.status === "absent") inactive++;
     else active++; // present | half
-    const dept = depts.find((d) => d.id === e.deptId);
+    const dept = resolveDeptAsOf(e, depts, date);
     const c = calcDay(e, dept, date, rec, settings);
     const needsReview =
       c.missPunch ||
@@ -47,14 +48,14 @@ export function Overview() {
   const { employees, depts, records, settings, tasks } = useApp();
   const density = useDensity();
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
-  const rows = employees.filter((e) => records[date]?.[e.id]).map((e) => calcDay(e, depts.find((d) => d.id === e.deptId), date, records[date]![e.id]!, settings));
+  const rows = employees.filter((e) => records[date]?.[e.id]).map((e) => calcDay(e, resolveDeptAsOf(e, depts, date), date, records[date]![e.id]!, settings));
   const month = date.slice(0, 7);
   let ot = 0, extra = 0;
   employees.forEach((e) =>
     monthDays(month).forEach((d) => {
       const r = records[d]?.[e.id];
       if (!r) return;
-      const c = calcDay(e, depts.find((x) => x.id === e.deptId), d, r, settings);
+      const c = calcDay(e, resolveDeptAsOf(e, depts, d), d, r, settings);
       ot += c.overtimeMin;
       if (c.extraDay) extra++;
     }),

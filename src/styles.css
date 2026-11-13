@@ -1218,7 +1218,7 @@ textarea {
   --danger: var(--brand-red, #CF3540);
 }
 /* Subtle page canvas for Driver (soft white) without changing layout */
-body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.dispatch-theme)) {
+body:not(:has(.admin-theme)):not(:has(.cv-theme)):not(:has(.dispatch-theme)):not(:has(.personal-theme)) {
   background-color: var(--brand-soft-white, #F7F8FA);
 }
 
@@ -1277,6 +1277,7 @@ body:has(.dispatch-theme) {
   font-size: 14px;
   font-weight: 650;
   transition: background-color 120ms ease, transform 120ms ease;
+  cursor: pointer;
 }
 .dispatch-btn-primary {
   background: linear-gradient(135deg, #D46800, var(--dispatch-orange));
@@ -1325,6 +1326,11 @@ body:has(.dispatch-theme) {
   border-bottom: 1px solid var(--dispatch-border);
   padding: 0.65rem 0.35rem;
   vertical-align: top;
+}
+
+/* Personal theme shell (Batch 2 landing — full workspace on PR #16) */
+.personal-theme {
+  color: #1e1b4b;
 }
 /* Admin form labels — consistent weight/contrast */
 .admin-theme .lbl {

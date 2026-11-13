@@ -10,7 +10,8 @@
 <!-- LOVABLE:END -->
 
 ## Combined site rules
-- Isolated systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`), Dispatch Operations lives in `src/dispatch/` (route `/dispatch`). Why: user requires each kept verbatim and never merged.
-- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend); Dispatch uses only `src/dispatch/integrations/supabase/client.ts` with its own auth storage key and `dispatch_*` tables/RLS. Why: data must stay separate.
-- Admin's original colors are scoped under `.admin-theme` in styles.css; Dispatch under `.dispatch-theme`; don't change other systems' logic or look. Why: user requires identical behavior and styling for existing modules.
+- Four isolated modules in one site: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …), Admin & Attendance (`src/admin/` → `/admin`), HR Personal shell (`src/personal/` → `/personal`; full secure workspace on PR #16), Dispatch Operations (`src/dispatch/` → `/dispatch`; Batch 7 core ops). Why: user requires systems kept separate and never merged.
+- Never share data, stores, or database clients across Driver ↔ Admin ↔ Personal. Dispatch may reuse the Driver *project* URL/key with dedicated auth storage (`shaheen-dispatch-auth-v1`) + `dispatch_portal_accounts` ACL — never Admin/Personal clients. Why: data and AuthZ must stay separate.
+- Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL. Why: Batch 2 security invariant.
+- Admin colors stay under `.admin-theme`; Dispatch under `.dispatch-theme`; Personal under `.personal-theme`. Why: user requires identical per-system look.
 - Dispatchers must be blocked by backend auth + RLS (`dispatch_portal_accounts`), not nav hide alone. Never expose compliance docs, banking, salaries, drug tests, rate cards, or Personal study data to Dispatch.

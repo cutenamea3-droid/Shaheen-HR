@@ -34,7 +34,7 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
             and never Live GPS.
           </p>
         </div>
-        <form onSubmit={submit} className="flex flex-col justify-center gap-4 p-6 sm:p-8">
+        <form onSubmit={(e) => void submit(e)} className="flex flex-col justify-center gap-4 p-6 sm:p-8">
           <div>
             <p className="font-display text-2xl font-bold text-[color:var(--dispatch-navy)] md:hidden">
               Shaheen Transport

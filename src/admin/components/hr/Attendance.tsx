@@ -4,7 +4,9 @@ import { useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
+import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { shiftVariance } from "@/admin/lib/shift-variance";
+import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing";
 import { emptyRec, type Status } from "@/admin/lib/types";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useDensity, setDensity } from "@/lib/density";
@@ -43,6 +45,8 @@ export function Attendance() {
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);
   const { employees, depts, records, perf, settings, setRec, resetRec, resetDay } = useApp();
+  const isClosedFn = useMonthClosing((s) => s.isClosed);
+  const monthClosed = isDateInClosedMonth(date, isClosedFn);
   const day = records[date] ?? {};
   const data = { depts, employees, records, perf, settings };
   const density = useDensity();
@@ -81,15 +85,21 @@ export function Attendance() {
 
   const save = async () => {
     setSaveMsg("Saving…");
-    const ok = await saveNow();
-    setSaveMsg(ok ? `✓ Saved — ${prettyDate(date)} is now in reports` : "Save failed, try again");
-    if (ok) setTimeout(() => setSaveMsg(""), 4000);
+    const result = await saveNow();
+    setSaveMsg(
+      result.cloud
+        ? `✓ Cloud Saved — ${prettyDate(date)} is now in reports`
+        : result.ok
+          ? result.message
+          : result.message || "Save failed, try again",
+    );
+    if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };
 
   /** Fill dept start/end for active employees whose punch in & out are empty that day; then sync. */
   const fillStandardTimes = async () => {
     const targets = employees.filter((e) => {
-      if (!depts.some((d) => d.id === e.deptId)) return false;
+      if (!resolveDeptAsOf(e, depts, date)) return false;
       const r = day[e.id];
       const status = r?.status ?? "present";
       if (status === "leave" || status === "absent") return false;
@@ -100,12 +110,12 @@ export function Attendance() {
       return;
     }
     const okConfirm = confirm(
-      `Fill standard shift times for ${targets.length} employee(s) with empty punches on ${prettyDate(date)}?\n\nPunch in/out will be set from each department's shift, then recalculated and synced.`,
+      `Fill standard shift times for ${targets.length} employee(s) with empty punches on ${prettyDate(date)}?\n\nPunch in/out will be set from each employee's assigned shift for this date, then recalculated and synced.`,
     );
     if (!okConfirm) return;
 
     for (const e of targets) {
-      const dept = depts.find((d) => d.id === e.deptId)!;
+      const dept = resolveDeptAsOf(e, depts, date)!;
       const prev = day[e.id];
       setRec(date, e.id, {
         status: prev?.status === "half" ? "half" : "present",
@@ -115,13 +125,15 @@ export function Attendance() {
     }
 
     setSaveMsg("Saving…");
-    const ok = await saveNow();
+    const result = await saveNow();
     setSaveMsg(
-      ok
-        ? `✓ Filled ${targets.length} · ${prettyDate(date)} synced`
-        : `Filled ${targets.length} locally — sync failed, try Save`,
+      result.cloud
+        ? `✓ Filled ${targets.length} · ${prettyDate(date)} — Cloud Saved`
+        : result.ok
+          ? `Filled ${targets.length} on this browser — ${result.message}`
+          : `Filled ${targets.length} locally — ${result.message || "sync failed, try Save"}`,
     );
-    if (ok) setTimeout(() => setSaveMsg(""), 4000);
+    if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };
 
   const saveBtn = (
@@ -134,7 +146,7 @@ export function Attendance() {
   const visible = employees.filter((e) => {
     const rec = day[e.id];
     const r = rec ?? emptyRec();
-    const dept = depts.find((d) => d.id === e.deptId);
+    const dept = resolveDeptAsOf(e, depts, date);
     const c = calcDay(e, dept, date, r, settings);
     if (attFocus === "all") return true;
     if (attFocus === "missing") return !rec;
@@ -204,6 +216,12 @@ export function Attendance() {
         }
       />
 
+      {monthClosed && (
+        <p className="panel text-sm font-semibold text-destructive">
+          Month {month} is closed. Reopen from CEO Reports before editing. Closing ≠ Paid (salary status unchanged).
+        </p>
+      )}
+
       <div className="tracker-filter-group" role="group" aria-label="Attendance focus filter">
         {FOCUS_CHIPS.map((f) => (
           <button
@@ -221,7 +239,7 @@ export function Attendance() {
       {!employees.length && <p className="panel text-muted-foreground">Add your employees in the Team tab first.</p>}
       <div className={density === "compact" ? "space-y-2" : "space-y-3"}>
         {visible.map((e, i) => {
-          const dept = depts.find((d) => d.id === e.deptId);
+          const dept = resolveDeptAsOf(e, depts, date);
           const rec = day[e.id];
           const r = rec ?? emptyRec();
           const c = calcDay(e, dept, date, r, settings);

@@ -15,9 +15,9 @@ import {
   rowDriverStatus,
   rowIsActive,
   statusExpiryCol,
-  suggestApplyPlan,
   type ExpFilter,
 } from "@/lib/alerts";
+import { suggestPlanForCell } from "@/lib/plan-dates";
 import { countTempNotes, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { dateOfHireOf, formatHireDateDisplay, lengthOfService } from "@/lib/driver-hr/hire-date";
 import { printDriverDossier } from "@/lib/driver-dossier";
@@ -29,6 +29,7 @@ import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { DensityToggle } from "./DensityToggle";
 import { ExpirationFilter } from "./ExpirationFilter";
 import { FilterGroup, FilterRack } from "./FilterRack";
+import { FuturePlanSuggest } from "./FuturePlanSuggest";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DriverManageControls } from "./DriverManageControls";
@@ -496,26 +497,6 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
   );
 }
 
-function planExpiryCol(sectionId: string, planCol: number) {
-  if (sectionId !== "queries") return -1;
-  if (planCol === 6) return 2; // Annual Query Future Plan ← Annual Exp
-  if (planCol === 7) return 4; // Pre-Employment Future Plan ← Pre-Emp Exp
-  return -1;
-}
-
-function PlanSuggestChip({ suggestion, onApply }: { suggestion: string; onApply: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onApply}
-      title="Click to fill this suggested apply date (you can still type freely)"
-      className="mt-1 inline-flex max-w-full items-center rounded-lg border border-primary/40 bg-primary/10 px-2.5 py-1 text-left text-xs font-semibold text-primary transition hover:bg-primary/20"
-    >
-      <span className="truncate">Suggest: {suggestion}</span>
-    </button>
-  );
-}
-
 function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
   const data = useData();
   const def = SECTIONS.find((s) => s.id === sectionId)!;
@@ -531,8 +512,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
           if (nv !== v) setCell(sectionId, row.id, i, nv);
         };
         const wide = t === "note" || t === "plan" || t === "tempnote";
-        const expiryIdx = t === "plan" ? planExpiryCol(sectionId, i) : -1;
-        const suggestion = expiryIdx >= 0 ? suggestApplyPlan(row.cells[expiryIdx] ?? "") : null;
+        const planSuggestion = t === "plan" ? suggestPlanForCell(sectionId, i, row) : null;
         return (
           <div key={i} className={cn(wide && "sm:col-span-2")}>
             <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">{headers[i]?.trim()}</div>
@@ -553,7 +533,18 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                         : "Add note"
                   }
                 />
-                {suggestion && <PlanSuggestChip suggestion={suggestion} onApply={() => save(suggestion)} />}
+                {t === "plan" && (
+                  <div className="mt-2">
+                    <FuturePlanSuggest
+                      suggestion={planSuggestion}
+                      existingPlan={v}
+                      sectionId={sectionId}
+                      rowId={row.id}
+                      planCol={i}
+                      compact
+                    />
+                  </div>
+                )}
               </div>
             )}
             {t === "date" && (

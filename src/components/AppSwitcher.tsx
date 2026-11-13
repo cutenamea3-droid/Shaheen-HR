@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, ShieldX, Truck, UsersRound } from "lucide-react";
+import { FileCheck2, ShieldX, Truck, UserRound, UsersRound } from "lucide-react";
 import {
   EMPTY_GRANTS,
   probeModuleGrants,
@@ -8,20 +8,22 @@ import {
   type ModuleGrants,
   type ModuleId,
 } from "@/lib/module-access";
+import { shouldShowPersonalSwitcherLink } from "@/personal/lib/auth-probe";
 
 /**
  * Top bar that switches between isolated systems.
- * After seats resolve, only permitted company modules remain visible
+ * After seats resolve, only permitted modules remain visible
  * (Dispatch-only users do not see Compliance / Admin).
- * Personal is never advertised from company routes (Batch 2 / #26).
+ * Personal appears only when already on `/personal` or seat probe allows (Batch 2 / #26).
  */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");
   const isDispatch = pathname.startsWith("/dispatch");
+  const isPersonal = pathname.startsWith("/personal");
   const isCv = pathname === "/cv";
   const isDenied = pathname.startsWith("/access-denied");
-  const isDriver = !isAdmin && !isDispatch && !isCv && !isDenied;
+  const isDriver = !isAdmin && !isDispatch && !isPersonal && !isCv && !isDenied;
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
@@ -44,10 +46,19 @@ export function AppSwitcher() {
   // Anonymous / unknown: keep company login surfaces visible. Once seats resolve, filter strictly.
   const selectable =
     ready && hasAnySeat
-      ? selectableModulesFor(grants, { pathname }).filter((m) => m !== "personal")
+      ? selectableModulesFor(grants, { pathname })
       : (["compliance", "admin-hr", "dispatch"] as ModuleId[]);
 
-  const show = (id: ModuleId) => selectable.includes(id);
+  const show = (id: ModuleId) => {
+    if (id === "personal") {
+      return shouldShowPersonalSwitcherLink(isPersonal) && Boolean(grants.personal || isPreviewOrUnknown());
+    }
+    return selectable.includes(id);
+  };
+
+  function isPreviewOrUnknown() {
+    return !ready || !hasAnySeat;
+  }
 
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
@@ -103,6 +114,18 @@ export function AppSwitcher() {
           >
             <Truck className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Dispatch</span>
+          </Link>
+        )}
+        {show("personal") && (
+          <Link
+            to="/personal"
+            aria-label="HR Personal"
+            title="HR Personal"
+            aria-current={isPersonal ? "page" : undefined}
+            className={`${base} ${isPersonal ? on : off}`}
+          >
+            <UserRound className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Personal</span>
           </Link>
         )}
         {isDenied && (
