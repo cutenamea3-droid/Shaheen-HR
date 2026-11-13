@@ -72,6 +72,10 @@ export type DispatchLoad = {
   last_manual_location: string | null;
   last_manual_location_at: string | null;
   last_manual_location_by: string | null;
+  /** Manual cancel reason — required when status becomes cancelled. */
+  cancel_reason: string | null;
+  /** Manual reschedule note — desk-recorded; never invents ETAs. */
+  reschedule_note: string | null;
   stale_after_minutes: number;
   created_by: string | null;
   updated_by: string | null;
@@ -108,6 +112,23 @@ export type DispatchIssue = {
   detail: string | null;
   escalation_level: "ops" | "supervisor" | "manager" | "critical";
   status: "open" | "escalated" | "resolved";
+  /** Manual desk record only — never auto-notifies senior. */
+  senior_informed: boolean;
+  senior_informed_at: string | null;
+  senior_informed_note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Desk follow-up reminder — manual record; not a push/email notification system. */
+export type DispatchFollowUp = {
+  id: string;
+  load_id: string | null;
+  title: string;
+  notes: string | null;
+  due_at: string;
+  status: "open" | "done" | "cancelled";
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -130,6 +151,9 @@ export type DispatchView =
   | "loads"
   | "load"
   | "updates"
+  | "docs"
+  | "followups"
+  | "equipment"
   | "roster"
   | "team"
   | "handover"

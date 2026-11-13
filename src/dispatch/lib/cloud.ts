@@ -4,12 +4,14 @@ import { cloneFixtures } from "./fixtures";
 import type {
   CheckCall,
   DispatchException,
+  DispatchFollowUp,
   DispatchIssue,
   DispatchLoad,
   LoadStop,
   RosterDriver,
   ShiftHandover,
 } from "./types";
+import { canCancelLoad, validateCancel, validateReschedule } from "./ops-controls";
 
 type Memory = ReturnType<typeof cloneFixtures>;
 let memory: Memory | null = null;
@@ -131,12 +133,18 @@ export type LoadWriteInput = {
   actual_delivery_at?: string | null;
   last_manual_location?: string | null;
   last_manual_location_at?: string | null;
+  cancel_reason?: string | null;
+  reschedule_note?: string | null;
   stale_after_minutes?: number;
   stops?: LoadStop[];
 };
 
 export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   const now = new Date().toISOString();
+  if (input.status === "cancelled") {
+    const err = validateCancel(input.cancel_reason ?? "");
+    if (err) throw new Error(err);
+  }
   if (isDispatchPreviewMode()) {
     const idx = mem().loads.findIndex((l) => l.id === input.id);
     const base: DispatchLoad =
@@ -164,6 +172,8 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
             last_manual_location: null,
             last_manual_location_at: null,
             last_manual_location_by: null,
+            cancel_reason: null,
+            reschedule_note: null,
             stale_after_minutes: 180,
             created_by: null,
             updated_by: null,
@@ -175,6 +185,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
       ...base,
       ...input,
       load_number: input.load_number,
+      cancel_reason:
+        input.status === "cancelled"
+          ? (input.cancel_reason ?? base.cancel_reason)
+          : (input.cancel_reason ?? base.cancel_reason),
+      reschedule_note: input.reschedule_note ?? base.reschedule_note,
       updated_at: now,
       stops: input.stops ?? base.stops ?? [],
     };
@@ -204,6 +219,8 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     actual_delivery_at: input.actual_delivery_at ?? null,
     last_manual_location: input.last_manual_location ?? null,
     last_manual_location_at: input.last_manual_location_at ?? null,
+    cancel_reason: input.cancel_reason ?? null,
+    reschedule_note: input.reschedule_note ?? null,
     stale_after_minutes: input.stale_after_minutes ?? 180,
     updated_at: now,
   };
@@ -369,12 +386,24 @@ export async function listIssues(): Promise<DispatchIssue[]> {
 export async function saveIssue(
   input: Partial<DispatchIssue> & { title: string },
 ): Promise<DispatchIssue> {
+  const now = new Date().toISOString();
   if (isDispatchPreviewMode()) {
     const existing = mem().issues.find((i) => i.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { updated_at: new Date().toISOString() });
+      const senior_informed = input.senior_informed ?? existing.senior_informed;
+      Object.assign(existing, input, {
+        senior_informed,
+        senior_informed_at: senior_informed
+          ? (input.senior_informed_at ?? existing.senior_informed_at ?? now)
+          : null,
+        senior_informed_note: senior_informed
+          ? (input.senior_informed_note ?? existing.senior_informed_note)
+          : null,
+        updated_at: now,
+      });
       return existing;
     }
+    const senior_informed = input.senior_informed ?? false;
     const row: DispatchIssue = {
       id: newId(),
       load_id: input.load_id ?? null,
@@ -382,12 +411,16 @@ export async function saveIssue(
       detail: input.detail ?? null,
       escalation_level: input.escalation_level ?? "ops",
       status: input.status ?? "open",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      senior_informed,
+      senior_informed_at: senior_informed ? (input.senior_informed_at ?? now) : null,
+      senior_informed_note: senior_informed ? (input.senior_informed_note ?? null) : null,
+      created_at: now,
+      updated_at: now,
     };
     mem().issues.unshift(row);
     return row;
   }
+  const senior_informed = input.senior_informed ?? false;
   const { data, error } = await dispatchSupabase
     .from("dispatch_issues")
     .upsert({
@@ -397,11 +430,147 @@ export async function saveIssue(
       detail: input.detail ?? null,
       escalation_level: input.escalation_level ?? "ops",
       status: input.status ?? "open",
+      senior_informed,
+      senior_informed_at: senior_informed ? (input.senior_informed_at ?? now) : null,
+      senior_informed_note: senior_informed ? (input.senior_informed_note ?? null) : null,
     })
     .select("*")
     .single();
   if (error) throw error;
   return data as DispatchIssue;
+}
+
+export async function listFollowUps(): Promise<DispatchFollowUp[]> {
+  if (isDispatchPreviewMode()) {
+    return [...mem().followUps].sort((a, b) => a.due_at.localeCompare(b.due_at));
+  }
+  const { data, error } = await dispatchSupabase
+    .from("dispatch_follow_ups")
+    .select("*")
+    .order("due_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as DispatchFollowUp[];
+}
+
+export async function saveFollowUp(
+  input: Partial<DispatchFollowUp> & { title: string; due_at: string },
+): Promise<DispatchFollowUp> {
+  const now = new Date().toISOString();
+  if (isDispatchPreviewMode()) {
+    const existing = mem().followUps.find((f) => f.id === input.id);
+    if (existing) {
+      Object.assign(existing, input, { updated_at: now });
+      return existing;
+    }
+    const row: DispatchFollowUp = {
+      id: newId(),
+      load_id: input.load_id ?? null,
+      title: input.title,
+      notes: input.notes ?? null,
+      due_at: input.due_at,
+      status: input.status ?? "open",
+      created_by: input.created_by ?? null,
+      created_at: now,
+      updated_at: now,
+    };
+    mem().followUps.unshift(row);
+    return row;
+  }
+  const { data, error } = await dispatchSupabase
+    .from("dispatch_follow_ups")
+    .upsert({
+      id: input.id,
+      load_id: input.load_id ?? null,
+      title: input.title,
+      notes: input.notes ?? null,
+      due_at: input.due_at,
+      status: input.status ?? "open",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as DispatchFollowUp;
+}
+
+/** Cancel a load with a required manual reason. */
+export async function cancelLoad(
+  load: DispatchLoad,
+  reason: string,
+): Promise<DispatchLoad> {
+  if (!canCancelLoad(load.status)) {
+    throw new Error(`Cannot cancel a ${load.status} load.`);
+  }
+  const err = validateCancel(reason);
+  if (err) throw new Error(err);
+  return saveLoad({
+    id: load.id,
+    load_number: load.load_number,
+    status: "cancelled",
+    cancel_reason: reason.trim(),
+    customer_name: load.customer_name,
+    commodity: load.commodity,
+    equipment: load.equipment,
+    notes: load.notes,
+    exception_open: load.exception_open,
+    bol_status: load.bol_status,
+    pod_status: load.pod_status,
+    assigned_driver_id: load.assigned_driver_id,
+    assigned_driver_name: load.assigned_driver_name,
+    external_ref_label: load.external_ref_label,
+    external_ref_url: load.external_ref_url,
+    planned_pickup_at: load.planned_pickup_at,
+    actual_pickup_at: load.actual_pickup_at,
+    planned_delivery_at: load.planned_delivery_at,
+    actual_delivery_at: load.actual_delivery_at,
+    last_manual_location: load.last_manual_location,
+    last_manual_location_at: load.last_manual_location_at,
+    reschedule_note: load.reschedule_note,
+    stale_after_minutes: load.stale_after_minutes,
+    ...(load.stops ? { stops: load.stops } : {}),
+  });
+}
+
+/** Reschedule planned times with a required manual note — never invents ETAs. */
+export async function rescheduleLoad(
+  load: DispatchLoad,
+  input: {
+    note: string;
+    planned_pickup_at?: string | null;
+    planned_delivery_at?: string | null;
+    stops?: LoadStop[];
+  },
+): Promise<DispatchLoad> {
+  const pickup = input.planned_pickup_at ?? load.planned_pickup_at;
+  const delivery = input.planned_delivery_at ?? load.planned_delivery_at;
+  const err = validateReschedule(input.note, pickup, delivery);
+  if (err) throw new Error(err);
+  const stops = input.stops ?? load.stops;
+  return saveLoad({
+    id: load.id,
+    load_number: load.load_number,
+    status: load.status === "cancelled" ? "planned" : load.status,
+    cancel_reason: load.cancel_reason,
+    reschedule_note: input.note.trim(),
+    planned_pickup_at: pickup,
+    planned_delivery_at: delivery,
+    customer_name: load.customer_name,
+    commodity: load.commodity,
+    equipment: load.equipment,
+    notes: load.notes,
+    exception_open: load.exception_open,
+    bol_status: load.bol_status,
+    pod_status: load.pod_status,
+    assigned_driver_id: load.assigned_driver_id,
+    assigned_driver_name: load.assigned_driver_name,
+    external_ref_label: load.external_ref_label,
+    external_ref_url: load.external_ref_url,
+    actual_pickup_at: load.actual_pickup_at,
+    actual_delivery_at: load.actual_delivery_at,
+    last_manual_location: load.last_manual_location,
+    last_manual_location_at: load.last_manual_location_at,
+    stale_after_minutes: load.stale_after_minutes,
+    ...(stops ? { stops } : {}),
+  });
 }
 
 export async function listHandovers(): Promise<ShiftHandover[]> {
