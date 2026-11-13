@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
+import { Banknote, BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users, Wallet, Scale } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
@@ -7,6 +7,9 @@ import { Overtime } from "@/admin/components/hr/Overtime";
 import { EmployeeDirectory } from "@/admin/components/hr/EmployeeDirectory";
 import { LeaveManagement } from "@/admin/components/hr/LeaveManagement";
 import { MyHrToday } from "@/admin/components/hr/MyHrToday";
+import { SalaryPayments } from "@/admin/components/hr/SalaryPayments";
+import { ExpensesManagement } from "@/admin/components/hr/ExpensesManagement";
+import { PayrollVerify } from "@/admin/components/hr/PayrollVerify";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import {
@@ -226,12 +229,16 @@ const TABS = [
   ["tasks", "Tasks", Tasks, ListChecks],
   ["team", "Team", Team, Users],
   ["directory", "Directory", EmployeeDirectory, FolderKanban],
+  ["salary-pay", "Salary pay", SalaryPayments, Banknote],
+  ["payroll-verify", "Payroll verify", PayrollVerify, Scale],
+  ["expenses", "Expenses", ExpensesManagement, Wallet],
   ["settings", "Settings", SettingsPanel, Settings],
 ] as const;
 
 const OPS_IDS = new Set(["hr-today", "overview", "attendance", "leave", "performance", "overtime"]);
 const REPORT_IDS = new Set(["reports", "tasks"]);
 const PEOPLE_IDS = new Set(["team", "directory"]);
+const FINANCE_IDS = new Set(["salary-pay", "payroll-verify", "expenses"]);
 const CONFIG_IDS = new Set(["settings"]);
 
 const TAB_TITLE: Record<string, string> = {
@@ -240,11 +247,14 @@ const TAB_TITLE: Record<string, string> = {
   attendance: "Attendance",
   leave: "Leave Management",
   performance: "Performance",
-  overtime: "Overtime",
+  overtime: "Overtime & Approval",
   reports: "CEO Reports",
   tasks: "Tasks",
   team: "Team",
   directory: "Employee Directory",
+  "salary-pay": "Salary payments",
+  "payroll-verify": "Payroll verification",
+  expenses: "Expenses Management",
   settings: "Settings",
   account: "My Account",
   "team-mgmt": "User Accounts",
@@ -256,6 +266,7 @@ function adminCrumbs(tab: string): { label: string; current?: boolean }[] {
   let group = "Operations";
   if (REPORT_IDS.has(tab)) group = "Reports & work";
   else if (PEOPLE_IDS.has(tab)) group = "People";
+  else if (FINANCE_IDS.has(tab)) group = "Finance";
   else if (CONFIG_IDS.has(tab)) group = "Configuration";
   else if (tab === "account") group = "My Account";
   else if (tab === "team-mgmt") group = "Team Management";
@@ -586,6 +597,8 @@ export function AdminApp() {
           {isAdmin && renderTabGroup(REPORT_IDS)}
           {isAdmin && groupLbl("People")}
           {isAdmin && renderTabGroup(PEOPLE_IDS)}
+          {isAdmin && groupLbl("Finance")}
+          {isAdmin && renderTabGroup(FINANCE_IDS)}
           {isAdmin && groupLbl("Configuration")}
           {isAdmin && renderTabGroup(CONFIG_IDS)}
           {groupLbl("My Account")}
