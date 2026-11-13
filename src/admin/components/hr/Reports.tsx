@@ -5,6 +5,7 @@ import {
   dailyAttendance, dailyCombined, dailyPerformance, downloadCsv, downloadPdf, downloadPayrollCsv,
   monthlyAttendance, monthlyOvertime, monthlyPerformance, type Table,
 } from "@/admin/lib/reports";
+import { downloadMonthlyPdf, type MonthlyPdfMode } from "@/admin/lib/monthly-pdf";
 import { SectionTitle, todayStr } from "./common";
 
 function Card({ title, sub, make, name }: { title: string; sub: string; make: () => Table[]; name: string }) {
@@ -31,6 +32,7 @@ export function Reports() {
   const [to, setTo] = useState(days[days.length - 1] ?? `${month}-01`);
   const s = useApp();
   const data = { depts: s.depts, employees: s.employees, records: s.records, perf: s.perf, settings: s.settings };
+  const company = s.settings.company;
 
   const onMonthChange = (m: string) => {
     if (!m) return;
@@ -38,6 +40,10 @@ export function Reports() {
     const md = monthDays(m);
     setFrom(md[0]!);
     setTo(md[md.length - 1]!);
+  };
+
+  const exportMonthly = (mode: MonthlyPdfMode) => {
+    void downloadMonthlyPdf(data, { mode, company, month });
   };
 
   return (
@@ -74,9 +80,40 @@ export function Reports() {
         </div>
       </section>
       <section>
-        <SectionTitle title="Monthly reports" right={<input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} />} />
+        <SectionTitle
+          title="Monthly reports"
+          sub="Premium Shaheen Transport LLC PDF from live selected-month data. Management Summary for leadership; Full HR Audit includes sensitive note text."
+          right={<input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label="Report month" />}
+        />
         <div className="grid gap-3 md:grid-cols-2">
-          <Card title="Combined monthly" sub="Attendance, performance and overtime together" make={() => [...monthlyAttendance(data, month), ...monthlyPerformance(data, month), ...monthlyOvertime(data, month)]} name={`monthly-combined-${month}`} />
+          <div className="admin-emp-card flex flex-col justify-between gap-3 md:col-span-2">
+            <div>
+              <h3 className="font-bold tracking-tight">Monthly Combined PDF</h3>
+              <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
+                Sections A–F from the selected month. Same verified attendance calculations; no bank/IBAN; no invented signatures.
+              </p>
+            </div>
+            <div className="admin-toolbar flex-wrap">
+              <button type="button" className="btn-primary" onClick={() => exportMonthly("management")}>
+                Management Summary PDF
+              </button>
+              <button type="button" className="btn-primary" onClick={() => exportMonthly("audit")}>
+                Full HR Audit PDF
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() =>
+                  downloadCsv(
+                    [...monthlyAttendance(data, month), ...monthlyPerformance(data, month), ...monthlyOvertime(data, month)],
+                    `monthly-combined-${month}.csv`,
+                  )
+                }
+              >
+                Combined CSV
+              </button>
+            </div>
+          </div>
           <Card title="Monthly attendance" sub="Days, hours, late, over break, miss punches, leaves, notes" make={() => monthlyAttendance(data, month)} name={`monthly-attendance-${month}`} />
           <Card title="Monthly performance" sub="Rating counts, violation days, notes" make={() => monthlyPerformance(data, month)} name={`monthly-performance-${month}`} />
           <Card title="Overtime & additional days" sub="Overtime hours and extra Saturdays/Sundays" make={() => monthlyOvertime(data, month)} name={`monthly-overtime-${month}`} />
