@@ -3,15 +3,26 @@ import { isDispatchPreviewMode } from "./auth";
 import { cloneFixtures } from "./fixtures";
 import type {
   CheckCall,
+  DispatchAccessorial,
+  DispatchCommunication,
   DispatchException,
   DispatchFollowUp,
   DispatchIssue,
   DispatchLoad,
   LoadStop,
+  PaymentStatus,
   RosterDriver,
   ShiftHandover,
 } from "./types";
 import { canCancelLoad, validateCancel, validateReschedule } from "./ops-controls";
+import {
+  canCloseLoad,
+  canReopenLoad,
+  validateAccessorialInput,
+  validateCloseout,
+  validateCommunication,
+  validateReopen,
+} from "./closeout";
 
 type Memory = ReturnType<typeof cloneFixtures>;
 let memory: Memory | null = null;
@@ -135,6 +146,11 @@ export type LoadWriteInput = {
   last_manual_location_at?: string | null;
   cancel_reason?: string | null;
   reschedule_note?: string | null;
+  closeout_note?: string | null;
+  closed_at?: string | null;
+  reopen_reason?: string | null;
+  reopened_at?: string | null;
+  payment_status?: PaymentStatus;
   stale_after_minutes?: number;
   stops?: LoadStop[];
 };
@@ -174,6 +190,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
             last_manual_location_by: null,
             cancel_reason: null,
             reschedule_note: null,
+            closeout_note: null,
+            closed_at: null,
+            reopen_reason: null,
+            reopened_at: null,
+            payment_status: "unpaid",
             stale_after_minutes: 180,
             created_by: null,
             updated_by: null,
@@ -190,6 +211,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
           ? (input.cancel_reason ?? base.cancel_reason)
           : (input.cancel_reason ?? base.cancel_reason),
       reschedule_note: input.reschedule_note ?? base.reschedule_note,
+      closeout_note: input.closeout_note ?? base.closeout_note,
+      closed_at: input.closed_at ?? base.closed_at,
+      reopen_reason: input.reopen_reason ?? base.reopen_reason,
+      reopened_at: input.reopened_at ?? base.reopened_at,
+      payment_status: input.payment_status ?? base.payment_status ?? "unpaid",
       updated_at: now,
       stops: input.stops ?? base.stops ?? [],
     };
@@ -221,6 +247,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     last_manual_location_at: input.last_manual_location_at ?? null,
     cancel_reason: input.cancel_reason ?? null,
     reschedule_note: input.reschedule_note ?? null,
+    closeout_note: input.closeout_note ?? null,
+    closed_at: input.closed_at ?? null,
+    reopen_reason: input.reopen_reason ?? null,
+    reopened_at: input.reopened_at ?? null,
+    payment_status: input.payment_status ?? "unpaid",
     stale_after_minutes: input.stale_after_minutes ?? 180,
     updated_at: now,
   };
@@ -525,6 +556,11 @@ export async function cancelLoad(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     reschedule_note: load.reschedule_note,
+    closeout_note: load.closeout_note,
+    closed_at: load.closed_at,
+    reopen_reason: load.reopen_reason,
+    reopened_at: load.reopened_at,
+    payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
     ...(load.stops ? { stops: load.stops } : {}),
   });
@@ -568,6 +604,11 @@ export async function rescheduleLoad(
     actual_delivery_at: load.actual_delivery_at,
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
+    closeout_note: load.closeout_note,
+    closed_at: load.closed_at,
+    reopen_reason: load.reopen_reason,
+    reopened_at: load.reopened_at,
+    payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
     ...(stops ? { stops } : {}),
   });
@@ -631,4 +672,270 @@ export function driverLoadHistory(loads: DispatchLoad[], driverId: string): Disp
   return loads
     .filter((l) => l.assigned_driver_id === driverId)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+}
+
+/** Close a delivered load. Does NOT mark payment paid. */
+export async function closeLoad(
+  load: DispatchLoad,
+  note: string,
+): Promise<DispatchLoad> {
+  if (!canCloseLoad(load.status)) {
+    throw new Error("Only delivered loads can be closed (Delivered ≠ Closed).");
+  }
+  const err = validateCloseout(note);
+  if (err) throw new Error(err);
+  const now = new Date().toISOString();
+  return saveLoad({
+    id: load.id,
+    load_number: load.load_number,
+    status: "closed",
+    closeout_note: note.trim(),
+    closed_at: now,
+    payment_status: load.payment_status,
+    reopen_reason: load.reopen_reason,
+    reopened_at: load.reopened_at,
+    cancel_reason: load.cancel_reason,
+    reschedule_note: load.reschedule_note,
+    customer_name: load.customer_name,
+    commodity: load.commodity,
+    equipment: load.equipment,
+    notes: load.notes,
+    exception_open: load.exception_open,
+    bol_status: load.bol_status,
+    pod_status: load.pod_status,
+    assigned_driver_id: load.assigned_driver_id,
+    assigned_driver_name: load.assigned_driver_name,
+    external_ref_label: load.external_ref_label,
+    external_ref_url: load.external_ref_url,
+    planned_pickup_at: load.planned_pickup_at,
+    actual_pickup_at: load.actual_pickup_at,
+    planned_delivery_at: load.planned_delivery_at,
+    actual_delivery_at: load.actual_delivery_at,
+    last_manual_location: load.last_manual_location,
+    last_manual_location_at: load.last_manual_location_at,
+    stale_after_minutes: load.stale_after_minutes,
+    ...(load.stops ? { stops: load.stops } : {}),
+  });
+}
+
+/** Reopen a closed load back to delivered. Does NOT change payment_status. */
+export async function reopenLoad(
+  load: DispatchLoad,
+  reason: string,
+): Promise<DispatchLoad> {
+  if (!canReopenLoad(load.status)) {
+    throw new Error("Only closed loads can be reopened to delivered.");
+  }
+  const err = validateReopen(reason);
+  if (err) throw new Error(err);
+  const now = new Date().toISOString();
+  return saveLoad({
+    id: load.id,
+    load_number: load.load_number,
+    status: "delivered",
+    reopen_reason: reason.trim(),
+    reopened_at: now,
+    closeout_note: load.closeout_note,
+    closed_at: load.closed_at,
+    payment_status: load.payment_status,
+    cancel_reason: load.cancel_reason,
+    reschedule_note: load.reschedule_note,
+    customer_name: load.customer_name,
+    commodity: load.commodity,
+    equipment: load.equipment,
+    notes: load.notes,
+    exception_open: load.exception_open,
+    bol_status: load.bol_status,
+    pod_status: load.pod_status,
+    assigned_driver_id: load.assigned_driver_id,
+    assigned_driver_name: load.assigned_driver_name,
+    external_ref_label: load.external_ref_label,
+    external_ref_url: load.external_ref_url,
+    planned_pickup_at: load.planned_pickup_at,
+    actual_pickup_at: load.actual_pickup_at,
+    planned_delivery_at: load.planned_delivery_at,
+    actual_delivery_at: load.actual_delivery_at,
+    last_manual_location: load.last_manual_location,
+    last_manual_location_at: load.last_manual_location_at,
+    stale_after_minutes: load.stale_after_minutes,
+    ...(load.stops ? { stops: load.stops } : {}),
+  });
+}
+
+/** Set payment status independently of delivered/closed. */
+export async function setLoadPaymentStatus(
+  load: DispatchLoad,
+  payment_status: PaymentStatus,
+): Promise<DispatchLoad> {
+  return saveLoad({
+    id: load.id,
+    load_number: load.load_number,
+    status: load.status,
+    payment_status,
+    closeout_note: load.closeout_note,
+    closed_at: load.closed_at,
+    reopen_reason: load.reopen_reason,
+    reopened_at: load.reopened_at,
+    cancel_reason: load.cancel_reason,
+    reschedule_note: load.reschedule_note,
+    customer_name: load.customer_name,
+    commodity: load.commodity,
+    equipment: load.equipment,
+    notes: load.notes,
+    exception_open: load.exception_open,
+    bol_status: load.bol_status,
+    pod_status: load.pod_status,
+    assigned_driver_id: load.assigned_driver_id,
+    assigned_driver_name: load.assigned_driver_name,
+    external_ref_label: load.external_ref_label,
+    external_ref_url: load.external_ref_url,
+    planned_pickup_at: load.planned_pickup_at,
+    actual_pickup_at: load.actual_pickup_at,
+    planned_delivery_at: load.planned_delivery_at,
+    actual_delivery_at: load.actual_delivery_at,
+    last_manual_location: load.last_manual_location,
+    last_manual_location_at: load.last_manual_location_at,
+    stale_after_minutes: load.stale_after_minutes,
+    ...(load.stops ? { stops: load.stops } : {}),
+  });
+}
+
+export async function listAccessorials(loadId?: string): Promise<DispatchAccessorial[]> {
+  if (isDispatchPreviewMode()) {
+    const rows = mem().accessorials;
+    return (loadId ? rows.filter((a) => a.load_id === loadId) : [...rows]).sort((a, b) =>
+      b.updated_at.localeCompare(a.updated_at),
+    );
+  }
+  let q = dispatchSupabase.from("dispatch_accessorials").select("*").order("updated_at", { ascending: false });
+  if (loadId) q = q.eq("load_id", loadId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as DispatchAccessorial[];
+}
+
+export async function saveAccessorial(
+  input: Partial<DispatchAccessorial> & {
+    load_id: string;
+    kind: DispatchAccessorial["kind"];
+    description: string;
+  },
+): Promise<DispatchAccessorial> {
+  const err = validateAccessorialInput({
+    kind: input.kind,
+    description: input.description,
+    amount_manual: input.amount_manual ?? null,
+    hours_manual: input.hours_manual ?? null,
+  });
+  if (err) throw new Error(err);
+  const now = new Date().toISOString();
+  if (isDispatchPreviewMode()) {
+    const existing = mem().accessorials.find((a) => a.id === input.id);
+    if (existing) {
+      Object.assign(existing, input, {
+        description: input.description.trim(),
+        updated_at: now,
+      });
+      return existing;
+    }
+    const row: DispatchAccessorial = {
+      id: newId(),
+      load_id: input.load_id,
+      kind: input.kind,
+      status: input.status ?? "draft",
+      description: input.description.trim(),
+      amount_manual: input.amount_manual ?? null,
+      hours_manual: input.hours_manual ?? null,
+      free_time_note: input.free_time_note ?? null,
+      currency: input.currency ?? "USD",
+      created_by: input.created_by ?? null,
+      created_at: now,
+      updated_at: now,
+    };
+    mem().accessorials.unshift(row);
+    return row;
+  }
+  const { data, error } = await dispatchSupabase
+    .from("dispatch_accessorials")
+    .upsert({
+      id: input.id,
+      load_id: input.load_id,
+      kind: input.kind,
+      status: input.status ?? "draft",
+      description: input.description.trim(),
+      amount_manual: input.amount_manual ?? null,
+      hours_manual: input.hours_manual ?? null,
+      free_time_note: input.free_time_note ?? null,
+      currency: input.currency ?? "USD",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as DispatchAccessorial;
+}
+
+export async function listCommunications(loadId?: string): Promise<DispatchCommunication[]> {
+  if (isDispatchPreviewMode()) {
+    const rows = mem().communications;
+    return (loadId ? rows.filter((c) => c.load_id === loadId) : [...rows]).sort((a, b) =>
+      b.created_at.localeCompare(a.created_at),
+    );
+  }
+  let q = dispatchSupabase
+    .from("dispatch_communications")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (loadId) q = q.eq("load_id", loadId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as DispatchCommunication[];
+}
+
+export async function saveCommunication(
+  input: Partial<DispatchCommunication> & {
+    load_id: string;
+    kind: DispatchCommunication["kind"];
+    summary: string;
+  },
+): Promise<DispatchCommunication> {
+  const err = validateCommunication({
+    kind: input.kind,
+    summary: input.summary,
+    decided_action: input.decided_action ?? null,
+  });
+  if (err) throw new Error(err);
+  const now = new Date().toISOString();
+  if (isDispatchPreviewMode()) {
+    const existing = mem().communications.find((c) => c.id === input.id);
+    if (existing) {
+      Object.assign(existing, input, { summary: input.summary.trim() });
+      return existing;
+    }
+    const row: DispatchCommunication = {
+      id: newId(),
+      load_id: input.load_id,
+      kind: input.kind,
+      summary: input.summary.trim(),
+      detail: input.detail ?? null,
+      decided_action: input.decided_action ?? null,
+      created_by: input.created_by ?? null,
+      created_at: now,
+    };
+    mem().communications.unshift(row);
+    return row;
+  }
+  const { data, error } = await dispatchSupabase
+    .from("dispatch_communications")
+    .upsert({
+      id: input.id,
+      load_id: input.load_id,
+      kind: input.kind,
+      summary: input.summary.trim(),
+      detail: input.detail ?? null,
+      decided_action: input.decided_action ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as DispatchCommunication;
 }

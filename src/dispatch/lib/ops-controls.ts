@@ -181,6 +181,20 @@ export function buildHandoverWatchHints(input: {
       `Cancelled (manual reason on file): ${cancelled.map((l) => l.load_number).join(", ")}`,
     );
   }
+  const awaitingClose = input.loads.filter((l) => l.status === "delivered").slice(0, 8);
+  if (awaitingClose.length) {
+    lines.push(
+      `Awaiting closeout (Delivered ≠ Closed ≠ Paid): ${awaitingClose.map((l) => l.load_number).join(", ")}`,
+    );
+  }
+  const unpaidClosed = input.loads
+    .filter((l) => l.status === "closed" && (l.payment_status === "unpaid" || l.payment_status === "partial"))
+    .slice(0, 6);
+  if (unpaidClosed.length) {
+    lines.push(
+      `Closed but unpaid/partial (payment separate): ${unpaidClosed.map((l) => l.load_number).join(", ")}`,
+    );
+  }
   return lines.join("\n");
 }
 
