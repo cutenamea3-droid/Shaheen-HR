@@ -17,6 +17,10 @@ export type PersonalSyncBlob = Pick<
   | "discipline"
   | "settings"
   | "vaultNotes"
+  | "gradeEntries"
+  | "courseGrades"
+  | "examPrepTasks"
+  | "weeklyReviews"
 >;
 
 /** True when blob has user-authored study activity (not just defaults). */
@@ -25,6 +29,10 @@ export function isPersonalMeaningful(blob: Partial<PersonalSyncBlob> | null | un
   if ((blob.sessions?.length ?? 0) > 0) return true;
   if ((blob.notes?.length ?? 0) > 0) return true;
   if ((blob.backlog?.length ?? 0) > 0) return true;
+  if ((blob.gradeEntries?.length ?? 0) > 0) return true;
+  if ((blob.courseGrades?.length ?? 0) > 0) return true;
+  if ((blob.examPrepTasks?.length ?? 0) > 0) return true;
+  if (blob.weeklyReviews && Object.keys(blob.weeklyReviews).length > 0) return true;
   if (blob.vaultNotes && blob.vaultNotes.trim().length > 0) return true;
   if (blob.dayPlans && Object.keys(blob.dayPlans).length > 0) {
     const plans = Object.values(blob.dayPlans);

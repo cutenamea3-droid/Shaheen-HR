@@ -67,8 +67,21 @@ export type Note = {
   title: string;
   body: string;
   updatedAt: number;
+  /** Free-form; Batch 11 uses revision / practice / mistake for Smart Revision filters */
   tags: string[];
 };
+
+/** VU timer preset ids + revision/practice — never invents minutes; logs elapsed only */
+export type FocusActivityKind =
+  | "lecture"
+  | "handout"
+  | "gdb"
+  | "quizPrep"
+  | "assignment"
+  | "break"
+  | "revision"
+  | "practice"
+  | "other";
 
 export type FocusSession = {
   id: string;
@@ -78,6 +91,56 @@ export type FocusSession = {
   minutes: number;
   mode: StudyMode;
   label: string;
+  /** Optional VU activity tag for Focus Timer history */
+  activityKind?: FocusActivityKind;
+  /** Optional lesson / topic label entered by owner */
+  lessonLabel?: string;
+};
+
+/**
+ * Owner-entered Grade Book row — never seeded from projected 50/D defaults.
+ * provenance distinguishes recorded (from Grade Book export the owner typed)
+ * vs what-if estimator inputs.
+ */
+export type GradeEntry = {
+  id: string;
+  courseId: CourseId;
+  label: string;
+  score: number | null;
+  maxScore: number | null;
+  provenance: "owner_recorded" | "owner_whatif";
+  notes: string;
+  updatedAt: number;
+};
+
+/** Owner-entered course letter for CGPA estimator — empty letter = unset */
+export type CourseGrade = {
+  id: string;
+  courseId: CourseId;
+  letter: string;
+  creditHours: number | null;
+  provenance: "owner_recorded" | "owner_whatif";
+  notes: string;
+  updatedAt: number;
+};
+
+/** Owner exam-prep checklist — dates still come only from owner date-sheet refs */
+export type ExamPrepTask = {
+  id: string;
+  courseId: CourseId;
+  examKind: "midterm" | "final" | "quiz" | "other";
+  label: string;
+  done: boolean;
+  notes: string;
+};
+
+/** Owner weekly review journal (Sunday / end-of-week discipline) */
+export type WeeklyReview = {
+  weekStart: string;
+  wins: string;
+  blockers: string;
+  nextFocus: string;
+  updatedAt: number;
 };
 
 export type DayPlan = {
@@ -105,6 +168,9 @@ export type PersonalSettings = {
   sundayMinutes: number;
   pomodoroFocus: number;
   pomodoroBreak: number;
+  /** Deep focus / break (VU Deep 50/10 default) — adjustable */
+  deepFocus: number;
+  deepBreak: number;
   /** Editable semester exam reference dates — verify on VULMS */
   midtermRef: string;
   finalsRef: string;
@@ -121,6 +187,14 @@ export type PersonalState = {
   discipline: DisciplineCheck[];
   settings: PersonalSettings;
   vaultNotes: string;
+  /** Owner Grade Book component scores — never invent */
+  gradeEntries: GradeEntry[];
+  /** Owner course letters for CGPA estimator — never invent */
+  courseGrades: CourseGrade[];
+  /** Owner exam-prep checklist */
+  examPrepTasks: ExamPrepTask[];
+  /** Owner weekly review journals keyed by weekStart */
+  weeklyReviews: Record<string, WeeklyReview>;
   /** ISO timestamp when VU export fixture was last seeded into local study state */
   vuSeededAt: string | null;
   vuPlanAsOf: string | null;

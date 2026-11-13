@@ -50,6 +50,10 @@ function seedBlob(partial: Partial<PersonalSyncBlob> = {}): PersonalSyncBlob {
     discipline: [],
     settings: usePersonal.getState().settings,
     vaultNotes: "",
+    gradeEntries: [],
+    courseGrades: [],
+    examPrepTasks: [],
+    weeklyReviews: {},
     ...partial,
   };
 }

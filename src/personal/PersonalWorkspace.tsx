@@ -30,9 +30,9 @@ const TABS = [
   ["backlog", "Backlog Recovery", Backlog, ListTodo],
   ["timetable", "Lecture Schedule", Timetable, CalendarRange],
   ["assessments", "Deadlines · AQG", Assessments, ClipboardList],
-  ["focus", "Focus", Focus, Timer],
-  ["notes", "Notes", Notes, NotebookPen],
-  ["analytics", "Analytics", Analytics, Gauge],
+  ["focus", "Focus Timer", Focus, Timer],
+  ["notes", "Notes · Links", Notes, NotebookPen],
+  ["analytics", "Grades · Review", Analytics, Gauge],
   ["vault", "Vault", Vault, VaultIcon],
 ] as const;
 

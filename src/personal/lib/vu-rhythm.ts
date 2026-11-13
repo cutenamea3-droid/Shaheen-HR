@@ -125,3 +125,88 @@ export function ocwHomeUrl(): string {
 export function vulmsHomeUrl(): string {
   return "https://vulms.vu.edu.pk/";
 }
+
+export function handbookUrl(): string {
+  return "https://handbook.vu.edu.pk/";
+}
+
+export function lectureSchedulePublicUrl(): string {
+  return "https://vu.edu.pk/studentservices/LectureSchedule";
+}
+
+export function bookshopUrl(): string {
+  return "https://bookshop.vu.edu.pk/";
+}
+
+export function vutvUrl(): string {
+  return "https://vu.edu.pk/vutv/";
+}
+
+export function vuHomeUrl(): string {
+  return "https://www.vu.edu.pk/";
+}
+
+/** Curated official VU Quick Links — search CTAs only; never fabricate lesson video IDs. */
+export type VuQuickLink = {
+  id: string;
+  label: string;
+  href: string;
+  blurb: string;
+};
+
+export function vuQuickLinks(courseCode?: string): VuQuickLink[] {
+  const code = (courseCode || "").trim().toUpperCase();
+  const links: VuQuickLink[] = [
+    {
+      id: "vulms",
+      label: "VULMS",
+      href: vulmsHomeUrl(),
+      blurb: "Authoritative graded work · announcements · To-Do Calendar",
+    },
+    {
+      id: "handbook",
+      label: "VU Handbook",
+      href: handbookUrl(),
+      blurb: "Rules, Getting Started, Lectures how-to",
+    },
+    {
+      id: "lecture-schedule",
+      label: "Lecture Schedule",
+      href: lectureSchedulePublicUrl(),
+      blurb: "Public schedule tool · verify against your export",
+    },
+    {
+      id: "ocw",
+      label: "Open Courseware",
+      href: ocwHomeUrl(),
+      blurb: "Public notes — verify course code before deep links",
+    },
+    {
+      id: "youtube",
+      label: code ? `YouTube search · ${code}` : "YouTube VU",
+      href: code ? youtubeSearchUrl(code) : "https://www.youtube.com/vu",
+      blurb: code
+        ? `Search only — no fabricated ${code} video IDs`
+        : "Official channel · search by course code",
+    },
+    {
+      id: "vutv",
+      label: "VUTV",
+      href: vutvUrl(),
+      blurb: "Broadcast channels tied to Lecture Schedule",
+    },
+    {
+      id: "bookshop",
+      label: "Bookshop",
+      href: bookshopUrl(),
+      blurb: "DVD / print handout packs",
+    },
+    {
+      id: "vu-home",
+      label: "vu.edu.pk",
+      href: vuHomeUrl(),
+      blurb: "Admissions, news, student services",
+    },
+  ];
+  return links;
+}
