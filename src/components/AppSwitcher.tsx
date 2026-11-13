@@ -9,21 +9,28 @@ import {
   type ModuleId,
 } from "@/lib/module-access";
 import { shouldShowPersonalSwitcherLink } from "@/personal/lib/auth-probe";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Top bar that switches between isolated systems.
  * After seats resolve, only permitted modules remain visible
  * (Dispatch-only users do not see Compliance / Admin).
  * Personal appears only when already on `/personal` or seat probe allows (Batch 2 / #26).
+ *
+ * Active-route styling is deferred until after hydration: the SPA shell is always
+ * prerendered for `/`, so marking Admin/Dispatch/Personal active on first paint
+ * mismatches the shell and throws React hydration #418.
  */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAdmin = pathname.startsWith("/admin");
-  const isDispatch = pathname.startsWith("/dispatch");
-  const isPersonal = pathname.startsWith("/personal");
-  const isCv = pathname === "/cv";
-  const isDenied = pathname.startsWith("/access-denied");
-  const isDriver = !isAdmin && !isDispatch && !isPersonal && !isCv && !isDenied;
+  const hydrated = useHydrated();
+  const isAdmin = hydrated && pathname.startsWith("/admin");
+  const isDispatch = hydrated && pathname.startsWith("/dispatch");
+  const isPersonal = hydrated && pathname.startsWith("/personal");
+  const isCv = hydrated && pathname === "/cv";
+  const isDenied = hydrated && pathname.startsWith("/access-denied");
+  // Before hydration, treat no module as "current" so SSR shell and first client paint match.
+  const isDriver = hydrated && !isAdmin && !isDispatch && !isPersonal && !isCv && !isDenied;
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
