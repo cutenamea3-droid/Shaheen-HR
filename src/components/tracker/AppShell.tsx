@@ -35,7 +35,7 @@ function driverCrumbs(pathname: string, title: string): Crumb[] {
   if (pathname === "/") return [root, { label: "Dashboard" }];
   if (pathname.startsWith("/s/")) return [root, { label: "Sections" }, { label: title }];
   if (pathname === "/drivers") return [root, { label: "Driver Cards" }];
-  if (pathname === "/alerts") return [root, { label: "Smart Alerts" }];
+  if (pathname === "/alerts") return [root, { label: "My Compliance Today" }];
   if (pathname === "/drug-tests") return [root, { label: "Drug Test Records" }];
   if (pathname === "/records") return [root, { label: "Records" }];
   if (pathname === "/account") return [root, { label: "My Account" }];
@@ -132,7 +132,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
           {groupLbl("Overview")}
           <NavItem to="/" active={loc.pathname === "/"} icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} />
           <NavItem to="/drivers" active={loc.pathname === "/drivers"} icon={IdCard} label="Driver Cards" collapsed={collapsed} />
-          <NavItem to="/alerts" active={loc.pathname === "/alerts"} icon={Bell} label="Smart Alerts" collapsed={collapsed} />
+          <NavItem to="/alerts" active={loc.pathname === "/alerts"} icon={Bell} label="My Compliance Today" collapsed={collapsed} />
           {account.role === "admin" && (
             <NavItem
               to="/drug-tests"

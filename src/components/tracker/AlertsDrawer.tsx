@@ -6,7 +6,7 @@ import { smartAlertCounts } from "@/lib/alerts";
 import { useData } from "@/lib/store";
 
 /**
- * Header Alerts control → full-page Smart Alerts work center (not a right drawer).
+ * Header Alerts control → full-page My Compliance Today work center (not a right drawer).
  * Badge still uses collectSmartAlerts critical/upcoming/incomplete totals.
  */
 export function AlertsBell() {
@@ -18,8 +18,8 @@ export function AlertsBell() {
     <button
       type="button"
       onClick={() => void navigate({ to: "/alerts" })}
-      title="Smart Alerts work center"
-      aria-label={`Smart Alerts${counts.total ? `, ${counts.total}` : ""}`}
+      title="My Compliance Today"
+      aria-label={`My Compliance Today${counts.total ? `, ${counts.total}` : ""}`}
       className={cn(
         "ui-press relative inline-flex items-center gap-2 rounded-lg border-2 bg-card px-3 py-2 text-sm font-bold hover:border-primary hover:text-primary",
         counts.critical > 0 && "border-danger/50 text-danger",

@@ -19,7 +19,17 @@ import { suggestPlanForCell } from "@/lib/plan-dates";
 import { DateCell, EditableText, StatusToggle, Chip } from "./cells";
 import { FuturePlanSuggest } from "./FuturePlanSuggest";
 import { DriverManageControls } from "./DriverManageControls";
+import { FollowUpTracker } from "./FollowUpTracker";
+import { PlanCalendar } from "./PlanCalendar";
 import type { Tone } from "@/lib/alerts";
+
+type WorkCenterTab = "today" | "followups" | "calendar";
+
+const TABS: { id: WorkCenterTab; label: string }[] = [
+  { id: "today", label: "My Compliance Today" },
+  { id: "followups", label: "Follow-Up Tracker" },
+  { id: "calendar", label: "Future Plan Calendar" },
+];
 
 const TONE_BORDER: Record<Tone, string> = {
   danger: "border-danger/50",
@@ -309,6 +319,7 @@ function DriverCard({
 
 export function AlertsWorkCenter() {
   const data = useData();
+  const [tab, setTab] = useState<WorkCenterTab>("today");
   const [filter, setFilter] = useState<WorkCenterFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -332,61 +343,88 @@ export function AlertsWorkCenter() {
         </p>
       </div>
 
-      {/* Summary counters */}
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Alert summary">
-        {WORK_CENTER_FILTERS.map((f) => {
-          const n = counts[f.id];
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              className={cn(
-                "ui-press rounded-lg border-2 px-3 py-1.5 text-sm font-bold tabular-nums",
-                active
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:border-primary/60",
-              )}
-            >
-              {f.label}
-              <span className={cn("ml-2 opacity-90", active ? "" : "text-primary")}>{n}</span>
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Compliance work center">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "ui-press rounded-lg border-2 px-4 py-2 text-sm font-extrabold",
+              tab === t.id
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-foreground hover:border-primary/60",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search driver or document type…"
-          className="w-full rounded-lg border-2 border-border bg-card py-2 pr-3 pl-10 text-[15px] font-semibold outline-none focus:border-primary"
-          aria-label="Search alerts"
-        />
-      </div>
+      {tab === "followups" && <FollowUpTracker />}
+      {tab === "calendar" && <PlanCalendar />}
 
-      {!groups.length ? (
-        <div className="rounded-xl border-2 border-ok/40 bg-ok-soft px-5 py-8 text-center">
-          <p className="font-display text-xl font-extrabold text-ok">All clear for this filter</p>
-          <p className="mt-1 text-sm font-semibold text-muted-foreground">
-            No drivers need attention here. Try All or clear search.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {groups.map((g, idx) => (
-            <DriverCard
-              key={g.driverId}
-              driverId={g.driverId}
-              driver={g.driver}
-              isNew={g.isNew}
-              items={g.items}
-              defaultOpen={idx < 3 || g.items.length <= 2}
+      {tab === "today" && (
+        <>
+          {/* Summary counters */}
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Alert summary">
+            {WORK_CENTER_FILTERS.map((f) => {
+              const n = counts[f.id];
+              const active = filter === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFilter(f.id)}
+                  className={cn(
+                    "ui-press rounded-lg border-2 px-3 py-1.5 text-sm font-bold tabular-nums",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:border-primary/60",
+                  )}
+                >
+                  {f.label}
+                  <span className={cn("ml-2 opacity-90", active ? "" : "text-primary")}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="relative max-w-md">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search driver or document type…"
+              className="w-full rounded-lg border-2 border-border bg-card py-2 pr-3 pl-10 text-[15px] font-semibold outline-none focus:border-primary"
+              aria-label="Search alerts"
             />
-          ))}
-        </div>
+          </div>
+
+          {!groups.length ? (
+            <div className="rounded-xl border-2 border-ok/40 bg-ok-soft px-5 py-8 text-center">
+              <p className="font-display text-xl font-extrabold text-ok">All clear for this filter</p>
+              <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                No drivers need attention here. Try All or clear search.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g, idx) => (
+                <DriverCard
+                  key={g.driverId}
+                  driverId={g.driverId}
+                  driver={g.driver}
+                  isNew={g.isNew}
+                  items={g.items}
+                  defaultOpen={idx < 3 || g.items.length <= 2}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

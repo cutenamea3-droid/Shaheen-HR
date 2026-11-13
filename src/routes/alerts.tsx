@@ -14,15 +14,16 @@ export const Route = createFileRoute("/alerts")({
   }),
   head: () => ({
     meta: [
-      { title: "Smart Alerts — Shaheen Driver Tracker" },
+      { title: "My Compliance Today — Shaheen Driver Tracker" },
       {
         name: "description",
-        content: "Compliance work center — review drivers needing attention and resolve routine tasks on one page.",
+        content:
+          "My Compliance Today — work center, follow-up tracker, and Future Plan calendar with inline edit.",
       },
-      { property: "og:title", content: "Smart Alerts — Shaheen Driver Tracker" },
+      { property: "og:title", content: "My Compliance Today — Shaheen Driver Tracker" },
       {
         property: "og:description",
-        content: "Driver-by-driver alerts with inline edit and Future Plan suggestions.",
+        content: "Driver-by-driver alerts, durable follow-ups, and Intelligent Future Plan Calendar.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -30,8 +31,8 @@ export const Route = createFileRoute("/alerts")({
   }),
   component: () => (
     <AppShell
-      title="Smart Alerts"
-      subtitle="Compliance work center — see every driver needing attention, edit and save here"
+      title="My Compliance Today"
+      subtitle="Work center · Follow-Up Tracker · Future Plan Calendar — edit and save on this page"
     >
       <div className="w-full min-w-0 max-w-none overflow-x-hidden">
         <AlertsWorkCenter />
