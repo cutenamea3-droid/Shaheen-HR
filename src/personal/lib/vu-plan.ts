@@ -247,7 +247,7 @@ export function buildTodayPrescription(
       label:
         t.statusAsOf === "window_ended"
           ? `Verify on VULMS · ${noun} · ${t.title}`
-          : `Attempt / submit · ${noun} · ${t.title}`,
+          : `Submit on VULMS · ${noun} · ${t.title}`,
       minutes: slice,
       clock: minutesToClock(cursor),
       room: null,
@@ -260,7 +260,7 @@ export function buildTodayPrescription(
         id: `prep-${t.courseCode}-${t.title}`,
         kind: "prep",
         courseCode: t.courseCode || "GEN",
-        label: `Handout prep for ${t.courseCode} · ${noun}`,
+        label: `Prep only (≠ submit) · ${t.courseCode} · ${noun}`,
         minutes: 20,
         clock: minutesToClock(cursor + slice + 5),
         room: null,

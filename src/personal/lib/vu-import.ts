@@ -9,6 +9,7 @@ import {
 function kindFromTodo(t: VuTodo): AssessmentKind {
   if (t.kind === "assignment") return "assignment";
   if (t.kind === "quiz") return "quiz";
+  if (t.kind === "gdb") return "gdb";
   return "other";
 }
 
@@ -72,34 +73,17 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
       kind: kindFromTodo(t),
       title: t.title,
       dueDate: t.due as string,
-      notes: `VULMS window ${t.start || "?"} → ${t.due}. Completion unknown in export — verify on VULMS.`,
+      notes: `VULMS window ${t.start || "?"} → ${t.due}. Completion unknown in export — prep ≠ submit; confirm attempt/upload on VULMS.`,
+      prepDone: false,
+      submitted: false,
       done: false,
       verifyOnVulms: true,
+      /** Due window copied from To-Do Calendar export — verified provenance */
+      deadlineSource: "vulms_todo" as const,
     }));
 
-  // Soft semester refs only if not already represented
-  assessments.push(
-    {
-      id: "midterm-ref",
-      courseId: "general",
-      kind: "midterm",
-      title: "Midterm exams (semester ref)",
-      dueDate: "2026-12-07",
-      notes: "Editable reference only — confirm on VULMS date sheet.",
-      done: false,
-      verifyOnVulms: true,
-    },
-    {
-      id: "finals-ref",
-      courseId: "general",
-      kind: "final",
-      title: "Final exams (semester ref)",
-      dueDate: "2027-01-25",
-      notes: "Editable reference only — confirm on VULMS date sheet.",
-      done: false,
-      verifyOnVulms: true,
-    },
-  );
+  // Mid/final date sheet was NOT in exports — do not invent anchors here.
+  // Owner can add exam refs later via Assessments after confirming on VULMS.
 
   const now = Date.now();
   const backlog: BacklogItem[] = plan.recovery.priorityTodos.map((t, i) => ({
@@ -135,6 +119,9 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
     weekdayMinutes: Math.min(Math.max(daily, 120), 300),
     dailyTargetMinutes: Math.min(Math.max(daily, 120), 300),
     sundayMinutes: Math.min(Math.max(Math.round(daily * 1.25), 180), 360),
+    // Keep exam refs empty unless owner already set them — never inject invented dates
+    midtermRef: "",
+    finalsRef: "",
   };
 
   const vaultAppendix = [
@@ -143,7 +130,9 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
     `Daily target math: ${plan.recovery.recommendedDailyMinutes.math}`,
     `Grade Book recorded marks: none`,
     `Progress full payload: CS101 only in this export`,
-    "Mark items done here after you finish them on VULMS.",
+    "Deadlines marked Verified are from To-Do Calendar export only.",
+    "Prep ≠ submit — mark Submitted only after VULMS attempt/upload/post.",
+    "No mid/final date sheet in this export — leave exam refs blank until published.",
   ].join("\n");
 
   return { courses, assessments, backlog, settingsPatch, vaultAppendix };

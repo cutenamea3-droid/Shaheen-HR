@@ -100,7 +100,8 @@ export function Today() {
   const setDayMode = usePersonal((s) => s.setDayMode);
   const importVuStudyPlan = usePersonal((s) => s.importVuStudyPlan);
   const addSession = usePersonal((s) => s.addSession);
-  const toggleAssessment = usePersonal((s) => s.toggleAssessment);
+  const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
+  const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
   const backlog = usePersonal((s) => s.backlog);
 
@@ -194,7 +195,14 @@ export function Today() {
     saveDoneMap(today, next);
     if (block.todoTitle) {
       const a = assessments.find((x) => x.title === block.todoTitle);
-      if (a && a.done !== done) toggleAssessment(a.id);
+      if (a) {
+        // Prep blocks never flip submitted; recovery/submit blocks own submitted
+        if (block.kind === "prep") {
+          if (a.prepDone !== done) setAssessmentPrep(a.id, done);
+        } else if (a.submitted !== done || a.done !== done) {
+          setAssessmentSubmitted(a.id, done);
+        }
+      }
       const b = backlog.find((x) => x.label.includes(block.todoTitle || ""));
       if (b && b.done !== done) toggleBacklog(b.id);
     }
@@ -293,7 +301,7 @@ export function Today() {
         <div className="relative z-[1] flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 max-w-xl">
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--hp-violet-soft)]">
-              Today · {student.name} · {student.studentId} · e-ID to {student.eCardValidUntil}
+              My Study Today · {student.name} · {student.studentId} · e-ID to {student.eCardValidUntil}
             </div>
             <h2 className="hp-title mt-2 text-3xl font-bold tracking-tight text-[var(--hp-ink)] sm:text-4xl">
               {formatMinutes(rx.dailyTotal)} · graded windows first
@@ -379,8 +387,8 @@ export function Today() {
       <div className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
         <Panel className="hp-fade-up-delay">
           <SectionHead
-            title="Daily schedule"
-            subtitle="Order: To-Do Calendar graded → Handout prep → Lecture Schedule → Progress Timeline backlog"
+            title="My Study Today schedule"
+            subtitle="Order: To-Do Calendar submit → Prep only (≠ submit) → Lecture Schedule → Progress Timeline backlog · timer mins are estimates"
             action={
               <div className="flex flex-wrap gap-1">
                 {modeChips.map((m) => (
