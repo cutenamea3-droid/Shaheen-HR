@@ -1,15 +1,59 @@
+import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, UsersRound } from "lucide-react";
+import { FileCheck2, ShieldX, Truck, UsersRound } from "lucide-react";
+import {
+  EMPTY_GRANTS,
+  probeModuleGrants,
+  selectableModulesFor,
+  type ModuleGrants,
+  type ModuleId,
+} from "@/lib/module-access";
 
-/** Top bar that switches between the two separate systems. Each keeps its own data. */
+/**
+ * Top bar that switches between isolated systems.
+ * After seats resolve, only permitted company modules remain visible
+ * (Dispatch-only users do not see Compliance / Admin).
+ * Personal is never advertised from company routes (Batch 2 / #26).
+ */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");
+  const isDispatch = pathname.startsWith("/dispatch");
   const isCv = pathname === "/cv";
+  const isDenied = pathname.startsWith("/access-denied");
+  const isDriver = !isAdmin && !isDispatch && !isCv && !isDenied;
+
+  const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    void probeModuleGrants().then((g) => {
+      if (!alive) return;
+      setGrants(g);
+      setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [pathname]);
+
+  const hasAnySeat = Boolean(
+    grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
+  );
+  // Anonymous / unknown: keep company login surfaces visible. Once seats resolve, filter strictly.
+  const selectable =
+    ready && hasAnySeat
+      ? selectableModulesFor(grants, { pathname }).filter((m) => m !== "personal")
+      : (["compliance", "admin-hr", "dispatch"] as ModuleId[]);
+
+  const show = (id: ModuleId) => selectable.includes(id);
+
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
   const on = "bg-primary text-primary-foreground shadow-sm";
   const off = "text-muted-foreground hover:bg-muted hover:text-foreground";
+
   return (
     <header
       className="app-switcher sticky top-0 z-50 flex items-center gap-3 border-b border-border bg-card px-3"
@@ -25,26 +69,48 @@ export function AppSwitcher() {
         </span>
       </div>
       <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
-        <Link
-          to="/"
-          aria-label="Driver Compliance"
-          title="Driver Compliance"
-          aria-current={!isAdmin && !isCv ? "page" : undefined}
-          className={`${base} ${!isAdmin && !isCv ? on : off}`}
-        >
-          <FileCheck2 className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">Driver Compliance</span>
-        </Link>
-        <Link
-          to="/admin"
-          aria-label="Admin & Attendance"
-          title="Admin & Attendance"
-          aria-current={isAdmin ? "page" : undefined}
-          className={`${base} ${isAdmin ? on : off}`}
-        >
-          <UsersRound className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline">Admin &amp; Attendance</span>
-        </Link>
+        {show("compliance") && (
+          <Link
+            to="/"
+            aria-label="Driver Compliance"
+            title="Driver Compliance"
+            aria-current={isDriver ? "page" : undefined}
+            className={`${base} ${isDriver ? on : off}`}
+          >
+            <FileCheck2 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Driver Compliance</span>
+          </Link>
+        )}
+        {show("admin-hr") && (
+          <Link
+            to="/admin"
+            aria-label="Admin & Attendance"
+            title="Admin & Attendance"
+            aria-current={isAdmin ? "page" : undefined}
+            className={`${base} ${isAdmin ? on : off}`}
+          >
+            <UsersRound className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Admin &amp; Attendance</span>
+          </Link>
+        )}
+        {show("dispatch") && (
+          <Link
+            to="/dispatch"
+            aria-label="Dispatch Operations"
+            title="Dispatch Operations"
+            aria-current={isDispatch ? "page" : undefined}
+            className={`${base} ${isDispatch ? on : off}`}
+          >
+            <Truck className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Dispatch</span>
+          </Link>
+        )}
+        {isDenied && (
+          <span className={`${base} ${on}`} aria-current="page">
+            <ShieldX className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Access denied</span>
+          </span>
+        )}
       </nav>
     </header>
   );
