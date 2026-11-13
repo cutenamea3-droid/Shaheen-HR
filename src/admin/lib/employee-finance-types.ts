@@ -35,6 +35,43 @@ export type BankingAccountRecord = BankingAccountMasked & {
   accountRef: string;
 };
 
+export type SalaryPaymentStatus = "unpaid" | "partial" | "paid" | "on_hold";
+
+export const SALARY_PAYMENT_STATUS_LABEL: Record<SalaryPaymentStatus, string> = {
+  unpaid: "Unpaid",
+  partial: "Partial",
+  paid: "Paid",
+  on_hold: "On hold",
+};
+
+/**
+ * Monthly salary payment register entry (PKR whole numbers).
+ * Status is ALWAYS manual — never auto-set from payroll hours CSV.
+ * amountDuePkr = Payable (manual); amountPaidPkr = Actual Paid — never conflated.
+ */
+export type SalaryPaymentRecord = {
+  id: string;
+  employeeId: string;
+  month: string; // YYYY-MM
+  amountDuePkr: number;
+  amountPaidPkr: number;
+  status: SalaryPaymentStatus;
+  bankingAccountId: string | null;
+  paidOn: string | null;
+  note: string;
+  updatedAt: number;
+};
+
+export type SalaryPaymentEvent = {
+  id: string;
+  paymentId: string;
+  eventType: "due_set" | "partial_pay" | "status_change" | "note";
+  amountPkr: number | null;
+  statusAfter: string | null;
+  note: string;
+  createdAt: number;
+};
+
 export type EmployeeDirectoryMeta = {
   employeeId: string;
   status: EmploymentStatus;
