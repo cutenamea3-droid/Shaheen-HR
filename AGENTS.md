@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 ## Combined site rules
-- Two separate systems in one site: Driver Compliance lives in `src/` root (routes `/`, `/drivers`, `/s/*`), Admin & Attendance lives in `src/admin/` (route `/admin`). Why: user requires both kept verbatim and never merged.
-- Never share data, stores, or database clients between them; Admin uses only `src/admin/integrations/supabase/client.ts` (its own backend). Why: data must stay separate.
-- Admin's original colors are scoped under `.admin-theme` in styles.css; don't change either system's logic or look. Why: user requires identical behavior and styling.
+- Four isolated modules in one site: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …), Admin & Attendance (`src/admin/` → `/admin`), HR Personal shell (`src/personal/` → `/personal`; full secure workspace on PR #16), Dispatch shell (`src/dispatch/` → `/dispatch`; full ops on PR #25). Why: user requires systems kept separate and never merged.
+- Never share data, stores, or database clients across Driver ↔ Admin ↔ Personal. Dispatch may reuse the Driver *project* URL/key with dedicated auth storage (`shaheen-dispatch-auth-v1`) + `dispatch_portal_accounts` ACL — never Admin/Personal clients. Why: data and AuthZ must stay separate.
+- Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL. Why: Batch 2 security invariant.
+- Admin colors stay under `.admin-theme`; Dispatch under `.dispatch-theme`; Personal under `.personal-theme`. Why: user requires identical per-system look.

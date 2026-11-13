@@ -17,10 +17,20 @@ import { applyDriverClass, applyRosterKind } from "./driver-meta";
 import { applyDateOfHire } from "./driver-hr/hire-date";
 import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
+import {
+  FOLLOW_UP_SECTION_ID,
+  FOLLOW_UP_HEADERS,
+  ensureFollowUpSection,
+  followUpToCells,
+  type FollowUp,
+  type FollowUpStatus,
+} from "./follow-ups";
 
 const KEY = "shaheen-driver-tracker-v1";
 /** Manual record lists stored as tracker_sections rows (same cloud table). */
 export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"] as const;
+/** Re-export for callers / tests. */
+export { FOLLOW_UP_SECTION_ID, FOLLOW_UP_HEADERS };
 /** Document columns + person Active/Inactive (last). */
 export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes", "Active Status"];
 /** Index of Active/Inactive on record rows (Owner Operators etc.). */
@@ -118,7 +128,8 @@ function ensureRecordSections(data: AppData): AppData {
       }
     }
   }
-  return touched ? { ...data, sections } : data;
+  const withRecords = touched ? { ...data, sections } : data;
+  return ensureFollowUpSection(withRecords);
 }
 
 function markAllSectionsDirty() {
@@ -252,10 +263,11 @@ async function pullCloud(force = false) {
     const m = migrateData(ensureRecordSections({ ...state, sections }));
     state = m.data;
     m.changed.forEach((id) => dirty.add(id));
-    // Upload record shells (or other local-only sections) missing from remote.
+    // Upload record shells / follow-ups (or other local-only sections) missing from remote.
     for (const id of RECORD_SECTION_IDS) {
       if (!r.sections[id]) dirty.add(id);
     }
+    if (!r.sections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
     if (dirty.size) scheduleFlush();
     lastStamp = r.stamp;
     cloudReady = true;
@@ -581,6 +593,101 @@ export function deleteRecord(sectionId: string, rowId: string) {
     const sec = d.sections[sectionId];
     if (!sec) return d;
     return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) } } };
+  });
+}
+
+/** Create a durable follow-up (cloud via tracker_sections — not localStorage SoT). */
+export function addFollowUp(input: {
+  driverId: string;
+  driver: string;
+  subject: string;
+  dueDate?: string;
+  notes?: string;
+  source?: FollowUp["source"];
+  sectionId?: string;
+  docType?: string;
+}): string {
+  const id = "fu_" + uid();
+  update((d) => {
+    const base = ensureFollowUpSection(d);
+    const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
+    const cells = followUpToCells({
+      id,
+      driverId: input.driverId,
+      driver: input.driver,
+      subject: input.subject.trim(),
+      status: "open",
+      dueDate: (input.dueDate ?? "").trim(),
+      notes: (input.notes ?? "").trim(),
+      source: input.source ?? "manual",
+      sectionId: input.sectionId ?? "",
+      docType: input.docType ?? "",
+      linkedRowId: "",
+    });
+    while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
+    return {
+      ...base,
+      sections: {
+        ...base.sections,
+        [FOLLOW_UP_SECTION_ID]: {
+          ...sec,
+          rows: [
+            ...sec.rows,
+            {
+              id,
+              driverId: input.driverId || "fu_" + uid(),
+              cells,
+              addedAt: Date.now(),
+            },
+          ],
+        },
+      },
+    };
+  });
+  return id;
+}
+
+export function updateFollowUp(
+  id: string,
+  patch: Partial<{
+    subject: string;
+    status: FollowUpStatus;
+    dueDate: string;
+    notes: string;
+    driver: string;
+    docType: string;
+  }>,
+) {
+  update((d) => {
+    const base = ensureFollowUpSection(d);
+    const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
+    const rows = sec.rows.map((r) => {
+      if (r.id !== id) return r;
+      const cells = [...r.cells];
+      while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
+      if (patch.driver != null) cells[0] = patch.driver;
+      if (patch.subject != null) cells[1] = patch.subject;
+      if (patch.status != null) cells[2] = patch.status;
+      if (patch.dueDate != null) cells[3] = patch.dueDate;
+      if (patch.notes != null) cells[4] = patch.notes;
+      if (patch.docType != null) cells[7] = patch.docType;
+      return { ...r, cells };
+    });
+    return { ...base, sections: { ...base.sections, [FOLLOW_UP_SECTION_ID]: { ...sec, rows } } };
+  });
+}
+
+export function deleteFollowUp(id: string) {
+  update((d) => {
+    const sec = d.sections[FOLLOW_UP_SECTION_ID];
+    if (!sec) return d;
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [FOLLOW_UP_SECTION_ID]: { ...sec, rows: sec.rows.filter((r) => r.id !== id) },
+      },
+    };
   });
 }
 

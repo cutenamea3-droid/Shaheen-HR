@@ -24,6 +24,11 @@ import {
   getDriverDrugTestMode,
 } from "@/lib/driver-hr/drug-test-mode";
 import {
+  resolvePairing,
+  type MatchCandidate,
+  type PairingMode,
+} from "@/lib/driver-hr/drug-test-matching";
+import {
   DRUG_DOC_KIND_LABEL,
   DRUG_PAIR_STATUS_LABEL,
   formatDrugDocKind,
@@ -35,7 +40,12 @@ import {
   type DrugTestEvent,
 } from "@/lib/driver-hr/drug-tests";
 import { filterRosterDrivers, listRosterDrivers } from "@/lib/driver-hr/roster-drivers";
-import { DrugTestEventEditor, DRUG_STATUS_TONE, type DrugEventDraft } from "./DrugTestForm";
+import {
+  DrugTestEventEditor,
+  DRUG_STATUS_TONE,
+  type DrugEventDraft,
+  type DrugEventSaveOpts,
+} from "./DrugTestForm";
 
 type TableRow = DrugPairRow & { driverId: string; driverName: string };
 
@@ -71,6 +81,10 @@ export function DrugTestRecordsPage() {
     kind: DrugDocKind;
   } | null>(null);
   const [pendingRestore, setPendingRestore] = useState<{ id: string; label: string } | null>(null);
+  const [ambiguousCandidates, setAmbiguousCandidates] = useState<MatchCandidate[] | undefined>();
+  const [similarCandidates, setSimilarCandidates] = useState<MatchCandidate[] | undefined>();
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+  const [pairingHint, setPairingHint] = useState<string | null>(null);
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -196,14 +210,28 @@ export function DrugTestRecordsPage() {
     [roster, driverPickQ],
   );
 
+  const clearPairingFeedback = () => {
+    setAmbiguousCandidates(undefined);
+    setSimilarCandidates(undefined);
+    setConflictMessage(null);
+    setPairingHint(null);
+  };
+
   const closeAdd = () => {
     setAdding(false);
     setDriverPickQ("");
     setPickedDriverId("");
     setAddKind("federal_drug");
+    clearPairingFeedback();
   };
 
-  const saveNewEvent = async (draft: DrugEventDraft, addAnother: boolean) => {
+  const driverEvents = useMemo(
+    () => (pickedDriverId ? events.filter((e) => e.driverId === pickedDriverId && !e.deletedAt) : []),
+    [events, pickedDriverId],
+  );
+
+  const saveNewEvent = async (draft: DrugEventDraft, opts?: DrugEventSaveOpts) => {
+    const addAnother = Boolean(opts?.addAnother);
     if (!persistOk) {
       toast.error(blocked ?? "Saving disabled");
       return;
@@ -212,8 +240,56 @@ export function DrugTestRecordsPage() {
       toast.error("Pick a driver first");
       return;
     }
-    // New independent events always get a fresh id — never overwrite an existing testing_event_id.
-    const testingEventId = draft.testingEventId.trim() || newTestingEventId();
+
+    const mode: PairingMode = opts?.pairingMode ?? "automatic";
+    // Keep filters; clear prior pairing errors before re-resolve.
+    clearPairingFeedback();
+
+    const resolution = resolvePairing({
+      mode,
+      incoming: {
+        driverId: pickedDriverId,
+        kind: draft.kind,
+        specimenId: draft.specimenId,
+        reason: draft.reason,
+        collectionContext: draft.collectionContext,
+        eventDate: draft.eventDate,
+      },
+      existingEvents: driverEvents,
+      manualTestingEventId: opts?.manualTestingEventId,
+      selectedTestingEventId: opts?.selectedTestingEventId,
+      confirmSeparate: opts?.confirmSeparate,
+    });
+
+    if (resolution.status === "ambiguous") {
+      setAmbiguousCandidates(resolution.candidates);
+      setPairingHint(resolution.message);
+      toast.error(resolution.message);
+      return;
+    }
+    if (resolution.status === "conflict") {
+      setConflictMessage(resolution.message);
+      setAmbiguousCandidates(resolution.candidates);
+      toast.error(resolution.message);
+      return;
+    }
+    if (resolution.status === "need_manual_pick" || resolution.status === "blocked") {
+      setConflictMessage(resolution.message);
+      toast.error(resolution.message);
+      return;
+    }
+    if (resolution.status === "need_separate_confirm") {
+      setSimilarCandidates(resolution.candidates);
+      setPairingHint(resolution.message);
+      toast.error(resolution.message);
+      return;
+    }
+
+    const testingEventId =
+      resolution.status === "attach"
+        ? resolution.testingEventId
+        : draft.testingEventId.trim() || newTestingEventId();
+
     try {
       await addDrugTestEvent(
         {
@@ -223,15 +299,26 @@ export function DrugTestRecordsPage() {
         },
         actor,
       );
-      toast.success(addAnother ? "Event saved — add another" : "Event saved");
+      toast.success(
+        resolution.status === "attach"
+          ? addAnother
+            ? `${resolution.message} — add another`
+            : resolution.message
+          : addAnother
+            ? "Event saved — add another"
+            : "Event saved",
+      );
+      clearPairingFeedback();
       if (addAnother) {
-        // Keep driver; remount editor blank with a new independent testing event.
+        // Keep driver + filters; remount editor blank (new independent event next time).
         setAddKind(draft.kind || "federal_drug");
         setAddFormKey((k) => k + 1);
       } else {
         closeAdd();
       }
     } catch (e) {
+      // Keep form open; clear transient pairing UI noise but surface RPC error.
+      clearPairingFeedback();
       toast.error(e instanceof Error ? e.message : "Save failed");
     }
   };
@@ -425,7 +512,7 @@ export function DrugTestRecordsPage() {
               Add drug test event
             </h3>
             <span className="text-xs font-semibold text-muted-foreground sm:text-[13px]">
-              CCF-first or MRO-first · new testing event each Add Another
+              Automatic / Manual / Separate · CCF↔MRO · Matched ≠ clearance
             </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -440,7 +527,10 @@ export function DrugTestRecordsPage() {
               />
               <select
                 value={pickedDriverId}
-                onChange={(e) => setPickedDriverId(e.target.value)}
+                onChange={(e) => {
+                  setPickedDriverId(e.target.value);
+                  clearPairingFeedback();
+                }}
                 className="w-full rounded-lg border px-2.5 py-1.5 text-[14px]"
                 aria-label="Select driver"
               >
@@ -470,6 +560,13 @@ export function DrugTestRecordsPage() {
               key={addFormKey}
               compact
               showAddAnother
+              enablePairing
+              driverId={pickedDriverId}
+              existingEvents={driverEvents}
+              ambiguousCandidates={ambiguousCandidates}
+              similarCandidates={similarCandidates}
+              conflictMessage={conflictMessage}
+              pairingHint={pairingHint}
               disabled={!persistOk}
               initial={{
                 id: "",
@@ -485,7 +582,7 @@ export function DrugTestRecordsPage() {
               }}
               onCancel={closeAdd}
               onSave={async (draft, opts) => {
-                await saveNewEvent(draft, Boolean(opts?.addAnother));
+                await saveNewEvent(draft, opts);
               }}
             />
           ) : (
