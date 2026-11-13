@@ -1,12 +1,17 @@
 import type { DispatchLoad, LoadStatus } from "./types";
 import { ACTIVE_BOARD_COLUMNS, ACTIVE_LOAD_STATUSES, LOAD_STATUS_LABELS } from "./types";
 
-/** Delivered is terminal for movement but not the same as Closed (billing/file complete). */
+/**
+ * Delivered ≠ Closed ≠ Paid.
+ * Closed may reopen only to delivered (Batch 9). Closing never implies paid.
+ */
 export function canTransition(from: LoadStatus, to: LoadStatus): boolean {
   if (from === to) return true;
-  if (from === "cancelled" || from === "closed") return false;
+  if (from === "cancelled") return false;
+  if (from === "closed") return to === "delivered";
   if (to === "cancelled") return true;
   if (to === "closed") return from === "delivered";
+  // Delivered only closes (handled above); no other movement transitions.
   if (from === "delivered") return false;
   if (to === "delivered") return true;
   return true;
@@ -37,7 +42,9 @@ export function homeActionBuckets(loads: DispatchLoad[]) {
   const inMotion = loads.filter((l) =>
     ["assigned", "in_transit", "at_pickup", "loaded", "at_delivery"].includes(l.status),
   );
-  return { needsUpdate, openExceptions, awaitingDocs, inMotion };
+  /** Delivered but not yet closed — file work remaining. Paid is separate. */
+  const awaitingCloseout = loads.filter((l) => l.status === "delivered");
+  return { needsUpdate, openExceptions, awaitingDocs, inMotion, awaitingCloseout };
 }
 
 /** Group filtered active loads into board columns. Does not invent milestones or ETAs. */

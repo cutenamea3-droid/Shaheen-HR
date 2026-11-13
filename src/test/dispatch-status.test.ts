@@ -19,10 +19,12 @@ function load(partial: Partial<DispatchLoad>): DispatchLoad {
 }
 
 describe("Dispatch status model", () => {
-  it("treats Delivered as distinct from Closed", () => {
+  it("treats Delivered as distinct from Closed (reopen closed → delivered only)", () => {
     expect(canTransition("delivered", "closed")).toBe(true);
     expect(canTransition("in_transit", "closed")).toBe(false);
     expect(canTransition("closed", "in_transit")).toBe(false);
+    expect(canTransition("closed", "delivered")).toBe(true);
+    expect(canTransition("delivered", "in_transit")).toBe(false);
   });
 
   it("marks stale active loads and builds action lists over counters", () => {

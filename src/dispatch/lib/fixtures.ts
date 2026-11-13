@@ -4,6 +4,8 @@
  */
 import type {
   CheckCall,
+  DispatchAccessorial,
+  DispatchCommunication,
   DispatchException,
   DispatchFollowUp,
   DispatchIssue,
@@ -87,6 +89,11 @@ export const fixtureLoads: DispatchLoad[] = [
     last_manual_location_by: null,
     cancel_reason: null,
     reschedule_note: null,
+    closeout_note: null,
+    closed_at: null,
+    reopen_reason: null,
+    reopened_at: null,
+    payment_status: "unpaid",
     stale_after_minutes: 120,
     created_by: null,
     updated_by: null,
@@ -118,6 +125,11 @@ export const fixtureLoads: DispatchLoad[] = [
     last_manual_location_by: null,
     cancel_reason: null,
     reschedule_note: "Pickup window moved — desk note only, no invented ETA",
+    closeout_note: null,
+    closed_at: null,
+    reopen_reason: null,
+    reopened_at: null,
+    payment_status: "unpaid",
     stale_after_minutes: 180,
     created_by: null,
     updated_by: null,
@@ -174,12 +186,57 @@ export const fixtureLoads: DispatchLoad[] = [
     last_manual_location_by: null,
     cancel_reason: null,
     reschedule_note: null,
+    closeout_note: null,
+    closed_at: null,
+    reopen_reason: null,
+    reopened_at: null,
+    payment_status: "unpaid",
     stale_after_minutes: 180,
     created_by: null,
     updated_by: null,
     created_at: iso(2200),
     updated_at: iso(780),
     stops: [],
+  },
+];
+
+export const fixtureAccessorials: DispatchAccessorial[] = [
+  {
+    id: "acc-1",
+    load_id: "load-3",
+    kind: "detention",
+    status: "draft",
+    description: "Receiver hold at Detroit — hours claimed desk-entered only",
+    amount_manual: null,
+    hours_manual: 2,
+    free_time_note: "Free-time / rate Needs Policy Confirmation — do not invent",
+    currency: "USD",
+    created_by: null,
+    created_at: iso(700),
+    updated_at: iso(700),
+  },
+];
+
+export const fixtureCommunications: DispatchCommunication[] = [
+  {
+    id: "com-1",
+    load_id: "load-3",
+    kind: "decision",
+    summary: "Hold close until POD verified",
+    detail: "Desk decision log only — never sends email/SMS/push",
+    decided_action: "Keep SH-0990 delivered; close after POD",
+    created_by: null,
+    created_at: iso(750),
+  },
+  {
+    id: "com-2",
+    load_id: "load-1",
+    kind: "call",
+    summary: "Called receiver about detention risk",
+    detail: "Manual call note",
+    decided_action: null,
+    created_by: null,
+    created_at: iso(180),
   },
 ];
 
@@ -286,5 +343,7 @@ export function cloneFixtures() {
     issues: structuredClone(fixtureIssues),
     followUps: structuredClone(fixtureFollowUps),
     handovers: structuredClone(fixtureHandovers),
+    accessorials: structuredClone(fixtureAccessorials),
+    communications: structuredClone(fixtureCommunications),
   };
 }

@@ -175,6 +175,7 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
 
     await exec(db, stripAuthUserFks(migrationSql("20261113170000_dispatch_operations.sql")));
     await exec(db, stripAuthUserFks(migrationSql("20261113190000_dispatch_ops_controls.sql")));
+    await exec(db, stripAuthUserFks(migrationSql("20261113200000_dispatch_closeout.sql")));
 
     await exec(
       db,
@@ -190,6 +191,25 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
       INSERT INTO public.dispatch_follow_ups (id, title, due_at, status)
       VALUES ('22222222-2222-2222-2222-222222222222', 'B8 follow-up', now(), 'open')
       ON CONFLICT DO NOTHING;
+
+      INSERT INTO public.dispatch_accessorials (id, load_id, kind, status, description)
+      VALUES (
+        '33333333-3333-3333-3333-333333333333',
+        '11111111-1111-1111-1111-111111111111',
+        'detention',
+        'draft',
+        'B9 detention fixture'
+      )
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO public.dispatch_communications (id, load_id, kind, summary)
+      VALUES (
+        '44444444-4444-4444-4444-444444444444',
+        '11111111-1111-1111-1111-111111111111',
+        'note',
+        'B9 communication fixture'
+      )
+      ON CONFLICT DO NOTHING;
       `,
     );
   }, 120_000);
@@ -201,6 +221,12 @@ describe("Dispatch PGlite isolation (auth + RLS)", () => {
 
       const followUps = await db.query(`SELECT title FROM public.dispatch_follow_ups`);
       expect(followUps.rows.length).toBeGreaterThan(0);
+
+      const accessorials = await db.query(`SELECT description FROM public.dispatch_accessorials`);
+      expect(accessorials.rows.length).toBeGreaterThan(0);
+
+      const communications = await db.query(`SELECT summary FROM public.dispatch_communications`);
+      expect(communications.rows.length).toBeGreaterThan(0);
 
       const sections = await db.query(`SELECT id FROM public.tracker_sections`);
       expect(sections.rows.length).toBe(0);

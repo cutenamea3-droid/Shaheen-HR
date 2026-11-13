@@ -76,6 +76,17 @@ export type DispatchLoad = {
   cancel_reason: string | null;
   /** Manual reschedule note — desk-recorded; never invents ETAs. */
   reschedule_note: string | null;
+  /** Closeout note when status becomes closed (Delivered ≠ Closed). */
+  closeout_note: string | null;
+  closed_at: string | null;
+  /** Required when reopening a closed load back to delivered. */
+  reopen_reason: string | null;
+  reopened_at: string | null;
+  /**
+   * Payment status — independent of delivered/closed.
+   * Closing never marks paid; paying never closes.
+   */
+  payment_status: PaymentStatus;
   stale_after_minutes: number;
   created_by: string | null;
   updated_by: string | null;
@@ -133,6 +144,58 @@ export type DispatchFollowUp = {
   updated_at: string;
 };
 
+/**
+ * Payment tracking is independent of movement status.
+ * Delivered ≠ Closed ≠ Paid — never auto-set from closeout.
+ */
+export type PaymentStatus = "unpaid" | "partial" | "paid" | "not_applicable";
+
+export type AccessorialKind = "detention" | "layover" | "lumper" | "tonu" | "other";
+
+/** Claim/workflow status for accessorials — Paid here is claim paid, not load closed. */
+export type AccessorialStatus = "draft" | "submitted" | "approved" | "denied" | "paid" | "void";
+
+/**
+ * Desk-recorded detention / accessorial claim.
+ * Amounts and hours are manual only — never invent rates or free-time.
+ * Never writes to Admin expenses / payroll.
+ */
+export type DispatchAccessorial = {
+  id: string;
+  load_id: string;
+  kind: AccessorialKind;
+  status: AccessorialStatus;
+  description: string;
+  /** Desk-entered amount only — null if unknown / Needs Policy Confirmation. */
+  amount_manual: number | null;
+  /** Desk-entered claimed hours — never auto-calculated from free-time rules. */
+  hours_manual: number | null;
+  /** Free-text note about free-time / rate policy — not a calculator. */
+  free_time_note: string | null;
+  currency: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommunicationKind = "call" | "email_note" | "decision" | "note";
+
+/**
+ * Communication & decision history — desk log only.
+ * Never sends external notifications (email/SMS/push).
+ */
+export type DispatchCommunication = {
+  id: string;
+  load_id: string;
+  kind: CommunicationKind;
+  summary: string;
+  detail: string | null;
+  /** For kind=decision: what the desk decided (manual). */
+  decided_action: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
 export type ShiftHandover = {
   id: string;
   shift_date: string;
@@ -154,12 +217,28 @@ export type DispatchView =
   | "docs"
   | "followups"
   | "equipment"
+  | "accessorials"
   | "roster"
   | "team"
   | "handover"
   | "issues"
   | "reports"
   | "history";
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
+  partial: "Partial",
+  paid: "Paid",
+  not_applicable: "N/A",
+};
+
+export const ACCESSORIAL_KIND_LABELS: Record<AccessorialKind, string> = {
+  detention: "Detention",
+  layover: "Layover",
+  lumper: "Lumper",
+  tonu: "TONU",
+  other: "Other",
+};
 
 /** Status columns for Active Loads board (manual desk board — not a marketplace). */
 export const ACTIVE_BOARD_COLUMNS: LoadStatus[] = [

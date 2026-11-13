@@ -15,10 +15,12 @@ import {
   UserCog,
   Handshake,
   Wrench,
+  Receipt,
 } from "lucide-react";
 import { LoginGate } from "@/dispatch/components/LoginGate";
 import { EmptyHint, SectionHelp, StaleBadge } from "@/dispatch/components/EmptyHint";
 import { DocsBoard, EquipmentBoard, FollowUpsBoard } from "@/dispatch/components/OpsControlsBoards";
+import { AccessorialsBoard } from "@/dispatch/components/CloseoutBoards";
 import {
   getDispatchAccount,
   inviteDispatchUser,
@@ -30,21 +32,34 @@ import {
 import {
   addCheckCall,
   cancelLoad,
+  closeLoad,
   driverLoadHistory,
+  listAccessorials,
   listCheckCalls,
+  listCommunications,
   listExceptions,
   listFollowUps,
   listHandovers,
   listIssues,
   listLoads,
   listRosterDrivers,
+  reopenLoad,
   rescheduleLoad,
+  saveCommunication,
   saveException,
   saveHandover,
   saveIssue,
   saveLoad,
+  setLoadPaymentStatus,
   upsertRosterDriver,
 } from "@/dispatch/lib/cloud";
+import {
+  buildCompleteLoadHistory,
+  paymentStatusLabel,
+  validateCloseout,
+  validateCommunication,
+  validateReopen,
+} from "@/dispatch/lib/closeout";
 import {
   buildHandoverWatchHints,
   dueFollowUps,
@@ -54,7 +69,14 @@ import {
   validateCancel,
   validateReschedule,
 } from "@/dispatch/lib/ops-controls";
-import { exportHandoverPdf, exportLoadsCsv, exportLoadsPdf } from "@/dispatch/lib/reports";
+import {
+  exportAccessorialsCsv,
+  exportAccessorialsPdf,
+  exportHandoverPdf,
+  exportLoadHistoryPdf,
+  exportLoadsCsv,
+  exportLoadsPdf,
+} from "@/dispatch/lib/reports";
 import {
   activeLoadsBoardColumns,
   filterLoads,
@@ -63,6 +85,7 @@ import {
   statusLabel,
 } from "@/dispatch/lib/status";
 import type {
+  CommunicationKind,
   DispatchAccount,
   DispatchFollowUp,
   DispatchIssue,
@@ -71,10 +94,11 @@ import type {
   DocStatus,
   LoadStatus,
   LoadStop,
+  PaymentStatus,
   RosterDriver,
   ShiftHandover,
 } from "@/dispatch/lib/types";
-import { ACTIVE_LOAD_STATUSES, LOAD_STATUS_LABELS } from "@/dispatch/lib/types";
+import { ACTIVE_LOAD_STATUSES, LOAD_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/dispatch/lib/types";
 
 const NAV: { id: DispatchView; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "home", label: "My Dispatch Today", icon: LayoutDashboard },
@@ -83,10 +107,11 @@ const NAV: { id: DispatchView; label: string; icon: typeof LayoutDashboard }[] =
   { id: "docs", label: "BOL / POD", icon: FileText },
   { id: "followups", label: "Follow-Ups", icon: Bell },
   { id: "equipment", label: "Driver / Equipment", icon: Wrench },
+  { id: "accessorials", label: "Detention / Accessorials", icon: Receipt },
   { id: "handover", label: "Shift Handover", icon: Handshake },
   { id: "issues", label: "Issues", icon: FileWarning },
   { id: "roster", label: "Roster", icon: Users },
-  { id: "history", label: "Driver history", icon: History },
+  { id: "history", label: "Load history", icon: History },
   { id: "reports", label: "Reports", icon: ClipboardList },
   { id: "team", label: "Team", icon: UserCog },
 ];
@@ -358,6 +383,15 @@ export function DispatchApp() {
               }}
             />
           )}
+          {view === "accessorials" && (
+            <AccessorialsBoard
+              loads={loads}
+              onOpen={(id) => {
+                setSelectedId(id);
+                setView("load");
+              }}
+            />
+          )}
           {view === "load" && (
             <LoadEditor
               key={selected?.id ?? "new"}
@@ -412,7 +446,7 @@ export function DispatchApp() {
               }}
             />
           )}
-          {view === "reports" && <ReportsBoard loads={loads} />}
+          {view === "reports" && <ReportsBoard loads={loads} drivers={drivers} />}
           {view === "team" && account.role === "admin" && <TeamBoard account={account} />}
         </main>
       </div>
@@ -455,9 +489,38 @@ function HomeBoard({
   return (
     <div className="grid gap-3">
       <SectionHelp>
-        My Dispatch Today prioritizes action lists over counters. Delivered is not Closed — close only after file work
-        is done. No invented ETAs, GPS, HOS, or notifications.
+        My Dispatch Today prioritizes action lists over counters. Delivered ≠ Closed ≠ Paid — close only after file
+        work; payment is separate. No invented ETAs, GPS, HOS, rates, or notifications.
       </SectionHelp>
+      <section className="dispatch-panel">
+        <h2 className="mb-2 text-base font-semibold text-[color:var(--dispatch-navy)]">
+          Awaiting closeout ({buckets.awaitingCloseout.length})
+        </h2>
+        <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+          Delivered loads still open for file close. Closing does not mark Paid.
+        </p>
+        {!buckets.awaitingCloseout.length ? (
+          <EmptyHint>No delivered loads awaiting closeout.</EmptyHint>
+        ) : (
+          <ul className="divide-y divide-[color:var(--dispatch-border)]">
+            {buckets.awaitingCloseout.slice(0, 8).map((load) => (
+              <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <p className="font-semibold">
+                    {load.load_number} · {statusLabel(load.status)}
+                  </p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    Payment: {paymentStatusLabel(load.payment_status)} · POD {load.pod_status}
+                  </p>
+                </div>
+                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                  Update Load
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section className="dispatch-panel">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Follow-ups due</h2>
@@ -930,6 +993,9 @@ function LoadEditor({
     last_manual_location: load?.last_manual_location ?? "",
     cancel_reason: load?.cancel_reason ?? "",
     reschedule_note: load?.reschedule_note ?? "",
+    closeout_note: load?.closeout_note ?? "",
+    reopen_reason: load?.reopen_reason ?? "",
+    payment_status: (load?.payment_status ?? "unpaid") as PaymentStatus,
     stale_after_minutes: load?.stale_after_minutes ?? 180,
     stops: load?.stops?.length ? structuredClone(load.stops) : blankStops(),
   }));
@@ -940,10 +1006,24 @@ function LoadEditor({
   const [excNotes, setExcNotes] = useState("");
   const [opsError, setOpsError] = useState<string | null>(null);
   const [opsBusy, setOpsBusy] = useState(false);
+  const [commKind, setCommKind] = useState<CommunicationKind>("note");
+  const [commSummary, setCommSummary] = useState("");
+  const [commDetail, setCommDetail] = useState("");
+  const [commDecision, setCommDecision] = useState("");
+  const [comms, setComms] = useState<Awaited<ReturnType<typeof listCommunications>>>([]);
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
 
   useEffect(() => {
     if (!load?.id) return;
-    void listCheckCalls(load.id).then(setCalls);
+    void Promise.all([
+      listCheckCalls(load.id),
+      listCommunications(load.id),
+      listAccessorials(load.id),
+    ]).then(([c, com, acc]) => {
+      setCalls(c);
+      setComms(com);
+      setAccessorials(acc);
+    });
   }, [load?.id]);
 
   function setStop(i: number, patch: Partial<LoadStop>) {
@@ -1374,7 +1454,250 @@ function LoadEditor({
       )}
 
       {load?.id && (
+        <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+          <h3 className="mb-2 text-sm font-semibold">Closeout / Reopen / Payment</h3>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+            Delivered ≠ Closed ≠ Paid. Closing never marks paid; paying never closes. Reopen returns closed →
+            delivered.
+          </p>
+          {opsError && (
+            <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              {opsError}
+            </p>
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Closeout note
+              <input
+                className="dispatch-field"
+                value={form.closeout_note}
+                onChange={(e) => setForm({ ...form, closeout_note: e.target.value })}
+                placeholder="Required to close"
+              />
+            </label>
+            <label className="grid gap-1 text-xs sm:col-span-2">
+              Reopen reason
+              <input
+                className="dispatch-field"
+                value={form.reopen_reason}
+                onChange={(e) => setForm({ ...form, reopen_reason: e.target.value })}
+                placeholder="Required to reopen closed → delivered"
+              />
+            </label>
+            <label className="grid gap-1 text-xs">
+              Payment status (independent)
+              <select
+                className="dispatch-field"
+                value={form.payment_status}
+                onChange={(e) => setForm({ ...form, payment_status: e.target.value as PaymentStatus })}
+              >
+                {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {PAYMENT_STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="dispatch-btn-primary"
+              disabled={opsBusy || load.status !== "delivered"}
+              onClick={async () => {
+                const err = validateCloseout(form.closeout_note);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await closeLoad(load, form.closeout_note);
+                  setForm((f) => ({
+                    ...f,
+                    status: "closed",
+                    closeout_note: next.closeout_note ?? f.closeout_note,
+                    payment_status: next.payment_status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Closeout failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Close load
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy || load.status !== "closed"}
+              onClick={async () => {
+                const err = validateReopen(form.reopen_reason);
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await reopenLoad(load, form.reopen_reason);
+                  setForm((f) => ({
+                    ...f,
+                    status: "delivered",
+                    reopen_reason: next.reopen_reason ?? f.reopen_reason,
+                    payment_status: next.payment_status,
+                  }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Reopen failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Reopen to delivered
+            </button>
+            <button
+              type="button"
+              className="dispatch-btn-ghost"
+              disabled={opsBusy}
+              onClick={async () => {
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  const next = await setLoadPaymentStatus(load, form.payment_status);
+                  setForm((f) => ({ ...f, payment_status: next.payment_status, status: next.status }));
+                  await onLoadChanged(next);
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Payment update failed.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Save payment status
+            </button>
+          </div>
+        </div>
+      )}
+
+      {load?.id && (
         <>
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Communication &amp; decisions</h3>
+            <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+              Desk log only — never sends email, SMS, or push.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs">
+                Kind
+                <select
+                  className="dispatch-field"
+                  value={commKind}
+                  onChange={(e) => setCommKind(e.target.value as CommunicationKind)}
+                >
+                  <option value="call">Call</option>
+                  <option value="email_note">Email note (manual)</option>
+                  <option value="decision">Decision</option>
+                  <option value="note">Note</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Summary
+                <input
+                  className="dispatch-field"
+                  value={commSummary}
+                  onChange={(e) => setCommSummary(e.target.value)}
+                />
+              </label>
+              {commKind === "decision" && (
+                <label className="grid gap-1 text-xs sm:col-span-2">
+                  Decided action
+                  <input
+                    className="dispatch-field"
+                    value={commDecision}
+                    onChange={(e) => setCommDecision(e.target.value)}
+                  />
+                </label>
+              )}
+              <label className="grid gap-1 text-xs sm:col-span-2">
+                Detail
+                <input className="dispatch-field" value={commDetail} onChange={(e) => setCommDetail(e.target.value)} />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="dispatch-btn-primary mt-2"
+              disabled={opsBusy}
+              onClick={async () => {
+                const err = validateCommunication({
+                  kind: commKind,
+                  summary: commSummary,
+                  decided_action: commDecision,
+                });
+                if (err) {
+                  setOpsError(err);
+                  return;
+                }
+                setOpsBusy(true);
+                setOpsError(null);
+                try {
+                  await saveCommunication({
+                    load_id: load.id,
+                    kind: commKind,
+                    summary: commSummary,
+                    detail: commDetail || null,
+                    decided_action: commKind === "decision" ? commDecision : null,
+                  });
+                  setCommSummary("");
+                  setCommDetail("");
+                  setCommDecision("");
+                  setComms(await listCommunications(load.id));
+                } catch (e) {
+                  setOpsError(e instanceof Error ? e.message : "Could not save communication.");
+                } finally {
+                  setOpsBusy(false);
+                }
+              }}
+            >
+              Log communication
+            </button>
+            <ul className="mt-3 space-y-2 text-sm">
+              {comms.map((c) => (
+                <li key={c.id} className="rounded-md bg-[color:var(--dispatch-soft)] px-2 py-1.5">
+                  <span className="font-medium">
+                    {c.kind} · {new Date(c.created_at).toLocaleString()}
+                  </span>
+                  {" — "}
+                  {c.summary}
+                  {c.decided_action ? ` · Decision: ${c.decided_action}` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
+            <h3 className="mb-2 text-sm font-semibold">Detention / accessorials on this load</h3>
+            <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
+              {accessorials.length} claim(s). Use Detention / Accessorials board for full edit — no auto HR expense.
+            </p>
+            {!accessorials.length ? (
+              <EmptyHint>No accessorials on this load.</EmptyHint>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {accessorials.map((a) => (
+                  <li key={a.id}>
+                    {a.kind} · {a.status} · {a.description}
+                    {a.amount_manual == null ? " · amount Needs Policy" : ` · ${a.currency} ${a.amount_manual}`}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
             <h3 className="mb-2 text-sm font-semibold">Check-call</h3>
             <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
@@ -1477,6 +1800,11 @@ function LoadEditor({
                 : null,
               cancel_reason: form.cancel_reason || null,
               reschedule_note: form.reschedule_note || null,
+              closeout_note: form.closeout_note || null,
+              reopen_reason: form.reopen_reason || null,
+              payment_status: form.payment_status,
+              closed_at: load?.closed_at ?? null,
+              reopened_at: load?.reopened_at ?? null,
               stale_after_minutes: form.stale_after_minutes,
               stops: form.stops.map((s, i) => ({ ...s, sequence: i + 1 })),
             });
@@ -1827,51 +2155,211 @@ function HistoryBoard({
   drivers: RosterDriver[];
   onOpen: (id: string) => void;
 }) {
+  const [mode, setMode] = useState<"driver" | "complete">("complete");
   const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
-  const history = driverId ? driverLoadHistory(loads, driverId) : [];
+  const [loadId, setLoadId] = useState(loads[0]?.id ?? "");
+  const [events, setEvents] = useState<ReturnType<typeof buildCompleteLoadHistory>>([]);
+  const [error, setError] = useState<string | null>(null);
+  const driverHistory = driverId ? driverLoadHistory(loads, driverId) : [];
+  const selectedLoad = loads.find((l) => l.id === loadId) ?? null;
+
+  useEffect(() => {
+    if (mode !== "complete" || !selectedLoad) {
+      setEvents([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [checkCalls, issues, followUps, communications, accessorials] = await Promise.all([
+          listCheckCalls(selectedLoad.id),
+          listIssues(),
+          listFollowUps(),
+          listCommunications(selectedLoad.id),
+          listAccessorials(selectedLoad.id),
+        ]);
+        if (cancelled) return;
+        setEvents(
+          buildCompleteLoadHistory({
+            load: selectedLoad,
+            checkCalls,
+            issues: issues.filter((i) => i.load_id === selectedLoad.id),
+            followUps: followUps.filter((f) => f.load_id === selectedLoad.id),
+            communications,
+            accessorials,
+          }),
+        );
+        setError(null);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not build history.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, selectedLoad]);
+
   return (
-    <section className="dispatch-panel">
-      <SectionHelp>Load history for a dispatch roster driver (not Compliance dossier).</SectionHelp>
-      <select className="dispatch-field mb-3 max-w-sm" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-        {drivers.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.display_name}
-          </option>
-        ))}
-      </select>
-      {!history.length ? (
-        <EmptyHint>No loads for this driver.</EmptyHint>
-      ) : (
-        <ul className="divide-y divide-[color:var(--dispatch-border)]">
-          {history.map((load) => (
-            <li key={load.id} className="flex items-center justify-between py-2 text-sm">
-              <span>
-                {load.load_number} · {statusLabel(load.status)}
-              </span>
-              <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
-                Update Load
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div className="grid gap-3">
+      <SectionHelp>
+        Complete load history combines check-calls, issues, follow-ups, communications, accessorials, and
+        closeout events. Driver filter remains roster-scoped (not Compliance dossier). Delivered ≠ Closed ≠ Paid.
+      </SectionHelp>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={mode === "complete" ? "dispatch-btn-primary" : "dispatch-btn-ghost"}
+          onClick={() => setMode("complete")}
+        >
+          Complete load timeline
+        </button>
+        <button
+          type="button"
+          className={mode === "driver" ? "dispatch-btn-primary" : "dispatch-btn-ghost"}
+          onClick={() => setMode("driver")}
+        >
+          By roster driver
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
       )}
-    </section>
+      {mode === "driver" ? (
+        <section className="dispatch-panel">
+          <select
+            className="dispatch-field mb-3 max-w-sm"
+            value={driverId}
+            onChange={(e) => setDriverId(e.target.value)}
+          >
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.display_name}
+              </option>
+            ))}
+          </select>
+          {!driverHistory.length ? (
+            <EmptyHint>No loads for this driver.</EmptyHint>
+          ) : (
+            <ul className="divide-y divide-[color:var(--dispatch-border)]">
+              {driverHistory.map((load) => (
+                <li key={load.id} className="flex items-center justify-between py-2 text-sm">
+                  <span>
+                    {load.load_number} · {statusLabel(load.status)} · pay {paymentStatusLabel(load.payment_status)}
+                  </span>
+                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                    Update Load
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <section className="dispatch-panel">
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <label className="grid gap-1 text-xs">
+              Load
+              <select className="dispatch-field min-w-[14rem]" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+                {loads.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.load_number} · {statusLabel(l.status)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedLoad && (
+              <>
+                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(selectedLoad.id)}>
+                  Update Load
+                </button>
+                <button
+                  type="button"
+                  className="dispatch-btn-ghost"
+                  onClick={() => exportLoadHistoryPdf(selectedLoad, events)}
+                >
+                  Export history PDF
+                </button>
+              </>
+            )}
+          </div>
+          {!events.length ? (
+            <EmptyHint>No timeline events for this load.</EmptyHint>
+          ) : (
+            <ul className="divide-y divide-[color:var(--dispatch-border)]">
+              {events.map((e, i) => (
+                <li key={`${e.at}-${e.source}-${i}`} className="py-2 text-sm">
+                  <p className="font-semibold">
+                    {e.title}{" "}
+                    <span className="text-xs font-normal text-[color:var(--dispatch-muted)]">({e.source})</span>
+                  </p>
+                  <p className="text-xs text-[color:var(--dispatch-muted)]">
+                    {new Date(e.at).toLocaleString()} · {e.detail}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
-function ReportsBoard({ loads }: { loads: DispatchLoad[] }) {
+function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: RosterDriver[] }) {
+  const [statusFilter, setStatusFilter] = useState<"all" | LoadStatus>("all");
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
+  const filtered =
+    statusFilter === "all" ? loads : loads.filter((l) => l.status === statusFilter);
+
+  useEffect(() => {
+    void listAccessorials().then(setAccessorials).catch(() => setAccessorials([]));
+  }, [loads]);
+
   return (
-    <section className="dispatch-panel">
-      <SectionHelp>Export PDF/CSV for desk reporting. No rate cards or payroll fields included.</SectionHelp>
+    <section className="dispatch-panel grid gap-3">
+      <SectionHelp>
+        Dispatch PDF/CSV exports for desk reporting. Includes payment/closeout columns. No rate cards, free-time
+        calculators, or Admin payroll fields. Accessorial export is manual amounts only.
+      </SectionHelp>
+      <label className="grid max-w-xs gap-1 text-xs">
+        Status filter
+        <select
+          className="dispatch-field"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | LoadStatus)}
+        >
+          <option value="all">All</option>
+          {(Object.keys(LOAD_STATUS_LABELS) as LoadStatus[]).map((s) => (
+            <option key={s} value={s}>
+              {LOAD_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="dispatch-btn-primary" onClick={() => exportLoadsCsv(loads)}>
-          Download CSV
+        <button type="button" className="dispatch-btn-primary" onClick={() => exportLoadsCsv(filtered)}>
+          Loads CSV
         </button>
-        <button type="button" className="dispatch-btn-ghost" onClick={() => exportLoadsPdf(loads)}>
-          Download PDF
+        <button type="button" className="dispatch-btn-ghost" onClick={() => exportLoadsPdf(filtered)}>
+          Loads PDF
+        </button>
+        <button type="button" className="dispatch-btn-ghost" onClick={() => exportAccessorialsCsv(accessorials)}>
+          Accessorials CSV
+        </button>
+        <button
+          type="button"
+          className="dispatch-btn-ghost"
+          onClick={() => exportAccessorialsPdf(accessorials, loads)}
+        >
+          Accessorials PDF
         </button>
       </div>
-      <p className="mt-3 text-sm text-[color:var(--dispatch-muted)]">{loads.length} loads in current cloud/fixture set.</p>
+      <p className="text-sm text-[color:var(--dispatch-muted)]">
+        {filtered.length} loads · {accessorials.length} accessorials · {drivers.length} roster drivers · Delivered ≠
+        Closed ≠ Paid
+      </p>
     </section>
   );
 }
