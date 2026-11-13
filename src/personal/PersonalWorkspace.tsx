@@ -25,11 +25,11 @@ import { Vault } from "@/personal/components/Vault";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 
 const TABS = [
-  ["overview", "Today", Overview, LayoutDashboard],
-  ["courses", "Courses", Courses, BookOpen],
-  ["backlog", "Backlog", Backlog, ListTodo],
-  ["timetable", "Timetable", Timetable, CalendarRange],
-  ["assessments", "Assessments", Assessments, ClipboardList],
+  ["overview", "My Study Today", Overview, LayoutDashboard],
+  ["courses", "Courses · Lectures", Courses, BookOpen],
+  ["backlog", "Backlog Recovery", Backlog, ListTodo],
+  ["timetable", "Lecture Schedule", Timetable, CalendarRange],
+  ["assessments", "Deadlines · AQG", Assessments, ClipboardList],
   ["focus", "Focus", Focus, Timer],
   ["notes", "Notes", Notes, NotebookPen],
   ["analytics", "Analytics", Analytics, Gauge],

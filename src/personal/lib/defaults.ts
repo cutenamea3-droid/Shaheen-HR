@@ -101,8 +101,9 @@ export function defaultSettings(): PersonalSettings {
     sundayMinutes: 330,
     pomodoroFocus: 25,
     pomodoroBreak: 5,
-    midtermRef: "2026-12-07",
-    finalsRef: "2027-01-25",
+    /** Empty until owner pastes a date sheet — never invent mid/final windows */
+    midtermRef: "",
+    finalsRef: "",
   };
 }
 
@@ -125,30 +126,12 @@ export function migrateSettings(raw: Partial<PersonalSettings> | undefined): Per
   };
 }
 
-/** Soft calendar anchors only — verify every date on VULMS before relying on them. */
+/**
+ * No invented mid/final deadlines — date sheet was not in the VU exports.
+ * Owner may add exam refs manually after confirming on VULMS.
+ */
 export function defaultAssessments(): Assessment[] {
-  return [
-    {
-      id: "midterm-ref",
-      courseId: "general",
-      kind: "midterm",
-      title: "Midterm exams (semester ref)",
-      dueDate: "2026-12-07",
-      notes: "Editable reference only. Confirm exact paper dates on VULMS.",
-      done: false,
-      verifyOnVulms: true,
-    },
-    {
-      id: "finals-ref",
-      courseId: "general",
-      kind: "final",
-      title: "Final exams (semester ref)",
-      dueDate: "2027-01-25",
-      notes: "Editable reference only. Confirm exact paper dates on VULMS.",
-      done: false,
-      verifyOnVulms: true,
-    },
-  ];
+  return [];
 }
 
 export function defaultDiscipline(): DisciplineCheck[] {

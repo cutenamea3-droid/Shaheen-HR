@@ -20,8 +20,8 @@ export function Backlog() {
   return (
     <Panel>
       <SectionHead
-        title="Lecture backlog recovery"
-        subtitle="Capture missed work yourself — planner never invents lecture debt"
+        title="Backlog Recovery"
+        subtitle="Capture missed lectures/handouts yourself — planner never invents lecture debt from incomplete Progress exports"
       />
       <form
         className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 sm:grid-cols-[1fr_2fr_100px_auto]"

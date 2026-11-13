@@ -1,9 +1,27 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
+import { deadlineBadge } from "@/personal/lib/assessment-phases";
 import { usePersonal } from "@/personal/lib/store";
-import type { AssessmentKind } from "@/personal/lib/types";
+import type { AssessmentKind, DeadlineSource } from "@/personal/lib/types";
 
-const KINDS: AssessmentKind[] = ["assignment", "quiz", "midterm", "final", "other"];
+const KINDS: AssessmentKind[] = ["assignment", "quiz", "gdb", "midterm", "final", "other"];
+
+function DeadlineChip({ source }: { source: DeadlineSource | undefined }) {
+  const badge = deadlineBadge(source);
+  const cls =
+    badge.tone === "verified"
+      ? "bg-[var(--hp-teal)]/15 text-[var(--hp-teal)]"
+      : badge.tone === "estimated"
+        ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
+        : badge.tone === "user"
+          ? "bg-[var(--hp-blue)]/15 text-[var(--hp-blue-bright)]"
+          : "bg-[var(--hp-border)] text-[var(--hp-muted)]";
+  return (
+    <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
+      {badge.label}
+    </span>
+  );
+}
 
 export function Assessments() {
   const courses = usePersonal((s) => s.courses);
@@ -11,7 +29,8 @@ export function Assessments() {
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
   const upsertAssessment = usePersonal((s) => s.upsertAssessment);
-  const toggleAssessment = usePersonal((s) => s.toggleAssessment);
+  const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
+  const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const removeAssessment = usePersonal((s) => s.removeAssessment);
 
   const [title, setTitle] = useState("");
@@ -21,81 +40,160 @@ export function Assessments() {
   const [mid, setMid] = useState(settings.midtermRef);
   const [fin, setFin] = useState(settings.finalsRef);
 
-  const open = assessments
-    .filter((a) => !a.done)
-    .slice()
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const open = useMemo(
+    () =>
+      assessments
+        .filter((a) => !a.submitted && !a.done)
+        .slice()
+        .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999")),
+    [assessments],
+  );
+
+  const verified = open.filter((a) => a.deadlineSource === "vulms_todo");
+  const otherDeadlines = open.filter((a) => a.deadlineSource !== "vulms_todo");
 
   return (
     <div className="space-y-4">
       <Panel>
         <SectionHead
+          title="VU Deadlines"
+          subtitle="Verified = To-Do Calendar export window · Estimated / user-entered are never treated as VULMS fact"
+        />
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--hp-teal)]">
+              Verified
+            </div>
+            <div className="hp-title mt-1 text-2xl font-bold tabular-nums">{verified.length}</div>
+            <p className="mt-1 text-xs text-[var(--hp-muted)]">
+              Due dates copied from To-Do Calendar HTML export only.
+            </p>
+          </div>
+          <div className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
+              Estimated / user / unset
+            </div>
+            <div className="hp-title mt-1 text-2xl font-bold tabular-nums">{otherDeadlines.length}</div>
+            <p className="mt-1 text-xs text-[var(--hp-muted)]">
+              Planning timers and owner-typed dates — verify on VULMS before relying on them.
+            </p>
+          </div>
+        </div>
+        <p className="rounded-lg border border-dashed border-[var(--hp-border)] px-3 py-2 text-xs text-[var(--hp-muted)]">
+          Prep ≠ submit: marking <strong>Prep done</strong> never marks Submitted. Mark{" "}
+          <strong>Submitted</strong> only after you attempt/upload/post on VULMS.
+        </p>
+      </Panel>
+
+      <Panel>
+        <SectionHead
           title="Semester exam references"
-          subtitle="Editable anchors only — always verify paper schedules on VULMS"
+          subtitle="Leave blank until a date sheet is published — this workspace never invents mid/final windows"
         />
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Midterm ref">
-            <input className="hp-field" type="date" value={mid} onChange={(e) => setMid(e.target.value)} />
+          <Field label="Midterm ref (optional)">
+            <input
+              className="hp-field"
+              type="date"
+              value={mid}
+              onChange={(e) => setMid(e.target.value)}
+            />
           </Field>
-          <Field label="Finals ref">
-            <input className="hp-field" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
+          <Field label="Finals ref (optional)">
+            <input
+              className="hp-field"
+              type="date"
+              value={fin}
+              onChange={(e) => setFin(e.target.value)}
+            />
           </Field>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={() => {
               setSettings({ midtermRef: mid, finalsRef: fin });
-              upsertAssessment({
-                id: "midterm-ref",
-                courseId: "general",
-                kind: "midterm",
-                title: "Midterm exams (semester ref)",
-                dueDate: mid,
-                notes: "Editable reference only. Confirm exact paper dates on VULMS.",
-                done: false,
-                verifyOnVulms: true,
-              });
-              upsertAssessment({
-                id: "finals-ref",
-                courseId: "general",
-                kind: "final",
-                title: "Final exams (semester ref)",
-                dueDate: fin,
-                notes: "Editable reference only. Confirm exact paper dates on VULMS.",
-                done: false,
-                verifyOnVulms: true,
-              });
+              if (mid) {
+                upsertAssessment({
+                  id: "midterm-ref",
+                  courseId: "general",
+                  kind: "midterm",
+                  title: "Midterm exams (owner date-sheet ref)",
+                  dueDate: mid,
+                  notes: "User-entered after confirming VULMS/date sheet — not from export seed.",
+                  prepDone: false,
+                  submitted: false,
+                  done: false,
+                  verifyOnVulms: true,
+                  deadlineSource: "user_entered",
+                });
+              }
+              if (fin) {
+                upsertAssessment({
+                  id: "finals-ref",
+                  courseId: "general",
+                  kind: "final",
+                  title: "Final exams (owner date-sheet ref)",
+                  dueDate: fin,
+                  notes: "User-entered after confirming VULMS/date sheet — not from export seed.",
+                  prepDone: false,
+                  submitted: false,
+                  done: false,
+                  verifyOnVulms: true,
+                  deadlineSource: "user_entered",
+                });
+              }
             }}
           >
             Save exam refs
+          </Btn>
+          <Btn
+            variant="ghost"
+            onClick={() => {
+              setMid("");
+              setFin("");
+              setSettings({ midtermRef: "", finalsRef: "" });
+              removeAssessment("midterm-ref");
+              removeAssessment("finals-ref");
+            }}
+          >
+            Clear exam refs
           </Btn>
         </div>
       </Panel>
 
       <Panel>
-        <SectionHead title="Assignments · quizzes · exams" subtitle="Track only items you confirm" />
+        <SectionHead
+          title="Assignment · Quiz · GDB"
+          subtitle="Track prep separately from VULMS submit — GDB is a first-class kind"
+        />
         <form
           className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 md:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!title.trim() || !dueDate) return;
+            if (!title.trim()) return;
             upsertAssessment({
               id: Math.random().toString(36).slice(2, 10),
               courseId,
               kind,
               title: title.trim(),
               dueDate,
-              notes: "",
+              notes: dueDate
+                ? "Owner-entered deadline — verify on VULMS."
+                : "No due date — unset until confirmed on VULMS.",
+              prepDone: false,
+              submitted: false,
               done: false,
               verifyOnVulms: true,
+              deadlineSource: dueDate ? "user_entered" : "unset",
             });
             setTitle("");
+            setDueDate("");
           }}
         >
           <Field label="Title">
             <input className="hp-field" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
-          <Field label="Due date">
+          <Field label="Due date (optional)">
             <input
               className="hp-field"
               type="date"
@@ -107,7 +205,7 @@ export function Assessments() {
             <select className="hp-field" value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)}>
               {KINDS.map((k) => (
                 <option key={k} value={k}>
-                  {k}
+                  {k === "gdb" ? "GDB" : k}
                 </option>
               ))}
             </select>
@@ -128,7 +226,7 @@ export function Assessments() {
         </form>
 
         {!open.length ? (
-          <Empty>No open assessments beyond what you add.</Empty>
+          <Empty>No open assessments. Import To-Do Calendar exports or add items you confirm.</Empty>
         ) : (
           <ul className="space-y-2">
             {open.map((a) => (
@@ -136,16 +234,34 @@ export function Assessments() {
                 key={a.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
               >
-                <div>
+                <div className="min-w-0 space-y-1">
                   <div className="font-semibold">{a.title}</div>
-                  <div className="text-xs text-[var(--hp-muted)]">
-                    {a.dueDate} · {courseLabel(courses, a.courseId)} · {a.kind}
-                    {a.verifyOnVulms ? " · verify VULMS" : ""}
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--hp-muted)]">
+                    <span>
+                      {a.dueDate || "no date"} · {courseLabel(courses, a.courseId)} ·{" "}
+                      {a.kind === "gdb" ? "GDB" : a.kind}
+                    </span>
+                    <DeadlineChip source={a.deadlineSource} />
+                    {a.prepDone ? (
+                      <span className="rounded bg-[var(--hp-violet)]/15 px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--hp-violet)]">
+                        Prep done
+                      </span>
+                    ) : (
+                      <span className="rounded bg-[var(--hp-border)] px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--hp-muted)]">
+                        Prep pending
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Btn variant="teal" onClick={() => toggleAssessment(a.id)}>
-                    Done
+                <div className="flex flex-wrap gap-2">
+                  <Btn
+                    variant={a.prepDone ? "ghost" : "primary"}
+                    onClick={() => setAssessmentPrep(a.id, !a.prepDone)}
+                  >
+                    {a.prepDone ? "Undo prep" : "Prep done"}
+                  </Btn>
+                  <Btn variant="teal" onClick={() => setAssessmentSubmitted(a.id, true)}>
+                    Mark submitted
                   </Btn>
                   <Btn variant="ghost" onClick={() => removeAssessment(a.id)}>
                     Remove

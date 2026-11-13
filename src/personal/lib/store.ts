@@ -20,6 +20,7 @@ import type {
   PersonalState,
   StudyMode,
 } from "./types";
+import { normalizeAssessment, withPrepDone, withSubmitted } from "./assessment-phases";
 import { modeBudgetMinutes } from "./schedule";
 import { buildVuSeed } from "./vu-import";
 import { VU_STUDY_PLAN, courseIdFromCode, type VuStudyPlan } from "./vu-plan";
@@ -44,7 +45,10 @@ type Actions = {
   removeBacklog: (id: string) => void;
   upsertAssessment: (a: Assessment) => void;
   removeAssessment: (id: string) => void;
+  /** @deprecated Prefer setAssessmentPrep / setAssessmentSubmitted — prep ≠ submit */
   toggleAssessment: (id: string) => void;
+  setAssessmentPrep: (id: string, prepDone: boolean) => void;
+  setAssessmentSubmitted: (id: string, submitted: boolean) => void;
   upsertNote: (n: Note) => void;
   removeNote: (id: string) => void;
   addSession: (s: Omit<FocusSession, "id">) => void;
@@ -154,17 +158,34 @@ export const usePersonal = create<PersonalStore>()(
         })),
       removeBacklog: (id) => set((s) => ({ backlog: s.backlog.filter((b) => b.id !== id) })),
       upsertAssessment: (a) =>
-        set((s) => ({
-          assessments: s.assessments.some((x) => x.id === a.id)
-            ? s.assessments.map((x) => (x.id === a.id ? a : x))
-            : [...s.assessments, a],
-        })),
+        set((s) => {
+          const next = normalizeAssessment(a);
+          return {
+            assessments: s.assessments.some((x) => x.id === next.id)
+              ? s.assessments.map((x) => (x.id === next.id ? next : x))
+              : [...s.assessments, next],
+          };
+        }),
       removeAssessment: (id) =>
         set((s) => ({ assessments: s.assessments.filter((a) => a.id !== id) })),
       toggleAssessment: (id) =>
         set((s) => ({
+          assessments: s.assessments.map((a) => {
+            if (a.id !== id) return a;
+            // Legacy toggle flips submitted only — never touches prepDone
+            return withSubmitted(normalizeAssessment(a), !a.submitted && !a.done);
+          }),
+        })),
+      setAssessmentPrep: (id, prepDone) =>
+        set((s) => ({
           assessments: s.assessments.map((a) =>
-            a.id === id ? { ...a, done: !a.done } : a,
+            a.id === id ? withPrepDone(normalizeAssessment(a), prepDone) : a,
+          ),
+        })),
+      setAssessmentSubmitted: (id, submitted) =>
+        set((s) => ({
+          assessments: s.assessments.map((a) =>
+            a.id === id ? withSubmitted(normalizeAssessment(a), submitted) : a,
           ),
         })),
       upsertNote: (n) =>
@@ -305,7 +326,9 @@ export const usePersonal = create<PersonalStore>()(
           settings: migrateSettings(p.settings),
           courses: p.courses ?? current.courses,
           backlog: p.backlog ?? current.backlog,
-          assessments: p.assessments ?? current.assessments,
+          assessments: (p.assessments ?? current.assessments).map((a) =>
+            normalizeAssessment(a),
+          ),
           notes: p.notes ?? current.notes,
           sessions: p.sessions ?? current.sessions,
           dayPlans: p.dayPlans ?? current.dayPlans,

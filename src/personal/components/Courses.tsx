@@ -17,8 +17,8 @@ export function Courses() {
   return (
     <Panel>
       <SectionHead
-        title="Courses"
-        subtitle="From My Courses + Study Scheme — leave lecture counts blank unless you know them from Progress/Lessons"
+        title="Courses · Lectures"
+        subtitle="Seeded only from My Courses + Study Scheme exports — leave lecture totals/done blank unless Progress/Lessons confirm them (never invent)"
       />
       <div className="space-y-4">
         {courses.map((c) => (

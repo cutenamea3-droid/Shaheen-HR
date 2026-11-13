@@ -29,18 +29,36 @@ export type BacklogItem = {
   createdAt: number;
 };
 
-export type AssessmentKind = "assignment" | "quiz" | "midterm" | "final" | "other";
+export type AssessmentKind = "assignment" | "quiz" | "gdb" | "midterm" | "final" | "other";
+
+/**
+ * Provenance for due dates — never invent VULMS windows.
+ * - vulms_todo: copied from To-Do Calendar export (verified window)
+ * - user_entered: owner typed it (still verify on VULMS)
+ * - estimate: planning heuristic only (not a VULMS date)
+ * - unset: no date known from exports
+ */
+export type DeadlineSource = "vulms_todo" | "user_entered" | "estimate" | "unset";
 
 export type Assessment = {
   id: string;
   courseId: CourseId;
   kind: AssessmentKind;
   title: string;
-  dueDate: string; // YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD or "" when unset
   notes: string;
+  /**
+   * Prep ≠ submit (hard):
+   * - prepDone = studied / drafted offline
+   * - submitted = confirmed attempt/upload/post on VULMS
+   * - done = alias of submitted (legacy)
+   */
+  prepDone: boolean;
+  submitted: boolean;
   done: boolean;
   /** Soft reminder: dates are editable refs — verify on VULMS */
   verifyOnVulms: boolean;
+  deadlineSource: DeadlineSource;
 };
 
 export type Note = {
