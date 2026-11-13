@@ -21,14 +21,29 @@ import { FuturePlanSuggest } from "./FuturePlanSuggest";
 import { DriverManageControls } from "./DriverManageControls";
 import { FollowUpTracker } from "./FollowUpTracker";
 import { PlanCalendar } from "./PlanCalendar";
+import { DataQualityReview } from "./DataQualityReview";
+import { InspectionReadinessPanel } from "./InspectionReadinessPanel";
+import { ComplianceHistoryPanel } from "./ComplianceHistoryPanel";
+import { FileCompletenessPanel } from "./FileCompletenessPanel";
 import type { Tone } from "@/lib/alerts";
 
-type WorkCenterTab = "today" | "followups" | "calendar";
+type WorkCenterTab =
+  | "today"
+  | "followups"
+  | "calendar"
+  | "data_quality"
+  | "inspection"
+  | "history"
+  | "completeness";
 
 const TABS: { id: WorkCenterTab; label: string }[] = [
   { id: "today", label: "My Compliance Today" },
   { id: "followups", label: "Follow-Up Tracker" },
   { id: "calendar", label: "Future Plan Calendar" },
+  { id: "data_quality", label: "Data Quality" },
+  { id: "inspection", label: "Inspection Readiness" },
+  { id: "history", label: "Compliance History" },
+  { id: "completeness", label: "File Completeness" },
 ];
 
 const TONE_BORDER: Record<Tone, string> = {
@@ -365,6 +380,10 @@ export function AlertsWorkCenter() {
 
       {tab === "followups" && <FollowUpTracker />}
       {tab === "calendar" && <PlanCalendar />}
+      {tab === "data_quality" && <DataQualityReview />}
+      {tab === "inspection" && <InspectionReadinessPanel />}
+      {tab === "history" && <ComplianceHistoryPanel />}
+      {tab === "completeness" && <FileCompletenessPanel />}
 
       {tab === "today" && (
         <>

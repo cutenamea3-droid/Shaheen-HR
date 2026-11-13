@@ -18,12 +18,13 @@ export const Route = createFileRoute("/alerts")({
       {
         name: "description",
         content:
-          "My Compliance Today — work center, follow-up tracker, and Future Plan calendar with inline edit.",
+          "My Compliance Today — work center, follow-ups, calendar, data quality, inspection readiness, history, and file completeness.",
       },
       { property: "og:title", content: "My Compliance Today — Shaheen Driver Tracker" },
       {
         property: "og:description",
-        content: "Driver-by-driver alerts, durable follow-ups, and Intelligent Future Plan Calendar.",
+        content:
+          "Daily compliance work plus data quality, inspection readiness, audit history, and file completeness.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/alerts")({
   component: () => (
     <AppShell
       title="My Compliance Today"
-      subtitle="Work center · Follow-Up Tracker · Future Plan Calendar — edit and save on this page"
+      subtitle="Work center · Follow-ups · Calendar · Data Quality · Inspection · History · Completeness"
     >
       <div className="w-full min-w-0 max-w-none overflow-x-hidden">
         <AlertsWorkCenter />
