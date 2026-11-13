@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import seed from "@/admin/data/seed.json";
+import { appendDeptAssignment } from "./shift-assignment";
 import { emptyRec, type DayRec, type Dept, type Employee, type Perf, type Settings, type Task, type TeamMember, type LogEntry } from "./types";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -34,7 +35,8 @@ type State = {
   upsertDept: (d: Dept) => void;
   removeDept: (id: string) => void;
   addEmployee: (e: Omit<Employee, "id">) => void;
-  updateEmployee: (id: string, p: Partial<Employee>) => void;
+  /** Pass `deptEffectiveFrom` (YYYY-MM-DD) with `deptId` to preserve shift history. */
+  updateEmployee: (id: string, p: Partial<Employee> & { deptEffectiveFrom?: string }) => void;
   removeEmployee: (id: string) => void;
   moveEmployee: (id: string, toIndex: number) => void;
   setRec: (date: string, empId: string, p: Partial<DayRec>) => void;
@@ -75,8 +77,35 @@ export const useApp = create<State>()(
       upsertDept: (d) =>
         set((s) => ({ depts: s.depts.some((x) => x.id === d.id) ? s.depts.map((x) => (x.id === d.id ? d : x)) : [...s.depts, d] })),
       removeDept: (id) => set((s) => ({ depts: s.depts.filter((d) => d.id !== id) })),
-      addEmployee: (e) => set((s) => ({ employees: [...s.employees, { ...e, id: uid() }] })),
-      updateEmployee: (id, p) => set((s) => ({ employees: s.employees.map((e) => (e.id === id ? { ...e, ...p } : e)) })),
+      addEmployee: (e) =>
+        set((s) => {
+          const id = uid();
+          const effectiveFrom = `${(e.joinMonth || new Date().toISOString().slice(0, 7))}-01`;
+          const emp: Employee = {
+            ...e,
+            id,
+            deptAssignments: e.deptAssignments?.length
+              ? e.deptAssignments
+              : [{ deptId: e.deptId, effectiveFrom }],
+          };
+          return { employees: [...s.employees, emp] };
+        }),
+      updateEmployee: (id, p) =>
+        set((s) => ({
+          employees: s.employees.map((e) => {
+            if (e.id !== id) return e;
+            const { deptEffectiveFrom, ...rest } = p;
+            if (rest.deptId != null && rest.deptId !== e.deptId) {
+              const effectiveFrom =
+                typeof deptEffectiveFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deptEffectiveFrom)
+                  ? deptEffectiveFrom
+                  : new Date().toISOString().slice(0, 10);
+              const hist = appendDeptAssignment(e, rest.deptId, effectiveFrom);
+              return { ...e, ...rest, ...hist };
+            }
+            return { ...e, ...rest };
+          }),
+        })),
       removeEmployee: (id) => set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
       moveEmployee: (id, to) =>
         set((s) => {

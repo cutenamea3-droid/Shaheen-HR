@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { BarChart3, CalendarClock, ChevronsLeft, ChevronsRight, FileText, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
+import { BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users } from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
 import { Overtime } from "@/admin/components/hr/Overtime";
+import { EmployeeDirectory } from "@/admin/components/hr/EmployeeDirectory";
+import { LeaveManagement } from "@/admin/components/hr/LeaveManagement";
+import { MyHrToday } from "@/admin/components/hr/MyHrToday";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import {
@@ -213,29 +216,35 @@ import { HR_OWNER_EMAIL, isAdminHrAdmin } from "@/admin/lib/hr-access";
 const HR_EMAIL = HR_OWNER_EMAIL;
 
 const TABS = [
+  ["hr-today", "My HR Today", MyHrToday, ClipboardList],
   ["overview", "Overview", Overview, BarChart3],
   ["attendance", "Attendance", Attendance, CalendarClock],
+  ["leave", "Leave", LeaveManagement, CalendarDays],
   ["performance", "Performance", Performance, Star],
   ["overtime", "Overtime", Overtime, Timer],
   ["reports", "CEO Reports", Reports, FileText],
   ["tasks", "Tasks", Tasks, ListChecks],
   ["team", "Team", Team, Users],
+  ["directory", "Directory", EmployeeDirectory, FolderKanban],
   ["settings", "Settings", SettingsPanel, Settings],
 ] as const;
 
-const OPS_IDS = new Set(["overview", "attendance", "performance", "overtime"]);
+const OPS_IDS = new Set(["hr-today", "overview", "attendance", "leave", "performance", "overtime"]);
 const REPORT_IDS = new Set(["reports", "tasks"]);
-const PEOPLE_IDS = new Set(["team"]);
+const PEOPLE_IDS = new Set(["team", "directory"]);
 const CONFIG_IDS = new Set(["settings"]);
 
 const TAB_TITLE: Record<string, string> = {
+  "hr-today": "My HR Today",
   overview: "Overview",
   attendance: "Attendance",
+  leave: "Leave Management",
   performance: "Performance",
   overtime: "Overtime",
   reports: "CEO Reports",
   tasks: "Tasks",
   team: "Team",
+  directory: "Employee Directory",
   settings: "Settings",
   account: "My Account",
   "team-mgmt": "User Accounts",
@@ -440,7 +449,7 @@ export function AdminApp() {
       void supabase.auth.signOut();
     }
   };
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>("hr-today");
   const [small, setSmall] = useState(false);
   // Rehydrate density dataset; honor Overview → Attendance chip requests (UI only).
   useDensity();
@@ -525,8 +534,11 @@ export function AdminApp() {
       />
     );
   }
-  const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "overview");
-  const current: TabId = !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview")) ? "overview" : tab;
+  const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "hr-today" || t[0] === "overview");
+  const current: TabId =
+    !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview" && tab !== "hr-today"))
+      ? "hr-today"
+      : tab;
   const Active = TABS.find((t) => t[0] === current)?.[2];
   const crumbs = adminCrumbs(current);
   const navBtn = (id: TabId, label: string, Icon: typeof Users) => (
@@ -630,6 +642,7 @@ export function AdminApp() {
           {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
             : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
             : current === "logs" ? <SystemLogs />
+            : current === "hr-today" ? <MyHrToday localOnly={localOnly} />
             : Active ? <Active /> : null}
         </div>
       </main>

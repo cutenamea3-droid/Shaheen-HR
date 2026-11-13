@@ -1,4 +1,12 @@
 export type Dept = { id: string; name: string; start: number; end: number };
+
+/** Historical department/shift assignment — Late/Early resolve as-of attendance date. */
+export type DeptAssignment = {
+  deptId: string;
+  /** YYYY-MM-DD inclusive start for this assignment. */
+  effectiveFrom: string;
+};
+
 export type Employee = {
   id: string;
   name: string;
@@ -6,6 +14,12 @@ export type Employee = {
   afterHours: boolean;
   joinMonth: string; // YYYY-MM, leave accrual starts here
   openingLeave: number; // saved paid leaves carried in
+  /**
+   * Optional history of department (shift) assignments.
+   * When missing, `deptId` is treated as current (seeded from joinMonth-01).
+   * Changing department appends — never rewrites prior effective dates.
+   */
+  deptAssignments?: DeptAssignment[];
 };
 export type Status = "present" | "leave" | "absent" | "half";
 export type DayRec = {

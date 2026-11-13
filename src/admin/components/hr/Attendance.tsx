@@ -4,6 +4,7 @@ import { useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
+import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { shiftVariance } from "@/admin/lib/shift-variance";
 import { emptyRec, type Status } from "@/admin/lib/types";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
@@ -95,7 +96,7 @@ export function Attendance() {
   /** Fill dept start/end for active employees whose punch in & out are empty that day; then sync. */
   const fillStandardTimes = async () => {
     const targets = employees.filter((e) => {
-      if (!depts.some((d) => d.id === e.deptId)) return false;
+      if (!resolveDeptAsOf(e, depts, date)) return false;
       const r = day[e.id];
       const status = r?.status ?? "present";
       if (status === "leave" || status === "absent") return false;
@@ -106,12 +107,12 @@ export function Attendance() {
       return;
     }
     const okConfirm = confirm(
-      `Fill standard shift times for ${targets.length} employee(s) with empty punches on ${prettyDate(date)}?\n\nPunch in/out will be set from each department's shift, then recalculated and synced.`,
+      `Fill standard shift times for ${targets.length} employee(s) with empty punches on ${prettyDate(date)}?\n\nPunch in/out will be set from each employee's assigned shift for this date, then recalculated and synced.`,
     );
     if (!okConfirm) return;
 
     for (const e of targets) {
-      const dept = depts.find((d) => d.id === e.deptId)!;
+      const dept = resolveDeptAsOf(e, depts, date)!;
       const prev = day[e.id];
       setRec(date, e.id, {
         status: prev?.status === "half" ? "half" : "present",
@@ -142,7 +143,7 @@ export function Attendance() {
   const visible = employees.filter((e) => {
     const rec = day[e.id];
     const r = rec ?? emptyRec();
-    const dept = depts.find((d) => d.id === e.deptId);
+    const dept = resolveDeptAsOf(e, depts, date);
     const c = calcDay(e, dept, date, r, settings);
     if (attFocus === "all") return true;
     if (attFocus === "missing") return !rec;
@@ -229,7 +230,7 @@ export function Attendance() {
       {!employees.length && <p className="panel text-muted-foreground">Add your employees in the Team tab first.</p>}
       <div className={density === "compact" ? "space-y-2" : "space-y-3"}>
         {visible.map((e, i) => {
-          const dept = depts.find((d) => d.id === e.deptId);
+          const dept = resolveDeptAsOf(e, depts, date);
           const rec = day[e.id];
           const r = rec ?? emptyRec();
           const c = calcDay(e, dept, date, r, settings);
