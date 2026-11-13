@@ -126,6 +126,7 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const isAdmin = useRouterState({ select: (s) => s.location.pathname.startsWith("/admin") });
+  const isDispatch = useRouterState({ select: (s) => s.location.pathname.startsWith("/dispatch") });
   const isPublic = useRouterState({ select: (s) => s.location.pathname === "/cv" });
 
   return (
@@ -133,7 +134,7 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AppSwitcher />
       <div className="with-switcher">
-        {isAdmin || isPublic ? (
+        {isAdmin || isDispatch || isPublic ? (
           <Outlet />
         ) : (
           <LockGate>

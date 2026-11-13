@@ -1,11 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, UsersRound } from "lucide-react";
+import { FileCheck2, Truck, UsersRound } from "lucide-react";
 
-/** Top bar that switches between the two separate systems. Each keeps its own data. */
+/** Top bar that switches between isolated systems. Each keeps its own data and auth. */
 export function AppSwitcher() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = pathname.startsWith("/admin");
+  const isDispatch = pathname.startsWith("/dispatch");
   const isCv = pathname === "/cv";
+  const isDriver = !isAdmin && !isDispatch && !isCv;
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
   const on = "bg-primary text-primary-foreground shadow-sm";
@@ -29,8 +31,8 @@ export function AppSwitcher() {
           to="/"
           aria-label="Driver Compliance"
           title="Driver Compliance"
-          aria-current={!isAdmin && !isCv ? "page" : undefined}
-          className={`${base} ${!isAdmin && !isCv ? on : off}`}
+          aria-current={isDriver ? "page" : undefined}
+          className={`${base} ${isDriver ? on : off}`}
         >
           <FileCheck2 className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Driver Compliance</span>
@@ -44,6 +46,16 @@ export function AppSwitcher() {
         >
           <UsersRound className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline">Admin &amp; Attendance</span>
+        </Link>
+        <Link
+          to="/dispatch"
+          aria-label="Dispatch Operations"
+          title="Dispatch Operations"
+          aria-current={isDispatch ? "page" : undefined}
+          className={`${base} ${isDispatch ? on : off}`}
+        >
+          <Truck className="h-4 w-4 shrink-0" />
+          <span className="hidden sm:inline">Dispatch</span>
         </Link>
       </nav>
     </header>

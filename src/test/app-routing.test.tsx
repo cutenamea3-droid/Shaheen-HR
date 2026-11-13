@@ -22,7 +22,12 @@ describe("Combined site", () => {
     expect(router.matchRoutes("/admin").at(-1)?.routeId).toBe("/admin");
   });
 
-  it.each(["/cv", "/account", "/team", "/activity", "/drivers", "/drug-tests", "/records", "/s/dmv"])(
+  it("serves Dispatch Operations at /dispatch", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+    expect(router.matchRoutes("/dispatch").at(-1)?.routeId).toBe("/dispatch");
+  });
+
+  it.each(["/cv", "/account", "/team", "/activity", "/drivers", "/drug-tests", "/records", "/s/dmv", "/dispatch"])(
     "matches the %s route",
     (path) => {
       const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
