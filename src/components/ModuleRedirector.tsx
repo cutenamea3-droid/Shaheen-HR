@@ -45,11 +45,14 @@ export function ModuleRedirector() {
 
     // If we already know seats and this path is forbidden, send to Access Denied
     // (skip while anonymous on compliance/admin/dispatch/personal — those modules show their own login).
+    // Probe finishes before `ready` (await getSession + ACL). Do not deny earlier.
     const hasAnySeat = Boolean(
       grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
     );
     if (!hasAnySeat) return;
     if (!canAccessPath(grants, pathname)) {
+      // Legitimate ACL for Admin/Dispatch/Personal seats without this module.
+      // AccessDenied page must homePathFor(grants) — not hardcode `/` (sticky loop).
       void navigate({
         to: "/access-denied",
         search: { module: mod },

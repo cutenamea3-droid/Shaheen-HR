@@ -1,5 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
 import { AdminApp } from "@/admin/AdminApp";
+import { ModuleErrorPanel } from "@/components/ModuleErrorPanel";
+
+function AdminError(props: ErrorComponentProps) {
+  return (
+    <div className="admin-theme">
+      <ModuleErrorPanel
+        {...props}
+        moduleLabel="Admin & Attendance"
+        homeTo="/admin"
+        homeLabel="Admin & Attendance home"
+      />
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -12,6 +26,8 @@ export const Route = createFileRoute("/admin")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  // Isolate Admin failures so they do not replace the root shell / AppSwitcher.
+  errorComponent: AdminError,
   component: () => (
     <div className="admin-theme">
       <AdminApp />

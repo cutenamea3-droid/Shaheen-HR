@@ -1,5 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, type ErrorComponentProps } from "@tanstack/react-router";
 import { DispatchApp } from "@/dispatch/DispatchApp";
+import { ModuleErrorPanel } from "@/components/ModuleErrorPanel";
+
+function DispatchError(props: ErrorComponentProps) {
+  return (
+    <div className="dispatch-theme">
+      <ModuleErrorPanel
+        {...props}
+        moduleLabel="Dispatch Operations"
+        homeTo="/"
+        homeLabel="Driver Compliance"
+      />
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/dispatch")({
   head: () => ({
@@ -19,6 +33,7 @@ export const Route = createFileRoute("/dispatch")({
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
+  errorComponent: DispatchError,
   component: () => (
     <div className="dispatch-theme">
       <DispatchApp />
