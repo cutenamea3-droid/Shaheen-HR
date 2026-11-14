@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  canAccessPath,
   homePathFor,
   isDispatchOnly,
   moduleForPath,
   probeModuleGrants,
+  shouldDenyModulePath,
   type ModuleGrants,
   EMPTY_GRANTS,
 } from "@/lib/module-access";
 
 /**
- * After sessions settle, bounce users away from modules they lack seats for.
+ * After sessions settle, bounce users away from Compliance URLs they lack seats for.
+ * Admin / Personal / Dispatch keep their own LoginGates — never Access-Deny those
+ * paths just because another module's seat (e.g. Compliance) is already probed.
  * Dispatch-only accounts auto-land on /dispatch when they hit Compliance URLs.
  */
 export function ModuleRedirector() {
@@ -22,6 +24,8 @@ export function ModuleRedirector() {
 
   useEffect(() => {
     let alive = true;
+    // Drop ready while re-probing so a prior path's grants cannot deny the new URL.
+    setReady(false);
     void probeModuleGrants().then((g) => {
       if (!alive) return;
       setGrants(g);
@@ -43,16 +47,9 @@ export function ModuleRedirector() {
       return;
     }
 
-    // If we already know seats and this path is forbidden, send to Access Denied
-    // (skip while anonymous on compliance/admin/dispatch/personal — those modules show their own login).
-    // Probe finishes before `ready` (await getSession + ACL). Do not deny earlier.
-    const hasAnySeat = Boolean(
-      grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
-    );
-    if (!hasAnySeat) return;
-    if (!canAccessPath(grants, pathname)) {
-      // Legitimate ACL for Admin/Dispatch/Personal seats without this module.
-      // AccessDenied page must homePathFor(grants) — not hardcode `/` (sticky loop).
+    // Compliance-only denial (Admin-only / Personal-only on Driver URLs).
+    // Independent LoginGate modules are never hard-denied here.
+    if (shouldDenyModulePath(grants, pathname)) {
       void navigate({
         to: "/access-denied",
         search: { module: mod },

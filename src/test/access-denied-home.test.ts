@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { homePathFor, canAccessPath } from "@/lib/module-access";
+import { homePathFor, canAccessPath, shouldDenyModulePath } from "@/lib/module-access";
 
 /**
  * Reproduces owner Production HTML:
@@ -11,6 +11,9 @@ import { homePathFor, canAccessPath } from "@/lib/module-access";
  * Trigger: Admin-HR soft/local seat without Compliance grant + visit `/`
  * (ModuleRedirector). Broken follow-up: AccessDenied defaulted homePath to `/`,
  * which re-entered the deny loop; Production F5 on /access-denied also threw #418.
+ *
+ * Separate false-deny: Compliance seat + open /admin|/personal|/dispatch used to
+ * Access-Deny before LoginGate — shouldDenyModulePath must stay false there.
  */
 describe("access-denied home path (auth race / sticky loop)", () => {
   it("admin-hr-only cannot open Compliance and homes on /admin", () => {
@@ -22,6 +25,8 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     };
     expect(canAccessPath(grants, "/")).toBe(false);
     expect(canAccessPath(grants, "/admin")).toBe(true);
+    expect(shouldDenyModulePath(grants, "/")).toBe(true);
+    expect(shouldDenyModulePath(grants, "/admin")).toBe(false);
     expect(homePathFor(grants)).toBe("/admin");
   });
 
@@ -33,6 +38,7 @@ describe("access-denied home path (auth race / sticky loop)", () => {
       dispatch: "dispatcher" as const,
     };
     expect(canAccessPath(grants, "/")).toBe(false);
+    expect(shouldDenyModulePath(grants, "/")).toBe(true);
     expect(homePathFor(grants)).toBe("/dispatch");
   });
 
@@ -44,6 +50,25 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).toMatch(/homePath=\{homePath\}/);
   });
 
+  it("ModuleRedirector resets ready on pathname change (stale-grant race)", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/ModuleRedirector.tsx"), "utf8");
+    expect(src).toMatch(/setReady\(false\)/);
+    expect(src).toMatch(/shouldDenyModulePath/);
+    expect(src).not.toMatch(/canAccessPath\(grants, pathname\)/);
+  });
+
+  it("compliance seat still reaches independent LoginGate URLs", () => {
+    const grants = {
+      compliance: "admin" as const,
+      "admin-hr": null,
+      personal: null,
+      dispatch: null,
+    };
+    expect(shouldDenyModulePath(grants, "/admin")).toBe(false);
+    expect(shouldDenyModulePath(grants, "/personal")).toBe(false);
+    expect(shouldDenyModulePath(grants, "/dispatch")).toBe(false);
+  });
+
   it("compliance grant still reaches / (authorized refresh path)", () => {
     const grants = {
       compliance: "admin" as const,
@@ -52,6 +77,7 @@ describe("access-denied home path (auth race / sticky loop)", () => {
       dispatch: null,
     };
     expect(canAccessPath(grants, "/")).toBe(true);
+    expect(shouldDenyModulePath(grants, "/")).toBe(false);
     expect(homePathFor(grants)).toBe("/");
   });
 });
