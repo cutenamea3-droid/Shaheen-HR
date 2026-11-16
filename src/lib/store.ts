@@ -480,15 +480,20 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
 }
 
 export function patchSection(sectionId: string, patch: Partial<AppData["sections"][string]>) {
-  update((d) => ({
-    ...d,
-    sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], ...patch } },
-  }));
+  update((d) => {
+    const prev = d.sections[sectionId];
+    if (!prev) return d;
+    return {
+      ...d,
+      sections: { ...d.sections, [sectionId]: { ...prev, ...patch } },
+    };
+  });
 }
 
 export function setRowHeight(sectionId: string, rowId: string, h: number) {
   update((d) => {
     const sec = d.sections[sectionId];
+    if (!sec || !Array.isArray(sec.rows)) return d;
     return {
       ...d,
       sections: {
