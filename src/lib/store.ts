@@ -15,7 +15,14 @@ import {
 } from "./sections";
 import { applyDriverClass, applyRosterKind } from "./driver-meta";
 import { applyDateOfHire } from "./driver-hr/hire-date";
-import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
+import {
+  cloudLoad,
+  cloudSave,
+  cloudStamp,
+  hasPortalSession,
+  logPortalActivity,
+  subscribePortalAuth,
+} from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
 import {
   FOLLOW_UP_SECTION_ID,
@@ -32,7 +39,14 @@ export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"]
 /** Re-export for callers / tests. */
 export { FOLLOW_UP_SECTION_ID, FOLLOW_UP_HEADERS };
 /** Document columns + person Active/Inactive (last). */
-export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes", "Active Status"];
+export const RECORD_HEADERS = [
+  "Name",
+  "Document",
+  "Status",
+  "Expiry Date",
+  "Notes",
+  "Active Status",
+];
 /** Index of Active/Inactive on record rows (Owner Operators etc.). */
 export const RECORD_ACTIVE_COL = 5;
 let state: AppData = buildSeed();
@@ -59,6 +73,20 @@ export const useSyncStatus = () =>
 function emit() {
   listeners.forEach((l) => l());
 }
+
+/** Parse one tracker_sections JSON blob; undefined = keep prior local / skip. */
+export function parseCloudSectionJson(raw: string): SectionData | undefined {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+    const o = v as Partial<SectionData>;
+    if (!Array.isArray(o.headers) || !Array.isArray(o.rows)) return undefined;
+    return v as SectionData;
+  } catch {
+    return undefined;
+  }
+}
+
 function emptyRecordSection(): SectionData {
   return {
     headers: [...RECORD_HEADERS],
@@ -108,7 +136,12 @@ function normalizeRecordSection(sec: SectionData): SectionData {
     }
     return cells === r.cells ? r : { ...r, cells };
   });
-  if (!touched && widths.length === (sec.widths?.length ?? 0) && hidden.length === (sec.hidden?.length ?? 0)) return sec;
+  if (
+    !touched &&
+    widths.length === (sec.widths?.length ?? 0) &&
+    hidden.length === (sec.hidden?.length ?? 0)
+  )
+    return sec;
   return { ...sec, headers, widths: widths.slice(0, len), hidden: hidden.slice(0, len), rows };
 }
 
@@ -145,7 +178,8 @@ function persist() {
       localWarned = true;
       toast.error("This computer's browser storage is full", {
         id: "local-full",
-        description: "Your changes are still being sent to the cloud. Download a Backup to be safe.",
+        description:
+          "Your changes are still being sent to the cloud. Download a Backup to be safe.",
         duration: 10000,
       });
     }
@@ -155,10 +189,14 @@ let localWarned = false;
 
 function saveFailReason(e: unknown) {
   const m = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
-  if (typeof navigator !== "undefined" && !navigator.onLine) return "You are offline — check your internet connection.";
-  if (/quota|storage|disk|full|space|limit|413|too large/.test(m)) return "Cloud storage is full or the change is too large.";
-  if (/passcode|unauthor|401|403/.test(m)) return "The portal was locked — please lock and unlock again with your password.";
-  if (/timeout|fetch|network|failed to/.test(m)) return "The cloud did not answer (connection problem).";
+  if (typeof navigator !== "undefined" && !navigator.onLine)
+    return "You are offline — check your internet connection.";
+  if (/quota|storage|disk|full|space|limit|413|too large/.test(m))
+    return "Cloud storage is full or the change is too large.";
+  if (/passcode|unauthor|401|403/.test(m))
+    return "The portal was locked — please lock and unlock again with your password.";
+  if (/timeout|fetch|network|failed to/.test(m))
+    return "The cloud did not answer (connection problem).";
   return "The cloud could not save right now.";
 }
 export function retrySync() {
@@ -199,7 +237,8 @@ async function flush() {
       const { logLocalActivity } = await import("./portal-local");
       const meta = {
         actorName: "Driver Compliance",
-        action: ids.length === 1 ? `Saved compliance section` : `Saved ${ids.length} compliance sections`,
+        action:
+          ids.length === 1 ? `Saved compliance section` : `Saved ${ids.length} compliance sections`,
         sectionId: ids.length === 1 ? ids[0]! : "sections",
       };
       logLocalActivity(meta);
@@ -220,7 +259,8 @@ async function flush() {
     if (failCount === 1 || failCount % 10 === 0)
       toast.error("Your changes were NOT saved to the cloud", {
         id: "cloud-save-fail",
-        description: saveFailReason(e) + " They are kept on this computer and will retry automatically.",
+        description:
+          saveFailReason(e) + " They are kept on this computer and will retry automatically.",
         duration: Infinity,
         action: { label: "Try again", onClick: () => retrySync() },
       });
@@ -257,8 +297,13 @@ async function pullCloud(force = false) {
       return;
     }
     // Remote is source of truth: apply cloud rows, keep any local-only keys only until uploaded.
+    // One corrupt section must not fail the whole pull (outer catch → "error" sync forever).
     const sections = { ...state.sections };
-    for (const id of ids) sections[id] = JSON.parse(r.sections[id]);
+    for (const id of ids) {
+      const parsed = parseCloudSectionJson(r.sections[id]);
+      if (parsed !== undefined) sections[id] = parsed;
+      else console.warn(`[cloud] skipped corrupt tracker section "${id}"`);
+    }
     if (!cloudReady) dirty.clear();
     const m = migrateData(ensureRecordSections({ ...state, sections }));
     state = m.data;
@@ -357,7 +402,8 @@ export const useLoaded = () =>
 function update(fn: (d: AppData) => AppData) {
   const prev = state;
   state = fn(state);
-  for (const id of Object.keys(state.sections)) if (state.sections[id] !== prev.sections[id]) dirty.add(id);
+  for (const id of Object.keys(state.sections))
+    if (state.sections[id] !== prev.sections[id]) dirty.add(id);
   persist();
   emit();
   scheduleFlush();
@@ -384,7 +430,8 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
         const cur = sections[sid];
         if (!cur) continue;
         // Inactive roster Status column stays Active/Inactive only
-        const cellLabel = sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
+        const cellLabel =
+          sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
         sections[sid] = {
           ...cur,
           rows: cur.rows.map((r) =>
@@ -433,7 +480,10 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
 }
 
 export function patchSection(sectionId: string, patch: Partial<AppData["sections"][string]>) {
-  update((d) => ({ ...d, sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], ...patch } } }));
+  update((d) => ({
+    ...d,
+    sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], ...patch } },
+  }));
 }
 
 export function setRowHeight(sectionId: string, rowId: string, h: number) {
@@ -443,7 +493,10 @@ export function setRowHeight(sectionId: string, rowId: string, h: number) {
       ...d,
       sections: {
         ...d.sections,
-        [sectionId]: { ...sec, rows: sec.rows.map((r) => (r.id === rowId ? { ...r, height: h } : r)) },
+        [sectionId]: {
+          ...sec,
+          rows: sec.rows.map((r) => (r.id === rowId ? { ...r, height: h } : r)),
+        },
       },
     };
   });
@@ -453,7 +506,10 @@ export function deleteDriver(driverId: string) {
   update((d) => {
     const sections = { ...d.sections };
     for (const k of Object.keys(sections))
-      sections[k] = { ...sections[k], rows: sections[k].rows.filter((r) => r.driverId !== driverId) };
+      sections[k] = {
+        ...sections[k],
+        rows: sections[k].rows.filter((r) => r.driverId !== driverId),
+      };
     return { ...d, sections };
   });
 }
@@ -528,7 +584,19 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
     const sec = d.sections[sectionId];
     if (!sec || sec.rows.some((r) => r.driverId === driverId)) return d;
     const cells = sec.headers.map((_, i) => (i === 0 ? name : ""));
-    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() }] } } };
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: {
+          ...sec,
+          rows: [
+            ...sec.rows,
+            { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() },
+          ],
+        },
+      },
+    };
   });
 }
 
@@ -546,7 +614,15 @@ export function addRecord(sectionId: string, cells: string[]) {
         ...d.sections,
         [sectionId]: {
           ...sec,
-          rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId: "r_" + uid(), cells: padded, addedAt: Date.now() }],
+          rows: [
+            ...sec.rows,
+            {
+              id: sectionId + "_" + uid(),
+              driverId: "r_" + uid(),
+              cells: padded,
+              addedAt: Date.now(),
+            },
+          ],
         },
       },
     };
@@ -592,7 +668,13 @@ export function deleteRecord(sectionId: string, rowId: string) {
   update((d) => {
     const sec = d.sections[sectionId];
     if (!sec) return d;
-    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) } } };
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) },
+      },
+    };
   });
 }
 
