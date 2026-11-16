@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES } from "@/admin/lib/employee-finance-mock";
@@ -59,6 +59,8 @@ export function ExpensesManagement() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [q, setQ] = useState("");
   const [form, setForm] = useState<ExpenseUpsertInput>(emptyForm);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(true);
   const [msg, setMsg] = useState("");
@@ -109,9 +111,12 @@ export function ExpensesManagement() {
   const save = (andAnother: boolean) => {
     setErr("");
     setMsg("");
+    const nextTitle = (form.title.trim() || titleRef.current?.value || "").trim();
+    const amountRaw = form.amountPkr || Number(amountRef.current?.value || 0);
     const input: ExpenseUpsertInput = {
       ...form,
-      amountPkr: Number(form.amountPkr),
+      title: nextTitle,
+      amountPkr: Number(amountRaw),
       employeeIds: form.scope === "all" ? [] : empPick,
     };
     const res = upsertExpense(input, editId ? { id: editId } : undefined);
@@ -346,7 +351,15 @@ export function ExpensesManagement() {
           </div>
           <label>
             <span className="lbl">Title</span>
-            <input className="field" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+            <input
+              ref={titleRef}
+              data-testid="admin-expense-title"
+              className="field"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, title: (e.target as HTMLInputElement).value }))}
+              required
+            />
           </label>
           <label>
             <span className="lbl">Category</span>
@@ -362,12 +375,15 @@ export function ExpensesManagement() {
           <label>
             <span className="lbl">Amount (PKR whole)</span>
             <input
+              ref={amountRef}
+              data-testid="admin-expense-amount"
               type="number"
               min={1}
               step={1}
               className="field"
               value={form.amountPkr || ""}
               onChange={(e) => setForm((f) => ({ ...f, amountPkr: Number(e.target.value) }))}
+              onInput={(e) => setForm((f) => ({ ...f, amountPkr: Number((e.target as HTMLInputElement).value) }))}
               required
             />
           </label>

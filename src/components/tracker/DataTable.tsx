@@ -118,14 +118,17 @@ export function DataTable({
   }, []);
   useEffect(() => setWidths(sec.widths), [sec.widths]);
 
+  const safeRows = Array.isArray(sec.rows) ? sec.rows : [];
+  const safeHeaders = Array.isArray(sec.headers) ? sec.headers : [];
+
   const analyzed = useMemo(
     () =>
-      sec.rows.map((r) => ({
+      safeRows.map((r) => ({
         row: r,
-        ...analyzeRow(def, sec.headers, r),
+        ...analyzeRow(def, safeHeaders, r),
         active: rowIsActive(def, r, data),
       })),
-    [sec, def, data],
+    [safeRows, safeHeaders, def, data],
   );
   // one main name per driver (first main section that has them) so rows sort identically everywhere
   const nameOf = useMemo(() => {
@@ -169,7 +172,7 @@ export function DataTable({
   // drivers who are in other main sections but missing here — shown in place so every section lines up
   const missing = useMemo(() => {
     if (!CORE.includes(sectionId)) return [];
-    const here = new Set([...sec.rows.map((r) => r.driverId), ...(sec.dismissed ?? [])]);
+    const here = new Set([...safeRows.map((r) => r.driverId), ...(sec.dismissed ?? [])]);
     const out = new Map<string, string>();
     for (const id of CORE)
       for (const r of data.sections[id]?.rows ?? []) {
@@ -178,7 +181,7 @@ export function DataTable({
         out.set(r.driverId, nameOf.get(r.driverId) ?? r.cells[0]);
       }
     return [...out].map(([driverId, name]) => ({ driverId, name }));
-  }, [data, sec, sectionId, nameOf, listScope]);
+  }, [data, sec, sectionId, nameOf, listScope, safeRows]);
   const showMissing = listScope !== "new" && filter === "all" && !alertsOnly;
   const shownMissing = showMissing
     ? missing.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.toLowerCase()))
@@ -418,7 +421,7 @@ export function DataTable({
           <PopoverContent className="w-80 p-3" align="end">
             <p className="mb-2 text-sm font-bold">Columns</p>
             <div className="grid gap-1.5">
-              {sec.headers.map((h, i) => (
+              {safeHeaders.map((h, i) => (
                 <label
                   key={i}
                   className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
@@ -459,7 +462,7 @@ export function DataTable({
       </div>
       {!work && (
         <p className="-mt-1 text-sm text-muted-foreground">
-          Showing <b className="text-foreground">{rows.length}</b> of {sec.rows.length} rows · drag
+          Showing <b className="text-foreground">{rows.length}</b> of {safeRows.length} rows · drag
           column edges or the row grip to resize · click any cell to edit, then press the green ✓
           {missing.length > 0 && (
             <>
@@ -500,7 +503,7 @@ export function DataTable({
                 #
               </th>
               {order
-                .map((i) => [sec.headers[i], i] as const)
+                .map((i) => [safeHeaders[i], i] as const)
                 .map(
                   ([h, i]) =>
                     visible[i] && (
@@ -521,7 +524,7 @@ export function DataTable({
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   patchSection(sectionId, {
-                                    headers: sec.headers.map((x, j) => (j === i ? headDraft : x)),
+                                    headers: safeHeaders.map((x, j) => (j === i ? headDraft : x)),
                                   });
                                   setEditHead(null);
                                 }
@@ -533,7 +536,7 @@ export function DataTable({
                               type="button"
                               onClick={() => {
                                 patchSection(sectionId, {
-                                  headers: sec.headers.map((x, j) => (j === i ? headDraft : x)),
+                                  headers: safeHeaders.map((x, j) => (j === i ? headDraft : x)),
                                 });
                                 setEditHead(null);
                               }}

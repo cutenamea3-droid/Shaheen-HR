@@ -1082,6 +1082,9 @@ function LoadEditor({
   const [opsBusy, setOpsBusy] = useState(false);
   const [commKind, setCommKind] = useState<CommunicationKind>("note");
   const [commSummary, setCommSummary] = useState("");
+  const commSummaryRef = useRef<HTMLInputElement>(null);
+  const commDetailRef = useRef<HTMLInputElement>(null);
+  const commDecisionRef = useRef<HTMLInputElement>(null);
   const [commDetail, setCommDetail] = useState("");
   const [commDecision, setCommDecision] = useState("");
   const [comms, setComms] = useState<Awaited<ReturnType<typeof listCommunications>>>([]);
@@ -1732,27 +1735,36 @@ function LoadEditor({
               <label className="grid gap-1 text-xs sm:col-span-2">
                 Summary
                 <input
+                  ref={commSummaryRef}
+                  data-testid="dispatch-comm-summary"
                   className="dispatch-field"
                   value={commSummary}
                   onChange={(e) => setCommSummary(e.target.value)}
+                  onInput={(e) => setCommSummary((e.target as HTMLInputElement).value)}
                 />
               </label>
               {commKind === "decision" && (
                 <label className="grid gap-1 text-xs sm:col-span-2">
                   Decided action
                   <input
+                    ref={commDecisionRef}
+                    data-testid="dispatch-comm-decision"
                     className="dispatch-field"
                     value={commDecision}
                     onChange={(e) => setCommDecision(e.target.value)}
+                    onInput={(e) => setCommDecision((e.target as HTMLInputElement).value)}
                   />
                 </label>
               )}
               <label className="grid gap-1 text-xs sm:col-span-2">
                 Detail
                 <input
+                  ref={commDetailRef}
+                  data-testid="dispatch-comm-detail"
                   className="dispatch-field"
                   value={commDetail}
                   onChange={(e) => setCommDetail(e.target.value)}
+                  onInput={(e) => setCommDetail((e.target as HTMLInputElement).value)}
                 />
               </label>
             </div>
@@ -1761,10 +1773,13 @@ function LoadEditor({
               className="dispatch-btn-primary mt-2"
               disabled={opsBusy}
               onClick={async () => {
+                const nextSummary = (commSummary.trim() || commSummaryRef.current?.value || "").trim();
+                const nextDecision = (commDecision.trim() || commDecisionRef.current?.value || "").trim();
+                const nextDetail = (commDetail.trim() || commDetailRef.current?.value || "").trim();
                 const err = validateCommunication({
                   kind: commKind,
-                  summary: commSummary,
-                  decided_action: commDecision,
+                  summary: nextSummary,
+                  decided_action: nextDecision,
                 });
                 if (err) {
                   setOpsError(err);
@@ -1776,9 +1791,9 @@ function LoadEditor({
                   await saveCommunication({
                     load_id: load.id,
                     kind: commKind,
-                    summary: commSummary,
-                    detail: commDetail || null,
-                    decided_action: commKind === "decision" ? commDecision : null,
+                    summary: nextSummary,
+                    detail: nextDetail || null,
+                    decided_action: commKind === "decision" ? nextDecision : null,
                   });
                   setCommSummary("");
                   setCommDetail("");
