@@ -18,14 +18,15 @@ export function AccessDenied({
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Access denied</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {module
-            ? `You do not have permission for ${MODULE_LABEL[module]}.`
-            : "You do not have permission to open this area."}
+          {detail
+            ? detail
+            : module
+              ? `You do not have permission for ${MODULE_LABEL[module]}.`
+              : "You do not have permission to open this area."}
         </p>
-        {detail && <p className="mt-2 text-sm text-muted-foreground">{detail}</p>}
         <p className="mt-3 text-xs text-muted-foreground">
-          Hiding a nav tab is not security — access is enforced by backend ACL/RLS where applied, and by
-          module gates in this app.
+          Hiding a nav tab is not security — access is enforced by backend ACL/RLS where applied,
+          and by module gates in this app.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <a

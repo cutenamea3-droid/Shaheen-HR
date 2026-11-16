@@ -84,6 +84,17 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).toMatch(/navigate\(\{ to: home, replace: true \}\)/);
   });
 
+  it("AdminOnly privilege deny uses need=admin (not module-missing copy)", () => {
+    const adminOnly = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/AdminOnly.tsx"),
+      "utf8",
+    );
+    expect(adminOnly).toMatch(/need:\s*"admin"/);
+    const denied = readFileSync(resolve(process.cwd(), "src/routes/access-denied.tsx"), "utf8");
+    expect(denied).toMatch(/needAdmin/);
+    expect(denied).toMatch(/requires a Driver Compliance admin account/);
+  });
+
   it("compliance seat still reaches independent LoginGate URLs", () => {
     const grants = {
       compliance: "admin" as const,

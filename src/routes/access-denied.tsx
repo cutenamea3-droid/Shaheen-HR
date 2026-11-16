@@ -11,12 +11,14 @@ import {
   EMPTY_GRANTS,
 } from "@/lib/module-access";
 
-type Search = { module?: string | undefined };
+type Search = { module?: string | undefined; need?: string | undefined };
 
 export const Route = createFileRoute("/access-denied")({
   validateSearch: (search: Record<string, unknown>): Search => {
-    if (typeof search.module === "string") return { module: search.module };
-    return {};
+    const out: Search = {};
+    if (typeof search.module === "string") out.module = search.module;
+    if (typeof search.need === "string") out.need = search.need;
+    return out;
   },
   head: () => ({
     meta: [
@@ -38,9 +40,10 @@ export const Route = createFileRoute("/access-denied")({
  * until a manual path change.
  */
 function AccessDeniedPage() {
-  const { module } = Route.useSearch();
+  const { module, need } = Route.useSearch();
   const navigate = useNavigate();
   const mod = MODULE_IDS.includes(module as ModuleId) ? (module as ModuleId) : null;
+  const needAdmin = need === "admin";
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
   const [authEpoch, setAuthEpoch] = useState(0);
@@ -84,19 +87,24 @@ function AccessDeniedPage() {
   }, [authEpoch]);
 
   useEffect(() => {
-    if (!ready || !mod) return;
+    if (!ready || !mod || needAdmin) return;
     // Seat arrived after a stale deny (e.g. Compliance login while Personal/Dispatch
     // seats were already known) — leave Access Denied for the real home.
+    // Do NOT auto-leave admin-only privilege denies (Drug Tests / Team / Activity).
     const home = homePathFor(grants);
     if (home === "/access-denied") return;
     if (mod === "compliance" && canAccessPath(grants, "/")) {
       void navigate({ to: home, replace: true });
     }
-  }, [ready, grants, mod, navigate]);
+  }, [ready, grants, mod, needAdmin, navigate]);
 
   const home = homePathFor(grants);
   // Anonymous visitors who opened this URL manually: send them to Compliance login.
+  // Admin-privilege denies keep Compliance home so the user stays in the module.
   const homePath = !ready || home === "/access-denied" ? "/" : home;
+  const detail = needAdmin
+    ? "This page requires a Driver Compliance admin account. Your signed-in seat can still use the rest of Driver Compliance."
+    : undefined;
 
-  return <AccessDenied module={mod} homePath={homePath} />;
+  return <AccessDenied module={mod} homePath={homePath} detail={detail} />;
 }

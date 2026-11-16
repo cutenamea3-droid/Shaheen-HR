@@ -8,7 +8,12 @@ export function AdminOnly({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   useEffect(() => {
     if (role && role !== "admin") {
-      void navigate({ to: "/access-denied", search: { module: "compliance" }, replace: true });
+      // Signed-in standard seats still have Compliance — they lack admin privilege only.
+      void navigate({
+        to: "/access-denied",
+        search: { module: "compliance", need: "admin" },
+        replace: true,
+      });
     }
   }, [role, navigate]);
   return role === "admin" ? children : null;
