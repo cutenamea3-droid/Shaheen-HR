@@ -13,6 +13,7 @@ import type { Json } from "@/personal/integrations/supabase/types";
 import {
   PERSONAL_UNSYNCED_KEY,
   decidePersonalSync,
+  isPersonalMeaningful,
   type PersonalSyncBlob,
 } from "./sync-protect";
 
@@ -151,7 +152,26 @@ export async function pushPersonalCloud(userId: string): Promise<boolean> {
   const sb = getPersonalSupabase();
   if (!sb) return false;
   setStatus("syncing");
-  const data = snapshot() as unknown as Json;
+  const local = snapshot();
+  // Never upsert empty/default local over an existing meaningful Personal cloud row.
+  if (!isPersonalMeaningful(local)) {
+    const { data: existing, error: readErr } = await sb
+      .from("personal_study_state")
+      .select("data")
+      .eq("owner_id", userId)
+      .maybeSingle();
+    if (readErr) {
+      console.warn("[HR Personal] cloud pre-push read failed", readErr.message);
+      setStatus("error");
+      return false;
+    }
+    if (isPersonalMeaningful((existing?.data ?? null) as Partial<PersonalSyncBlob> | null)) {
+      console.warn("[HR Personal] refused empty push (protects personal_study_state)");
+      setStatus("synced");
+      return false;
+    }
+  }
+  const data = local as unknown as Json;
   const { error } = await sb.from("personal_study_state").upsert(
     {
       owner_id: userId,
