@@ -207,6 +207,8 @@ export function LockGate({ children }: { children: ReactNode }) {
               const { account: next, created } = await signInPortalAccount(email, password);
               setAccount(next);
               setPassword("");
+              // Seat probes must refresh after ACL is ready — auth events can race ahead.
+              window.dispatchEvent(new Event("shaheen-portal-ready"));
               if (created) {
                 toast.success("Driver Compliance account created", {
                   description:

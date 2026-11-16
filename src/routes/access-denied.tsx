@@ -57,14 +57,16 @@ function AccessDeniedPage() {
         unsub = () => data.subscription.unsubscribe();
       })
       .catch(() => {});
-    const onLock = () => {
+    const bump = () => {
       if (alive) setAuthEpoch((n) => n + 1);
     };
-    window.addEventListener("shaheen-lock", onLock);
+    window.addEventListener("shaheen-lock", bump);
+    window.addEventListener("shaheen-portal-ready", bump);
     return () => {
       alive = false;
       unsub();
-      window.removeEventListener("shaheen-lock", onLock);
+      window.removeEventListener("shaheen-lock", bump);
+      window.removeEventListener("shaheen-portal-ready", bump);
     };
   }, []);
 

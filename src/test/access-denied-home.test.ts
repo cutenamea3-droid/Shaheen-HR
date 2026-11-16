@@ -62,6 +62,19 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).toMatch(/onAuthStateChange/);
     expect(src).toMatch(/authEpoch/);
     expect(src).toMatch(/shaheen-lock/);
+    expect(src).toMatch(/shaheen-portal-ready/);
+    expect(src).toMatch(/hasPortalSession/);
+  });
+
+  it("LockGate announces portal-ready after ACL sign-in", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/tracker/LockGate.tsx"), "utf8");
+    expect(src).toMatch(/shaheen-portal-ready/);
+  });
+
+  it("probeModuleGrants retries Compliance ACL after session", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/module-access/resolve.ts"), "utf8");
+    expect(src).toMatch(/getUser\(\)/);
+    expect(src).toMatch(/for \(let i = 0; i < 4; i\+\+\)/);
   });
 
   it("AccessDenied page leaves after Compliance seat arrives", () => {

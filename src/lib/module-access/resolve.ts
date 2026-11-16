@@ -21,11 +21,30 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
   // --- Driver Compliance (Driver Supabase + driver_portal_accounts) ---
   try {
     const { supabase } = await import("@/integrations/supabase/client");
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
+    // Prefer getUser after a fresh SIGNED_IN — getSession can briefly lag the toast.
+    let user = (await supabase.auth.getSession()).data.session?.user ?? null;
+    if (!user) {
+      try {
+        user = (await supabase.auth.getUser()).data.user ?? null;
+      } catch {
+        user = null;
+      }
+    }
     if (user) {
       const { getPortalAccount } = await import("@/lib/cloud");
-      const account = await getPortalAccount(user.id);
+      // LockGate already finished ACL bootstrap before the toast; a single immediate
+      // probe can still race. Retry briefly so Personal/Dispatch seats do not trigger
+      // a false Access Denied on /drug-tests.
+      let account = null as Awaited<ReturnType<typeof getPortalAccount>>;
+      for (let i = 0; i < 4; i++) {
+        try {
+          account = await getPortalAccount(user.id);
+        } catch {
+          account = null;
+        }
+        if (account?.active) break;
+        await new Promise((r) => setTimeout(r, 50 * (i + 1)));
+      }
       if (account?.active) grants.compliance = account.role;
     }
   } catch {
@@ -34,9 +53,8 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
 
   // --- Dispatch (same Driver project URL by default, dedicated storage + ACL) ---
   try {
-    const { isDispatchSupabaseConfigured, dispatchSupabase } = await import(
-      "@/dispatch/integrations/supabase/client"
-    );
+    const { isDispatchSupabaseConfigured, dispatchSupabase } =
+      await import("@/dispatch/integrations/supabase/client");
     if (isDispatchSupabaseConfigured()) {
       const { data } = await dispatchSupabase.auth.getSession();
       const user = data.session?.user;
