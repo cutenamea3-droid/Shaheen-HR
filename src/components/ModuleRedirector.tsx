@@ -21,6 +21,31 @@ export function ModuleRedirector() {
   const navigate = useNavigate();
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
+  /** Bumps when Driver Auth signs in/out so seats refresh without a path change. */
+  const [authEpoch, setAuthEpoch] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    let unsub = () => {};
+    void import("@/integrations/supabase/client")
+      .then(({ supabase, isSupabaseConfigured }) => {
+        if (!alive || !isSupabaseConfigured()) return;
+        const { data } = supabase.auth.onAuthStateChange(() => {
+          if (alive) setAuthEpoch((n) => n + 1);
+        });
+        unsub = () => data.subscription.unsubscribe();
+      })
+      .catch(() => {});
+    const onLock = () => {
+      if (alive) setAuthEpoch((n) => n + 1);
+    };
+    window.addEventListener("shaheen-lock", onLock);
+    return () => {
+      alive = false;
+      unsub();
+      window.removeEventListener("shaheen-lock", onLock);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -34,7 +59,7 @@ export function ModuleRedirector() {
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [pathname, authEpoch]);
 
   useEffect(() => {
     if (!ready) return;

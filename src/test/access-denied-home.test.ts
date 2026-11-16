@@ -57,6 +57,20 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).not.toMatch(/canAccessPath\(grants, pathname\)/);
   });
 
+  it("ModuleRedirector re-probes when Driver Auth state changes", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/ModuleRedirector.tsx"), "utf8");
+    expect(src).toMatch(/onAuthStateChange/);
+    expect(src).toMatch(/authEpoch/);
+    expect(src).toMatch(/shaheen-lock/);
+  });
+
+  it("AccessDenied page leaves after Compliance seat arrives", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/routes/access-denied.tsx"), "utf8");
+    expect(src).toMatch(/onAuthStateChange/);
+    expect(src).toMatch(/canAccessPath\(grants, "\/"\)/);
+    expect(src).toMatch(/navigate\(\{ to: home, replace: true \}\)/);
+  });
+
   it("compliance seat still reaches independent LoginGate URLs", () => {
     const grants = {
       compliance: "admin" as const,
