@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { usePersonal } from "@/personal/lib/store";
@@ -25,6 +25,12 @@ export function Notes() {
   const [filterTag, setFilterTag] = useState<string>("all");
   const [linkCourse, setLinkCourse] = useState(courses[0]?.code ?? "CS101");
   const [practiceDone, setPracticeDone] = useState<Record<string, boolean>>({});
+  const titleRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  /** Prefer React state; fall back to DOM when autofill/automation set value without onChange. */
+  const readTitle = () => (title.trim() || titleRef.current?.value || "").trim();
+  const readBody = () => (body.length ? body : bodyRef.current?.value || "");
 
   const suggestions = useMemo(
     () => suggestRevisionTargets(courses, assessments, notes),
@@ -141,10 +147,12 @@ export function Notes() {
           </Field>
           <Field label="Title">
             <input
+              ref={titleRef}
               className="hp-field"
               data-testid="personal-note-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Tag">
@@ -163,10 +171,12 @@ export function Notes() {
           </Field>
           <Field label="Body">
             <textarea
+              ref={bodyRef}
               className="hp-field min-h-[140px] py-2"
               data-testid="personal-note-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
+              onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
               placeholder="Revision bullets, formulas, VULMS reminders — owner text only…"
             />
           </Field>
@@ -174,12 +184,13 @@ export function Notes() {
             <Btn
               data-testid="personal-save-note"
               onClick={() => {
-                if (!title.trim()) return;
+                const nextTitle = readTitle();
+                if (!nextTitle) return;
                 upsertNote({
                   id: editingId ?? Math.random().toString(36).slice(2, 10),
                   courseId: courseId as "general" | string,
-                  title: title.trim(),
-                  body,
+                  title: nextTitle,
+                  body: readBody(),
                   updatedAt: Date.now(),
                   tags: tagDraft ? [tagDraft] : [],
                 });
