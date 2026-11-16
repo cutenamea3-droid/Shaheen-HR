@@ -1981,6 +1981,8 @@ function RosterBoard({
 }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const unitRef = useRef<HTMLInputElement>(null);
   return (
     <section className="dispatch-panel">
       <SectionHelp>
@@ -1990,23 +1992,31 @@ function RosterBoard({
       </SectionHelp>
       <div className="mb-3 flex flex-wrap gap-2">
         <input
+          ref={nameRef}
+          data-testid="dispatch-roster-name"
           className="dispatch-field"
           placeholder="Driver name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onInput={(e) => setName((e.target as HTMLInputElement).value)}
         />
         <input
+          ref={unitRef}
+          data-testid="dispatch-roster-unit"
           className="dispatch-field w-28"
           placeholder="Unit #"
           value={unit}
           onChange={(e) => setUnit(e.target.value)}
+          onInput={(e) => setUnit((e.target as HTMLInputElement).value)}
         />
         <button
           type="button"
           className="dispatch-btn-primary"
           onClick={async () => {
-            if (!name.trim()) return;
-            await onSave({ display_name: name.trim(), unit_number: unit.trim() || null });
+            const nextName = (name.trim() || nameRef.current?.value || "").trim();
+            const nextUnit = (unit.trim() || unitRef.current?.value || "").trim();
+            if (!nextName) return;
+            await onSave({ display_name: nextName, unit_number: nextUnit || null });
             setName("");
             setUnit("");
           }}

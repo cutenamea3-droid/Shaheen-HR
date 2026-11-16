@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useApp } from "@/admin/lib/store";
 import { getSyncStatus, subscribeSync } from "@/admin/lib/cloud-sync";
 import { prettyDate } from "@/admin/lib/calc";
@@ -40,6 +40,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const [date, setDate] = useState(todayStr());
   const [filter, setFilter] = useState<"all" | HrTodayIssueKind>("all");
   const [remTitle, setRemTitle] = useState("");
+  const remTitleRef = useRef<HTMLInputElement>(null);
   const [remDue, setRemDue] = useState(todayStr());
   const [remEmp, setRemEmp] = useState("");
   const [remMsg, setRemMsg] = useState("");
@@ -174,10 +175,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
         <p className="text-sm text-muted-foreground">Desk reminders for My HR Today — not push or email.</p>
         <div className="admin-toolbar flex-wrap">
           <input
+            ref={remTitleRef}
+            data-testid="admin-reminder-title"
             className="field min-w-[160px] flex-1"
             placeholder="Reminder title"
             value={remTitle}
             onChange={(e) => setRemTitle(e.target.value)}
+            onInput={(e) => setRemTitle((e.target as HTMLInputElement).value)}
             aria-label="Reminder title"
           />
           <input type="date" className="field w-auto" value={remDue} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
@@ -194,8 +198,9 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             className="btn-primary"
             onClick={() => {
               const emp = employees.find((e) => e.id === remEmp);
+              const nextTitle = (remTitle.trim() || remTitleRef.current?.value || "").trim();
               const r = addReminder({
-                title: remTitle,
+                title: nextTitle,
                 due: remDue,
                 ...(remEmp ? { employeeId: remEmp } : {}),
                 ...(emp?.name ? { employeeName: emp.name } : {}),

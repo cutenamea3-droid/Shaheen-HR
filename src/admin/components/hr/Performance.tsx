@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { calcDay, prettyDate } from "@/admin/lib/calc";
 import { autoNote, ratingTone } from "@/admin/lib/reports";
@@ -34,6 +34,7 @@ export function Performance() {
 
   const [fuEmp, setFuEmp] = useState("");
   const [fuTitle, setFuTitle] = useState("");
+  const fuTitleRef = useRef<HTMLInputElement>(null);
   const [fuDue, setFuDue] = useState(date);
   const [stmtText, setStmtText] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
@@ -43,11 +44,12 @@ export function Performance() {
 
   const onAddFollowUp = () => {
     const emp = employees.find((e) => e.id === fuEmp);
+    const nextTitle = (fuTitle.trim() || fuTitleRef.current?.value || "").trim();
     const r = addFollowUp({
       employeeId: fuEmp,
       employeeName: emp?.name ?? "",
       due: fuDue,
-      title: fuTitle,
+      title: nextTitle,
       linkedDate: date,
     });
     if ("error" in r) {
@@ -91,7 +93,15 @@ export function Performance() {
               </option>
             ))}
           </select>
-          <input className="field min-w-[180px] flex-1" placeholder="Follow-up title" value={fuTitle} onChange={(e) => setFuTitle(e.target.value)} />
+          <input
+            ref={fuTitleRef}
+            data-testid="admin-followup-title"
+            className="field min-w-[180px] flex-1"
+            placeholder="Follow-up title"
+            value={fuTitle}
+            onChange={(e) => setFuTitle(e.target.value)}
+            onInput={(e) => setFuTitle((e.target as HTMLInputElement).value)}
+          />
           <input type="date" className="field w-auto" value={fuDue} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
           <button type="button" className="btn-primary" onClick={onAddFollowUp}>
             Add follow-up
