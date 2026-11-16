@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { prettyDate } from "@/admin/lib/calc";
+import { normalizeTasks, taskDoneDays } from "@/admin/lib/normalize-tasks";
 import type { Task } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
 
@@ -11,15 +12,22 @@ const yesterday = () => {
 };
 
 /** Dated tasks past due and not done — these block the dashboard. */
-export const overdueTasks = (tasks: Task[]) => tasks.filter((t) => t.kind === "dated" && !t.done && t.due < todayStr());
+export const overdueTasks = (tasks: Task[] | unknown) =>
+  normalizeTasks(tasks).filter((t) => t.kind === "dated" && !t.done && t.due < todayStr());
 /** Daily tasks not ticked yesterday — alert only. */
-export const missedDaily = (tasks: Task[]) => tasks.filter((t) => t.kind === "daily" && t.due <= yesterday() && !t.doneDays.includes(yesterday()));
+export const missedDaily = (tasks: Task[] | unknown) => {
+  const y = yesterday();
+  return normalizeTasks(tasks).filter(
+    (t) => t.kind === "daily" && t.due <= y && !taskDoneDays(t).includes(y),
+  );
+};
 
 export function TaskGate() {
   const { tasks, toggleTask } = useApp();
   const [cleared, setCleared] = useState<string[]>([]);
-  const over = overdueTasks(tasks);
-  const missed = missedDaily(tasks);
+  const safeTasks = normalizeTasks(tasks);
+  const over = overdueTasks(safeTasks);
+  const missed = missedDaily(safeTasks);
   const y = yesterday();
   const pending = over.length + missed.length;
   if (!pending && !cleared.length) return null;
@@ -70,7 +78,8 @@ export function Tasks() {
   const [kind, setKind] = useState<Task["kind"]>("dated");
   const [due, setDue] = useState(todayStr());
   const today = todayStr();
-  const missed = missedDaily(tasks);
+  const safeTasks = normalizeTasks(tasks);
+  const missed = missedDaily(safeTasks);
   return (
     <div>
       <SectionTitle title="My tasks" sub="Dated tasks lock the dashboard once overdue. Daily tasks repeat every day." />
@@ -100,8 +109,8 @@ export function Tasks() {
         <button className="btn-primary">Add task</button>
       </form>
       <div className="space-y-2">
-        {tasks.map((t) => {
-          const done = t.kind === "dated" ? t.done : t.doneDays.includes(today);
+        {safeTasks.map((t) => {
+          const done = t.kind === "dated" ? t.done : taskDoneDays(t).includes(today);
           return (
             <div key={t.id} className="panel flex items-center justify-between gap-3 py-3">
               <label className="flex items-center gap-3">

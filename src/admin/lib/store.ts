@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import seed from "@/admin/data/seed.json";
+import { normalizeTasks, taskDoneDays } from "./normalize-tasks";
 import { appendDeptAssignment } from "./shift-assignment";
 import { emptyRec, type DayRec, type Dept, type Employee, type Perf, type Settings, type Task, type TeamMember, type LogEntry } from "./types";
 
@@ -141,17 +142,32 @@ export const useApp = create<State>()(
       addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false, doneDays: [] }] })),
       toggleTask: (id, day) =>
         set((s) => ({
-          tasks: s.tasks.map((t) => {
+          tasks: normalizeTasks(s.tasks).map((t) => {
             if (t.id !== id) return t;
             if (t.kind === "dated") return { ...t, done: !t.done };
-            const has = t.doneDays.includes(day!);
-            return { ...t, doneDays: has ? t.doneDays.filter((d) => d !== day) : [...t.doneDays, day!] };
+            const days = taskDoneDays(t);
+            const has = days.includes(day!);
+            return { ...t, doneDays: has ? days.filter((d) => d !== day) : [...days, day!] };
           }),
         })),
-      removeTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+      removeTask: (id) => set((s) => ({ tasks: normalizeTasks(s.tasks).filter((t) => t.id !== id) })),
       setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
     }),
-    { name: "hr-attendance-v1" },
+    {
+      name: "hr-attendance-v1",
+      // Heal legacy / cloud tasks missing doneDays before TaskGate mounts.
+      merge: (persisted, current) => {
+        const p =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        return {
+          ...current,
+          ...p,
+          tasks: normalizeTasks(p.tasks ?? current.tasks),
+        };
+      },
+    },
   ),
 );
 
