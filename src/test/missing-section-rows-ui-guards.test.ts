@@ -20,4 +20,13 @@ describe("missing section rows UI guards", () => {
       /export function setCell[\s\S]*?if \(!sec \|\| !Array\.isArray\(sec\.rows\)\) return d/,
     );
   });
+
+  it("DriverCards SectionFields tolerates missing section", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DriverCards.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/Section unavailable \(missing or corrupt cloud data\)/);
+    expect(src).toMatch(/const headers = sec\?\.headers \?\? \[\]/);
+  });
 });

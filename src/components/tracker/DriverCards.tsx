@@ -596,8 +596,16 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
 
 function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
   const data = useData();
-  const def = SECTIONS.find((s) => s.id === sectionId)!;
-  const headers = data.sections[sectionId].headers;
+  const def = SECTIONS.find((s) => s.id === sectionId);
+  const sec = data.sections[sectionId];
+  const headers = sec?.headers ?? [];
+  if (!def || !sec) {
+    return (
+      <p className="px-4 py-3 text-sm text-muted-foreground italic">
+        Section unavailable (missing or corrupt cloud data).
+      </p>
+    );
+  }
   const { cellTone } = analyzeRow(def, headers, row);
   return (
     <div className="grid gap-x-4 gap-y-3 p-4 sm:grid-cols-2">
