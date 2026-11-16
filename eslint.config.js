@@ -6,7 +6,18 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  // After `vite build`, dist-server holds generated bundles; linting them OOMs Node.
+  {
+    ignores: [
+      "dist",
+      "dist-server",
+      ".output",
+      ".vinxi",
+      "coverage",
+      "node_modules",
+      "**/*.canvas.tsx",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

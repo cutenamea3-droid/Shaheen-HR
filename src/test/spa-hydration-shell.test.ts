@@ -17,7 +17,16 @@ describe("SPA hydration shell safety", () => {
   /** Paths that skip Driver LockGate after hydration — must not structurally differ on first paint. */
   const lockGateSkipPaths = ["/admin", "/personal", "/dispatch", "/access-denied", "/cv"] as const;
   /** Paths that keep Driver LockGate — match prerendered `/` shell tree. */
-  const lockGateKeepPaths = ["/", "/drivers", "/alerts", "/account", "/team", "/activity", "/drug-tests", "/records"] as const;
+  const lockGateKeepPaths = [
+    "/",
+    "/drivers",
+    "/alerts",
+    "/account",
+    "/team",
+    "/activity",
+    "/drug-tests",
+    "/records",
+  ] as const;
 
   it("documents SPA prerender-for-/ in vite config", () => {
     const vite = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
@@ -46,6 +55,14 @@ describe("SPA hydration shell safety", () => {
     expect(sw).toMatch(/if\s*\(\s*!hydrated\s*\)/);
   });
 
+  it("clears AppSwitcher ready while re-probing seats (avoids stale hide of LoginGate links)", () => {
+    const sw = readFileSync(resolve(process.cwd(), "src/components/AppSwitcher.tsx"), "utf8");
+    expect(sw).toMatch(/setReady\(false\)/);
+    expect(sw).toMatch(/probeModuleGrants/);
+    // While !ready, company LoginGate surfaces stay reachable.
+    expect(sw).toMatch(/\["compliance",\s*"admin-hr",\s*"dispatch"\]/);
+  });
+
   it("pins the Production #418 mismatched shell components", () => {
     // Owner console: Minified React error #418 on index-CfkCmF_H.js (638cf53).
     // Mismatch: prerendered `/` shell (Driver aria-current + LockGate tree) vs
@@ -55,7 +72,7 @@ describe("SPA hydration shell safety", () => {
     expect(root).toMatch(/useDriverLock/);
     expect(root).toMatch(/useHydrated/);
     expect(sw).toMatch(/aria-current/);
-    expect(sw).toContain('prerendered for `/`');
+    expect(sw).toContain("prerendered for `/`");
   });
 
   it("isolates Admin / Personal / Dispatch route errors from the root shell", () => {
