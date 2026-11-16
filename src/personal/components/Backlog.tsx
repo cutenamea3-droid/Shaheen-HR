@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 
@@ -13,6 +13,8 @@ export function Backlog() {
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "cs101");
   const [label, setLabel] = useState("");
   const [mins, setMins] = useState("30");
+  const labelRef = useRef<HTMLInputElement>(null);
+  const minsRef = useRef<HTMLInputElement>(null);
 
   const open = backlog.filter((b) => !b.done);
   const done = backlog.filter((b) => b.done);
@@ -27,11 +29,13 @@ export function Backlog() {
         className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 sm:grid-cols-[1fr_2fr_100px_auto]"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!label.trim()) return;
+          const nextLabel = (label.trim() || labelRef.current?.value || "").trim();
+          if (!nextLabel) return;
+          const nextMins = mins.trim() || minsRef.current?.value || "30";
           addBacklog({
             courseId,
-            label: label.trim(),
-            estimatedMinutes: Math.max(5, Number(mins) || 30),
+            label: nextLabel,
+            estimatedMinutes: Math.max(5, Number(nextMins) || 30),
           });
           setLabel("");
           rebuildDayBlocks(todayKey());
@@ -48,17 +52,29 @@ export function Backlog() {
         </Field>
         <Field label="What to recover">
           <input
+            ref={labelRef}
             className="hp-field"
+            data-testid="personal-backlog-label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
+            onInput={(e) => setLabel((e.target as HTMLInputElement).value)}
             placeholder="e.g. Watch missed CS101 video week 3"
           />
         </Field>
         <Field label="Est. min">
-          <input className="hp-field" value={mins} onChange={(e) => setMins(e.target.value)} />
+          <input
+            ref={minsRef}
+            className="hp-field"
+            data-testid="personal-backlog-mins"
+            value={mins}
+            onChange={(e) => setMins(e.target.value)}
+            onInput={(e) => setMins((e.target as HTMLInputElement).value)}
+          />
         </Field>
         <div className="flex items-end">
-          <Btn type="submit">Add</Btn>
+          <Btn type="submit" data-testid="personal-backlog-add">
+            Add
+          </Btn>
         </div>
       </form>
 
