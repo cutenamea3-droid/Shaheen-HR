@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList,
   FileText,
@@ -1088,6 +1088,9 @@ function LoadEditor({
   const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>(
     [],
   );
+  const loadNumberRef = useRef<HTMLInputElement>(null);
+  const customerRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!load?.id) return;
@@ -1129,10 +1132,14 @@ function LoadEditor({
         <label className="grid gap-1 text-sm">
           Load number
           <input
+            ref={loadNumberRef}
             className="dispatch-field"
             data-testid="dispatch-load-number"
             value={form.load_number}
             onChange={(e) => setForm({ ...form, load_number: e.target.value })}
+            onInput={(e) =>
+              setForm((f) => ({ ...f, load_number: (e.target as HTMLInputElement).value }))
+            }
             required
           />
         </label>
@@ -1153,9 +1160,14 @@ function LoadEditor({
         <label className="grid gap-1 text-sm">
           Customer
           <input
+            ref={customerRef}
             className="dispatch-field"
+            data-testid="dispatch-customer"
             value={form.customer_name}
             onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+            onInput={(e) =>
+              setForm((f) => ({ ...f, customer_name: (e.target as HTMLInputElement).value }))
+            }
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1266,9 +1278,14 @@ function LoadEditor({
         <label className="grid gap-1 text-sm sm:col-span-2">
           Notes
           <textarea
+            ref={notesRef}
             className="dispatch-field min-h-20"
+            data-testid="dispatch-load-notes"
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            onInput={(e) =>
+              setForm((f) => ({ ...f, notes: (e.target as HTMLTextAreaElement).value }))
+            }
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1900,17 +1917,26 @@ function LoadEditor({
           type="button"
           className="dispatch-btn-primary"
           data-testid="dispatch-save-load"
-          disabled={busy || !form.load_number.trim()}
+          disabled={busy}
           onClick={async () => {
+            const loadNumber = (
+              form.load_number.trim() ||
+              loadNumberRef.current?.value ||
+              ""
+            ).trim();
+            if (!loadNumber) return;
+            const customer =
+              form.customer_name || customerRef.current?.value || "";
+            const notes = form.notes || notesRef.current?.value || "";
             const driver = drivers.find((d) => d.id === form.assigned_driver_id);
             const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
             await onSaved({
               ...(form.id ? { id: form.id } : {}),
-              load_number: form.load_number.trim(),
-              customer_name: form.customer_name || null,
+              load_number: loadNumber,
+              customer_name: customer || null,
               commodity: form.commodity || null,
               equipment: form.equipment || null,
-              notes: form.notes || null,
+              notes: notes || null,
               status: form.status,
               exception_open: form.exception_open,
               bol_status: form.bol_status,
