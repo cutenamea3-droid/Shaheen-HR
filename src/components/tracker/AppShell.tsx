@@ -1,8 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  LayoutDashboard, FileText, HeartPulse, SearchCheck, IdCard, FolderOpen, Users, UserX,
-  PanelLeftClose, PanelLeftOpen, Download, Upload, RotateCcw, ClipboardList, FlaskConical, Bell,
+  LayoutDashboard,
+  FileText,
+  HeartPulse,
+  SearchCheck,
+  IdCard,
+  FolderOpen,
+  Users,
+  UserX,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Download,
+  Upload,
+  RotateCcw,
+  ClipboardList,
+  FlaskConical,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -11,19 +25,39 @@ import { setWorkMode, useWorkMode } from "@/lib/workmode";
 import { setViewMode, useViewMode } from "@/lib/viewmode";
 import { useDensity } from "@/lib/density";
 import { Activity, Briefcase, Eye, LogOut, ShieldCheck, UserCog } from "lucide-react";
-import { isPreviewIsolated, lockPortal, useOptionalPortalAccount, usePortalAccount } from "./LockGate";
+import {
+  isPreviewIsolated,
+  lockPortal,
+  useOptionalPortalAccount,
+  usePortalAccount,
+} from "./LockGate";
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { DensityToggle } from "./DensityToggle";
 import { SECTIONS } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
-import { exportBackup, importBackup, loadFromStorage, resetToSpreadsheet, retrySync, useData, useLoaded, useSyncStatus } from "@/lib/store";
+import {
+  exportBackup,
+  importBackup,
+  loadFromStorage,
+  resetToSpreadsheet,
+  retrySync,
+  useData,
+  useLoaded,
+  useSyncStatus,
+} from "@/lib/store";
 import { AlertsBell } from "./AlertsDrawer";
 import { QuickFind } from "./QuickFind";
 
 export const SECTION_ICONS: Record<string, typeof FileText> = {
-  dmv: FileText, medical: HeartPulse, queries: SearchCheck, ssccdl: IdCard, docs: FolderOpen, info: Users, inactive: UserX,
+  dmv: FileText,
+  medical: HeartPulse,
+  queries: SearchCheck,
+  ssccdl: IdCard,
+  docs: FolderOpen,
+  info: Users,
+  inactive: UserX,
 };
 
 type ShellProps = { title: string; subtitle?: string; children: React.ReactNode };
@@ -51,9 +85,16 @@ function ShellBreadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
         const last = i === crumbs.length - 1;
         return (
           <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
-            {i > 0 && <span className="shell-crumb-sep" aria-hidden>/</span>}
+            {i > 0 && (
+              <span className="shell-crumb-sep" aria-hidden>
+                /
+              </span>
+            )}
             {last || !c.to ? (
-              <span className={last ? "shell-crumb-current" : undefined} aria-current={last ? "page" : undefined}>
+              <span
+                className={last ? "shell-crumb-current" : undefined}
+                aria-current={last ? "page" : undefined}
+              >
                 {c.label}
               </span>
             ) : (
@@ -102,7 +143,15 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
     const c: Record<string, number> = {};
     for (const def of SECTIONS) {
       const sec = data.sections[def.id];
-      c[def.id] = sec.rows.filter((r) => !rowOrdinaryComplianceMuted(def, r, data) && analyzeRow(def, sec.headers, r).issues.length).length;
+      if (!sec || !Array.isArray(sec.rows)) {
+        c[def.id] = 0;
+        continue;
+      }
+      c[def.id] = sec.rows.filter(
+        (r) =>
+          !rowOrdinaryComplianceMuted(def, r, data) &&
+          analyzeRow(def, sec.headers, r).issues.length,
+      ).length;
     }
     return c;
   }, [data]);
@@ -116,23 +165,55 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
         Skip to main content
       </a>
       <aside
-        className={cn("tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all", collapsed ? "w-16" : "w-60")}
+        className={cn(
+          "tracker-no-print flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-all",
+          collapsed ? "w-16" : "w-60",
+        )}
         aria-label="Driver Compliance sidebar"
       >
         <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
-          <img src={logo.url} alt="Shaheen Transport logo" className="size-12 shrink-0 rounded-xl bg-card object-contain p-0.5" />
+          <img
+            src={logo.url}
+            alt="Shaheen Transport logo"
+            className="size-12 shrink-0 rounded-xl bg-card object-contain p-0.5"
+          />
           {!collapsed && (
             <div className="min-w-0">
-              <div className="font-display text-xl leading-tight font-extrabold text-brand">SHAHEEN</div>
-              <div className="text-sm font-semibold tracking-wide text-ink-muted">Driver Files Tracker</div>
+              <div className="font-display text-xl leading-tight font-extrabold text-brand">
+                SHAHEEN
+              </div>
+              <div className="text-sm font-semibold tracking-wide text-ink-muted">
+                Driver Files Tracker
+              </div>
             </div>
           )}
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3" aria-label="Driver Compliance">
+        <nav
+          className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3"
+          aria-label="Driver Compliance"
+        >
           {groupLbl("Overview")}
-          <NavItem to="/" active={loc.pathname === "/"} icon={LayoutDashboard} label="Dashboard" collapsed={collapsed} />
-          <NavItem to="/drivers" active={loc.pathname === "/drivers"} icon={IdCard} label="Driver Cards" collapsed={collapsed} />
-          <NavItem to="/alerts" active={loc.pathname === "/alerts"} icon={Bell} label="My Compliance Today" collapsed={collapsed} />
+          <NavItem
+            to="/"
+            active={loc.pathname === "/"}
+            icon={LayoutDashboard}
+            label="Dashboard"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/drivers"
+            active={loc.pathname === "/drivers"}
+            icon={IdCard}
+            label="Driver Cards"
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/alerts"
+            active={loc.pathname === "/alerts"}
+            icon={Bell}
+            label="My Compliance Today"
+            collapsed={collapsed}
+          />
           {account.role === "admin" && (
             <NavItem
               to="/drug-tests"
@@ -142,7 +223,13 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               collapsed={collapsed}
             />
           )}
-          <NavItem to="/records" active={loc.pathname === "/records"} icon={FolderOpen} label="Records" collapsed={collapsed} />
+          <NavItem
+            to="/records"
+            active={loc.pathname === "/records"}
+            icon={FolderOpen}
+            label="Records"
+            collapsed={collapsed}
+          />
           {groupLbl("Compliance sections")}
           {SECTIONS.map((s) => (
             <NavItem
@@ -151,10 +238,14 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               active={loc.pathname === `/s/${s.id}`}
               icon={SECTION_ICONS[s.id]}
               label={
-                s.id === "dmv" ? "DMV"
-                  : s.id === "medical" ? "Medical"
-                    : s.id === "queries" ? "Clearinghouse"
-                      : s.id === "docs" ? "Other Docs"
+                s.id === "dmv"
+                  ? "DMV"
+                  : s.id === "medical"
+                    ? "Medical"
+                    : s.id === "queries"
+                      ? "Clearinghouse"
+                      : s.id === "docs"
+                        ? "Other Docs"
                         : s.title
               }
               count={counts[s.id]}
@@ -162,11 +253,33 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             />
           ))}
           {groupLbl("My Account")}
-          <NavItem to="/account" active={loc.pathname === "/account"} icon={UserCog} label="My Account" collapsed={collapsed} />
+          <NavItem
+            to="/account"
+            active={loc.pathname === "/account"}
+            icon={UserCog}
+            label="My Account"
+            collapsed={collapsed}
+          />
           {account.role === "admin" && groupLbl("Team Management")}
-          {account.role === "admin" && <NavItem to="/team" active={loc.pathname === "/team"} icon={ShieldCheck} label="User Accounts" collapsed={collapsed} />}
+          {account.role === "admin" && (
+            <NavItem
+              to="/team"
+              active={loc.pathname === "/team"}
+              icon={ShieldCheck}
+              label="User Accounts"
+              collapsed={collapsed}
+            />
+          )}
           {account.role === "admin" && groupLbl("System")}
-          {account.role === "admin" && <NavItem to="/activity" active={loc.pathname === "/activity"} icon={Activity} label="Activity Logs" collapsed={collapsed} />}
+          {account.role === "admin" && (
+            <NavItem
+              to="/activity"
+              active={loc.pathname === "/activity"}
+              icon={Activity}
+              label="Activity Logs"
+              collapsed={collapsed}
+            />
+          )}
         </nav>
         <button
           type="button"
@@ -190,11 +303,16 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card" role="banner">
+        <header
+          className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card"
+          role="banner"
+        >
           <div className="min-w-0 space-y-1">
             <ShellBreadcrumbs crumbs={crumbs} />
             <h1 className="font-display text-xl font-extrabold tracking-tight">{title}</h1>
-            {subtitle && !work && <p className="text-sm leading-snug text-muted-foreground">{subtitle}</p>}
+            {subtitle && !work && (
+              <p className="text-sm leading-snug text-muted-foreground">{subtitle}</p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <QuickFind />
@@ -204,7 +322,11 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               type="button"
               onClick={() => setWorkMode(!work)}
               title="Work Mode hides explanations so you see only driver data"
-              className={cn(btn, work && "border-primary bg-brand text-primary-foreground hover:text-primary-foreground")}
+              className={cn(
+                btn,
+                work &&
+                  "border-primary bg-brand text-primary-foreground hover:text-primary-foreground",
+              )}
             >
               <Briefcase className="size-4" /> Work Mode: {work ? "ON" : "OFF"}
             </button>
@@ -212,12 +334,21 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
               type="button"
               onClick={() => setViewMode(!view)}
               title="View Mode: you can only look, nothing can be edited"
-              className={cn(btn, view && "border-ink bg-ink text-ink-foreground hover:text-ink-foreground")}
+              className={cn(
+                btn,
+                view && "border-ink bg-ink text-ink-foreground hover:text-ink-foreground",
+              )}
             >
               <Eye className="size-4" /> View Mode: {view ? "ON" : "OFF"}
             </button>
-            <button type="button" onClick={() => setDarkMode(!dark)} title="Switch light / dark" className={btn}>
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />} {dark ? "Light" : "Dark"} Mode
+            <button
+              type="button"
+              onClick={() => setDarkMode(!dark)}
+              title="Switch light / dark"
+              className={btn}
+            >
+              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}{" "}
+              {dark ? "Light" : "Dark"} Mode
             </button>
             {sync === "error" ? (
               <button
@@ -226,7 +357,8 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
                 title="Changes are not saved to the cloud — click to try again"
                 className="inline-flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-sm font-bold text-danger"
               >
-                <span className="size-2 animate-pulse rounded-full bg-danger" /> Not saved to cloud — Try again
+                <span className="size-2 animate-pulse rounded-full bg-danger" /> Not saved to cloud
+                — Try again
               </button>
             ) : (
               <span className="hidden items-center gap-2 rounded-lg bg-ok-soft px-3 py-2 text-sm font-bold text-ok md:inline-flex">
@@ -288,7 +420,11 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             <button
               type="button"
               onClick={() => {
-                if (confirm("Reset ALL data back to the original spreadsheet? Your changes will be lost (download a Backup first).")) {
+                if (
+                  confirm(
+                    "Reset ALL data back to the original spreadsheet? Your changes will be lost (download a Backup first).",
+                  )
+                ) {
                   resetToSpreadsheet();
                   toast.success("Data reset to the spreadsheet");
                 }
@@ -299,8 +435,18 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             </button>
           </div>
         </header>
-        <div id="main-content" tabIndex={-1} className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none">
-          {loaded ? children : <div className="p-10 text-lg text-muted-foreground" role="status">Loading your data…</div>}
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none"
+        >
+          {loaded ? (
+            children
+          ) : (
+            <div className="p-10 text-lg text-muted-foreground" role="status">
+              Loading your data…
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -311,8 +457,20 @@ const btn =
   "ui-press inline-flex items-center gap-2 rounded-lg border-2 bg-card px-3 py-2 text-sm font-bold hover:border-primary hover:text-primary";
 
 function NavItem({
-  to, active, icon: Icon, label, count, collapsed,
-}: { to: string; active: boolean; icon: typeof FileText; label: string; count?: number; collapsed: boolean }) {
+  to,
+  active,
+  icon: Icon,
+  label,
+  count,
+  collapsed,
+}: {
+  to: string;
+  active: boolean;
+  icon: typeof FileText;
+  label: string;
+  count?: number;
+  collapsed: boolean;
+}) {
   return (
     <Link
       to={to}

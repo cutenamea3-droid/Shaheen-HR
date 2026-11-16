@@ -428,7 +428,7 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       // keep Active / Leave / Inactive in sync for this driver across every section
       for (const [sid, idx] of Object.entries(ACTIVE_IDX)) {
         const cur = sections[sid];
-        if (!cur) continue;
+        if (!cur || !Array.isArray(cur.rows)) continue;
         // Inactive roster Status column stays Active/Inactive only
         const cellLabel =
           sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
@@ -448,7 +448,7 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       // Inactive Drivers tab must list anyone marked Inactive (create row if missing)
       const ina = sections.inactive;
       const inaIdx = ACTIVE_IDX.inactive;
-      if (ina && inaIdx != null) {
+      if (ina && Array.isArray(ina.rows) && inaIdx != null) {
         const has = ina.rows.some((r) => r.driverId === row.driverId);
         if (status === "inactive" && !has) {
           const draft = { ...d, sections };

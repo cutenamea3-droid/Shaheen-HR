@@ -1,12 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Columns3, Info, ChevronUp, Trash2, Pencil, Check, X, Bell, UserPlus } from "lucide-react";
+import {
+  Search,
+  Columns3,
+  Info,
+  ChevronUp,
+  Trash2,
+  Pencil,
+  Check,
+  X,
+  Bell,
+  UserPlus,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol } from "@/lib/alerts";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { sectionById } from "@/lib/sections";
-import { addRowForDriver, deleteDriver, patchSection, setCell, setRowHeight, useData } from "@/lib/store";
+import {
+  addRowForDriver,
+  deleteDriver,
+  patchSection,
+  setCell,
+  setRowHeight,
+  useData,
+} from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { AddDriverDialog } from "./AddDriverDialog";
 import { FuturePlanSuggest } from "./FuturePlanSuggest";
@@ -29,13 +47,34 @@ const CORE = ["dmv", "medical", "queries", "ssccdl", "docs", "info"];
 /** Active-only by default; Inactive Drivers section defaults to inactive. */
 const defaultFilter = (id: string): Filter => (id === "inactive" ? "inactive" : "active");
 
-export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow?: string | undefined }) {
+export function DataTable({
+  sectionId,
+  focusRow,
+}: {
+  sectionId: string;
+  focusRow?: string | undefined;
+}) {
   const data = useData();
   const def = sectionById(sectionId)!;
-  const sec = data.sections[sectionId];
+  const rawSec = data.sections[sectionId];
+  // Corrupt/missing cloud section must not crash the table shell (hooks still run).
+  const sectionMissing = !rawSec || !Array.isArray(rawSec.rows);
+  const sec = sectionMissing
+    ? {
+        headers: [] as string[],
+        widths: [] as number[],
+        hidden: [] as boolean[],
+        rows: [],
+        dismissed: [] as string[],
+      }
+    : rawSec;
   const [q, setQ] = useState("");
-  const [filter, setFilterState] = useState<Filter>(() => loadDataTablePrefs(sectionId).filter ?? defaultFilter(sectionId));
-  const [listScope, setListScopeState] = useState<ListScope>(() => loadDataTablePrefs(sectionId).listScope ?? "company");
+  const [filter, setFilterState] = useState<Filter>(
+    () => loadDataTablePrefs(sectionId).filter ?? defaultFilter(sectionId),
+  );
+  const [listScope, setListScopeState] = useState<ListScope>(
+    () => loadDataTablePrefs(sectionId).listScope ?? "company",
+  );
   const [alertsOnly, setAlertsOnlyState] = useState(false);
   useEffect(() => {
     const p = loadDataTablePrefs(sectionId);
@@ -80,43 +119,53 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
   useEffect(() => setWidths(sec.widths), [sec.widths]);
 
   const analyzed = useMemo(
-    () => sec.rows.map((r) => ({ row: r, ...analyzeRow(def, sec.headers, r), active: rowIsActive(def, r, data) })),
+    () =>
+      sec.rows.map((r) => ({
+        row: r,
+        ...analyzeRow(def, sec.headers, r),
+        active: rowIsActive(def, r, data),
+      })),
     [sec, def, data],
   );
   // one main name per driver (first main section that has them) so rows sort identically everywhere
   const nameOf = useMemo(() => {
     const m = new Map<string, string>();
-    for (const id of [...CORE, "inactive"]) for (const r of data.sections[id]?.rows ?? []) if (!m.has(r.driverId) && r.cells[0]?.trim()) m.set(r.driverId, r.cells[0].trim());
+    for (const id of [...CORE, "inactive"])
+      for (const r of data.sections[id]?.rows ?? [])
+        if (!m.has(r.driverId) && r.cells[0]?.trim()) m.set(r.driverId, r.cells[0].trim());
     return m;
   }, [data]);
-  const canon = (r: { driverId: string; cells: string[] }) => nameOf.get(r.driverId) ?? (r.cells[0] ?? "").trim();
+  const canon = (r: { driverId: string; cells: string[] }) =>
+    nameOf.get(r.driverId) ?? (r.cells[0] ?? "").trim();
   const scopeCounts = useMemo(() => {
     const c: Record<ListScope, number> = { company: 0, owner_operator: 0, new: 0 };
     for (const a of analyzed) c[listScopeOf(data, a.row.driverId)]++;
     return c;
   }, [analyzed, data]);
-  const rows = analyzed.filter((a) => {
-    // reactivated drivers no longer appear in Inactive Drivers
-    if (sectionId === "inactive" && a.active) return false;
-    // New Drivers never appear in company/OO employment lists (including Show all).
-    if (!matchesListScope(data, a.row.driverId, listScope)) return false;
-    if (listScope !== "new") {
-      if (filter === "active" && !a.active) return false;
-      if (filter === "inactive" && a.active) return false;
-    }
-    if (alertsOnly) {
-      if (a.issues.length) keepRef.current.add(a.row.id);
-      else if (!keepRef.current.has(a.row.id)) return false;
-    }
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      return a.row.cells.some((c) => c.toLowerCase().includes(s));
-    }
-    return true;
-  }).sort((a, b) =>
-    // A–Z by the driver's main name, same in every section (display only; stored order unchanged)
-    canon(a.row).localeCompare(canon(b.row), undefined, { sensitivity: "base" }),
-  );
+  const rows = analyzed
+    .filter((a) => {
+      // reactivated drivers no longer appear in Inactive Drivers
+      if (sectionId === "inactive" && a.active) return false;
+      // New Drivers never appear in company/OO employment lists (including Show all).
+      if (!matchesListScope(data, a.row.driverId, listScope)) return false;
+      if (listScope !== "new") {
+        if (filter === "active" && !a.active) return false;
+        if (filter === "inactive" && a.active) return false;
+      }
+      if (alertsOnly) {
+        if (a.issues.length) keepRef.current.add(a.row.id);
+        else if (!keepRef.current.has(a.row.id)) return false;
+      }
+      if (q.trim()) {
+        const s = q.toLowerCase();
+        return a.row.cells.some((c) => c.toLowerCase().includes(s));
+      }
+      return true;
+    })
+    .sort((a, b) =>
+      // A–Z by the driver's main name, same in every section (display only; stored order unchanged)
+      canon(a.row).localeCompare(canon(b.row), undefined, { sensitivity: "base" }),
+    );
   // drivers who are in other main sections but missing here — shown in place so every section lines up
   const missing = useMemo(() => {
     if (!CORE.includes(sectionId)) return [];
@@ -131,8 +180,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
     return [...out].map(([driverId, name]) => ({ driverId, name }));
   }, [data, sec, sectionId, nameOf, listScope]);
   const showMissing = listScope !== "new" && filter === "all" && !alertsOnly;
-  const shownMissing = showMissing ? missing.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.toLowerCase())) : [];
-  type Item = { kind: "row"; a: (typeof rows)[number] } | { kind: "missing"; driverId: string; name: string };
+  const shownMissing = showMissing
+    ? missing.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.toLowerCase()))
+    : [];
+  type Item =
+    { kind: "row"; a: (typeof rows)[number] } | { kind: "missing"; driverId: string; name: string };
   const items: Item[] = [
     ...rows.map((a) => ({ kind: "row" as const, a })),
     ...shownMissing.map((m) => ({ kind: "missing" as const, ...m })),
@@ -142,7 +194,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
     return nx.localeCompare(ny, undefined, { sensitivity: "base" });
   });
   void keepTick;
-  const fixedIds = new Set(alertsOnly ? rows.filter((a) => !a.issues.length).map((a) => a.row.id) : []);
+  const fixedIds = new Set(
+    alertsOnly ? rows.filter((a) => !a.issues.length).map((a) => a.row.id) : [],
+  );
   // Ordinary "Only Issues" count: company active only (excludes New + Owner Op).
   const alertCount = analyzed.filter(
     (a) => a.active && a.issues.length && matchesListScope(data, a.row.driverId, "company"),
@@ -167,7 +221,9 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
 
   const visible = def.types.map((_, i) => !sec.hidden[i]);
   // Status (Active/Inactive) column is always shown last; stored data order is unchanged
-  const order = def.types.map((_, i) => i).sort((a, b) => Number(def.types[a] === "active") - Number(def.types[b] === "active"));
+  const order = def.types
+    .map((_, i) => i)
+    .sort((a, b) => Number(def.types[a] === "active") - Number(def.types[b] === "active"));
 
   function startColResize(e: React.MouseEvent, i: number) {
     e.preventDefault();
@@ -205,32 +261,52 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
     window.addEventListener("mouseup", up);
   }
 
+  if (sectionMissing) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+        This section is unavailable (missing or corrupt cloud data). Sync again or restore a backup
+        — other sections are unaffected.
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", work || density === "compact" ? "gap-2" : "gap-3")}>
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col",
+        work || density === "compact" ? "gap-2" : "gap-3",
+      )}
+    >
       {/* Alert rules */}
-      {!work && <div className="rounded-xl border border-primary/30 bg-card shadow-card">
-        <button
-          type="button"
-          onClick={() => setShowRules(!showRules)}
-          className="flex w-full items-center justify-between px-4 py-2 text-left"
-        >
-          <span className="flex items-center gap-2 font-display text-base font-bold">
-            <Info className="size-5 text-primary" /> How alerts work in {def.title}
-          </span>
-          <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
-            {showRules ? "Hide" : "Show"} <ChevronUp className={cn("size-4 transition", !showRules && "rotate-180")} />
-          </span>
-        </button>
-        {showRules && (
-          <ul className="grid gap-2 px-5 pb-4 md:grid-cols-2">
-            {def.rules.map((r) => (
-              <li key={r} className="rounded-lg border border-primary/20 bg-accent/40 px-3 py-1.5 text-sm font-medium">
-                {r}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>}
+      {!work && (
+        <div className="rounded-xl border border-primary/30 bg-card shadow-card">
+          <button
+            type="button"
+            onClick={() => setShowRules(!showRules)}
+            className="flex w-full items-center justify-between px-4 py-2 text-left"
+          >
+            <span className="flex items-center gap-2 font-display text-base font-bold">
+              <Info className="size-5 text-primary" /> How alerts work in {def.title}
+            </span>
+            <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
+              {showRules ? "Hide" : "Show"}{" "}
+              <ChevronUp className={cn("size-4 transition", !showRules && "rotate-180")} />
+            </span>
+          </button>
+          {showRules && (
+            <ul className="grid gap-2 px-5 pb-4 md:grid-cols-2">
+              {def.rules.map((r) => (
+                <li
+                  key={r}
+                  className="rounded-lg border border-primary/20 bg-accent/40 px-3 py-1.5 text-sm font-medium"
+                >
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="tracker-toolbar">
@@ -257,7 +333,10 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                     type="button"
                     onClick={() => setFilter(f)}
                     aria-pressed={filter === f}
-                    className={cn("tracker-filter-btn capitalize", filter === f && "tracker-filter-btn-on")}
+                    className={cn(
+                      "tracker-filter-btn capitalize",
+                      filter === f && "tracker-filter-btn-on",
+                    )}
                   >
                     {f === "all" ? "Show all" : f}
                   </button>
@@ -266,12 +345,19 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
             </FilterGroup>
           )}
           <FilterGroup label="Issues">
-            <div className="tracker-filter-group border-danger/30" role="group" aria-label="Issues filter">
+            <div
+              className="tracker-filter-group border-danger/30"
+              role="group"
+              aria-label="Issues filter"
+            >
               <button
                 type="button"
                 onClick={() => setAlertsOnly(false)}
                 aria-pressed={!alertsOnly}
-                className={cn("tracker-filter-btn", !alertsOnly ? "bg-ink text-ink-foreground" : "")}
+                className={cn(
+                  "tracker-filter-btn",
+                  !alertsOnly ? "bg-ink text-ink-foreground" : "",
+                )}
               >
                 Show All
               </button>
@@ -310,13 +396,22 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
           type="button"
           onClick={() => setResizeLock(!rlock)}
           title="Lock column and row sizes so they can't be changed by accident"
-          className={cn("inline-flex h-10 items-center gap-2 rounded-xl border-2 px-4 text-sm font-bold shadow-card", rlock ? "border-primary bg-brand text-primary-foreground" : "bg-card hover:border-primary")}
+          className={cn(
+            "inline-flex h-10 items-center gap-2 rounded-xl border-2 px-4 text-sm font-bold shadow-card",
+            rlock
+              ? "border-primary bg-brand text-primary-foreground"
+              : "bg-card hover:border-primary",
+          )}
         >
-          {rlock ? <Lock className="size-4" /> : <Unlock className="size-4" />} Resize: {rlock ? "Locked" : "Unlocked"}
+          {rlock ? <Lock className="size-4" /> : <Unlock className="size-4" />} Resize:{" "}
+          {rlock ? "Locked" : "Unlocked"}
         </button>
         <Popover>
           <PopoverTrigger asChild>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl border-2 bg-card px-4 text-sm font-bold shadow-card hover:border-primary">
+            <button
+              type="button"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border-2 bg-card px-4 text-sm font-bold shadow-card hover:border-primary"
+            >
               <Columns3 className="size-4" /> Show / hide columns
             </button>
           </PopoverTrigger>
@@ -324,12 +419,19 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
             <p className="mb-2 text-sm font-bold">Columns</p>
             <div className="grid gap-1.5">
               {sec.headers.map((h, i) => (
-                <label key={i} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted">
+                <label
+                  key={i}
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-muted"
+                >
                   <input
                     type="checkbox"
                     checked={visible[i]}
                     disabled={i === 0}
-                    onChange={() => patchSection(sectionId, { hidden: sec.hidden.map((x, j) => (j === i ? !x : x)) })}
+                    onChange={() =>
+                      patchSection(sectionId, {
+                        hidden: sec.hidden.map((x, j) => (j === i ? !x : x)),
+                      })
+                    }
                     className="size-4 accent-primary"
                   />
                   {h.trim() || `Column ${i + 1}`}
@@ -355,13 +457,30 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
           </button>
         )}
       </div>
-      {!work && <p className="-mt-1 text-sm text-muted-foreground">
-        Showing <b className="text-foreground">{rows.length}</b> of {sec.rows.length} rows · drag column edges or the row grip to resize · click any cell to edit, then press the green ✓
-        {missing.length > 0 && <> · <b className="text-warn">{missing.length} driver{missing.length > 1 ? "s" : ""} missing here</b> (highlighted in the list)</>}
-      </p>}
+      {!work && (
+        <p className="-mt-1 text-sm text-muted-foreground">
+          Showing <b className="text-foreground">{rows.length}</b> of {sec.rows.length} rows · drag
+          column edges or the row grip to resize · click any cell to edit, then press the green ✓
+          {missing.length > 0 && (
+            <>
+              {" "}
+              ·{" "}
+              <b className="text-warn">
+                {missing.length} driver{missing.length > 1 ? "s" : ""} missing here
+              </b>{" "}
+              (highlighted in the list)
+            </>
+          )}
+        </p>
+      )}
 
       {/* Table */}
-      <div className={cn("ui-lift ui-row-hover tracker-table-wrap", density === "compact" && "tracker-table-compact")}>
+      <div
+        className={cn(
+          "ui-lift ui-row-hover tracker-table-wrap",
+          density === "compact" && "tracker-table-compact",
+        )}
+      >
         <table
           className="tracker-table table-fixed border-separate border-spacing-0"
           style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}
@@ -374,69 +493,89 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
           </colgroup>
           <thead className="sticky top-0 z-20">
             <tr className="bg-brand text-primary-foreground">
-              <th scope="col" className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold">#</th>
-              {order.map((i) => [sec.headers[i], i] as const).map(
-                ([h, i]) =>
-                  visible[i] && (
-                    <th
-                      key={i}
-                      scope="col"
-                      className={cn(
-                        "relative border-l border-ink-foreground/10 px-2.5 py-2 text-left align-middle",
-                        i === 0 && "freeze-edge sticky left-[70px] z-30 bg-brand",
-                      )}
-                    >
-                      {editHead === i ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            autoFocus
-                            value={headDraft}
-                            onChange={(e) => setHeadDraft(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                patchSection(sectionId, { headers: sec.headers.map((x, j) => (j === i ? headDraft : x)) });
+              <th
+                scope="col"
+                className="sticky left-0 z-30 bg-brand px-2.5 py-2 text-left text-base font-extrabold"
+              >
+                #
+              </th>
+              {order
+                .map((i) => [sec.headers[i], i] as const)
+                .map(
+                  ([h, i]) =>
+                    visible[i] && (
+                      <th
+                        key={i}
+                        scope="col"
+                        className={cn(
+                          "relative border-l border-ink-foreground/10 px-2.5 py-2 text-left align-middle",
+                          i === 0 && "freeze-edge sticky left-[70px] z-30 bg-brand",
+                        )}
+                      >
+                        {editHead === i ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              autoFocus
+                              value={headDraft}
+                              onChange={(e) => setHeadDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  patchSection(sectionId, {
+                                    headers: sec.headers.map((x, j) => (j === i ? headDraft : x)),
+                                  });
+                                  setEditHead(null);
+                                }
+                                if (e.key === "Escape") setEditHead(null);
+                              }}
+                              className="min-w-0 flex-1 rounded-md bg-card px-2 py-1 text-base text-foreground"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                patchSection(sectionId, {
+                                  headers: sec.headers.map((x, j) => (j === i ? headDraft : x)),
+                                });
                                 setEditHead(null);
-                              }
-                              if (e.key === "Escape") setEditHead(null);
-                            }}
-                            className="min-w-0 flex-1 rounded-md bg-card px-2 py-1 text-base text-foreground"
-                          />
+                              }}
+                              className="rounded-md bg-ok p-1"
+                              aria-label="Save header"
+                            >
+                              <Check className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditHead(null)}
+                              className="rounded-md bg-ink-foreground/20 p-1"
+                              aria-label="Cancel"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
                             onClick={() => {
-                              patchSection(sectionId, { headers: sec.headers.map((x, j) => (j === i ? headDraft : x)) });
-                              setEditHead(null);
+                              if (view) return;
+                              setHeadDraft(h);
+                              setEditHead(i);
                             }}
-                            className="rounded-md bg-ok p-1"
-                            aria-label="Save header"
+                            className="group flex w-full items-center gap-2 text-left text-base font-extrabold leading-tight whitespace-pre-wrap break-words"
                           >
-                            <Check className="size-4" />
+                            {h.trim() || `Column ${i + 1}`}
+                            {!view && (
+                              <Pencil className="size-3.5 shrink-0 text-gold opacity-60 group-hover:opacity-100" />
+                            )}
                           </button>
-                          <button type="button" onClick={() => setEditHead(null)} className="rounded-md bg-ink-foreground/20 p-1" aria-label="Cancel">
-                            <X className="size-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (view) return;
-                            setHeadDraft(h);
-                            setEditHead(i);
-                          }}
-                          className="group flex w-full items-center gap-2 text-left text-base font-extrabold leading-tight whitespace-pre-wrap break-words"
-                        >
-                          {h.trim() || `Column ${i + 1}`}
-                          {!view && <Pencil className="size-3.5 shrink-0 text-gold opacity-60 group-hover:opacity-100" />}
-                        </button>
-                      )}
-                      {!rlock && <span
-                        onMouseDown={(e) => startColResize(e, i)}
-                        className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-gold/60"
-                      />}
-                    </th>
-                  ),
-              )}
+                        )}
+                        {!rlock && (
+                          <span
+                            onMouseDown={(e) => startColResize(e, i)}
+                            className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-gold/60"
+                          />
+                        )}
+                      </th>
+                    ),
+                )}
               <th className="px-2 py-2" />
             </tr>
           </thead>
@@ -445,12 +584,21 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
               if (it.kind === "missing")
                 return (
                   <tr key={"miss-" + it.driverId} className="bg-warn-soft">
-                    <td className="sticky left-0 z-10 border-b border-r border-l-4 border-foreground/35 border-l-warn bg-warn-soft px-2 py-1.5 align-top text-sm font-bold text-warn">{ri + 1}</td>
-                    <td colSpan={order.filter((i) => visible[i]).length + 1} className="border-b border-foreground/35 bg-warn-soft px-3 py-2">
+                    <td className="sticky left-0 z-10 border-b border-r border-l-4 border-foreground/35 border-l-warn bg-warn-soft px-2 py-1.5 align-top text-sm font-bold text-warn">
+                      {ri + 1}
+                    </td>
+                    <td
+                      colSpan={order.filter((i) => visible[i]).length + 1}
+                      className="border-b border-foreground/35 bg-warn-soft px-3 py-2"
+                    >
                       <div className="sticky left-[78px] flex flex-wrap items-center gap-3">
                         <b className="text-base text-foreground">{it.name}</b>
-                        <span className="rounded-md bg-warn px-2 py-0.5 text-xs font-bold text-primary-foreground">MISSING IN THIS SECTION</span>
-                        <span className="text-sm text-muted-foreground">This driver is in other sections but not here.</span>
+                        <span className="rounded-md bg-warn px-2 py-0.5 text-xs font-bold text-primary-foreground">
+                          MISSING IN THIS SECTION
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          This driver is in other sections but not here.
+                        </span>
                         {!view && (
                           <>
                             <button
@@ -462,7 +610,11 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                             </button>
                             <button
                               type="button"
-                              onClick={() => patchSection(sectionId, { dismissed: [...(sec.dismissed ?? []), it.driverId] })}
+                              onClick={() =>
+                                patchSection(sectionId, {
+                                  dismissed: [...(sec.dismissed ?? []), it.driverId],
+                                })
+                              }
                               className="inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-1 text-sm font-bold text-foreground hover:bg-muted"
                             >
                               <X className="size-4" /> Not needed here
@@ -470,7 +622,12 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                             <button
                               type="button"
                               onClick={() => {
-                                if (confirm(`Delete ${it.name.trim()} from ALL sections? This cannot be undone.`)) deleteDriver(it.driverId);
+                                if (
+                                  confirm(
+                                    `Delete ${it.name.trim()} from ALL sections? This cannot be undone.`,
+                                  )
+                                )
+                                  deleteDriver(it.driverId);
                               }}
                               className="inline-flex items-center gap-1 rounded-lg px-3 py-1 text-sm font-bold text-danger hover:bg-danger-soft"
                             >
@@ -484,150 +641,192 @@ export function DataTable({ sectionId, focusRow }: { sectionId: string; focusRow
                 );
               const { row, cellTone, issues, active } = it.a;
               return (
-              <tr
-                key={row.id}
-                id={"row-" + row.id}
-                style={row.height ? { height: row.height } : undefined}
-                className={cn("group/row bg-card", !active && "opacity-60", sel === row.id && "row-selected")}
-              >
-                <td
-                  onClick={() => setSel(sel === row.id ? null : row.id)}
-                  title={
-                    isNewDriver(data, row.driverId)
-                      ? "New Driver (onboarding) — not in company lists until Move to Active"
-                      : "Click to select this driver's row"
-                  }
+                <tr
+                  key={row.id}
+                  id={"row-" + row.id}
+                  style={row.height ? { height: row.height } : undefined}
                   className={cn(
-                    "sticky left-0 z-10 cursor-pointer select-none border-b border-r border-foreground/35 px-2 py-1.5 align-top text-sm font-bold text-foreground", issues.length > 0 ? "bg-danger-row" : "bg-card",
-                    issues.length > 0 && "border-l-4 border-l-danger text-danger",
+                    "group/row bg-card",
+                    !active && "opacity-60",
+                    sel === row.id && "row-selected",
                   )}
                 >
-                  <div className="relative h-full">
-                    {ri + 1}
-                    {isNewDriver(data, row.driverId) && (
-                      <span className="mt-1 block rounded bg-info/15 px-1 text-[10px] font-bold text-info">NEW</span>
+                  <td
+                    onClick={() => setSel(sel === row.id ? null : row.id)}
+                    title={
+                      isNewDriver(data, row.driverId)
+                        ? "New Driver (onboarding) — not in company lists until Move to Active"
+                        : "Click to select this driver's row"
+                    }
+                    className={cn(
+                      "sticky left-0 z-10 cursor-pointer select-none border-b border-r border-foreground/35 px-2 py-1.5 align-top text-sm font-bold text-foreground",
+                      issues.length > 0 ? "bg-danger-row" : "bg-card",
+                      issues.length > 0 && "border-l-4 border-l-danger text-danger",
                     )}
-                    {issues.length > 0 && (
-                      <span
-                        className="tracker-status-dot mt-1 block bg-danger"
-                        title={issues.map((x) => x.label).join("\n")}
-                        aria-label={`${issues.length} issue${issues.length > 1 ? "s" : ""}`}
-                      />
-                    )}
-                  </div>
-                  {!rlock && <span
-                    onMouseDown={(e) => startRowResize(e, row.id)}
-                    title="Drag to resize row"
-                    className="absolute right-0 bottom-0 left-0 h-2 cursor-row-resize hover:bg-primary/40"
-                  />}
-                </td>
-                {order.map((ci) => [def.types[ci], ci] as const).map(([t, ci]) => {
-                  if (!visible[ci]) return null;
-                  const v = row.cells[ci] ?? "";
-                  const save = (nv: string) => setCell(sectionId, row.id, ci, nv);
-                  const tone = cellTone[ci];
-                  const flagged = !!tone && tone !== "ok" && tone !== "muted";
-                  return (
-                    <td
-                      key={ci}
-                      className={cn(
-                        "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground",
-                        issues.length > 0 ? "bg-danger-row" : "bg-card",
-                        flagged && "tracker-cell-flag",
-                        ci === 0 && "freeze-edge sticky left-[70px] z-10",
-                      )}
-                    >
-                      {t === "name" && (
-                        <span data-driver-name className="flex flex-wrap items-start gap-1.5">
-                          <EditableText value={v} onSave={save} bold className="text-base" />
-                          <TempNotesBadge driverId={row.driverId} className="mt-0.5" />
-                          {fixedIds.has(row.id) && (
-                            <span className="mt-1 shrink-0 rounded-md bg-ok-soft px-1.5 py-0.5 text-xs font-bold text-ok">Fixed ✓</span>
-                          )}
+                  >
+                    <div className="relative h-full">
+                      {ri + 1}
+                      {isNewDriver(data, row.driverId) && (
+                        <span className="mt-1 block rounded bg-info/15 px-1 text-[10px] font-bold text-info">
+                          NEW
                         </span>
                       )}
-                      {(t === "text" || t === "state") && (
-                        <EditableText value={v} onSave={save} boxed={!!tone} tone={tone} className={t === "state" ? "font-bold" : ""} />
+                      {issues.length > 0 && (
+                        <span
+                          className="tracker-status-dot mt-1 block bg-danger"
+                          title={issues.map((x) => x.label).join("\n")}
+                          aria-label={`${issues.length} issue${issues.length > 1 ? "s" : ""}`}
+                        />
                       )}
-                      {t === "secret" && <EditableText value={v} onSave={save} mask tone={tone} boxed={!!tone} />}
-                      {(t === "note" || t === "plan" || t === "tempnote") && (
-                        <div>
-                          <EditableText
-                            value={v}
-                            onSave={save}
-                            boxed
-                            tone={tone ?? (v.trim() && t === "plan" ? undefined : tone)}
-                            placeholder={
-                              t === "plan"
-                                ? "Add future plan"
-                                : t === "tempnote"
-                                  ? "Add temporary reminder (never highlights)"
-                                  : "Add note"
-                            }
-                          />
-                          {t === "plan" && (
-                            <div className="mt-1">
-                              <FuturePlanSuggest
-                                suggestion={suggestPlanForCell(sectionId, ci, row)}
-                                existingPlan={v}
-                                sectionId={sectionId}
-                                rowId={row.id}
-                                planCol={ci}
-                                compact
+                    </div>
+                    {!rlock && (
+                      <span
+                        onMouseDown={(e) => startRowResize(e, row.id)}
+                        title="Drag to resize row"
+                        className="absolute right-0 bottom-0 left-0 h-2 cursor-row-resize hover:bg-primary/40"
+                      />
+                    )}
+                  </td>
+                  {order
+                    .map((ci) => [def.types[ci], ci] as const)
+                    .map(([t, ci]) => {
+                      if (!visible[ci]) return null;
+                      const v = row.cells[ci] ?? "";
+                      const save = (nv: string) => setCell(sectionId, row.id, ci, nv);
+                      const tone = cellTone[ci];
+                      const flagged = !!tone && tone !== "ok" && tone !== "muted";
+                      return (
+                        <td
+                          key={ci}
+                          className={cn(
+                            "border-b border-r border-foreground/35 px-2 py-1.5 align-top text-foreground",
+                            issues.length > 0 ? "bg-danger-row" : "bg-card",
+                            flagged && "tracker-cell-flag",
+                            ci === 0 && "freeze-edge sticky left-[70px] z-10",
+                          )}
+                        >
+                          {t === "name" && (
+                            <span data-driver-name className="flex flex-wrap items-start gap-1.5">
+                              <EditableText value={v} onSave={save} bold className="text-base" />
+                              <TempNotesBadge driverId={row.driverId} className="mt-0.5" />
+                              {fixedIds.has(row.id) && (
+                                <span className="mt-1 shrink-0 rounded-md bg-ok-soft px-1.5 py-0.5 text-xs font-bold text-ok">
+                                  Fixed ✓
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {(t === "text" || t === "state") && (
+                            <EditableText
+                              value={v}
+                              onSave={save}
+                              boxed={!!tone}
+                              tone={tone}
+                              className={t === "state" ? "font-bold" : ""}
+                            />
+                          )}
+                          {t === "secret" && (
+                            <EditableText value={v} onSave={save} mask tone={tone} boxed={!!tone} />
+                          )}
+                          {(t === "note" || t === "plan" || t === "tempnote") && (
+                            <div>
+                              <EditableText
+                                value={v}
+                                onSave={save}
+                                boxed
+                                tone={tone ?? (v.trim() && t === "plan" ? undefined : tone)}
+                                placeholder={
+                                  t === "plan"
+                                    ? "Add future plan"
+                                    : t === "tempnote"
+                                      ? "Add temporary reminder (never highlights)"
+                                      : "Add note"
+                                }
                               />
+                              {t === "plan" && (
+                                <div className="mt-1">
+                                  <FuturePlanSuggest
+                                    suggestion={suggestPlanForCell(sectionId, ci, row)}
+                                    existingPlan={v}
+                                    sectionId={sectionId}
+                                    rowId={row.id}
+                                    planCol={ci}
+                                    compact
+                                  />
+                                </div>
+                              )}
                             </div>
                           )}
-                        </div>
-                      )}
-                      {t === "date" && (
-                        <DateCell
-                          value={v}
-                          onSave={save}
-                          tone={tone}
-                          appliedStatus={
-                            // Pair Exact Expiration with its status column (DMV / Queries Applied).
-                            def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci) >= 0
-                              ? row.cells[
-                                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === ci)
-                                ]
-                              : undefined
-                          }
-                        />
-                      )}
-                      {t === "status" && (
-                        <StatusToggle
-                          value={v}
-                          options={def.statusOptions}
-                          onSave={save}
-                          expiryValue={(() => {
-                            const exp = statusExpiryCol(sectionId, ci);
-                            return exp != null ? row.cells[exp] : undefined;
-                          })()}
-                        />
-                      )}
-                      {t === "active" && <ActiveToggle value={v} onSave={save} />}
-                      {t === "score" && <ScoreBar value={complianceScore(row)} />}
-                    </td>
-                  );
-                })}
-                <td className={cn("border-b border-foreground/35 px-2 py-3 align-top", issues.length > 0 ? "bg-danger-row" : "bg-card")}>
-                  {!view && <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(`Delete ${row.cells[0].trim()} from ALL sections? This cannot be undone.`)) deleteDriver(row.driverId);
-                    }}
-                    className="rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"
-                    aria-label="Delete driver"
+                          {t === "date" && (
+                            <DateCell
+                              value={v}
+                              onSave={save}
+                              tone={tone}
+                              appliedStatus={
+                                // Pair Exact Expiration with its status column (DMV / Queries Applied).
+                                def.types.findIndex(
+                                  (x, idx) =>
+                                    x === "status" && statusExpiryCol(sectionId, idx) === ci,
+                                ) >= 0
+                                  ? row.cells[
+                                      def.types.findIndex(
+                                        (x, idx) =>
+                                          x === "status" && statusExpiryCol(sectionId, idx) === ci,
+                                      )
+                                    ]
+                                  : undefined
+                              }
+                            />
+                          )}
+                          {t === "status" && (
+                            <StatusToggle
+                              value={v}
+                              options={def.statusOptions}
+                              onSave={save}
+                              expiryValue={(() => {
+                                const exp = statusExpiryCol(sectionId, ci);
+                                return exp != null ? row.cells[exp] : undefined;
+                              })()}
+                            />
+                          )}
+                          {t === "active" && <ActiveToggle value={v} onSave={save} />}
+                          {t === "score" && <ScoreBar value={complianceScore(row)} />}
+                        </td>
+                      );
+                    })}
+                  <td
+                    className={cn(
+                      "border-b border-foreground/35 px-2 py-3 align-top",
+                      issues.length > 0 ? "bg-danger-row" : "bg-card",
+                    )}
                   >
-                    <Trash2 className="size-5" />
-                  </button>}
-                </td>
-              </tr>
+                    {!view && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Delete ${row.cells[0].trim()} from ALL sections? This cannot be undone.`,
+                            )
+                          )
+                            deleteDriver(row.driverId);
+                        }}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"
+                        aria-label="Delete driver"
+                      >
+                        <Trash2 className="size-5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
               );
             })}
             {!items.length && (
               <tr>
-                <td colSpan={def.types.length + 2} className="p-10 text-center text-lg text-muted-foreground">
+                <td
+                  colSpan={def.types.length + 2}
+                  className="p-10 text-center text-lg text-muted-foreground"
+                >
                   No rows match.
                 </td>
               </tr>

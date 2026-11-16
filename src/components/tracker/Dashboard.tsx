@@ -298,7 +298,7 @@ function SectionAlerts({
 
   const items = useMemo(
     () =>
-      sec.rows
+      (sec?.rows ?? [])
         .filter((r) => {
           // Ordinary company alerts — New Drivers excluded from Show all; OO has dedicated scope on Cards/DMV.
           if (isNewDriver(data, r.driverId) || isOwnerOperator(data, r.driverId)) return false;
@@ -765,6 +765,7 @@ function TodayPanel() {
     for (const def of SECTIONS) {
       if (def.id === "inactive") continue;
       const sec = data.sections[def.id];
+      if (!sec || !Array.isArray(sec.rows)) continue;
       for (const r of sec.rows) {
         // Leave / inactive / New / Owner Op excluded from ordinary compliance & urgent counters.
         if (rowOrdinaryComplianceMuted(def, r, data)) continue;
