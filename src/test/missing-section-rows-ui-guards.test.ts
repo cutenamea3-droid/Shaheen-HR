@@ -1,0 +1,23 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+describe("missing section rows UI guards", () => {
+  it("AppShell nav counts skip sections without rows", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/tracker/AppShell.tsx"), "utf8");
+    expect(src).toMatch(/if \(!sec \|\| !Array\.isArray\(sec\.rows\)\)/);
+  });
+
+  it("DataTable uses empty fallback when section rows missing", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/tracker/DataTable.tsx"), "utf8");
+    expect(src).toMatch(/sectionMissing/);
+    expect(src).toMatch(/missing or corrupt cloud data/);
+  });
+
+  it("setCell returns early when rows missing", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/store.ts"), "utf8");
+    expect(src).toMatch(
+      /export function setCell[\s\S]*?if \(!sec \|\| !Array\.isArray\(sec\.rows\)\) return d/,
+    );
+  });
+});
