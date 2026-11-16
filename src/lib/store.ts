@@ -418,8 +418,9 @@ SECTIONS.forEach((s) => {
 export function setCell(sectionId: string, rowId: string, col: number, value: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    const row = sec?.rows.find((r) => r.id === rowId);
-    if (!row || !sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
+    const row = sec.rows.find((r) => r.id === rowId);
+    if (!row) return d;
     const isActive = SECTIONS.find((s) => s.id === sectionId)?.types[col] === "active";
     const sections = { ...d.sections };
     if (isActive) {
