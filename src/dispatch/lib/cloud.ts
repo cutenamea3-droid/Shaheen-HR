@@ -157,6 +157,9 @@ export type LoadWriteInput = {
 
 export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   const now = new Date().toISOString();
+  if (!input.load_number?.trim()) {
+    throw new Error("Load number is required.");
+  }
   if (input.status === "cancelled") {
     const err = validateCancel(input.cancel_reason ?? "");
     if (err) throw new Error(err);

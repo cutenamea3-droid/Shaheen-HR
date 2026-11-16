@@ -9,6 +9,13 @@ describe("Dispatch fixture cloud (not production fake)", () => {
     vi.resetModules();
   });
 
+  it("rejects blank load numbers", async () => {
+    const cloud = await import("@/dispatch/lib/cloud");
+    await expect(cloud.saveLoad({ load_number: "   ", status: "planned" })).rejects.toThrow(
+      /Load number is required/,
+    );
+  });
+
   it("saves loads with multi-stop and unlimited assign, keeps Delivered ≠ Closed", async () => {
     const cloud = await import("@/dispatch/lib/cloud");
     const drivers = await cloud.listRosterDrivers();
