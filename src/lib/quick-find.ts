@@ -74,7 +74,7 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       let d = map.get(r.driverId);
       if (!d) {

@@ -401,7 +401,7 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive" || def.id === "info" || def.id === "docs") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       for (const { col, label } of horizonDateCols(def)) {
@@ -441,6 +441,7 @@ export function collectPlans(data: AppData): PlanItem[] {
   const out: PlanItem[] = [];
   for (const def of SECTIONS) {
     const sec = data.sections[def.id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
@@ -565,7 +566,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive" || def.id === "docs" || def.id === "info") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       const driver = (row.cells[0] ?? "").trim() || "—";
@@ -666,7 +667,7 @@ export function fleetCompliancePct(data: AppData) {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, r, data)) continue;
       const name = (r.cells[0] ?? "").trim().toLowerCase();

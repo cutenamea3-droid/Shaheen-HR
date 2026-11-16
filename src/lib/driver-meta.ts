@@ -123,7 +123,7 @@ export function collectTempNotes(data: AppData, driverId: string): TempNoteSecti
   const out: TempNoteSection[] = [];
   for (const def of TEMPNOTE_SECTIONS) {
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     const row = sec.rows.find((r) => r.driverId === driverId);
     if (!row) continue;
     const idx = def.types.indexOf("tempnote");
@@ -144,7 +144,7 @@ export function mapDriverRows(data: AppData, driverId: string, patch: (row: Row,
   const sections = { ...data.sections };
   for (const def of SECTIONS) {
     const sec = sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     let touched = false;
     const rows = sec.rows.map((r) => {
       if (r.driverId !== driverId) return r;

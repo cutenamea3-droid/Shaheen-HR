@@ -25,7 +25,7 @@ export function buildDriverDailyCounts(data: AppData): DriverDailyCounts {
 
   for (const def of SECTIONS) {
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (isNewDriver(data, r.driverId)) newDrivers.add(r.driverId);
       else if (isOwnerOperator(data, r.driverId)) ooDrivers.add(r.driverId);

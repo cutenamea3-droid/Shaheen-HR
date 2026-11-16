@@ -193,7 +193,7 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
   for (const def of SECTIONS) {
     if (!["dmv", "medical", "queries", "ssccdl"].includes(def.id)) continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;

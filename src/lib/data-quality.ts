@@ -171,7 +171,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
   for (const def of SECTIONS) {
     if (!["dmv", "medical", "queries", "ssccdl"].includes(def.id)) continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       for (let col = 0; col < def.types.length; col++) {
         if (def.types[col] !== "status") continue;

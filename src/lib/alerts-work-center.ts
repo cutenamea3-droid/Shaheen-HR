@@ -164,7 +164,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
 
     for (const row of sec.rows) {
       const driver = (row.cells[0] ?? "").trim() || "—";
@@ -488,7 +488,7 @@ export function findWorkCenterRow(
   rowId: string,
 ): { row: Row; headers: string[] } | null {
   const sec = data.sections[sectionId];
-  if (!sec) return null;
+  if (!sec || !Array.isArray(sec.rows)) return null;
   const row = sec.rows.find((r) => r.id === rowId);
   if (!row) return null;
   return { row, headers: sec.headers };

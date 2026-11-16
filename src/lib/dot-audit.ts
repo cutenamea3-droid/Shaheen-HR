@@ -23,6 +23,7 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (activeOnly && !rowIsActive(def, r, data)) continue;
       let row = map.get(r.driverId);

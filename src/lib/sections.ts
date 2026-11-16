@@ -466,7 +466,7 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
 
   for (const def of SECTIONS) {
     const sec = sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
 
     let headers = [...sec.headers];
     let widths = [...(sec.widths ?? [])];

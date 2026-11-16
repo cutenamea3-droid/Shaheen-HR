@@ -95,7 +95,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
   for (const rule of PLAN_LEAD_RULES) {
     const sec = data.sections[rule.sectionId];
     const def = SECTIONS.find((s) => s.id === rule.sectionId);
-    if (!sec || !def) continue;
+    if (!sec || !def || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
