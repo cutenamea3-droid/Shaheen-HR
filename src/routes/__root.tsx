@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
-  Link,
   createRootRouteWithContext,
   useRouter,
   HeadContent,
@@ -20,6 +19,9 @@ import { ModuleRedirector, useHomePathAfterProbe } from "@/components/ModuleRedi
 import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
+  // Same as ErrorComponent: Admin-/Dispatch-only seats must not be sent to `/`
+  // (Compliance Access Denied loop). Probe after mount; default `/` until then.
+  const homePath = useHomePathAfterProbe();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
@@ -29,12 +31,12 @@ function NotFoundComponent() {
           The page you're looking for doesn't exist or has been moved.
         </p>
         <div className="mt-6">
-          <Link
-            to="/"
+          <a
+            href={homePath}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Go home
-          </Link>
+          </a>
         </div>
       </div>
     </div>
@@ -89,7 +91,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Shaheen Transport — Driver Compliance & HR" },
       { name: "description", content: "HR compliance tracker for Shaheen Transport LLC drivers." },
       { property: "og:title", content: "Shaheen Driver Files Tracker" },
-      { property: "og:description", content: "HR compliance tracker for Shaheen Transport LLC drivers." },
+      {
+        property: "og:description",
+        content: "HR compliance tracker for Shaheen Transport LLC drivers.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -139,8 +144,7 @@ function RootComponent() {
   // SPA shell is prerendered for `/` only. Defer LockGate until after hydration so
   // `/admin` `/personal` `/dispatch` do not structurally mismatch the shell (React #418).
   // Dispatch / Personal / Access Denied / Admin skip Driver LockGate (Batch 2 / #26).
-  const useDriverLock =
-    hydrated && !(isAdmin || isDispatch || isPersonal || isDenied || isPublic);
+  const useDriverLock = hydrated && !(isAdmin || isDispatch || isPersonal || isDenied || isPublic);
 
   return (
     <QueryClientProvider client={queryClient}>
