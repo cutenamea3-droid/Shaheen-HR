@@ -510,11 +510,15 @@ export function setRowHeight(sectionId: string, rowId: string, h: number) {
 export function deleteDriver(driverId: string) {
   update((d) => {
     const sections = { ...d.sections };
-    for (const k of Object.keys(sections))
+    for (const k of Object.keys(sections)) {
+      const prev = sections[k];
+      // Skip corrupt/missing rows — same class of crash as addDriver on unknown sections.
+      if (!prev || !Array.isArray(prev.rows)) continue;
       sections[k] = {
-        ...sections[k],
-        rows: sections[k].rows.filter((r) => r.driverId !== driverId),
+        ...prev,
+        rows: prev.rows.filter((r) => r.driverId !== driverId),
       };
+    }
     return { ...d, sections };
   });
 }

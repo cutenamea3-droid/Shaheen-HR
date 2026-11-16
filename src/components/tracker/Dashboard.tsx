@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FileDown, CalendarClock, AlertTriangle, Users, ShieldCheck, Clock3, Search, ArrowRight, ClipboardCopy, Radar } from "lucide-react";
+import {
+  FileDown,
+  CalendarClock,
+  AlertTriangle,
+  Users,
+  ShieldCheck,
+  Clock3,
+  Search,
+  ArrowRight,
+  ClipboardCopy,
+  Radar,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SECTIONS, type SectionDef } from "@/lib/sections";
@@ -36,11 +47,19 @@ import { SECTION_ICONS } from "./AppShell";
 type Cat = "all" | "expired" | "soon" | "applied" | "missing" | "notes";
 const CATS: { id: Cat; label: string; match: (i: Issue) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
-  { id: "expired", label: "Expired", match: (i) => i.tone === "danger" && /expired/i.test(i.label) },
+  {
+    id: "expired",
+    label: "Expired",
+    match: (i) => i.tone === "danger" && /expired/i.test(i.label),
+  },
   { id: "soon", label: "Expiring soon", match: (i) => i.tone === "warn" },
   // Match by label so Applied + remaining / Expired + Applied stay under Applied (tone may be warn/danger).
   { id: "applied", label: "Applied", match: (i) => /applied/i.test(i.label) },
-  { id: "missing", label: "Missing / Invalid", match: (i) => (i.tone === "danger" && !/expired/i.test(i.label)) || i.tone === "sign" },
+  {
+    id: "missing",
+    label: "Missing / Invalid",
+    match: (i) => (i.tone === "danger" && !/expired/i.test(i.label)) || i.tone === "sign",
+  },
   { id: "notes", label: "Notes", match: (i) => i.tone === "note" },
 ];
 type ActiveF = "active" | "inactive" | "all";
@@ -66,19 +85,31 @@ export function Dashboard() {
   };
 
   const stats = useMemo(() => {
-    const dmv = data.sections.dmv.rows;
+    // Missing/corrupt sections after a skipped cloud parse must not crash the home stats.
+    const dmv = data.sections.dmv?.rows ?? [];
     const def = SECTIONS[0];
     // Ordinary company roster — New Drivers and Owner Operators excluded from these counts.
-    const roster = dmv.filter((r) => !isNewDriver(data, r.driverId) && !isOwnerOperator(data, r.driverId));
-    const active = roster.filter((r) => rowIsActive(def, r, data) && !rowAlertsMuted(def, r, data)).length;
-    const leave = roster.filter((r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data)).length;
+    const roster = dmv.filter(
+      (r) => !isNewDriver(data, r.driverId) && !isOwnerOperator(data, r.driverId),
+    );
+    const active = roster.filter(
+      (r) => rowIsActive(def, r, data) && !rowAlertsMuted(def, r, data),
+    ).length;
+    const leave = roster.filter(
+      (r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data),
+    ).length;
     const inactive = roster.filter((r) => !rowIsActive(def, r, data)).length;
-    const docs = data.sections.docs.rows.filter((r) => !rowOrdinaryComplianceMuted(SECTIONS[4], r, data));
-    const avg = docs.length ? Math.round(docs.reduce((a, r) => a + complianceScore(r), 0) / docs.length) : 0;
+    const docs = (data.sections.docs?.rows ?? []).filter(
+      (r) => !rowOrdinaryComplianceMuted(SECTIONS[4], r, data),
+    );
+    const avg = docs.length
+      ? Math.round(docs.reduce((a, r) => a + complianceScore(r), 0) / docs.length)
+      : 0;
     let alerts = 0;
     let expired = 0;
     for (const d of SECTIONS) {
       const sec = data.sections[d.id];
+      if (!sec || !Array.isArray(sec.rows)) continue;
       for (const r of sec.rows) {
         if (rowOrdinaryComplianceMuted(d, r, data)) continue;
         const { issues } = analyzeRow(d, sec.headers, r);
@@ -92,11 +123,41 @@ export function Dashboard() {
   return (
     <div className="space-y-5 sm:space-y-6">
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-5">
-        <Stat icon={Users} label="Company drivers" value={stats.total} sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`} tone="bg-brand" />
-        <Stat icon={AlertTriangle} label="Rows needing attention" value={stats.alerts} sub="New, Owner Op, leave & inactive excluded" tone="bg-danger" />
-        <Stat icon={Clock3} label="Already expired" value={stats.expired} sub="act today" tone="bg-warn" />
-        <Stat icon={ShieldCheck} label="Avg document compliance" value={`${stats.avg}%`} sub="Other Documents · active only" tone="bg-eagle" />
-        <Stat icon={CalendarClock} label="Today" value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })} sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })} tone="bg-info" />
+        <Stat
+          icon={Users}
+          label="Company drivers"
+          value={stats.total}
+          sub={`${stats.active} active · ${stats.leave} leave · ${stats.inactive} inactive`}
+          tone="bg-brand"
+        />
+        <Stat
+          icon={AlertTriangle}
+          label="Rows needing attention"
+          value={stats.alerts}
+          sub="New, Owner Op, leave & inactive excluded"
+          tone="bg-danger"
+        />
+        <Stat
+          icon={Clock3}
+          label="Already expired"
+          value={stats.expired}
+          sub="act today"
+          tone="bg-warn"
+        />
+        <Stat
+          icon={ShieldCheck}
+          label="Avg document compliance"
+          value={`${stats.avg}%`}
+          sub="Other Documents · active only"
+          tone="bg-eagle"
+        />
+        <Stat
+          icon={CalendarClock}
+          label="Today"
+          value={today().toLocaleDateString("en-US", { day: "numeric", month: "short" })}
+          sub={today().toLocaleDateString("en-US", { weekday: "long", year: "numeric" })}
+          tone="bg-info"
+        />
       </div>
 
       <DailySummary onApplied={setAppliedFocus} />
@@ -121,7 +182,10 @@ export function Dashboard() {
                   type="button"
                   onClick={() => setAf(f)}
                   aria-pressed={af === f}
-                  className={cn("tracker-filter-btn capitalize", af === f && "tracker-filter-btn-on")}
+                  className={cn(
+                    "tracker-filter-btn capitalize",
+                    af === f && "tracker-filter-btn-on",
+                  )}
                 >
                   {f === "all" ? "Show all" : f}
                 </button>
@@ -159,17 +223,42 @@ export function Dashboard() {
 
       <div className="grid gap-5 2xl:grid-cols-2">
         {SECTIONS.filter((s) => s.id !== "inactive").map((def) => (
-          <SectionAlerts key={def.id} def={def} af={af} q={q} exp={exp} focusCat={focusCat} onCat={setFocusCat} />
+          <SectionAlerts
+            key={def.id}
+            def={def}
+            af={af}
+            q={q}
+            exp={exp}
+            focusCat={focusCat}
+            onCat={setFocusCat}
+          />
         ))}
       </div>
     </div>
   );
 }
 
-function Stat({ icon: Icon, label, value, sub, tone }: { icon: typeof Users; label: string; value: React.ReactNode; sub: string; tone: string }) {
+function Stat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: React.ReactNode;
+  sub: string;
+  tone: string;
+}) {
   return (
     <div className="ui-lift flex items-center gap-4 rounded-2xl border bg-card p-5 shadow-card">
-      <div className={cn("grid size-14 shrink-0 place-items-center rounded-2xl text-primary-foreground shadow-card", tone)}>
+      <div
+        className={cn(
+          "grid size-14 shrink-0 place-items-center rounded-2xl text-primary-foreground shadow-card",
+          tone,
+        )}
+      >
         <Icon className="size-7" />
       </div>
       <div className="min-w-0">
@@ -226,16 +315,23 @@ function SectionAlerts({
         .filter((x) => !q.trim() || x.row.cells[0].toLowerCase().includes(q.toLowerCase())),
     [sec, def, data, af, q, exp],
   );
-  const catCount = (c: Cat) => items.filter((x) => x.issues.some(CATS.find((k) => k.id === c)!.match)).length;
+  const catCount = (c: Cat) =>
+    items.filter((x) => x.issues.some(CATS.find((k) => k.id === c)!.match)).length;
   const shown = items.filter((x) => x.issues.some(CATS.find((k) => k.id === cat)!.match));
 
   function pdf() {
-    const m = report === "all" ? CATS[0].match : report === "applied" ? CATS[3].match : CATS[4].match;
+    const m =
+      report === "all" ? CATS[0].match : report === "applied" ? CATS[3].match : CATS[4].match;
     const rows = items
       .map((x) => ({ x, iss: x.issues.filter(m) }))
       .filter((y) => y.iss.length)
-      .map(({ x, iss }) => [x.row.cells[0].trim(), iss.map((i) => i.label).join("\n"), noteText(def, x.row.cells)]);
-    const label = report === "all" ? "All alerts" : report === "applied" ? "Applied" : "Missing & Invalid";
+      .map(({ x, iss }) => [
+        x.row.cells[0].trim(),
+        iss.map((i) => i.label).join("\n"),
+        noteText(def, x.row.cells),
+      ]);
+    const label =
+      report === "all" ? "All alerts" : report === "applied" ? "Applied" : "Missing & Invalid";
     downloadReportPdf(def.title, label, ["Driver", "Issues", "Notes / Plans"], rows);
   }
 
@@ -261,7 +357,11 @@ function SectionAlerts({
             {def.statusOptions.includes("Applied") && <option value="applied">Applied</option>}
             <option value="all">All alerts</option>
           </select>
-          <button type="button" onClick={pdf} className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-bold text-ink-foreground hover:opacity-90">
+          <button
+            type="button"
+            onClick={pdf}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-3 text-sm font-bold text-ink-foreground hover:opacity-90"
+          >
             <FileDown className="size-4" /> PDF
           </button>
         </div>
@@ -278,7 +378,9 @@ function SectionAlerts({
               aria-pressed={cat === c.id}
               className={cn(
                 "tracker-filter-btn border-2 border-transparent",
-                cat === c.id ? "border-primary bg-primary text-primary-foreground" : "bg-muted/60 hover:border-primary/50",
+                cat === c.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "bg-muted/60 hover:border-primary/50",
               )}
             >
               {c.label} <span className="opacity-75">{n}</span>
@@ -287,23 +389,37 @@ function SectionAlerts({
         })}
       </div>
       <div className="max-h-[440px] space-y-2 overflow-y-auto p-5">
-        {!shown.length && <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">All clear here ✓</p>}
+        {!shown.length && (
+          <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">
+            All clear here ✓
+          </p>
+        )}
         {shown.map(({ row, issues }) => (
           <button
             key={row.id}
             type="button"
-            onClick={() => navigate({ to: "/s/$sectionId", params: { sectionId: def.id }, search: { row: row.id } })}
+            onClick={() =>
+              navigate({
+                to: "/s/$sectionId",
+                params: { sectionId: def.id },
+                search: { row: row.id },
+              })
+            }
             className="ui-press group flex w-full items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3 text-left transition hover:border-primary/50 hover:bg-accent"
           >
             <div className="min-w-0 flex-1">
               <div className="text-[1.05rem] font-extrabold">{row.cells[0].trim()}</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {dedupe(issues).map((i, k) => (
-                  <Chip key={k} tone={i.tone}>{i.label}</Chip>
+                  <Chip key={k} tone={i.tone}>
+                    {i.label}
+                  </Chip>
                 ))}
               </div>
               {noteText(def, row.cells) && (
-                <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-note-soft px-3 py-2 text-sm">{noteText(def, row.cells)}</p>
+                <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-note-soft px-3 py-2 text-sm">
+                  {noteText(def, row.cells)}
+                </p>
               )}
             </div>
             <ArrowRight className="mt-1 size-5 shrink-0 text-muted-foreground group-hover:text-primary" />
@@ -346,16 +462,22 @@ function FuturePlans() {
   const inRange = (d: Date) => {
     const n = daysUntil(d);
     switch (range) {
-      case "overdue": return n < 0;
-      case "today": return n === 0;
-      case "week": return n >= 0 && n <= 7;
-      case "month": return d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
+      case "overdue":
+        return n < 0;
+      case "today":
+        return n === 0;
+      case "week":
+        return n >= 0 && n <= 7;
+      case "month":
+        return d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear();
       case "next": {
         const nm = new Date(t.getFullYear(), t.getMonth() + 1, 1);
         return d.getMonth() === nm.getMonth() && d.getFullYear() === nm.getFullYear();
       }
-      case "year": return d.getFullYear() === t.getFullYear();
-      default: return n >= 0;
+      case "year":
+        return d.getFullYear() === t.getFullYear();
+      default:
+        return n >= 0;
     }
   };
   const list = plans.filter((p) => inRange(p.date) && (secF === "all" || p.sectionId === secF));
@@ -372,14 +494,24 @@ function FuturePlans() {
           </div>
           <div>
             <h2 className="text-xl font-extrabold">Future Plans & Tasks</h2>
-            <p className="text-sm text-muted-foreground">Dates read from your Future Plans / Notes text in every section</p>
+            <p className="text-sm text-muted-foreground">
+              Dates read from your Future Plans / Notes text in every section
+            </p>
           </div>
         </div>
-        <select value={secF} onChange={(e) => setSecF(e.target.value)} className="h-10 rounded-lg border-2 bg-card px-2 text-sm font-semibold">
+        <select
+          value={secF}
+          onChange={(e) => setSecF(e.target.value)}
+          className="h-10 rounded-lg border-2 bg-card px-2 text-sm font-semibold"
+        >
           <option value="all">All sections</option>
-          {SECTIONS.filter((s) => ["dmv", "medical", "queries", "ssccdl"].includes(s.id)).map((s) => (
-            <option key={s.id} value={s.id}>{s.title}</option>
-          ))}
+          {SECTIONS.filter((s) => ["dmv", "medical", "queries", "ssccdl"].includes(s.id)).map(
+            (s) => (
+              <option key={s.id} value={s.id}>
+                {s.title}
+              </option>
+            ),
+          )}
         </select>
       </div>
       <div className="flex flex-wrap gap-2 px-5 pt-4">
@@ -388,28 +520,50 @@ function FuturePlans() {
             key={r.id}
             type="button"
             onClick={() => setRange(r.id)}
-            className={cn("rounded-lg border-2 px-3 py-1.5 text-sm font-bold", range === r.id ? "border-eagle bg-eagle text-primary-foreground" : "bg-muted/60 hover:border-eagle/50")}
+            className={cn(
+              "rounded-lg border-2 px-3 py-1.5 text-sm font-bold",
+              range === r.id
+                ? "border-eagle bg-eagle text-primary-foreground"
+                : "bg-muted/60 hover:border-eagle/50",
+            )}
           >
             {r.label}
           </button>
         ))}
       </div>
       <div className="grid max-h-[420px] gap-2 overflow-y-auto p-5 md:grid-cols-2 xl:grid-cols-3">
-        {!list.length && <p className="col-span-full rounded-xl bg-muted px-4 py-6 text-center text-base text-muted-foreground">No plans in this range.</p>}
+        {!list.length && (
+          <p className="col-span-full rounded-xl bg-muted px-4 py-6 text-center text-base text-muted-foreground">
+            No plans in this range.
+          </p>
+        )}
         {list.map((p, i) => (
           <button
             key={i}
             type="button"
-            onClick={() => navigate({ to: "/s/$sectionId", params: { sectionId: p.sectionId }, search: { row: p.rowId } })}
+            onClick={() =>
+              navigate({
+                to: "/s/$sectionId",
+                params: { sectionId: p.sectionId },
+                search: { row: p.rowId },
+              })
+            }
             className="flex items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 p-3 text-left hover:border-eagle/50"
           >
-            <Chip tone={toneFor(p.date)} className="shrink-0 flex-col gap-0 px-3 py-1.5 text-center leading-tight">
-              <span className="text-xs uppercase">{p.date.toLocaleDateString("en-US", { month: "short" })}</span>
+            <Chip
+              tone={toneFor(p.date)}
+              className="shrink-0 flex-col gap-0 px-3 py-1.5 text-center leading-tight"
+            >
+              <span className="text-xs uppercase">
+                {p.date.toLocaleDateString("en-US", { month: "short" })}
+              </span>
               <span className="font-display text-xl">{p.date.getDate()}</span>
             </Chip>
             <div className="min-w-0">
               <div className="font-extrabold">{p.driver.trim()}</div>
-              <div className="text-xs font-bold tracking-wide text-primary uppercase">{SECTIONS.find((s) => s.id === p.sectionId)?.title}</div>
+              <div className="text-xs font-bold tracking-wide text-primary uppercase">
+                {SECTIONS.find((s) => s.id === p.sectionId)?.title}
+              </div>
               <p className="mt-1 text-sm whitespace-pre-wrap break-words">{p.text}</p>
               <p className="text-xs text-muted-foreground">{fmtDate(p.date)}</p>
             </div>
@@ -478,7 +632,9 @@ function HorizonRadar() {
           </div>
           <div>
             <h2 className="text-xl font-extrabold">90-Day Horizon Radar</h2>
-            <p className="text-sm text-muted-foreground">Document expirations this month, next, and the month after — click a column to filter</p>
+            <p className="text-sm text-muted-foreground">
+              Document expirations this month, next, and the month after — click a column to filter
+            </p>
           </div>
         </div>
         {bucket && (
@@ -502,16 +658,21 @@ function HorizonRadar() {
               onClick={() => setBucket(on ? null : m.id)}
               className={cn(
                 "ui-press rounded-2xl border-2 p-4 text-left transition",
-                on ? "border-eagle bg-eagle/10 shadow-card" : "border-transparent bg-muted/50 hover:border-eagle/40",
+                on
+                  ? "border-eagle bg-eagle/10 shadow-card"
+                  : "border-transparent bg-muted/50 hover:border-eagle/40",
               )}
             >
-              <div className="text-xs font-extrabold tracking-widest text-muted-foreground uppercase">{m.label}</div>
+              <div className="text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
+                {m.label}
+              </div>
               <div className="mt-1 font-display text-sm font-bold text-foreground">
                 {m.date.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
               </div>
               <div className="mt-3 font-display text-3xl font-extrabold">{n.docs}</div>
               <div className="text-sm text-muted-foreground">
-                doc{n.docs === 1 ? "" : "s"} · {n.drivers.size} driver{n.drivers.size === 1 ? "" : "s"}
+                doc{n.docs === 1 ? "" : "s"} · {n.drivers.size} driver
+                {n.drivers.size === 1 ? "" : "s"}
               </div>
             </button>
           );
@@ -520,17 +681,30 @@ function HorizonRadar() {
       {bucket && (
         <div className="max-h-[360px] space-y-2 overflow-y-auto border-t p-5">
           {!filtered.length && (
-            <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">No documents due in this month ✓</p>
+            <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">
+              No documents due in this month ✓
+            </p>
           )}
           {filtered.map((d) => (
             <button
               key={`${d.sectionId}-${d.rowId}-${d.col}`}
               type="button"
-              onClick={() => navigate({ to: "/s/$sectionId", params: { sectionId: d.sectionId }, search: { row: d.rowId } })}
+              onClick={() =>
+                navigate({
+                  to: "/s/$sectionId",
+                  params: { sectionId: d.sectionId },
+                  search: { row: d.rowId },
+                })
+              }
               className="ui-press group flex w-full items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3 text-left transition hover:border-eagle/50 hover:bg-accent"
             >
-              <Chip tone={daysUntil(d.date) < 0 ? "danger" : daysUntil(d.date) <= 14 ? "warn" : "ok"} className="shrink-0 flex-col gap-0 px-3 py-1.5 text-center leading-tight">
-                <span className="text-xs uppercase">{d.date.toLocaleDateString("en-US", { month: "short" })}</span>
+              <Chip
+                tone={daysUntil(d.date) < 0 ? "danger" : daysUntil(d.date) <= 14 ? "warn" : "ok"}
+                className="shrink-0 flex-col gap-0 px-3 py-1.5 text-center leading-tight"
+              >
+                <span className="text-xs uppercase">
+                  {d.date.toLocaleDateString("en-US", { month: "short" })}
+                </span>
                 <span className="font-display text-xl">{d.date.getDate()}</span>
               </Chip>
               <div className="min-w-0 flex-1">
@@ -548,7 +722,14 @@ function HorizonRadar() {
   );
 }
 
-type UrgentItem = { key: string; sec: SectionDef; rowId: string; name: string; label: string; left: number };
+type UrgentItem = {
+  key: string;
+  sec: SectionDef;
+  rowId: string;
+  name: string;
+  label: string;
+  left: number;
+};
 
 function urgentLeft(i: Issue): number | null {
   const ex = /expired (\d+)d ago/i.exec(i.label);
@@ -564,7 +745,11 @@ function TodayPanel() {
   const dayKey = `shaheen-checklist-${today().toISOString().slice(0, 10)}`;
   const [done, setDone] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    try { setDone(JSON.parse(localStorage.getItem(dayKey) || "{}")); } catch { /* ignore */ }
+    try {
+      setDone(JSON.parse(localStorage.getItem(dayKey) || "{}"));
+    } catch {
+      /* ignore */
+    }
   }, [dayKey]);
   const toggle = (k: string) => {
     const n = { ...done, [k]: !done[k] };
@@ -588,7 +773,15 @@ function TodayPanel() {
         for (const i of analyzeRow(def, sec.headers, r).issues) {
           if (i.tone !== "note") bad.add(name.toLowerCase());
           const left = urgentLeft(i);
-          if (left !== null) urgent.push({ key: `${def.id}-${r.id}-${i.col}`, sec: def, rowId: r.id, name, label: i.label, left });
+          if (left !== null)
+            urgent.push({
+              key: `${def.id}-${r.id}-${i.col}`,
+              sec: def,
+              rowId: r.id,
+              name,
+              label: i.label,
+              left,
+            });
           if (CATS[1].match(i)) t.expired++;
           else if (CATS[2].match(i)) t.soon++;
           else if (CATS[3].match(i)) t.applied++;
@@ -598,7 +791,11 @@ function TodayPanel() {
     }
     urgent.sort((a, b) => a.left - b.left);
     const activeCount = names.size;
-    const ready = activeCount ? Math.round(((activeCount - [...bad].filter((n) => names.has(n)).length) / activeCount) * 100) : 100;
+    const ready = activeCount
+      ? Math.round(
+          ((activeCount - [...bad].filter((n) => names.has(n)).length) / activeCount) * 100,
+        )
+      : 100;
     const tasks = [
       { k: "expired", n: t.expired, label: "expired items to renew today" },
       { k: "soon", n: t.soon, label: "drivers to call about expiring items" },
@@ -614,27 +811,48 @@ function TodayPanel() {
     <div className="grid gap-5 xl:grid-cols-3">
       <section className="ui-lift rounded-2xl border bg-card shadow-card xl:col-span-2">
         <div className="flex items-center gap-3 border-b px-5 py-4">
-          <div className="grid size-11 place-items-center rounded-xl bg-danger text-primary-foreground"><AlertTriangle className="size-6" /></div>
+          <div className="grid size-11 place-items-center rounded-xl bg-danger text-primary-foreground">
+            <AlertTriangle className="size-6" />
+          </div>
           <div>
             <h2 className="text-xl font-extrabold">Urgent — act first</h2>
-            <p className="text-sm text-muted-foreground">Expired or expiring within 7 days · {urgent.length} items</p>
+            <p className="text-sm text-muted-foreground">
+              Expired or expiring within 7 days · {urgent.length} items
+            </p>
           </div>
         </div>
         <div className="max-h-[320px] space-y-2 overflow-y-auto p-5">
-          {!urgent.length && <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">Nothing urgent this week ✓</p>}
+          {!urgent.length && (
+            <p className="rounded-xl bg-ok-soft px-4 py-6 text-center text-base font-semibold text-ok">
+              Nothing urgent this week ✓
+            </p>
+          )}
           {urgent.map((u) => (
             <button
               key={u.key}
               type="button"
-              onClick={() => navigate({ to: "/s/$sectionId", params: { sectionId: u.sec.id }, search: { row: u.rowId } })}
+              onClick={() =>
+                navigate({
+                  to: "/s/$sectionId",
+                  params: { sectionId: u.sec.id },
+                  search: { row: u.rowId },
+                })
+              }
               className="flex w-full items-center gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-2.5 text-left hover:border-primary/50 hover:bg-accent"
             >
-              <span className={cn("w-20 shrink-0 rounded-lg px-2 py-1 text-center text-sm font-extrabold text-primary-foreground", u.left < 0 ? "bg-danger" : "bg-warn")}>
+              <span
+                className={cn(
+                  "w-20 shrink-0 rounded-lg px-2 py-1 text-center text-sm font-extrabold text-primary-foreground",
+                  u.left < 0 ? "bg-danger" : "bg-warn",
+                )}
+              >
                 {u.left < 0 ? "Expired" : u.left === 0 ? "Today" : `${u.left}d left`}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold">{u.name}</span>
-                <span className="block text-sm text-muted-foreground">{u.sec.title} · {u.label}</span>
+                <span className="block text-sm text-muted-foreground">
+                  {u.sec.title} · {u.label}
+                </span>
               </span>
               <ArrowRight className="size-4 text-muted-foreground" />
             </button>
@@ -644,19 +862,37 @@ function TodayPanel() {
 
       <div className="space-y-5">
         <section className="ui-lift rounded-2xl border bg-card p-5 shadow-card">
-          <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><ShieldCheck className="size-5" /> DOT Audit Readiness</div>
+          <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+            <ShieldCheck className="size-5" /> DOT Audit Readiness
+          </div>
           <div className="mt-1 font-display text-4xl font-extrabold">{ready}%</div>
-          <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full", tone)} style={{ width: `${ready}%` }} /></div>
-          <p className="mt-2 text-sm text-muted-foreground">Active drivers with a fully clean file (notes not counted) out of {activeCount}.</p>
+          <div className="mt-2 h-3 overflow-hidden rounded-full bg-muted">
+            <div className={cn("h-full rounded-full", tone)} style={{ width: `${ready}%` }} />
+          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Active drivers with a fully clean file (notes not counted) out of {activeCount}.
+          </p>
         </section>
         <section className="ui-lift rounded-2xl border bg-card p-5 shadow-card">
-          <div className="mb-3 flex items-center gap-2 text-base font-extrabold"><CalendarClock className="size-5" /> Today's Checklist</div>
+          <div className="mb-3 flex items-center gap-2 text-base font-extrabold">
+            <CalendarClock className="size-5" /> Today's Checklist
+          </div>
           {!tasks.length && <p className="text-sm font-semibold text-ok">No tasks today ✓</p>}
           <div className="space-y-2">
             {tasks.map((t) => (
-              <label key={t.k} className="flex cursor-pointer items-center gap-3 rounded-lg bg-muted/50 px-3 py-2">
-                <input type="checkbox" checked={!!done[t.k]} onChange={() => toggle(t.k)} className="size-5 accent-[var(--primary)]" />
-                <span className={cn("text-sm", done[t.k] && "text-muted-foreground line-through")}><b>{t.n}</b> {t.label}</span>
+              <label
+                key={t.k}
+                className="flex cursor-pointer items-center gap-3 rounded-lg bg-muted/50 px-3 py-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={!!done[t.k]}
+                  onChange={() => toggle(t.k)}
+                  className="size-5 accent-[var(--primary)]"
+                />
+                <span className={cn("text-sm", done[t.k] && "text-muted-foreground line-through")}>
+                  <b>{t.n}</b> {t.label}
+                </span>
               </label>
             ))}
           </div>
