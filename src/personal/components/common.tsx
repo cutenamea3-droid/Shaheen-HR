@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
 
-export function Panel({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <section className={`hp-panel ${className}`}>{children}</section>;
 }
 
@@ -56,19 +50,15 @@ export function Stat({
       <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--hp-muted)]">
         {label}
       </div>
-      <div className="hp-title mt-1 text-2xl font-bold tabular-nums text-[var(--hp-ink)]">{value}</div>
+      <div className="hp-title mt-1 text-2xl font-bold tabular-nums text-[var(--hp-ink)]">
+        {value}
+      </div>
       {hint ? <div className="mt-1 text-xs text-[var(--hp-muted)]">{hint}</div> : null}
     </div>
   );
 }
 
-export function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1.5">
       <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--hp-muted)]">
@@ -86,6 +76,7 @@ export function Btn({
   type = "button",
   disabled,
   className = "",
+  "data-testid": dataTestId,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -93,6 +84,7 @@ export function Btn({
   type?: "button" | "submit";
   disabled?: boolean;
   className?: string;
+  "data-testid"?: string;
 }) {
   const v =
     variant === "ghost"
@@ -103,7 +95,13 @@ export function Btn({
           ? "hp-btn-teal"
           : "hp-btn-primary";
   return (
-    <button type={type} disabled={disabled} onClick={onClick} className={`${v} ${className}`}>
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`${v} ${className}`}
+      data-testid={dataTestId}
+    >
       {children}
     </button>
   );
@@ -117,10 +115,7 @@ export function Empty({ children }: { children: ReactNode }) {
   );
 }
 
-export function courseLabel(
-  courses: { id: string; code: string }[],
-  id: string,
-): string {
+export function courseLabel(courses: { id: string; code: string }[], id: string): string {
   if (id === "general") return "General";
   return courses.find((c) => c.id === id)?.code ?? id;
 }

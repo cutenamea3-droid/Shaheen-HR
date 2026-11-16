@@ -106,11 +106,11 @@ export function Notes() {
                 <input
                   type="checkbox"
                   checked={!!practiceDone[item.id]}
-                  onChange={() =>
-                    setPracticeDone((p) => ({ ...p, [item.id]: !p[item.id] }))
-                  }
+                  onChange={() => setPracticeDone((p) => ({ ...p, [item.id]: !p[item.id] }))}
                 />
-                <span className={practiceDone[item.id] ? "text-[var(--hp-muted)] line-through" : ""}>
+                <span
+                  className={practiceDone[item.id] ? "text-[var(--hp-muted)] line-through" : ""}
+                >
                   {item.label}
                 </span>
               </li>
@@ -126,7 +126,11 @@ export function Notes() {
         />
         <div className="grid gap-3">
           <Field label="Course">
-            <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select
+              className="hp-field"
+              value={courseId}
+              onChange={(e) => setCourseId(e.target.value)}
+            >
               <option value="general">General revision</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -162,6 +166,7 @@ export function Notes() {
           </Field>
           <div className="flex flex-wrap gap-2">
             <Btn
+              data-testid="personal-save-note"
               onClick={() => {
                 if (!title.trim()) return;
                 upsertNote({
@@ -175,7 +180,7 @@ export function Notes() {
                 reset();
               }}
             >
-              {editingId ? "Update note" : "Save note"}
+              {editingId ? "Update note" : "Add note"}
             </Btn>
             {editingId ? (
               <Btn variant="ghost" onClick={reset}>
@@ -205,7 +210,9 @@ export function Notes() {
           }
         />
         {!sorted.length ? (
-          <Empty>No notes yet. Everything you write stays on this device under personal keys.</Empty>
+          <Empty>
+            No notes yet. Everything you write stays on this device under personal keys.
+          </Empty>
         ) : (
           <ul className="space-y-2">
             {sorted.map((n) => (
@@ -280,7 +287,9 @@ export function Notes() {
               >
                 <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hp-teal)]" />
                 <span>
-                  <span className="block text-sm font-semibold text-[var(--hp-ink)]">{l.label}</span>
+                  <span className="block text-sm font-semibold text-[var(--hp-ink)]">
+                    {l.label}
+                  </span>
                   <span className="block text-xs text-[var(--hp-muted)]">{l.blurb}</span>
                 </span>
               </a>
