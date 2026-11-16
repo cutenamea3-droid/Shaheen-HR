@@ -69,22 +69,35 @@ function SyncBadge() {
       {conflict && (
         <div className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="alertdialog">
           <p className="font-semibold text-warn">
-            Not Synced — this browser and the cloud both have attendance changes. Choose one side (download a
-            backup first if unsure). Nothing is overwritten until you choose.
+            Not Synced — this browser and the cloud both have attendance changes. Nothing is overwritten until
+            you choose.
           </p>
+          <ol className="list-decimal space-y-1 pl-5 text-warn">
+            <li>
+              Always click <strong>Download backup</strong> first.
+            </li>
+            <li>
+              If this browser looks empty (e.g. Entered 0) but cloud had your real records, choose{" "}
+              <strong>Use cloud</strong>.
+            </li>
+            <li>
+              Only choose <strong>Keep this browser</strong> if you are sure the browser copy is the correct
+              one — uploading empty local data can replace cloud.
+            </li>
+          </ol>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn" onClick={() => downloadBackup()}>
               Download backup
             </button>
+            <button type="button" className="btn-danger" onClick={() => void resolveHrConflict("use_cloud")}>
+              Use cloud (replace this browser)
+            </button>
             <button
               type="button"
-              className="btn-primary"
+              className="btn"
               onClick={() => void resolveHrConflict("keep_local")}
             >
               Keep this browser (upload)
-            </button>
-            <button type="button" className="btn-danger" onClick={() => void resolveHrConflict("use_cloud")}>
-              Use cloud (replace this browser)
             </button>
           </div>
         </div>
