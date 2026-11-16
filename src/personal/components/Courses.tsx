@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import { usePersonal } from "@/personal/lib/store";
 
@@ -72,6 +72,11 @@ function CourseEditor({
   const [totalV, setTotalV] = useState(lecturesTotal == null ? "" : String(lecturesTotal));
   const [doneV, setDoneV] = useState(lecturesDone == null ? "" : String(lecturesDone));
   const [notesV, setNotesV] = useState(notes);
+  const codeRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const totalRef = useRef<HTMLInputElement>(null);
+  const doneRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-4">
@@ -95,52 +100,72 @@ function CourseEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Code">
           <input
+            ref={codeRef}
             className="hp-field"
             value={codeV}
             onChange={(e) => setCodeV(e.target.value)}
+            onInput={(e) => setCodeV((e.target as HTMLInputElement).value)}
             disabled={!isTbd && code !== "TBD"}
           />
         </Field>
         <Field label="Title">
-          <input className="hp-field" value={titleV} onChange={(e) => setTitleV(e.target.value)} />
+          <input
+            ref={titleRef}
+            className="hp-field"
+            value={titleV}
+            onChange={(e) => setTitleV(e.target.value)}
+            onInput={(e) => setTitleV((e.target as HTMLInputElement).value)}
+          />
         </Field>
         <Field label="Lectures total (optional)">
           <input
+            ref={totalRef}
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank if unknown"
             value={totalV}
             onChange={(e) => setTotalV(e.target.value)}
+            onInput={(e) => setTotalV((e.target as HTMLInputElement).value)}
           />
         </Field>
         <Field label="Lectures done (optional)">
           <input
+            ref={doneRef}
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank — do not invent"
             value={doneV}
             onChange={(e) => setDoneV(e.target.value)}
+            onInput={(e) => setDoneV((e.target as HTMLInputElement).value)}
           />
         </Field>
       </div>
       <Field label="Private notes">
         <textarea
+          ref={notesRef}
           className="hp-field min-h-[72px] py-2"
           value={notesV}
           onChange={(e) => setNotesV(e.target.value)}
+          onInput={(e) => setNotesV((e.target as HTMLTextAreaElement).value)}
         />
       </Field>
       <div className="mt-3">
         <Btn
-          onClick={() =>
+          data-testid="personal-course-save"
+          onClick={() => {
+            const nextCode = (codeV.trim() || codeRef.current?.value || code).trim() || code;
+            const nextTitle = (titleV.trim() || titleRef.current?.value || title).trim() || title;
+            const nextTotal = totalV.trim() || totalRef.current?.value || "";
+            const nextDone = doneV.trim() || doneRef.current?.value || "";
+            const nextNotes = notesV.length ? notesV : notesRef.current?.value || "";
             onSave({
-              code: codeV.trim() || code,
-              title: titleV.trim() || title,
-              lecturesTotal: numOrNull(totalV),
-              lecturesDone: numOrNull(doneV),
-              notes: notesV,
-            })
-          }
+              code: nextCode,
+              title: nextTitle,
+              lecturesTotal: numOrNull(nextTotal),
+              lecturesDone: numOrNull(nextDone),
+              notes: nextNotes,
+            });
+          }}
         >
           Save course
         </Btn>
