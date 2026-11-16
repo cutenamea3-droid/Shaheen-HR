@@ -1075,9 +1075,13 @@ function LoadEditor({
   }));
   const [checkNotes, setCheckNotes] = useState("");
   const [checkLocation, setCheckLocation] = useState("");
+  const checkNotesRef = useRef<HTMLInputElement>(null);
+  const checkLocationRef = useRef<HTMLInputElement>(null);
   const [calls, setCalls] = useState<Awaited<ReturnType<typeof listCheckCalls>>>([]);
   const [excKind, setExcKind] = useState("Delay");
   const [excNotes, setExcNotes] = useState("");
+  const excKindRef = useRef<HTMLInputElement>(null);
+  const excNotesRef = useRef<HTMLInputElement>(null);
   const [opsError, setOpsError] = useState<string | null>(null);
   const [opsBusy, setOpsBusy] = useState(false);
   const [commKind, setCommKind] = useState<CommunicationKind>("note");
@@ -1851,33 +1855,41 @@ function LoadEditor({
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
               <input
+                ref={checkLocationRef}
+                data-testid="dispatch-check-location"
                 className="dispatch-field"
                 placeholder="Manual location"
                 value={checkLocation}
                 onChange={(e) => setCheckLocation(e.target.value)}
+                onInput={(e) => setCheckLocation((e.target as HTMLInputElement).value)}
               />
               <input
+                ref={checkNotesRef}
+                data-testid="dispatch-check-notes"
                 className="dispatch-field"
                 placeholder="Notes"
                 value={checkNotes}
                 onChange={(e) => setCheckNotes(e.target.value)}
+                onInput={(e) => setCheckNotes((e.target as HTMLInputElement).value)}
               />
             </div>
             <button
               type="button"
               className="dispatch-btn-primary mt-2"
               onClick={async () => {
-                if (!checkNotes.trim()) return;
+                const nextNotes = (checkNotes.trim() || checkNotesRef.current?.value || "").trim();
+                const nextLoc = (checkLocation.trim() || checkLocationRef.current?.value || "").trim();
+                if (!nextNotes) return;
                 await addCheckCall({
                   load_id: load.id,
-                  notes: checkNotes.trim(),
-                  manual_location: checkLocation.trim() || null,
+                  notes: nextNotes,
+                  manual_location: nextLoc || null,
                 });
                 setCheckNotes("");
                 setCheckLocation("");
                 setCalls(await listCheckCalls(load.id));
-                if (checkLocation.trim()) {
-                  setForm((f) => ({ ...f, last_manual_location: checkLocation.trim() }));
+                if (nextLoc) {
+                  setForm((f) => ({ ...f, last_manual_location: nextLoc }));
                 }
               }}
             >
@@ -1897,14 +1909,20 @@ function LoadEditor({
             <h3 className="mb-2 text-sm font-semibold">Open exception</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               <input
+                ref={excKindRef}
+                data-testid="dispatch-exc-kind"
                 className="dispatch-field"
                 value={excKind}
                 onChange={(e) => setExcKind(e.target.value)}
+                onInput={(e) => setExcKind((e.target as HTMLInputElement).value)}
               />
               <input
+                ref={excNotesRef}
+                data-testid="dispatch-exc-notes"
                 className="dispatch-field"
                 value={excNotes}
                 onChange={(e) => setExcNotes(e.target.value)}
+                onInput={(e) => setExcNotes((e.target as HTMLInputElement).value)}
                 placeholder="Notes"
               />
             </div>
@@ -1912,10 +1930,12 @@ function LoadEditor({
               type="button"
               className="dispatch-btn-ghost mt-2"
               onClick={async () => {
+                const nextKind = (excKind.trim() || excKindRef.current?.value || "Delay").trim() || "Delay";
+                const nextNotes = (excNotes.trim() || excNotesRef.current?.value || "").trim();
                 await saveException({
                   load_id: load.id,
-                  kind: excKind,
-                  notes: excNotes,
+                  kind: nextKind,
+                  notes: nextNotes,
                   severity: "medium",
                 });
                 setForm((f) => ({ ...f, exception_open: true }));

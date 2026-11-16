@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import {
   SYNTHETIC_EMPLOYEES,
@@ -60,6 +60,8 @@ export function EmployeeDirectory() {
   const [showDeactivateId, setShowDeactivateId] = useState<string | null>(null);
   const [bankErr, setBankErr] = useState("");
   const [instQuery, setInstQuery] = useState("");
+  const accountTitleRef = useRef<HTMLInputElement>(null);
+  const accountRefRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     institutionId: "hbl",
     otherLabel: "",
@@ -312,9 +314,13 @@ export function EmployeeDirectory() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     setBankErr("");
+                    const nextTitle = (form.accountTitle.trim() || accountTitleRef.current?.value || "").trim();
+                    const nextRef = (form.accountRef.trim() || accountRefRef.current?.value || "").trim();
                     const res = addBankingChange({
                       employeeId: selected.id,
                       ...form,
+                      accountTitle: nextTitle,
+                      accountRef: nextRef,
                     });
                     if (!res.ok) setBankErr(res.error ?? "Failed");
                     else {
@@ -359,11 +365,25 @@ export function EmployeeDirectory() {
                   </label>
                   <label>
                     <span className="lbl">Account title</span>
-                    <input className="field" value={form.accountTitle} onChange={(e) => setForm((f) => ({ ...f, accountTitle: e.target.value }))} />
+                    <input
+                      ref={accountTitleRef}
+                      data-testid="admin-bank-account-title"
+                      className="field"
+                      value={form.accountTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, accountTitle: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, accountTitle: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   <label>
                     <span className="lbl">{form.isIban ? "IBAN" : "Wallet / account ref"}</span>
-                    <input className="field font-mono" value={form.accountRef} onChange={(e) => setForm((f) => ({ ...f, accountRef: e.target.value }))} />
+                    <input
+                      ref={accountRefRef}
+                      data-testid="admin-bank-account-ref"
+                      className="field font-mono"
+                      value={form.accountRef}
+                      onChange={(e) => setForm((f) => ({ ...f, accountRef: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, accountRef: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   <label>
                     <span className="lbl">Effective from</span>

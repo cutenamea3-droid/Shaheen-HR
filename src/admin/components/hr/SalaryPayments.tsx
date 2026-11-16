@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import {
   SYNTHETIC_EMPLOYEES,
@@ -231,18 +231,25 @@ export function SalaryPayments() {
                         className="field w-28"
                         inputMode="numeric"
                         placeholder="PKR"
+                        data-testid={`admin-pay-amount-${p.id}`}
+                        data-pay-id={p.id}
                         value={payAmount[p.id] ?? ""}
                         disabled={p.status === "on_hold" || p.status === "paid"}
                         onChange={(e) => setPayAmount((m) => ({ ...m, [p.id]: e.target.value }))}
+                        onInput={(e) =>
+                          setPayAmount((m) => ({ ...m, [p.id]: (e.target as HTMLInputElement).value }))
+                        }
                         aria-label="Partial payment amount"
                       />
                       <button
                         type="button"
                         className="btn-primary px-3"
                         disabled={p.status === "on_hold" || p.status === "paid"}
-                        onClick={() => {
+                        onClick={(e) => {
                           setErr("");
-                          const n = Number(payAmount[p.id] ?? "");
+                          const dom =
+                            (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
+                          const n = Number((payAmount[p.id] ?? "").trim() || dom || "");
                           const r = recordPayment(p.id, n, todayStr());
                           if (!r.ok) setErr(r.error ?? "Failed");
                           else setPayAmount((m) => ({ ...m, [p.id]: "" }));

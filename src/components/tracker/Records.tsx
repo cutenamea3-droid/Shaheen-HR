@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, FolderInput, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -61,6 +61,8 @@ export function Records() {
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [doc, setDoc] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const cur = RECORD_TABS.find((t) => t.id === tab)!;
@@ -82,10 +84,12 @@ export function Records() {
   }, [data.sections, tab, q, ownersTab, activeFilter]);
 
   const add = () => {
-    if (!name.trim()) return;
-    addRecord(tab, [name.trim(), doc.trim(), "Valid", "", "", "Active"]);
+    const nextName = (name.trim() || nameRef.current?.value || "").trim();
+    const nextDoc = (doc.trim() || docRef.current?.value || "").trim();
+    if (!nextName) return;
+    addRecord(tab, [nextName, nextDoc, "Valid", "", "", "Active"]);
     setDoc("");
-    setOpen((o) => ({ ...o, [`${tab}:${nameKey(name)}`]: true }));
+    setOpen((o) => ({ ...o, [`${tab}:${nameKey(nextName)}`]: true }));
   };
 
   const cardId = (key: string) => `${tab}:${key}`;
@@ -173,14 +177,20 @@ export function Records() {
             className="flex flex-wrap items-center gap-2"
           >
             <input
+              ref={nameRef}
+              data-testid="records-person-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onInput={(e) => setName((e.target as HTMLInputElement).value)}
               placeholder={`${cur.who} name`}
               className="h-10 w-52 rounded-xl border bg-card px-3"
             />
             <input
+              ref={docRef}
+              data-testid="records-doc-name"
               value={doc}
               onChange={(e) => setDoc(e.target.value)}
+              onInput={(e) => setDoc((e.target as HTMLInputElement).value)}
               placeholder="Document (e.g. TWIC card)"
               className="h-10 w-56 rounded-xl border bg-card px-3"
             />
