@@ -296,28 +296,34 @@ function SectionAlerts({
   const sec = data.sections[def.id];
   const Icon = SECTION_ICONS[def.id];
 
-  const items = useMemo(
-    () =>
-      (sec?.rows ?? [])
-        .filter((r) => {
-          // Ordinary company alerts — New Drivers excluded from Show all; OO has dedicated scope on Cards/DMV.
-          if (isNewDriver(data, r.driverId) || isOwnerOperator(data, r.driverId)) return false;
-          const a = rowIsActive(def, r, data);
-          const muted = rowAlertsMuted(def, r, data);
-          // Active filter = truly active (leave muted from alert lists); inactive = not employed.
-          if (af === "active") return a && !muted;
-          if (af === "inactive") return !a;
-          return true; // Show all — still excludes New (and OO above)
-        })
-        .filter((r) => matchesExpFilter(data, r.driverId, exp))
-        .map((r) => ({ row: r, issues: analyzeRow(def, sec.headers, r).issues }))
-        .filter((x) => x.issues.length)
-        .filter((x) => !q.trim() || x.row.cells[0].toLowerCase().includes(q.toLowerCase())),
-    [sec, def, data, af, q, exp],
-  );
-  const catCount = (c: Cat) =>
-    items.filter((x) => x.issues.some(CATS.find((k) => k.id === c)!.match)).length;
-  const shown = items.filter((x) => x.issues.some(CATS.find((k) => k.id === cat)!.match));
+  const items = useMemo(() => {
+    if (!sec || !Array.isArray(sec.rows)) return [];
+    const headers = sec.headers ?? [];
+    return sec.rows
+      .filter((r) => {
+        // Ordinary company alerts — New Drivers excluded from Show all; OO has dedicated scope on Cards/DMV.
+        if (isNewDriver(data, r.driverId) || isOwnerOperator(data, r.driverId)) return false;
+        const a = rowIsActive(def, r, data);
+        const muted = rowAlertsMuted(def, r, data);
+        // Active filter = truly active (leave muted from alert lists); inactive = not employed.
+        if (af === "active") return a && !muted;
+        if (af === "inactive") return !a;
+        return true; // Show all — still excludes New (and OO above)
+      })
+      .filter((r) => matchesExpFilter(data, r.driverId, exp))
+      .map((r) => ({ row: r, issues: analyzeRow(def, headers, r).issues }))
+      .filter((x) => x.issues.length)
+      .filter((x) => !q.trim() || x.row.cells[0].toLowerCase().includes(q.toLowerCase()));
+  }, [sec, def, data, af, q, exp]);
+  const catMatch = (c: Cat) => CATS.find((k) => k.id === c)?.match;
+  const catCount = (c: Cat) => {
+    const m = catMatch(c);
+    return m ? items.filter((x) => x.issues.some(m)).length : 0;
+  };
+  const shown = (() => {
+    const m = catMatch(cat);
+    return m ? items.filter((x) => x.issues.some(m)) : items;
+  })();
 
   function pdf() {
     const m =

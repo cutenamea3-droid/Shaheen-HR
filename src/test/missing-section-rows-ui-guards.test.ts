@@ -29,4 +29,13 @@ describe("missing section rows UI guards", () => {
     expect(src).toMatch(/Section unavailable \(missing or corrupt cloud data\)/);
     expect(src).toMatch(/const headers = sec\?\.headers \?\? \[\]/);
   });
+
+  it("Dashboard section alert panel skips missing rows/headers", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/if \(!sec \|\| !Array\.isArray\(sec\.rows\)\) return \[\]/);
+    expect(src).toMatch(/const headers = sec\.headers \?\? \[\]/);
+  });
 });
