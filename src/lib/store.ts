@@ -727,6 +727,7 @@ export function addFollowUp(input: {
       linkedRowId: "",
     });
     while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
+    const existingRows = Array.isArray(sec.rows) ? sec.rows : [];
     return {
       ...base,
       sections: {
@@ -734,7 +735,7 @@ export function addFollowUp(input: {
         [FOLLOW_UP_SECTION_ID]: {
           ...sec,
           rows: [
-            ...sec.rows,
+            ...existingRows,
             {
               id,
               driverId: input.driverId || "fu_" + uid(),
@@ -763,7 +764,8 @@ export function updateFollowUp(
   update((d) => {
     const base = ensureFollowUpSection(d);
     const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
-    const rows = sec.rows.map((r) => {
+    const existingRows = Array.isArray(sec.rows) ? sec.rows : [];
+    const rows = existingRows.map((r) => {
       if (r.id !== id) return r;
       const cells = [...r.cells];
       while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");

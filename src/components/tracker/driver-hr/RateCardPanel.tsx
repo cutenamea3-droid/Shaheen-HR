@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -183,9 +183,28 @@ function RateFieldInput({
 }) {
   const [draft, setDraft] = useState(value);
   const [dirty, setDirty] = useState(false);
+  const saveTimer = useRef<number | null>(null);
   useEffect(() => {
     if (!dirty) setDraft(value);
   }, [value, dirty]);
+  useEffect(
+    () => () => {
+      if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
+    },
+    [],
+  );
+
+  const queueSave = (raw: string) => {
+    setDraft(raw);
+    setDirty(true);
+    if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
+    // Autofill often skips blur — debounce persist so typing does not spam the API.
+    saveTimer.current = window.setTimeout(() => {
+      void onSave(raw).then((ok) => {
+        if (ok) setDirty(false);
+      });
+    }, 400);
+  };
 
   return (
     <label className="block">
@@ -200,11 +219,14 @@ function RateFieldInput({
         disabled={disabled}
         value={draft}
         placeholder="—"
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setDirty(true);
-        }}
+        data-testid="rate-card-field"
+        onChange={(e) => queueSave(e.target.value)}
+        onInput={(e) => queueSave((e.target as HTMLInputElement).value)}
         onBlur={async () => {
+          if (saveTimer.current != null) {
+            window.clearTimeout(saveTimer.current);
+            saveTimer.current = null;
+          }
           if (!dirty) return;
           const ok = await onSave(draft);
           if (ok) setDirty(false);

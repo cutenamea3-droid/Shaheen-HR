@@ -2639,6 +2639,9 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const displayNameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
     setRows(await listDispatchAccounts());
@@ -2663,23 +2666,32 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <input
+          ref={emailRef}
+          data-testid="dispatch-invite-email"
           className="dispatch-field"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
         />
         <input
+          ref={displayNameRef}
+          data-testid="dispatch-invite-name"
           className="dispatch-field"
           placeholder="Display name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
+          onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
         />
         <input
+          ref={passwordRef}
+          data-testid="dispatch-invite-password"
           className="dispatch-field"
           type="password"
           placeholder="Temp password (8+)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
         />
         <button
           type="button"
@@ -2688,9 +2700,9 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
             setMsg(null);
             try {
               await inviteDispatchUser({
-                email,
-                displayName,
-                password,
+                email: (email.trim() || emailRef.current?.value || "").trim(),
+                displayName: (displayName.trim() || displayNameRef.current?.value || "").trim(),
+                password: (password.trim() || passwordRef.current?.value || "").trim(),
                 role: "dispatcher",
               });
               setEmail("");

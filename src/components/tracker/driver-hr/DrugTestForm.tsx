@@ -3,7 +3,7 @@
  * Records only — no PDF. Matched ≠ clearance.
  * Add flows may enable Smart Hybrid Pairing Mode (Automatic / Manual / New Separate).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { parseISO } from "@/lib/alerts";
 import {
   listManualMatchOptions,
@@ -86,6 +86,11 @@ export function DrugTestEventEditor({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [testingEventId, setTestingEventId] = useState(initial?.testingEventId ?? "");
   const [busy, setBusy] = useState(false);
+  const specimenRef = useRef<HTMLInputElement>(null);
+  const reasonRef = useRef<HTMLInputElement>(null);
+  const contextRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLInputElement>(null);
+  const eventDateRef = useRef<HTMLInputElement>(null);
   const [pairingMode, setPairingMode] = useState<PairingMode>("automatic");
   const [manualTestingEventId, setManualTestingEventId] = useState("");
   const [selectedTestingEventId, setSelectedTestingEventId] = useState("");
@@ -101,10 +106,23 @@ export function DrugTestEventEditor({
   }, [enablePairing, driverId, kind, existingEvents, manualQ]);
 
   const submit = (addAnother: boolean) => {
+    const nextSpecimen = (specimenId.trim() || specimenRef.current?.value || "").trim();
+    const nextReason = (reason.trim() || reasonRef.current?.value || "").trim();
+    const nextContext = (collectionContext.trim() || contextRef.current?.value || "").trim();
+    const nextNotes = (notes.trim() || notesRef.current?.value || "").trim();
+    const nextEventDate = (eventDate.trim() || eventDateRef.current?.value || "").trim();
     setBusy(true);
     void Promise.resolve(
       onSave(
-        { kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId },
+        {
+          kind,
+          specimenId: nextSpecimen,
+          reason: nextReason,
+          collectionContext: nextContext,
+          eventDate: nextEventDate,
+          notes: nextNotes,
+          testingEventId,
+        },
         enablePairing
           ? {
               addAnother,
@@ -282,19 +300,25 @@ export function DrugTestEventEditor({
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Collection / event date</span>
           <input
+            ref={eventDateRef}
+            data-testid="drug-event-date"
             type="date"
             disabled={disabled || busy}
             value={parseISO(eventDate) ? eventDate : ""}
             onChange={(e) => setEventDate(e.target.value)}
+            onInput={(e) => setEventDate((e.target as HTMLInputElement).value)}
             className={fieldCls}
           />
         </label>
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Specimen ID</span>
           <input
+            ref={specimenRef}
+            data-testid="drug-specimen-id"
             value={specimenId}
             disabled={disabled || busy}
             onChange={(e) => setSpecimenId(e.target.value)}
+            onInput={(e) => setSpecimenId((e.target as HTMLInputElement).value)}
             placeholder="Leading zeros kept (e.g. 01234)"
             className={`${fieldCls} font-mono`}
           />
@@ -302,10 +326,13 @@ export function DrugTestEventEditor({
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Reason</span>
           <input
+            ref={reasonRef}
+            data-testid="drug-reason"
             list="drug-reason-suggestions"
             value={reason}
             disabled={disabled || busy}
             onChange={(e) => setReason(e.target.value)}
+            onInput={(e) => setReason((e.target as HTMLInputElement).value)}
             placeholder="Random, Follow-up, …"
             className={fieldCls}
           />
@@ -318,9 +345,12 @@ export function DrugTestEventEditor({
         <label className={`${labelCls} ${compact ? "lg:col-span-1" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Collection context</span>
           <input
+            ref={contextRef}
+            data-testid="drug-collection-context"
             value={collectionContext}
             disabled={disabled || busy}
             onChange={(e) => setCollectionContext(e.target.value)}
+            onInput={(e) => setCollectionContext((e.target as HTMLInputElement).value)}
             placeholder="Collection date / site / batch — part of pairing key"
             className={fieldCls}
           />
@@ -353,9 +383,12 @@ export function DrugTestEventEditor({
         <label className={`${labelCls} ${compact ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Notes</span>
           <input
+            ref={notesRef}
+            data-testid="drug-notes"
             value={notes}
             disabled={disabled || busy}
             onChange={(e) => setNotes(e.target.value)}
+            onInput={(e) => setNotes((e.target as HTMLInputElement).value)}
             className={fieldCls}
           />
         </label>

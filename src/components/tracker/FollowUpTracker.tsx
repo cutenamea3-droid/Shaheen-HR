@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +31,9 @@ export function FollowUpTracker() {
   const [draftDriver, setDraftDriver] = useState("");
   const [draftSubject, setDraftSubject] = useState("");
   const [draftDue, setDraftDue] = useState("");
+  const draftDriverRef = useRef<HTMLInputElement>(null);
+  const draftSubjectRef = useRef<HTMLInputElement>(null);
+  const draftDueRef = useRef<HTMLInputElement>(null);
 
   const items = useMemo(() => listFollowUps(data), [data]);
   const filtered = useMemo(() => filterFollowUps(items, filter, search), [items, filter, search]);
@@ -38,16 +41,19 @@ export function FollowUpTracker() {
   const appliedSuggestions = useMemo(() => suggestAppliedFollowUps(data), [data]);
 
   function createManual() {
-    if (!draftSubject.trim()) {
+    const nextSubject = (draftSubject.trim() || draftSubjectRef.current?.value || "").trim();
+    const nextDriver = (draftDriver.trim() || draftDriverRef.current?.value || "").trim();
+    const nextDue = (draftDue.trim() || draftDueRef.current?.value || "").trim();
+    if (!nextSubject) {
       toast.error("Subject is required");
       return;
     }
     try {
       addFollowUp({
         driverId: "",
-        driver: draftDriver.trim() || "Unassigned",
-        subject: draftSubject.trim(),
-        dueDate: draftDue.trim(),
+        driver: nextDriver || "Unassigned",
+        subject: nextSubject,
+        dueDate: nextDue,
         source: "manual",
       });
       setDraftSubject("");
@@ -91,21 +97,30 @@ export function FollowUpTracker() {
 
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
           <input
+            ref={draftDriverRef}
+            data-testid="followup-driver"
             value={draftDriver}
             onChange={(e) => setDraftDriver(e.target.value)}
+            onInput={(e) => setDraftDriver((e.target as HTMLInputElement).value)}
             placeholder="Driver name"
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold"
           />
           <input
+            ref={draftSubjectRef}
+            data-testid="followup-subject"
             value={draftSubject}
             onChange={(e) => setDraftSubject(e.target.value)}
+            onInput={(e) => setDraftSubject((e.target as HTMLInputElement).value)}
             placeholder="Subject *"
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold sm:col-span-2"
           />
           <input
+            ref={draftDueRef}
+            data-testid="followup-due"
             type="date"
             value={draftDue}
             onChange={(e) => setDraftDue(e.target.value)}
+            onInput={(e) => setDraftDue((e.target as HTMLInputElement).value)}
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold"
             aria-label="Due date"
           />
