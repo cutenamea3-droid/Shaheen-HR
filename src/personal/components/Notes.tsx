@@ -140,7 +140,12 @@ export function Notes() {
             </select>
           </Field>
           <Field label="Title">
-            <input className="hp-field" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              className="hp-field"
+              data-testid="personal-note-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </Field>
           <Field label="Tag">
             <div className="flex flex-wrap gap-1.5">
@@ -159,6 +164,7 @@ export function Notes() {
           <Field label="Body">
             <textarea
               className="hp-field min-h-[140px] py-2"
+              data-testid="personal-note-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Revision bullets, formulas, VULMS reminders — owner text only…"

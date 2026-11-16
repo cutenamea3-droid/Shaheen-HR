@@ -98,7 +98,11 @@ import type {
   RosterDriver,
   ShiftHandover,
 } from "@/dispatch/lib/types";
-import { ACTIVE_LOAD_STATUSES, LOAD_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "@/dispatch/lib/types";
+import {
+  ACTIVE_LOAD_STATUSES,
+  LOAD_STATUS_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from "@/dispatch/lib/types";
 
 const NAV: { id: DispatchView; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "home", label: "My Dispatch Today", icon: LayoutDashboard },
@@ -262,7 +266,8 @@ export function DispatchApp() {
                 Dispatch Operations
               </h1>
               <p className="text-sm text-[color:var(--dispatch-muted)]">
-                My Dispatch Today · Active Loads · Manual location &amp; check-calls only (never Live GPS)
+                My Dispatch Today · Active Loads · Manual location &amp; check-calls only (never
+                Live GPS)
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -429,11 +434,7 @@ export function DispatchApp() {
             />
           )}
           {view === "handover" && (
-            <HandoverBoard
-              loads={loads}
-              account={account}
-              onSaved={async () => refresh()}
-            />
+            <HandoverBoard loads={loads} account={account} onSaved={async () => refresh()} />
           )}
           {view === "issues" && <IssuesBoard loads={loads} />}
           {view === "history" && (
@@ -481,16 +482,29 @@ function HomeBoard({
   const due = dueFollowUps(followUps);
   const openIss = openEscalations(issues);
   const sections = [
-    { title: "Needs update / check-call", items: buckets.needsUpdate, help: "Stale or missing manual location." },
-    { title: "Open exceptions", items: buckets.openExceptions, help: "Exceptions are separate from load status." },
-    { title: "Awaiting BOL / POD", items: buckets.awaitingDocs, help: "BOL and POD statuses are independent." },
+    {
+      title: "Needs update / check-call",
+      items: buckets.needsUpdate,
+      help: "Stale or missing manual location.",
+    },
+    {
+      title: "Open exceptions",
+      items: buckets.openExceptions,
+      help: "Exceptions are separate from load status.",
+    },
+    {
+      title: "Awaiting BOL / POD",
+      items: buckets.awaitingDocs,
+      help: "BOL and POD statuses are independent.",
+    },
     { title: "In motion", items: buckets.inMotion, help: "Assigned through at-delivery." },
   ];
   return (
     <div className="grid gap-3">
       <SectionHelp>
-        My Dispatch Today prioritizes action lists over counters. Delivered ≠ Closed ≠ Paid — close only after file
-        work; payment is separate. No invented ETAs, GPS, HOS, rates, or notifications.
+        My Dispatch Today prioritizes action lists over counters. Delivered ≠ Closed ≠ Paid — close
+        only after file work; payment is separate. No invented ETAs, GPS, HOS, rates, or
+        notifications.
       </SectionHelp>
       <section className="dispatch-panel">
         <h2 className="mb-2 text-base font-semibold text-[color:var(--dispatch-navy)]">
@@ -504,7 +518,10 @@ function HomeBoard({
         ) : (
           <ul className="divide-y divide-[color:var(--dispatch-border)]">
             {buckets.awaitingCloseout.slice(0, 8).map((load) => (
-              <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <li
+                key={load.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+              >
                 <div>
                   <p className="font-semibold">
                     {load.load_number} · {statusLabel(load.status)}
@@ -513,7 +530,11 @@ function HomeBoard({
                     Payment: {paymentStatusLabel(load.payment_status)} · POD {load.pod_status}
                   </p>
                 </div>
-                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                <button
+                  type="button"
+                  className="dispatch-btn-primary"
+                  onClick={() => onOpen(load.id)}
+                >
                   Update Load
                 </button>
               </li>
@@ -523,7 +544,9 @@ function HomeBoard({
       </section>
       <section className="dispatch-panel">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Follow-ups due</h2>
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
+            Follow-ups due
+          </h2>
           <button type="button" className="dispatch-btn-ghost" onClick={onOpenFollowUps}>
             Open Follow-Ups
           </button>
@@ -536,7 +559,10 @@ function HomeBoard({
         ) : (
           <ul className="divide-y divide-[color:var(--dispatch-border)]">
             {due.slice(0, 8).map((f) => (
-              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <li
+                key={f.id}
+                className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+              >
                 <div>
                   <p className="font-semibold">{f.title}</p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
@@ -544,7 +570,11 @@ function HomeBoard({
                   </p>
                 </div>
                 {f.load_id && (
-                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(f.load_id!)}>
+                  <button
+                    type="button"
+                    className="dispatch-btn-primary"
+                    onClick={() => onOpen(f.load_id!)}
+                  >
                     Update Load
                   </button>
                 )}
@@ -555,7 +585,9 @@ function HomeBoard({
       </section>
       <section className="dispatch-panel">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">Open issues & escalations</h2>
+          <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
+            Open issues & escalations
+          </h2>
           <div className="flex gap-2">
             <button type="button" className="dispatch-btn-ghost" onClick={onOpenDocs}>
               BOL / POD
@@ -577,7 +609,9 @@ function HomeBoard({
                 <p className="font-semibold">{issue.title}</p>
                 <p className="text-xs text-[color:var(--dispatch-muted)]">
                   {issue.status} · {issue.escalation_level}
-                  {issue.senior_informed ? " · Senior Informed (manual)" : " · Senior Informed: not recorded"}
+                  {issue.senior_informed
+                    ? " · Senior Informed (manual)"
+                    : " · Senior Informed: not recorded"}
                 </p>
               </li>
             ))}
@@ -587,8 +621,12 @@ function HomeBoard({
       {sections.map((section) => (
         <section key={section.title} className="dispatch-panel">
           <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">{section.title}</h2>
-            <span className="text-xs text-[color:var(--dispatch-muted)]">{section.items.length}</span>
+            <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
+              {section.title}
+            </h2>
+            <span className="text-xs text-[color:var(--dispatch-muted)]">
+              {section.items.length}
+            </span>
           </div>
           <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">{section.help}</p>
           {!section.items.length ? (
@@ -596,7 +634,10 @@ function HomeBoard({
           ) : (
             <ul className="divide-y divide-[color:var(--dispatch-border)]">
               {section.items.map((load) => (
-                <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <li
+                  key={load.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                >
                   <div>
                     <p className="text-sm font-semibold">
                       {load.load_number}{" "}
@@ -605,12 +646,17 @@ function HomeBoard({
                       </span>
                     </p>
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {load.assigned_driver_name || "Unassigned"} · {load.last_manual_location || "No manual location"}
+                      {load.assigned_driver_name || "Unassigned"} ·{" "}
+                      {load.last_manual_location || "No manual location"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {isStaleUpdate(load) && <StaleBadge />}
-                    <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                    <button
+                      type="button"
+                      className="dispatch-btn-primary"
+                      onClick={() => onOpen(load.id)}
+                    >
                       Update Load
                     </button>
                   </div>
@@ -649,15 +695,17 @@ function LoadsBoard({
     <section className="dispatch-panel">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <SectionHelp>
-          Active Loads — table or desk board. Cloud-backed when SQL is applied; never invents milestones, locations, or
-          ETAs.
+          Active Loads — table or desk board. Cloud-backed when SQL is applied; never invents
+          milestones, locations, or ETAs.
         </SectionHelp>
         <div className="flex flex-wrap gap-2">
           <div className="inline-flex rounded-md border border-[color:var(--dispatch-border)] p-0.5">
             <button
               type="button"
               className={`rounded px-2.5 py-1 text-xs font-semibold ${
-                layout === "table" ? "bg-[color:var(--dispatch-orange)] text-white" : "text-[color:var(--dispatch-muted)]"
+                layout === "table"
+                  ? "bg-[color:var(--dispatch-orange)] text-white"
+                  : "text-[color:var(--dispatch-muted)]"
               }`}
               onClick={() => setLayout("table")}
             >
@@ -666,7 +714,9 @@ function LoadsBoard({
             <button
               type="button"
               className={`rounded px-2.5 py-1 text-xs font-semibold ${
-                layout === "board" ? "bg-[color:var(--dispatch-orange)] text-white" : "text-[color:var(--dispatch-muted)]"
+                layout === "board"
+                  ? "bg-[color:var(--dispatch-orange)] text-white"
+                  : "text-[color:var(--dispatch-muted)]"
               }`}
               onClick={() => setLayout("board")}
             >
@@ -685,7 +735,11 @@ function LoadsBoard({
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="dispatch-field" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        <select
+          className="dispatch-field"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as typeof status)}
+        >
           <option value="active">Active</option>
           <option value="all">All statuses</option>
           {Object.entries(LOAD_STATUS_LABELS).map(([k, label]) => (
@@ -708,7 +762,11 @@ function LoadsBoard({
         </select>
       </div>
       <label className="mb-3 inline-flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={exceptionOnly} onChange={(e) => setExceptionOnly(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={exceptionOnly}
+          onChange={(e) => setExceptionOnly(e.target.checked)}
+        />
         Exceptions only
       </label>
       {layout === "board" ? (
@@ -722,7 +780,9 @@ function LoadsBoard({
                 <h3 className="text-xs font-bold uppercase tracking-wide text-[color:var(--dispatch-navy)]">
                   {col.label}
                 </h3>
-                <span className="text-[10px] text-[color:var(--dispatch-muted)]">{col.items.length}</span>
+                <span className="text-[10px] text-[color:var(--dispatch-muted)]">
+                  {col.items.length}
+                </span>
               </div>
               <ul className="grid gap-2">
                 {col.items.map((load) => (
@@ -777,7 +837,9 @@ function LoadsBoard({
                 <tr key={load.id}>
                   <td>
                     <div className="font-semibold">{load.load_number}</div>
-                    <div className="text-xs text-[color:var(--dispatch-muted)]">{load.customer_name}</div>
+                    <div className="text-xs text-[color:var(--dispatch-muted)]">
+                      {load.customer_name}
+                    </div>
                   </td>
                   <td>
                     {statusLabel(load.status)}
@@ -798,7 +860,11 @@ function LoadsBoard({
                   </td>
                   <td className="text-xs">{load.last_manual_location || "—"}</td>
                   <td>
-                    <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                    <button
+                      type="button"
+                      className="dispatch-btn-primary"
+                      onClick={() => onOpen(load.id)}
+                    >
                       Update Load
                     </button>
                   </td>
@@ -821,7 +887,9 @@ function DriverUpdatesBoard({
   onOpen: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
-  const active = loads.filter((l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered");
+  const active = loads.filter(
+    (l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered",
+  );
   const [drafts, setDrafts] = useState<Record<string, { location: string; notes: string }>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -833,8 +901,8 @@ function DriverUpdatesBoard({
   return (
     <section className="dispatch-panel grid gap-3">
       <SectionHelp>
-        Driver Updates are manual-first: enter location and check-call notes from the desk phone. Never labeled Live
-        GPS. No invented milestones or ETAs.
+        Driver Updates are manual-first: enter location and check-call notes from the desk phone.
+        Never labeled Live GPS. No invented milestones or ETAs.
       </SectionHelp>
       {error && (
         <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -936,7 +1004,9 @@ function DriverUpdatesBoard({
                         });
                         await onRefresh();
                       } catch (err) {
-                        setError(err instanceof Error ? err.message : "Could not save driver update.");
+                        setError(
+                          err instanceof Error ? err.message : "Could not save driver update.",
+                        );
                       } finally {
                         setBusyId(null);
                       }
@@ -944,7 +1014,11 @@ function DriverUpdatesBoard({
                   >
                     <PhoneCall className="h-4 w-4" /> Save check-call
                   </button>
-                  <button type="button" className="dispatch-btn-ghost" onClick={() => onOpen(load.id)}>
+                  <button
+                    type="button"
+                    className="dispatch-btn-ghost"
+                    onClick={() => onOpen(load.id)}
+                  >
                     Open load
                   </button>
                 </div>
@@ -1011,7 +1085,9 @@ function LoadEditor({
   const [commDetail, setCommDetail] = useState("");
   const [commDecision, setCommDecision] = useState("");
   const [comms, setComms] = useState<Awaited<ReturnType<typeof listCommunications>>>([]);
-  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>(
+    [],
+  );
 
   useEffect(() => {
     if (!load?.id) return;
@@ -1045,8 +1121,8 @@ function LoadEditor({
         </button>
       </div>
       <SectionHelp>
-        Keep planned vs actual timestamps. Manual location is dispatcher-entered — never labeled Live GPS. External load
-        apps are reference links only.
+        Keep planned vs actual timestamps. Manual location is dispatcher-entered — never labeled
+        Live GPS. External load apps are reference links only.
       </SectionHelp>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -1054,6 +1130,7 @@ function LoadEditor({
           Load number
           <input
             className="dispatch-field"
+            data-testid="dispatch-load-number"
             value={form.load_number}
             onChange={(e) => setForm({ ...form, load_number: e.target.value })}
             required
@@ -1257,9 +1334,14 @@ function LoadEditor({
         </p>
         <div className="grid gap-3">
           {form.stops.map((stop, i) => (
-            <div key={i} className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-3">
+            <div
+              key={i}
+              className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-3"
+            >
               <div className="flex flex-wrap items-center gap-2 sm:col-span-3">
-                <span className="text-xs font-semibold text-[color:var(--dispatch-navy)]">Stop {stop.sequence}</span>
+                <span className="text-xs font-semibold text-[color:var(--dispatch-navy)]">
+                  Stop {stop.sequence}
+                </span>
                 <button
                   type="button"
                   className="dispatch-btn-ghost"
@@ -1290,7 +1372,9 @@ function LoadEditor({
                 <select
                   className="dispatch-field"
                   value={stop.stop_type}
-                  onChange={(e) => setStop(i, { stop_type: e.target.value as LoadStop["stop_type"] })}
+                  onChange={(e) =>
+                    setStop(i, { stop_type: e.target.value as LoadStop["stop_type"] })
+                  }
                 >
                   <option value="pickup">Pickup</option>
                   <option value="delivery">Delivery</option>
@@ -1299,7 +1383,11 @@ function LoadEditor({
               </label>
               <label className="grid gap-1 text-xs sm:col-span-2">
                 Name
-                <input className="dispatch-field" value={stop.name} onChange={(e) => setStop(i, { name: e.target.value })} />
+                <input
+                  className="dispatch-field"
+                  value={stop.name}
+                  onChange={(e) => setStop(i, { name: e.target.value })}
+                />
               </label>
               <label className="grid gap-1 text-xs sm:col-span-2">
                 Address
@@ -1338,7 +1426,11 @@ function LoadEditor({
                   className="dispatch-field"
                   type="datetime-local"
                   value={stop.planned_at?.slice(0, 16) ?? ""}
-                  onChange={(e) => setStop(i, { planned_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                  onChange={(e) =>
+                    setStop(i, {
+                      planned_at: e.target.value ? new Date(e.target.value).toISOString() : null,
+                    })
+                  }
                 />
               </label>
               <label className="grid gap-1 text-xs">
@@ -1347,7 +1439,11 @@ function LoadEditor({
                   className="dispatch-field"
                   type="datetime-local"
                   value={stop.actual_at?.slice(0, 16) ?? ""}
-                  onChange={(e) => setStop(i, { actual_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                  onChange={(e) =>
+                    setStop(i, {
+                      actual_at: e.target.value ? new Date(e.target.value).toISOString() : null,
+                    })
+                  }
                 />
               </label>
             </div>
@@ -1359,7 +1455,8 @@ function LoadEditor({
         <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
           <h3 className="mb-2 text-sm font-semibold">Cancel / Reschedule</h3>
           <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
-            Cancel requires a manual reason. Reschedule updates planned times with a desk note — never invents ETAs.
+            Cancel requires a manual reason. Reschedule updates planned times with a desk note —
+            never invents ETAs.
           </p>
           {opsError && (
             <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1401,7 +1498,11 @@ function LoadEditor({
                 setOpsError(null);
                 try {
                   const next = await cancelLoad(load, form.cancel_reason);
-                  setForm((f) => ({ ...f, status: "cancelled", cancel_reason: next.cancel_reason ?? f.cancel_reason }));
+                  setForm((f) => ({
+                    ...f,
+                    status: "cancelled",
+                    cancel_reason: next.cancel_reason ?? f.cancel_reason,
+                  }));
                   await onLoadChanged(next);
                 } catch (e) {
                   setOpsError(e instanceof Error ? e.message : "Cancel failed.");
@@ -1457,8 +1558,8 @@ function LoadEditor({
         <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
           <h3 className="mb-2 text-sm font-semibold">Closeout / Reopen / Payment</h3>
           <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
-            Delivered ≠ Closed ≠ Paid. Closing never marks paid; paying never closes. Reopen returns closed →
-            delivered.
+            Delivered ≠ Closed ≠ Paid. Closing never marks paid; paying never closes. Reopen returns
+            closed → delivered.
           </p>
           {opsError && (
             <p role="alert" className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -1489,7 +1590,9 @@ function LoadEditor({
               <select
                 className="dispatch-field"
                 value={form.payment_status}
-                onChange={(e) => setForm({ ...form, payment_status: e.target.value as PaymentStatus })}
+                onChange={(e) =>
+                  setForm({ ...form, payment_status: e.target.value as PaymentStatus })
+                }
               >
                 {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map((s) => (
                   <option key={s} value={s}>
@@ -1569,7 +1672,11 @@ function LoadEditor({
                 setOpsError(null);
                 try {
                   const next = await setLoadPaymentStatus(load, form.payment_status);
-                  setForm((f) => ({ ...f, payment_status: next.payment_status, status: next.status }));
+                  setForm((f) => ({
+                    ...f,
+                    payment_status: next.payment_status,
+                    status: next.status,
+                  }));
                   await onLoadChanged(next);
                 } catch (e) {
                   setOpsError(e instanceof Error ? e.message : "Payment update failed.");
@@ -1625,7 +1732,11 @@ function LoadEditor({
               )}
               <label className="grid gap-1 text-xs sm:col-span-2">
                 Detail
-                <input className="dispatch-field" value={commDetail} onChange={(e) => setCommDetail(e.target.value)} />
+                <input
+                  className="dispatch-field"
+                  value={commDetail}
+                  onChange={(e) => setCommDetail(e.target.value)}
+                />
               </label>
             </div>
             <button
@@ -1682,7 +1793,8 @@ function LoadEditor({
           <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
             <h3 className="mb-2 text-sm font-semibold">Detention / accessorials on this load</h3>
             <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">
-              {accessorials.length} claim(s). Use Detention / Accessorials board for full edit — no auto HR expense.
+              {accessorials.length} claim(s). Use Detention / Accessorials board for full edit — no
+              auto HR expense.
             </p>
             {!accessorials.length ? (
               <EmptyHint>No accessorials on this load.</EmptyHint>
@@ -1691,7 +1803,9 @@ function LoadEditor({
                 {accessorials.map((a) => (
                   <li key={a.id}>
                     {a.kind} · {a.status} · {a.description}
-                    {a.amount_manual == null ? " · amount Needs Policy" : ` · ${a.currency} ${a.amount_manual}`}
+                    {a.amount_manual == null
+                      ? " · amount Needs Policy"
+                      : ` · ${a.currency} ${a.amount_manual}`}
                   </li>
                 ))}
               </ul>
@@ -1750,14 +1864,28 @@ function LoadEditor({
           <div className="rounded-lg border border-[color:var(--dispatch-border)] p-3">
             <h3 className="mb-2 text-sm font-semibold">Open exception</h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              <input className="dispatch-field" value={excKind} onChange={(e) => setExcKind(e.target.value)} />
-              <input className="dispatch-field" value={excNotes} onChange={(e) => setExcNotes(e.target.value)} placeholder="Notes" />
+              <input
+                className="dispatch-field"
+                value={excKind}
+                onChange={(e) => setExcKind(e.target.value)}
+              />
+              <input
+                className="dispatch-field"
+                value={excNotes}
+                onChange={(e) => setExcNotes(e.target.value)}
+                placeholder="Notes"
+              />
             </div>
             <button
               type="button"
               className="dispatch-btn-ghost mt-2"
               onClick={async () => {
-                await saveException({ load_id: load.id, kind: excKind, notes: excNotes, severity: "medium" });
+                await saveException({
+                  load_id: load.id,
+                  kind: excKind,
+                  notes: excNotes,
+                  severity: "medium",
+                });
                 setForm((f) => ({ ...f, exception_open: true }));
               }}
             >
@@ -1771,6 +1899,7 @@ function LoadEditor({
         <button
           type="button"
           className="dispatch-btn-primary"
+          data-testid="dispatch-save-load"
           disabled={busy || !form.load_number.trim()}
           onClick={async () => {
             const driver = drivers.find((d) => d.id === form.assigned_driver_id);
@@ -1796,7 +1925,7 @@ function LoadEditor({
               actual_delivery_at: toIso(form.actual_delivery_at),
               last_manual_location: form.last_manual_location || null,
               last_manual_location_at: form.last_manual_location
-                ? load?.last_manual_location_at ?? new Date().toISOString()
+                ? (load?.last_manual_location_at ?? new Date().toISOString())
                 : null,
               cancel_reason: form.cancel_reason || null,
               reschedule_note: form.reschedule_note || null,
@@ -1829,12 +1958,23 @@ function RosterBoard({
   return (
     <section className="dispatch-panel">
       <SectionHelp>
-        Dispatch-owned roster only. This does <strong>not</strong> read Driver Compliance profiles, drug tests, rate
-        cards, or banking. Cross-module driver picker requires a separate approved integration.
+        Dispatch-owned roster only. This does <strong>not</strong> read Driver Compliance profiles,
+        drug tests, rate cards, or banking. Cross-module driver picker requires a separate approved
+        integration.
       </SectionHelp>
       <div className="mb-3 flex flex-wrap gap-2">
-        <input className="dispatch-field" placeholder="Driver name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="dispatch-field w-28" placeholder="Unit #" value={unit} onChange={(e) => setUnit(e.target.value)} />
+        <input
+          className="dispatch-field"
+          placeholder="Driver name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="dispatch-field w-28"
+          placeholder="Unit #"
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+        />
         <button
           type="button"
           className="dispatch-btn-primary"
@@ -1876,7 +2016,9 @@ function HandoverBoard({
   account: DispatchAccount;
   onSaved: () => Promise<void>;
 }) {
-  const openLoads = loads.filter((l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered");
+  const openLoads = loads.filter(
+    (l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered",
+  );
   const [rows, setRows] = useState<ShiftHandover[]>([]);
   const [summary, setSummary] = useState("");
   const [watch, setWatch] = useState("");
@@ -1907,17 +2049,25 @@ function HandoverBoard({
   return (
     <section className="dispatch-panel grid gap-3">
       <SectionHelp>
-        Morning continuity: capture open loads, watch items, and next-day priorities before the desk turns over.
-        Watch hints pull BOL/POD awaiting, open issues, due follow-ups, and cancellations — never invents ETAs or
-        GPS.
+        Morning continuity: capture open loads, watch items, and next-day priorities before the desk
+        turns over. Watch hints pull BOL/POD awaiting, open issues, due follow-ups, and
+        cancellations — never invents ETAs or GPS.
       </SectionHelp>
       <label className="grid gap-1 text-sm">
         Summary
-        <textarea className="dispatch-field min-h-24" value={summary} onChange={(e) => setSummary(e.target.value)} />
+        <textarea
+          className="dispatch-field min-h-24"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+        />
       </label>
       <label className="grid gap-1 text-sm">
         Watch items
-        <textarea className="dispatch-field min-h-20" value={watch} onChange={(e) => setWatch(e.target.value)} />
+        <textarea
+          className="dispatch-field min-h-20"
+          value={watch}
+          onChange={(e) => setWatch(e.target.value)}
+        />
       </label>
       <label className="grid gap-1 text-sm">
         Next-day priorities
@@ -1929,7 +2079,11 @@ function HandoverBoard({
       </label>
       <label className="grid gap-1 text-sm">
         To dispatcher
-        <input className="dispatch-field" value={toDispatcher} onChange={(e) => setToDispatcher(e.target.value)} />
+        <input
+          className="dispatch-field"
+          value={toDispatcher}
+          onChange={(e) => setToDispatcher(e.target.value)}
+        />
       </label>
       <p className="text-xs text-[color:var(--dispatch-muted)]">
         Open loads included: {openLoads.map((l) => l.load_number).join(", ") || "none"}
@@ -1994,11 +2148,21 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
         <h2 className="mb-2 text-base font-semibold">Issues & escalations</h2>
         <SectionHelp>
           Escalate desk problems without changing load status by itself.{" "}
-          <strong>Senior Informed</strong> is a manual checkbox/note only — it never sends notifications.
+          <strong>Senior Informed</strong> is a manual checkbox/note only — it never sends
+          notifications.
         </SectionHelp>
         <div className="mb-3 grid gap-2 sm:grid-cols-2">
-          <input className="dispatch-field" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+          <input
+            className="dispatch-field"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <select
+            className="dispatch-field"
+            value={loadId}
+            onChange={(e) => setLoadId(e.target.value)}
+          >
             <option value="">No load link</option>
             {loads.map((l) => (
               <option key={l.id} value={l.id}>
@@ -2055,7 +2219,9 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                       : " · Senior Informed: not recorded"}
                   </p>
                   {issue.senior_informed_note && (
-                    <p className="text-xs text-[color:var(--dispatch-muted)]">{issue.senior_informed_note}</p>
+                    <p className="text-xs text-[color:var(--dispatch-muted)]">
+                      {issue.senior_informed_note}
+                    </p>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -2202,8 +2368,9 @@ function HistoryBoard({
   return (
     <div className="grid gap-3">
       <SectionHelp>
-        Complete load history combines check-calls, issues, follow-ups, communications, accessorials, and
-        closeout events. Driver filter remains roster-scoped (not Compliance dossier). Delivered ≠ Closed ≠ Paid.
+        Complete load history combines check-calls, issues, follow-ups, communications,
+        accessorials, and closeout events. Driver filter remains roster-scoped (not Compliance
+        dossier). Delivered ≠ Closed ≠ Paid.
       </SectionHelp>
       <div className="flex flex-wrap gap-2">
         <button
@@ -2246,9 +2413,14 @@ function HistoryBoard({
               {driverHistory.map((load) => (
                 <li key={load.id} className="flex items-center justify-between py-2 text-sm">
                   <span>
-                    {load.load_number} · {statusLabel(load.status)} · pay {paymentStatusLabel(load.payment_status)}
+                    {load.load_number} · {statusLabel(load.status)} · pay{" "}
+                    {paymentStatusLabel(load.payment_status)}
                   </span>
-                  <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(load.id)}>
+                  <button
+                    type="button"
+                    className="dispatch-btn-primary"
+                    onClick={() => onOpen(load.id)}
+                  >
                     Update Load
                   </button>
                 </li>
@@ -2261,7 +2433,11 @@ function HistoryBoard({
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <label className="grid gap-1 text-xs">
               Load
-              <select className="dispatch-field min-w-[14rem]" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+              <select
+                className="dispatch-field min-w-[14rem]"
+                value={loadId}
+                onChange={(e) => setLoadId(e.target.value)}
+              >
                 {loads.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.load_number} · {statusLabel(l.status)}
@@ -2271,7 +2447,11 @@ function HistoryBoard({
             </label>
             {selectedLoad && (
               <>
-                <button type="button" className="dispatch-btn-primary" onClick={() => onOpen(selectedLoad.id)}>
+                <button
+                  type="button"
+                  className="dispatch-btn-primary"
+                  onClick={() => onOpen(selectedLoad.id)}
+                >
                   Update Load
                 </button>
                 <button
@@ -2292,7 +2472,9 @@ function HistoryBoard({
                 <li key={`${e.at}-${e.source}-${i}`} className="py-2 text-sm">
                   <p className="font-semibold">
                     {e.title}{" "}
-                    <span className="text-xs font-normal text-[color:var(--dispatch-muted)]">({e.source})</span>
+                    <span className="text-xs font-normal text-[color:var(--dispatch-muted)]">
+                      ({e.source})
+                    </span>
                   </p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
                     {new Date(e.at).toLocaleString()} · {e.detail}
@@ -2309,19 +2491,23 @@ function HistoryBoard({
 
 function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: RosterDriver[] }) {
   const [statusFilter, setStatusFilter] = useState<"all" | LoadStatus>("all");
-  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>([]);
-  const filtered =
-    statusFilter === "all" ? loads : loads.filter((l) => l.status === statusFilter);
+  const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>(
+    [],
+  );
+  const filtered = statusFilter === "all" ? loads : loads.filter((l) => l.status === statusFilter);
 
   useEffect(() => {
-    void listAccessorials().then(setAccessorials).catch(() => setAccessorials([]));
+    void listAccessorials()
+      .then(setAccessorials)
+      .catch(() => setAccessorials([]));
   }, [loads]);
 
   return (
     <section className="dispatch-panel grid gap-3">
       <SectionHelp>
-        Dispatch PDF/CSV exports for desk reporting. Includes payment/closeout columns. No rate cards, free-time
-        calculators, or Admin payroll fields. Accessorial export is manual amounts only.
+        Dispatch PDF/CSV exports for desk reporting. Includes payment/closeout columns. No rate
+        cards, free-time calculators, or Admin payroll fields. Accessorial export is manual amounts
+        only.
       </SectionHelp>
       <label className="grid max-w-xs gap-1 text-xs">
         Status filter
@@ -2339,13 +2525,25 @@ function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: Rost
         </select>
       </label>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="dispatch-btn-primary" onClick={() => exportLoadsCsv(filtered)}>
+        <button
+          type="button"
+          className="dispatch-btn-primary"
+          onClick={() => exportLoadsCsv(filtered)}
+        >
           Loads CSV
         </button>
-        <button type="button" className="dispatch-btn-ghost" onClick={() => exportLoadsPdf(filtered)}>
+        <button
+          type="button"
+          className="dispatch-btn-ghost"
+          onClick={() => exportLoadsPdf(filtered)}
+        >
           Loads PDF
         </button>
-        <button type="button" className="dispatch-btn-ghost" onClick={() => exportAccessorialsCsv(accessorials)}>
+        <button
+          type="button"
+          className="dispatch-btn-ghost"
+          onClick={() => exportAccessorialsCsv(accessorials)}
+        >
           Accessorials CSV
         </button>
         <button
@@ -2357,8 +2555,8 @@ function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: Rost
         </button>
       </div>
       <p className="text-sm text-[color:var(--dispatch-muted)]">
-        {filtered.length} loads · {accessorials.length} accessorials · {drivers.length} roster drivers · Delivered ≠
-        Closed ≠ Paid
+        {filtered.length} loads · {accessorials.length} accessorials · {drivers.length} roster
+        drivers · Delivered ≠ Closed ≠ Paid
       </p>
     </section>
   );
@@ -2376,14 +2574,16 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
   }
 
   useEffect(() => {
-    void reload().catch((err) => setMsg(err instanceof Error ? err.message : "Could not load team."));
+    void reload().catch((err) =>
+      setMsg(err instanceof Error ? err.message : "Could not load team."),
+    );
   }, []);
 
   return (
     <section className="dispatch-panel grid gap-3">
       <SectionHelp>
-        Invite or revoke Dispatch users. Backend edge function + RLS enforce admin. Dedicated dispatcher emails only —
-        never reuse Driver Compliance seats.
+        Invite or revoke Dispatch users. Backend edge function + RLS enforce admin. Dedicated
+        dispatcher emails only — never reuse Driver Compliance seats.
       </SectionHelp>
       {isDispatchPreviewMode() && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950">
@@ -2391,7 +2591,12 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
         </p>
       )}
       <div className="grid gap-2 sm:grid-cols-2">
-        <input className="dispatch-field" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          className="dispatch-field"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <input
           className="dispatch-field"
           placeholder="Display name"
