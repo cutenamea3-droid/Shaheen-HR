@@ -30,30 +30,36 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           <p className="font-display text-3xl font-bold tracking-tight">Shaheen Transport</p>
           <p className="mt-2 text-base text-white/85">Dispatch Operations</p>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/75">
-            Morning Shift Handover continuity for US carrier dispatch desks. Manual ops tracker — not a load board,
-            and never Live GPS.
+            Morning Shift Handover continuity for US carrier dispatch desks. Manual ops tracker —
+            not a load board, and never Live GPS.
           </p>
         </div>
-        <form onSubmit={(e) => void submit(e)} className="flex flex-col justify-center gap-4 p-6 sm:p-8">
+        <form
+          onSubmit={(e) => void submit(e)}
+          className="flex flex-col justify-center gap-4 p-6 sm:p-8"
+        >
           <div>
             <p className="font-display text-2xl font-bold text-[color:var(--dispatch-navy)] md:hidden">
               Shaheen Transport
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-[color:var(--dispatch-navy)]">Dispatch sign in</h1>
+            <h1 className="mt-1 text-xl font-semibold text-[color:var(--dispatch-navy)]">
+              Dispatch sign in
+            </h1>
             <p className="mt-1 text-sm text-[color:var(--dispatch-muted)]">
               Backend auth + RLS required. Nav hide alone is not access control.
             </p>
           </div>
           {preview && (
             <p className="rounded-md border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              Fixture / preview mode: cloud SQL not applied or preview isolated. Data is local fixtures, not production
-              cloud.
+              Fixture / preview mode: cloud SQL not applied or preview isolated. Data is local
+              fixtures, not production cloud.
             </p>
           )}
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Email</span>
             <input
               className="dispatch-field"
+              data-testid="dispatch-email"
               type="email"
               autoComplete="username"
               value={email}
@@ -66,6 +72,7 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
             <span className="font-medium">Password</span>
             <input
               className="dispatch-field"
+              data-testid="dispatch-password"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -79,12 +86,17 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
               {error}
             </p>
           )}
-          <button type="submit" className="dispatch-btn-primary" disabled={busy}>
+          <button
+            type="submit"
+            className="dispatch-btn-primary"
+            data-testid="dispatch-sign-in"
+            disabled={busy}
+          >
             {busy ? "Signing in…" : "Sign in"}
           </button>
           <p className="text-xs leading-relaxed text-[color:var(--dispatch-muted)]">
-            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Invite uses a dedicated
-            dispatcher login — never share Compliance seats.
+            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Invite uses
+            a dedicated dispatcher login — never share Compliance seats.
           </p>
         </form>
       </div>
