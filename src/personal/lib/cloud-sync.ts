@@ -23,6 +23,8 @@ let stopUnsub: (() => void) | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let syncing = false;
+/** Bumps on every local edit so an in-flight push cannot clear the unsynced flag. */
+let editEpoch = 0;
 let currentUser: string | null = null;
 let status: PersonalCloudStatus = "off";
 const listeners = new Set<() => void>();
@@ -51,6 +53,7 @@ function readUnsynced(): boolean {
 }
 
 function markUnsynced() {
+  editEpoch += 1;
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(PERSONAL_UNSYNCED_KEY, "1");
@@ -92,7 +95,13 @@ function applyCloud(blob: Partial<PersonalSyncBlob>) {
   if (blob.courses) patch.courses = blob.courses;
   if (blob.backlog) patch.backlog = blob.backlog;
   if (blob.assessments) patch.assessments = blob.assessments;
-  if (blob.notes) patch.notes = blob.notes;
+  // [] is truthy — never let an empty cloud notes array wipe local notes while unsynced.
+  if (Array.isArray(blob.notes)) {
+    const localNotes = usePersonal.getState().notes;
+    if (!(blob.notes.length === 0 && localNotes.length > 0 && readUnsynced())) {
+      patch.notes = blob.notes;
+    }
+  }
   if (blob.sessions) patch.sessions = blob.sessions;
   if (blob.dayPlans) patch.dayPlans = blob.dayPlans;
   if (blob.discipline) patch.discipline = blob.discipline;
@@ -152,6 +161,7 @@ export async function pushPersonalCloud(userId: string): Promise<boolean> {
   const sb = getPersonalSupabase();
   if (!sb) return false;
   setStatus("syncing");
+  const epochAtStart = editEpoch;
   const local = snapshot();
   // Never upsert empty/default local over an existing meaningful Personal cloud row.
   if (!isPersonalMeaningful(local)) {
@@ -185,8 +195,13 @@ export async function pushPersonalCloud(userId: string): Promise<boolean> {
     setStatus("error");
     return false;
   }
-  clearUnsynced();
-  setStatus("synced");
+  // A newer local edit landed during this push — keep unsynced so poll cannot apply stale cloud.
+  if (epochAtStart === editEpoch) {
+    clearUnsynced();
+    setStatus("synced");
+  } else {
+    setStatus("syncing");
+  }
   return true;
 }
 
@@ -201,17 +216,31 @@ export function startPersonalCloudSync(userId: string) {
 
   void pullPersonalCloud(userId);
 
+  const flushPush = () => {
+    if (!currentUser) return;
+    if (syncing) {
+      // In-flight push — retry shortly so the skipped edit is not dropped.
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flushPush, 500);
+      return;
+    }
+    const user = currentUser;
+    syncing = true;
+    void pushPersonalCloud(user).finally(() => {
+      syncing = false;
+      // If edits arrived during the push, epoch still differs / unsynced stays set — flush again.
+      if (currentUser && readUnsynced()) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(flushPush, 500);
+      }
+    });
+  };
+
   const schedule = () => {
     if (!currentUser) return;
     markUnsynced();
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      if (syncing || !currentUser) return;
-      syncing = true;
-      void pushPersonalCloud(currentUser).finally(() => {
-        syncing = false;
-      });
-    }, 500);
+    timer = setTimeout(flushPush, 500);
   };
 
   const unsubStore = usePersonal.subscribe(schedule);

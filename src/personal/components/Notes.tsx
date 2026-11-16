@@ -217,7 +217,8 @@ export function Notes() {
         />
         {!sorted.length ? (
           <Empty>
-            No notes yet. Everything you write stays on this device under personal keys.
+            No notes yet. Notes stay in your Personal workspace (device cache + Personal cloud when
+            secure mode is on) — never company Compliance / Admin / Dispatch stores.
           </Empty>
         ) : (
           <ul className="space-y-2">
