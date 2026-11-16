@@ -439,6 +439,7 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
   const sections = { ...data.sections };
   for (const id of ids) {
     const sec = sections[id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     let touched = false;
     const rows = sec.rows.map((r) => {
       const want = resolve(r.driverId);
@@ -611,6 +612,8 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
     }
   }
 
+  if (!Array.isArray(inaSec.rows)) return { data: input, changed: [] };
+
   let touched = false;
   const byId = new Map(inaSec.rows.map((r) => [r.driverId, r]));
   const rows = inaSec.rows.map((r) => {
@@ -646,7 +649,7 @@ export function migrateData(input: AppData): { data: AppData; changed: string[] 
   const sections = { ...data.sections };
   for (const sp of SPLITS) {
     const sec = sections[sp.id];
-    if (!sec || sec.headers.length !== sp.oldLen) continue;
+    if (!sec || !Array.isArray(sec.rows) || sec.headers.length !== sp.oldLen) continue;
     const ins = <T>(a: T[], v: T) => [...a.slice(0, sp.at), v, ...a.slice(sp.at)];
     const headers = ins(sec.headers, "Future Plans");
     headers[sp.at - 1] = "Notes";
