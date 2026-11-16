@@ -77,14 +77,15 @@ function normalizeFollowUpSection(sec: SectionData): SectionData {
   let headers = [...(sec.headers ?? [])];
   let widths = [...(sec.widths ?? [])];
   let hidden = [...(sec.hidden ?? [])];
-  let touched = false;
+  let touched = !Array.isArray(sec.rows);
   if (headers.length < FOLLOW_UP_HEADERS.length) {
     headers = [...FOLLOW_UP_HEADERS];
     widths = FOLLOW_UP_HEADERS.map(() => 180);
     hidden = FOLLOW_UP_HEADERS.map(() => false);
     touched = true;
   }
-  const rows = sec.rows.map((r) => {
+  const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
+  const rows = srcRows.map((r) => {
     const cells = [...r.cells];
     while (cells.length < FOLLOW_UP_HEADERS.length) {
       cells.push("");

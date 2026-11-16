@@ -101,8 +101,9 @@ function normalizeRecordSection(sec: SectionData): SectionData {
   let headers = [...(sec.headers ?? [])];
   let widths = [...(sec.widths ?? [])];
   let hidden = [...(sec.hidden ?? [])];
-  let rows = sec.rows.map((r) => ({ ...r, cells: [...r.cells] }));
-  let touched = false;
+  const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
+  let rows = srcRows.map((r) => ({ ...r, cells: [...r.cells] }));
+  let touched = !Array.isArray(sec.rows);
 
   const hasActive = headers.some((h) => /^active\s*status$/i.test(h.trim()));
   if (!hasActive) {
@@ -595,8 +596,10 @@ export function importBackup(json: string) {
 export function addRowForDriver(sectionId: string, driverId: string, name: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec || sec.rows.some((r) => r.driverId === driverId)) return d;
-    const cells = sec.headers.map((_, i) => (i === 0 ? name : ""));
+    if (!sec) return d;
+    const existing = Array.isArray(sec.rows) ? sec.rows : [];
+    if (existing.some((r) => r.driverId === driverId)) return d;
+    const cells = (sec.headers ?? []).map((_, i) => (i === 0 ? name : ""));
     return {
       ...d,
       sections: {
@@ -604,7 +607,7 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
         [sectionId]: {
           ...sec,
           rows: [
-            ...sec.rows,
+            ...existing,
             { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() },
           ],
         },
@@ -616,7 +619,11 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
 /** Manual record lists (extra driver documents, owner operators, mechanics) — kept apart from the driver sections. */
 export function addRecord(sectionId: string, cells: string[]) {
   update((d) => {
-    const sec = d.sections[sectionId] ?? emptyRecordSection();
+    const secRaw = d.sections[sectionId] ?? emptyRecordSection();
+    const sec = {
+      ...secRaw,
+      rows: Array.isArray(secRaw.rows) ? secRaw.rows : [],
+    };
     const padded = [...cells];
     while (padded.length < RECORD_HEADERS.length) {
       padded.push(padded.length === RECORD_ACTIVE_COL ? "Active" : "");
@@ -649,7 +656,7 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
   const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
       if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
@@ -680,7 +687,7 @@ state = ensureRecordSections(state);
 export function deleteRecord(sectionId: string, rowId: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     return {
       ...d,
       sections: {
@@ -775,7 +782,7 @@ export function updateFollowUp(
 export function deleteFollowUp(id: string) {
   update((d) => {
     const sec = d.sections[FOLLOW_UP_SECTION_ID];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     return {
       ...d,
       sections: {
@@ -796,8 +803,10 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
   const key = recordPersonKey(personName);
   if (!key) return;
   update((d) => {
-    const from = d.sections[fromId] ?? emptyRecordSection();
-    const to = d.sections[toId] ?? emptyRecordSection();
+    const fromRaw = d.sections[fromId] ?? emptyRecordSection();
+    const toRaw = d.sections[toId] ?? emptyRecordSection();
+    const from = { ...fromRaw, rows: Array.isArray(fromRaw.rows) ? fromRaw.rows : [] };
+    const to = { ...toRaw, rows: Array.isArray(toRaw.rows) ? toRaw.rows : [] };
     const moving = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") === key);
     if (!moving.length) return d;
     const stay = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") !== key);
@@ -825,7 +834,7 @@ export function renameRecordPerson(sectionId: string, oldName: string, newName: 
   if (!key || recordPersonKey(next) === key) return;
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
       if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
