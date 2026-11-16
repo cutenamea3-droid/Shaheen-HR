@@ -521,10 +521,13 @@ export function addDriver(values: Record<string, string[]>) {
   update((d) => {
     const sections = { ...d.sections };
     for (const [sid, cells] of Object.entries(values)) {
+      const prev = sections[sid];
+      // Skip unknown section ids — spreading undefined.rows previously crashed Add Driver.
+      if (!prev || !Array.isArray(prev.rows)) continue;
       sections[sid] = {
-        ...sections[sid],
+        ...prev,
         rows: [
-          ...sections[sid].rows,
+          ...prev.rows,
           {
             id: sid + "_" + uid(),
             driverId,
