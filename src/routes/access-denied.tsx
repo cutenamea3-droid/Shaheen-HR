@@ -102,9 +102,16 @@ function AccessDeniedPage() {
   // Anonymous visitors who opened this URL manually: send them to Compliance login.
   // Admin-privilege denies keep Compliance home so the user stays in the module.
   const homePath = !ready || home === "/access-denied" ? "/" : home;
-  const detail = needAdmin
-    ? "This page requires a Driver Compliance admin account. Your signed-in seat can still use the rest of Driver Compliance."
-    : undefined;
-
-  return <AccessDenied module={mod} homePath={homePath} detail={detail} />;
+  return (
+    <AccessDenied
+      module={mod}
+      homePath={homePath}
+      {...(needAdmin
+        ? {
+            detail:
+              "This page requires a Driver Compliance admin account. Your signed-in seat can still use the rest of Driver Compliance.",
+          }
+        : {})}
+    />
+  );
 }
