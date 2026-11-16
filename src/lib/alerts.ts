@@ -331,7 +331,7 @@ export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): Drive
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
     if (i < 0 || s.id === "inactive") continue;
-    const r = data.sections[s.id]?.rows.find((x) => x.driverId === row.driverId);
+    const r = data.sections[s.id]?.rows?.find((x) => x.driverId === row.driverId);
     if (r) return r.status ?? parseDriverStatus(r.cells[i]);
   }
   return "active";
@@ -488,7 +488,7 @@ const EXPIRY_COLS: Record<string, number[]> = {
 export function driverExpiryDays(data: AppData, driverId: string): number[] {
   const out: number[] = [];
   for (const [sid, cols] of Object.entries(EXPIRY_COLS)) {
-    const row = data.sections[sid]?.rows.find((r) => r.driverId === driverId);
+    const row = data.sections[sid]?.rows?.find((r) => r.driverId === driverId);
     if (!row) continue;
     for (const i of cols) {
       const v = row.cells[i] ?? "";
@@ -694,7 +694,7 @@ export function buildSafetyDigest(data: AppData) {
     hour: "numeric",
     minute: "2-digit",
   });
-  const totalDrivers = data.sections.dmv?.rows.length ?? 0;
+  const totalDrivers = data.sections.dmv?.rows?.length ?? 0;
   const compliance = fleetCompliancePct(data);
   const alerts = collectSmartAlerts(data);
   const critical = alerts.filter((a) => a.group === "critical");

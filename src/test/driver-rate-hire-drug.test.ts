@@ -84,7 +84,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(dateOfHireOf(seed, id)).toBe("");
     const next = applyDateOfHire(seed, id, "2023-06-01");
     expect(dateOfHireOf(next, id)).toBe("2023-06-01");
-    const other = seed.sections.dmv?.rows.find((r) => r.driverId !== id);
+    const other = seed.sections.dmv?.rows?.find((r) => r.driverId !== id);
     if (other) expect(dateOfHireOf(next, other.driverId)).toBe("");
   });
 

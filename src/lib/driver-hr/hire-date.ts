@@ -34,7 +34,7 @@ export function formatHireDateDisplay(value: string | undefined | null): string 
 
 export function dateOfHireOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     if (r && r.dateOfHire !== undefined) return (r.dateOfHire ?? "").trim();
   }
   return "";

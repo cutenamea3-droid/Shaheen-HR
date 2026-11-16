@@ -43,7 +43,7 @@ export type PortalActivityLike = {
 
 function nameOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     const n = (r?.cells[0] ?? "").trim();
     if (n) return n;
   }
@@ -52,7 +52,7 @@ function nameOf(data: AppData, driverId: string): string {
 
 function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     if (r?.rosterHistory?.length) return r.rosterHistory;
   }
   return [];
@@ -94,7 +94,7 @@ export function buildComplianceHistory(
     // addedAt — first seen on any row for this driver
     let addedAt: number | undefined;
     for (const def of SECTIONS) {
-      const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+      const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
       if (r?.addedAt != null && (addedAt == null || r.addedAt < addedAt)) addedAt = r.addedAt;
     }
     if (addedAt != null) {

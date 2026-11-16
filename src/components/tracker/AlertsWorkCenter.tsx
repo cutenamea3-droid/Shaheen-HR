@@ -77,7 +77,7 @@ function safeSave(
 
 function ItemEditor({ item }: { item: WorkCenterItem }) {
   const data = useData();
-  const row = data.sections[item.sectionId]?.rows.find((r) => r.id === item.rowId);
+  const row = data.sections[item.sectionId]?.rows?.find((r) => r.id === item.rowId);
   if (!row) {
     return <p className="text-sm font-semibold text-danger">Row missing — refresh or open full record.</p>;
   }

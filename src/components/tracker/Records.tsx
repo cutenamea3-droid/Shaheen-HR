@@ -113,7 +113,7 @@ export function Records() {
     <div className="flex h-full flex-col gap-3 overflow-hidden px-2 py-2 sm:p-3">
       <div className="tracker-toolbar gap-2">
         {RECORD_TABS.map((t) => {
-          const docs = data.sections[t.id]?.rows.length ?? 0;
+          const docs = data.sections[t.id]?.rows?.length ?? 0;
           const peopleN = personCount(data.sections[t.id]?.rows);
           return (
             <button

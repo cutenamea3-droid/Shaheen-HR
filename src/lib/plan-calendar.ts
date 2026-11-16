@@ -87,7 +87,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
   // Fill driverId from section rows for plan events
   for (const ev of out) {
     if (ev.driverId) continue;
-    const row = data.sections[ev.sectionId]?.rows.find((r) => r.id === ev.rowId);
+    const row = data.sections[ev.sectionId]?.rows?.find((r) => r.id === ev.rowId);
     if (row) ev.driverId = row.driverId;
   }
 

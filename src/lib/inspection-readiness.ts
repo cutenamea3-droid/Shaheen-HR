@@ -89,7 +89,7 @@ function cell(row: Row | undefined, i: number) {
 }
 
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
-  return data.sections[sectionId]?.rows.find((r) => r.driverId === driverId);
+  return data.sections[sectionId]?.rows?.find((r) => r.driverId === driverId);
 }
 
 function driverName(data: AppData, driverId: string): string {

@@ -50,7 +50,7 @@ export function parseRosterKind(value?: string | null): RosterKind {
 /** Resolve class from any compliance row for this driverId (missing → company). */
 export function driverClassOf(data: AppData, driverId: string): DriverClass {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     if (r?.driverClass) return parseDriverClass(r.driverClass);
   }
   return "company";
@@ -59,7 +59,7 @@ export function driverClassOf(data: AppData, driverId: string): DriverClass {
 /** Resolve onboarding kind (missing → roster — never invent "new" for seed drivers). */
 export function rosterKindOf(data: AppData, driverId: string): RosterKind {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     if (r?.rosterKind) return parseRosterKind(r.rosterKind);
   }
   return "roster";
@@ -191,7 +191,7 @@ export function applyRosterKind(
 /** Class history for a driver (from any row that has it). */
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
     if (r?.classHistory?.length) return r.classHistory;
   }
   return [];

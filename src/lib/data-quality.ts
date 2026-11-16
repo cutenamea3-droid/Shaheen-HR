@@ -52,7 +52,7 @@ function cell(row: Row | undefined, i: number) {
 
 function nameOf(data: AppData, driverId: string): string {
   for (const id of WIZARD_SECTIONS) {
-    const r = data.sections[id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[id]?.rows?.find((x) => x.driverId === driverId);
     const n = cell(r, 0);
     if (n) return n;
   }
@@ -79,7 +79,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
   for (const driverId of allDriverIds(data)) {
     const names = new Map<string, { sectionId: string; rowId: string; name: string }>();
     for (const sectionId of WIZARD_SECTIONS) {
-      const row = data.sections[sectionId]?.rows.find((r) => r.driverId === driverId);
+      const row = data.sections[sectionId]?.rows?.find((r) => r.driverId === driverId);
       if (!row) {
         push({
           id: `missing_row:${driverId}:${sectionId}`,

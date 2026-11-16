@@ -554,14 +554,14 @@ export function driverEmploymentStatus(
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
-    const r = data.sections[s.id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[s.id]?.rows?.find((x) => x.driverId === driverId);
     if (!r) continue;
     // Prefer optional Row.status when set; otherwise the active cell (empty → active).
     return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
   }
   const inaDef = SECTIONS.find((s) => s.id === "inactive");
   const i = inaDef?.types.indexOf("active") ?? -1;
-  const r = i >= 0 ? data.sections.inactive?.rows.find((x) => x.driverId === driverId) : undefined;
+  const r = i >= 0 ? data.sections.inactive?.rows?.find((x) => x.driverId === driverId) : undefined;
   if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
   return "Active";
 }
@@ -573,7 +573,7 @@ export function buildInactiveCells(data: AppData, driverId: string, status: stri
   let phone = "";
   let state = "";
   for (const id of ["dmv", "ssccdl", "docs", "medical", "queries", "info", "inactive"] as const) {
-    const r = data.sections[id]?.rows.find((x) => x.driverId === driverId);
+    const r = data.sections[id]?.rows?.find((x) => x.driverId === driverId);
     if (!r) continue;
     if (!name.trim()) name = (r.cells[0] ?? "").trim();
     if ((id === "dmv" || id === "ssccdl" || id === "inactive") && !license.trim())

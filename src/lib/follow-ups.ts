@@ -143,7 +143,7 @@ export function followUpToCells(fu: Omit<FollowUp, "id"> | FollowUp): string[] {
 
 export function listFollowUps(data: AppData): FollowUp[] {
   const sec = data.sections[FOLLOW_UP_SECTION_ID];
-  if (!sec) return [];
+  if (!sec || !Array.isArray(sec.rows)) return [];
   return sec.rows.map(rowToFollowUp);
 }
 
