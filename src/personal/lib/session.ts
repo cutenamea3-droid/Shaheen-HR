@@ -16,7 +16,11 @@ import {
   signOutPersonalSecure,
   signUpPersonalSecure,
 } from "./secure-auth";
-import { isPersonalSecureEnabled, isPersonalSignupAllowed, personalAuthMode } from "./secure-config";
+import {
+  isPersonalSecureEnabled,
+  isPersonalSignupAllowed,
+  personalAuthMode,
+} from "./secure-config";
 import { startPersonalCloudSync, stopPersonalCloudSync } from "./cloud-sync";
 
 export { personalAuthMode, isPersonalSecureEnabled, isPersonalSignupAllowed };
@@ -36,8 +40,10 @@ export async function hydratePersonalAuth(): Promise<boolean> {
 
 export function personalNeedsSetup(): boolean {
   if (isPersonalSecureEnabled()) {
-    // Secure: setup form only when signup bootstrap is explicitly allowed.
-    return isPersonalSignupAllowed();
+    // Secure cloud Auth: existing owners sign in with password only.
+    // Optional bootstrap signup is an explicit LoginGate toggle when
+    // VITE_PERSONAL_ALLOW_SIGNUP=1 — never force Confirm password on every visit.
+    return false;
   }
   return !hasPersonalCredentials();
 }
