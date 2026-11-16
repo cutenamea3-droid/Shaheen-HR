@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -24,6 +24,14 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [base, setBase] = useState({ name: "", cdl: "", state: "CA" });
   const [vals, setVals] = useState<Record<string, string[]>>({});
   const [err, setErr] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const cdlRef = useRef<HTMLInputElement>(null);
+  const stateRef = useRef<HTMLInputElement>(null);
+  const readBase = () => ({
+    name: (base.name.trim() || nameRef.current?.value || "").trim(),
+    cdl: (base.cdl.trim() || cdlRef.current?.value || "").trim(),
+    state: (base.state.trim() || stateRef.current?.value || "CA").trim().toUpperCase() || "CA",
+  });
 
   const cellsFor = (def: SectionDef) => vals[def.id] ?? def.types.map(() => "");
   const setV = (def: SectionDef, i: number, v: string) =>
@@ -37,27 +45,30 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
   }
 
   function finish() {
-    if (!base.name.trim() || !base.cdl.trim()) {
+    const b = readBase();
+    if (!b.name || !b.cdl) {
       setStep(0);
       setErr("Driver name and CDL number are required.");
       return;
     }
     const out: Record<string, string[]> = {};
     for (const def of WIZ) {
-      const headers = data.sections[def.id].headers;
+      const sec = data.sections[def.id];
+      if (!sec) continue;
+      const headers = sec.headers ?? [];
       out[def.id] = cellsFor(def).map((c, i) => {
         const t = def.types[i];
-        if (t === "name") return base.name.trim();
-        if (t === "state") return base.state.trim();
+        if (t === "name") return b.name;
+        if (t === "state") return b.state;
         if (t === "active") return "Active";
-        if (t === "text" && /license/i.test(headers[i])) return base.cdl.trim();
+        if (t === "text" && /license/i.test(headers[i] ?? "")) return b.cdl;
         // A document left blank is not on file yet → Missing
         if (t === "status" && !c.trim()) return "Missing";
         return c;
       });
     }
     addDriver(out);
-    toast.success(`${base.name.trim()} added as New Driver (onboarding) — use Move to Active when ready`);
+    toast.success(`${b.name} added as New Driver (onboarding) — use Move to Active when ready`);
     onOpenChange(false);
     reset();
   }
@@ -102,24 +113,50 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
           {step === 0 && (
             <>
               <Field label="Driver Name *">
-                <input value={base.name} onChange={(e) => setBase({ ...base, name: e.target.value })} className={inputCls} autoFocus />
+                <input
+                  ref={nameRef}
+                  data-testid="add-driver-name"
+                  value={base.name}
+                  onChange={(e) => setBase({ ...base, name: e.target.value })}
+                  onInput={(e) => setBase((b) => ({ ...b, name: (e.target as HTMLInputElement).value }))}
+                  className={inputCls}
+                  autoFocus
+                />
               </Field>
               <Field label="CDL / Driver License No. *">
-                <input value={base.cdl} onChange={(e) => setBase({ ...base, cdl: e.target.value })} className={inputCls} />
+                <input
+                  ref={cdlRef}
+                  data-testid="add-driver-cdl"
+                  value={base.cdl}
+                  onChange={(e) => setBase({ ...base, cdl: e.target.value })}
+                  onInput={(e) => setBase((b) => ({ ...b, cdl: (e.target as HTMLInputElement).value }))}
+                  className={inputCls}
+                />
               </Field>
               <Field label="State (CA = 10-day DMV alert, others = 20-day)">
-                <input value={base.state} onChange={(e) => setBase({ ...base, state: e.target.value.toUpperCase() })} className={inputCls} />
+                <input
+                  ref={stateRef}
+                  data-testid="add-driver-state"
+                  value={base.state}
+                  onChange={(e) => setBase({ ...base, state: e.target.value.toUpperCase() })}
+                  onInput={(e) =>
+                    setBase((b) => ({ ...b, state: (e.target as HTMLInputElement).value.toUpperCase() }))
+                  }
+                  className={inputCls}
+                />
               </Field>
               {err && <p className="rounded-lg bg-danger-soft px-3 py-2 font-semibold text-danger">{err}</p>}
             </>
           )}
           {def &&
             def.types.map((t, i) => {
-              const headers = data.sections[def.id].headers;
+              const sec = data.sections[def.id];
+              if (!sec) return null;
+              const headers = sec.headers ?? [];
               if (autoCol(def, i, headers)) return null;
               const v = cellsFor(def)[i];
               return (
-                <Field key={i} label={headers[i].trim()}>
+                <Field key={i} label={(headers[i] ?? `Column ${i + 1}`).trim()}>
                   {t === "status" ? (
                     <div className="flex flex-wrap gap-2">
                       {def.statusOptions.map((o) => (
@@ -169,9 +206,12 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
               <button
                 type="button"
                 onClick={() => {
-                  if (step === 0 && (!base.name.trim() || !base.cdl.trim())) {
-                    setErr("Driver name and CDL number are required.");
-                    return;
+                  if (step === 0) {
+                    const b = readBase();
+                    if (!b.name || !b.cdl) {
+                      setErr("Driver name and CDL number are required.");
+                      return;
+                    }
                   }
                   setErr("");
                   setStep(step + 1);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead, Stat } from "./common";
 import {
   consistencyDays,
@@ -63,6 +63,7 @@ export function Analytics() {
 
   const [gCourseId, setGCourseId] = useState(courses[0]?.id ?? "cs101");
   const [gLabel, setGLabel] = useState("");
+  const gLabelRef = useRef<HTMLInputElement>(null);
   const [gScore, setGScore] = useState("");
   const [gMax, setGMax] = useState("");
   const [gProv, setGProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
@@ -262,9 +263,12 @@ export function Analytics() {
         <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-[var(--hp-border)] p-3 md:grid-cols-2">
           <Field label="Component label">
             <input
+              ref={gLabelRef}
               className="hp-field"
+              data-testid="personal-grade-label"
               value={gLabel}
               onChange={(e) => setGLabel(e.target.value)}
+              onInput={(e) => setGLabel((e.target as HTMLInputElement).value)}
               placeholder="e.g. Quiz 1 (from Grade Book)"
             />
           </Field>
@@ -306,7 +310,8 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                if (!gLabel.trim()) return;
+                const nextGLabel = (gLabel.trim() || gLabelRef.current?.value || "").trim();
+                if (!nextGLabel) return;
                 const score = gScore === "" ? null : Number(gScore);
                 const maxScore = gMax === "" ? null : Number(gMax);
                 if (looksLikeProjectedDefault(score, "D") && gProv === "owner_whatif") {
@@ -318,7 +323,7 @@ export function Analytics() {
                 upsertGradeEntry({
                   id: Math.random().toString(36).slice(2, 10),
                   courseId: gCourseId,
-                  label: gLabel.trim(),
+                  label: nextGLabel,
                   score,
                   maxScore,
                   provenance: gProv,
