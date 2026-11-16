@@ -28,4 +28,15 @@ describe("Personal LoginGate setup vs sign-in", () => {
     expect(src).toMatch(/wantSecureSignup && isPersonalSignupAllowed\(\)/);
     expect(src).not.toMatch(/needsSetup && isPersonalSignupAllowed\(\)/);
   });
+
+  it("secure mode toggle uses explicit enterSecureSignIn / enterSecureSignup (not flip-only)", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/personal/PersonalApp.tsx"), "utf8");
+    expect(src).toMatch(/function enterSecureSignIn/);
+    expect(src).toMatch(/function enterSecureSignup/);
+    expect(src).toMatch(/setWantSecureSignup\(false\)/);
+    expect(src).toMatch(/setWantSecureSignup\(true\)/);
+    // Toggle lives outside <form> so it cannot be swallowed by submit handling.
+    expect(src).toMatch(/data-testid="personal-auth-mode-toggle"/);
+    expect(src).toMatch(/key=\{showConfirm \? "personal-signup" : "personal-signin"\}/);
+  });
 });
