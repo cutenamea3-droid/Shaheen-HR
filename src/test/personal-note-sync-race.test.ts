@@ -44,5 +44,8 @@ describe("Personal note sync race guards", () => {
     expect(src).toMatch(/blob\.notes\.length === 0 && localNotes\.length > 0 && readUnsynced\(\)/);
     expect(src).toMatch(/flushPush/);
     expect(src).toMatch(/In-flight push/);
+    expect(src).toMatch(/initialPullDone/);
+    expect(src).toMatch(/mergeById/);
+    expect(src).toMatch(/partial local cache cannot drop cloud notes/);
   });
 });

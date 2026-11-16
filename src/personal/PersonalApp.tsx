@@ -132,6 +132,7 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
                 name="login"
                 type="text"
                 autoComplete="username"
+                data-testid="personal-login"
                 required
               />
             </label>
@@ -145,6 +146,7 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
                 name="password"
                 type="password"
                 autoComplete={showConfirm ? "new-password" : "current-password"}
+                data-testid="personal-password"
                 required
               />
             </label>
@@ -167,6 +169,7 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             <button
               type="submit"
               disabled={busy}
+              data-testid="personal-sign-in"
               className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--hp-violet)] px-4 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-55"
             >
               {busy ? "…" : showConfirm ? "Create account" : "Sign In"}

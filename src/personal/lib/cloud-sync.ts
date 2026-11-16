@@ -25,9 +25,21 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 let syncing = false;
 /** Bumps on every local edit so an in-flight push cannot clear the unsynced flag. */
 let editEpoch = 0;
+/** First pull must finish before debounced pushes — avoids overwriting cloud with a partial local cache. */
+let initialPullDone = false;
 let currentUser: string | null = null;
 let status: PersonalCloudStatus = "off";
 const listeners = new Set<() => void>();
+
+function mergeById<T extends { id: string; updatedAt?: number }>(local: T[], cloud: T[]): T[] {
+  const map = new Map<string, T>();
+  for (const row of cloud) map.set(row.id, row);
+  for (const row of local) {
+    const prev = map.get(row.id);
+    if (!prev || (row.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) map.set(row.id, row);
+  }
+  return [...map.values()];
+}
 
 function setStatus(s: PersonalCloudStatus) {
   status = s;
@@ -122,38 +134,42 @@ export async function pullPersonalCloud(
   if (!sb) return "skipped";
 
   setStatus("syncing");
-  const { data, error } = await sb
-    .from("personal_study_state")
-    .select("data, updated_at")
-    .eq("owner_id", userId)
-    .maybeSingle();
+  try {
+    const { data, error } = await sb
+      .from("personal_study_state")
+      .select("data, updated_at")
+      .eq("owner_id", userId)
+      .maybeSingle();
 
-  if (error) {
-    console.warn("[HR Personal] cloud pull failed", error.message);
-    setStatus("error");
-    return "error";
-  }
+    if (error) {
+      console.warn("[HR Personal] cloud pull failed", error.message);
+      setStatus("error");
+      return "error";
+    }
 
-  const cloud = (data?.data ?? null) as Partial<PersonalSyncBlob> | null;
-  const local = snapshot();
-  const decision = decidePersonalSync(local, cloud, { unsynced: readUnsynced() });
+    const cloud = (data?.data ?? null) as Partial<PersonalSyncBlob> | null;
+    const local = snapshot();
+    const decision = decidePersonalSync(local, cloud, { unsynced: readUnsynced() });
 
-  if (decision === "empty") {
+    if (decision === "empty") {
+      setStatus("synced");
+      return "empty";
+    }
+    if (decision === "apply_cloud" && cloud) {
+      applyCloud(cloud);
+      clearUnsynced();
+      setStatus("synced");
+      return "applied";
+    }
+    if (decision === "push_local" || decision === "keep_local") {
+      const ok = await pushPersonalCloud(userId);
+      return ok ? (decision === "push_local" ? "pushed" : "kept_local") : "error";
+    }
     setStatus("synced");
     return "empty";
+  } finally {
+    initialPullDone = true;
   }
-  if (decision === "apply_cloud" && cloud) {
-    applyCloud(cloud);
-    clearUnsynced();
-    setStatus("synced");
-    return "applied";
-  }
-  if (decision === "push_local" || decision === "keep_local") {
-    const ok = await pushPersonalCloud(userId);
-    return ok ? (decision === "push_local" ? "pushed" : "kept_local") : "error";
-  }
-  setStatus("synced");
-  return "empty";
 }
 
 export async function pushPersonalCloud(userId: string): Promise<boolean> {
@@ -163,25 +179,35 @@ export async function pushPersonalCloud(userId: string): Promise<boolean> {
   setStatus("syncing");
   const epochAtStart = editEpoch;
   const local = snapshot();
-  // Never upsert empty/default local over an existing meaningful Personal cloud row.
-  if (!isPersonalMeaningful(local)) {
-    const { data: existing, error: readErr } = await sb
-      .from("personal_study_state")
-      .select("data")
-      .eq("owner_id", userId)
-      .maybeSingle();
-    if (readErr) {
-      console.warn("[HR Personal] cloud pre-push read failed", readErr.message);
-      setStatus("error");
-      return false;
-    }
-    if (isPersonalMeaningful((existing?.data ?? null) as Partial<PersonalSyncBlob> | null)) {
-      console.warn("[HR Personal] refused empty push (protects personal_study_state)");
-      setStatus("synced");
-      return false;
-    }
+  const { data: existing, error: readErr } = await sb
+    .from("personal_study_state")
+    .select("data")
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (readErr) {
+    console.warn("[HR Personal] cloud pre-push read failed", readErr.message);
+    setStatus("error");
+    return false;
   }
-  const data = local as unknown as Json;
+  const cloud = (existing?.data ?? null) as Partial<PersonalSyncBlob> | null;
+  // Never upsert empty/default local over an existing meaningful Personal cloud row.
+  if (!isPersonalMeaningful(local) && isPersonalMeaningful(cloud)) {
+    console.warn("[HR Personal] refused empty push (protects personal_study_state)");
+    setStatus("synced");
+    return false;
+  }
+  // Merge id-keyed slices so a partial local cache cannot drop cloud notes/sessions.
+  const merged: PersonalSyncBlob = {
+    ...local,
+    notes: mergeById(local.notes ?? [], cloud?.notes ?? []),
+    sessions: mergeById(local.sessions ?? [], cloud?.sessions ?? []),
+    backlog: mergeById(local.backlog ?? [], cloud?.backlog ?? []),
+    assessments: mergeById(local.assessments ?? [], cloud?.assessments ?? []),
+    gradeEntries: mergeById(local.gradeEntries ?? [], cloud?.gradeEntries ?? []),
+    courseGrades: mergeById(local.courseGrades ?? [], cloud?.courseGrades ?? []),
+    examPrepTasks: mergeById(local.examPrepTasks ?? [], cloud?.examPrepTasks ?? []),
+  };
+  const data = merged as unknown as Json;
   const { error } = await sb.from("personal_study_state").upsert(
     {
       owner_id: userId,
@@ -212,12 +238,16 @@ export function startPersonalCloudSync(userId: string) {
     return;
   }
   currentUser = userId;
+  initialPullDone = false;
   setStatus("connecting");
-
-  void pullPersonalCloud(userId);
 
   const flushPush = () => {
     if (!currentUser) return;
+    if (!initialPullDone) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flushPush, 500);
+      return;
+    }
     if (syncing) {
       // In-flight push — retry shortly so the skipped edit is not dropped.
       if (timer) clearTimeout(timer);
@@ -236,6 +266,14 @@ export function startPersonalCloudSync(userId: string) {
     });
   };
 
+  void pullPersonalCloud(userId).finally(() => {
+    // Local edits during the first pull stay unsynced — flush once pull has landed.
+    if (currentUser && readUnsynced()) {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flushPush, 500);
+    }
+  });
+
   const schedule = () => {
     if (!currentUser) return;
     markUnsynced();
@@ -245,7 +283,7 @@ export function startPersonalCloudSync(userId: string) {
 
   const unsubStore = usePersonal.subscribe(schedule);
   const onHide = () => {
-    if (currentUser) void pushPersonalCloud(currentUser);
+    if (currentUser && initialPullDone) void pushPersonalCloud(currentUser);
   };
   if (typeof window !== "undefined") {
     window.addEventListener("pagehide", onHide);
@@ -267,6 +305,7 @@ export function startPersonalCloudSync(userId: string) {
 
 export function stopPersonalCloudSync() {
   currentUser = null;
+  initialPullDone = false;
   if (timer) {
     clearTimeout(timer);
     timer = null;
