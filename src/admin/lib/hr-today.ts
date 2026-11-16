@@ -1,5 +1,6 @@
 import { calcDay } from "./calc";
 import { leaveDaysOnDate, leaveRoster } from "./leave-management";
+import { normalizeTasks, taskDoneDays } from "./normalize-tasks";
 import { resolveDeptAsOf } from "./shift-assignment";
 import { shiftVariance } from "./shift-variance";
 import { hrSyncStatusLabel, type HrSyncUi } from "./hr-sync-status";
@@ -210,10 +211,10 @@ export function buildHrToday(opts: {
   };
 }
 
-export function openTasksDue(tasks: Task[], date: string): Task[] {
-  return tasks.filter((t) => {
+export function openTasksDue(tasks: Task[] | unknown, date: string): Task[] {
+  return normalizeTasks(tasks).filter((t) => {
     if (t.kind === "dated") return !t.done && t.due <= date;
-    return !t.doneDays.includes(date) && t.due <= date;
+    return !taskDoneDays(t).includes(date) && t.due <= date;
   });
 }
 

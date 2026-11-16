@@ -18,12 +18,19 @@ import {
   refuseSeedOrEmptyPush,
 } from "./hr-sync-protect";
 import { hrPayloadsDiverge, needsExplicitConflictUx, type HrSyncUi } from "./hr-sync-status";
+import { withNormalizedTasks } from "./normalize-tasks";
 import { useApp, whenAttendanceHydrated } from "./store";
 
 export type { SaveNowResult } from "./hr-local-pending";
 export { hrSyncStatusLabel } from "./hr-sync-status";
 
 const KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
+
+/** Apply cloud/local HR blob without letting malformed tasks crash TaskGate / My HR Today. */
+function applyHrPayload(raw: unknown) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+  useApp.setState(withNormalizedTasks(raw as Record<string, unknown>) as never);
+}
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let unsub: (() => void) | null = null;
@@ -186,7 +193,7 @@ async function pull(userId: string, force = false) {
         setStatus("synced");
         return;
       }
-      useApp.setState(cloudData as never);
+      applyHrPayload(cloudData);
       lastStamp = data?.updated_at ?? lastStamp;
       setStatus("synced");
       return;
@@ -286,7 +293,7 @@ export async function resolveHrConflict(choice: "keep_local" | "use_cloud"): Pro
     const stamp = conflictCloudStamp;
     clearConflict();
     clearHrPendingUnsynced();
-    useApp.setState(held as never);
+    applyHrPayload(held);
     lastStamp = stamp || lastStamp;
     setStatus("synced");
     return saveNowMessage("cloud_ok");
