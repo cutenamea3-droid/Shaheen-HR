@@ -470,6 +470,7 @@ function Login({
               name="email"
               type="email"
               className="field"
+              data-testid="admin-email"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -485,6 +486,7 @@ function Login({
               name="password"
               type="password"
               className="field"
+              data-testid="admin-password"
               value={pass}
               onChange={(e) => {
                 setPass(e.target.value);
@@ -499,7 +501,13 @@ function Login({
               {err}
             </p>
           )}
-          <button type="submit" className="btn-primary w-full" disabled={busy} aria-busy={busy}>
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            data-testid="admin-sign-in"
+            disabled={busy}
+            aria-busy={busy}
+          >
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
