@@ -14,7 +14,7 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       const id = r.driverId;
       if (!id) continue;
