@@ -235,9 +235,9 @@ export function PersonalApp() {
         >
           <PersonalWorkspace
             onLock={async () => {
-              await personalSignOut();
-              usePersonal.setState({ authed: false });
               setAuthed(false);
+              usePersonal.setState({ authed: false });
+              await personalSignOut();
             }}
           />
         </Suspense>

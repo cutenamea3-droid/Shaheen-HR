@@ -97,6 +97,13 @@ export async function personalSignIn(
 
 export async function personalSignOut(): Promise<void> {
   stopPersonalCloudSync();
+  // Flip study UI lock immediately so LoginGate shows even if Auth network is slow.
+  try {
+    const { usePersonal } = await import("@/personal/lib/store");
+    usePersonal.setState({ authed: false });
+  } catch {
+    /* ignore */
+  }
   if (isPersonalSecureEnabled()) {
     await signOutPersonalSecure();
   }

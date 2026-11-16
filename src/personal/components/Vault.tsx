@@ -7,10 +7,7 @@ import {
   readPersonalSessionLogin,
 } from "@/personal/lib/auth";
 import { PERSONAL_NAV_KEY } from "@/personal/lib/access";
-import {
-  FORBIDDEN_COMPANY_KEYS,
-  PERSONAL_STORAGE_KEY,
-} from "@/personal/lib/defaults";
+import { FORBIDDEN_COMPANY_KEYS, PERSONAL_STORAGE_KEY } from "@/personal/lib/defaults";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 import {
@@ -19,10 +16,7 @@ import {
   parsePersonalBackup,
   PERSONAL_LOCAL_STORAGE_KEYS,
 } from "@/personal/lib/backup";
-import {
-  getPersonalCloudStatus,
-  subscribePersonalCloudStatus,
-} from "@/personal/lib/cloud-sync";
+import { getPersonalCloudStatus, subscribePersonalCloudStatus } from "@/personal/lib/cloud-sync";
 import {
   isPersonalSecureEnabled,
   personalAuthMode,
@@ -119,9 +113,7 @@ export function Vault() {
               min={20}
               max={480}
               value={settings.weekdayMinutes}
-              onChange={(e) =>
-                setSettings({ weekdayMinutes: Number(e.target.value) || 120 })
-              }
+              onChange={(e) => setSettings({ weekdayMinutes: Number(e.target.value) || 120 })}
             />
           </Field>
           <Field label="Sunday Recovery Mission (minutes)">
@@ -131,9 +123,7 @@ export function Vault() {
               min={20}
               max={600}
               value={settings.sundayMinutes}
-              onChange={(e) =>
-                setSettings({ sundayMinutes: Number(e.target.value) || 270 })
-              }
+              onChange={(e) => setSettings({ sundayMinutes: Number(e.target.value) || 270 })}
             />
           </Field>
           <Field label="Pomodoro focus (min)">
@@ -143,9 +133,7 @@ export function Vault() {
               min={5}
               max={90}
               value={settings.pomodoroFocus}
-              onChange={(e) =>
-                setSettings({ pomodoroFocus: Number(e.target.value) || 25 })
-              }
+              onChange={(e) => setSettings({ pomodoroFocus: Number(e.target.value) || 25 })}
             />
           </Field>
           <Field label="Pomodoro break (min)">
@@ -155,9 +143,7 @@ export function Vault() {
               min={1}
               max={30}
               value={settings.pomodoroBreak}
-              onChange={(e) =>
-                setSettings({ pomodoroBreak: Number(e.target.value) || 5 })
-              }
+              onChange={(e) => setSettings({ pomodoroBreak: Number(e.target.value) || 5 })}
             />
           </Field>
           <Field label="Deep focus (min)">
@@ -167,9 +153,7 @@ export function Vault() {
               min={20}
               max={120}
               value={settings.deepFocus}
-              onChange={(e) =>
-                setSettings({ deepFocus: Number(e.target.value) || 50 })
-              }
+              onChange={(e) => setSettings({ deepFocus: Number(e.target.value) || 50 })}
             />
           </Field>
           <Field label="Deep break (min)">
@@ -179,9 +163,7 @@ export function Vault() {
               min={1}
               max={30}
               value={settings.deepBreak}
-              onChange={(e) =>
-                setSettings({ deepBreak: Number(e.target.value) || 10 })
-              }
+              onChange={(e) => setSettings({ deepBreak: Number(e.target.value) || 10 })}
             />
           </Field>
         </div>
@@ -254,8 +236,8 @@ export function Vault() {
                 </>
               ) : (
                 <>
-                  Feature flag off: device-local hash gate + <code>{PERSONAL_STORAGE_KEY}</code> only.
-                  Cross-browser sync is unavailable until Personal project SQL is applied and{" "}
+                  Feature flag off: device-local hash gate + <code>{PERSONAL_STORAGE_KEY}</code>{" "}
+                  only. Cross-browser sync is unavailable until Personal project SQL is applied and{" "}
                   <code>VITE_PERSONAL_AUTH_SECURE=1</code> is set (Preview first).
                 </>
               )}
@@ -264,7 +246,9 @@ export function Vault() {
           <div>
             <div className="font-semibold text-[var(--hp-violet)]">Isolation (hard)</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
-              <li>Personal client uses only <code>VITE_PERSONAL_*</code> — never Driver/Admin URLs</li>
+              <li>
+                Personal client uses only <code>VITE_PERSONAL_*</code> — never Driver/Admin URLs
+              </li>
               <li>
                 Never writes company <code>app_state</code>, <code>tracker_sections</code>, payroll,
                 banking, drug tests, or rate cards
@@ -364,7 +348,8 @@ export function Vault() {
           <Btn
             variant="danger"
             onClick={() => {
-              void personalSignOut().then(() => setAuthed(false));
+              setAuthed(false);
+              void personalSignOut();
             }}
           >
             Sign out
@@ -388,8 +373,8 @@ export function Vault() {
             Pomodoro · Deep; logged minutes only
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Grades · Review</span> — owner Grade
-            Book / CGPA estimator + Weekly Review (never invent marks)
+            <span className="font-semibold text-[var(--hp-ink)]">Grades · Review</span> — owner
+            Grade Book / CGPA estimator + Weekly Review (never invent marks)
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
             <span className="font-semibold text-[var(--hp-ink)]">Notes · Links</span> — revision /
