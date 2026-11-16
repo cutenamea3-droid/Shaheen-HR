@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { deadlineBadge } from "@/personal/lib/assessment-phases";
 import { usePersonal } from "@/personal/lib/store";
@@ -53,6 +53,8 @@ export function Assessments() {
   const [prepCourseId, setPrepCourseId] = useState(courses[0]?.id ?? "cs101");
   const [prepLabel, setPrepLabel] = useState("");
   const [prepKind, setPrepKind] = useState<ExamPrepTask["examKind"]>("midterm");
+  const titleRef = useRef<HTMLInputElement>(null);
+  const prepLabelRef = useRef<HTMLInputElement>(null);
 
   const daysUntil = (iso: string) => {
     if (!iso) return null;
@@ -255,19 +257,24 @@ export function Assessments() {
           <Field label="Custom task">
             <div className="flex gap-2">
               <input
+                ref={prepLabelRef}
                 className="hp-field"
+                data-testid="personal-prep-label"
                 value={prepLabel}
                 onChange={(e) => setPrepLabel(e.target.value)}
+                onInput={(e) => setPrepLabel((e.target as HTMLInputElement).value)}
                 placeholder="Owner task…"
               />
               <Btn
+                data-testid="personal-prep-add"
                 onClick={() => {
-                  if (!prepLabel.trim()) return;
+                  const next = (prepLabel.trim() || prepLabelRef.current?.value || "").trim();
+                  if (!next) return;
                   upsertExamPrepTask({
                     id: Math.random().toString(36).slice(2, 10),
                     courseId: prepCourseId,
                     examKind: prepKind,
-                    label: prepLabel.trim(),
+                    label: next,
                     done: false,
                     notes: "",
                   });
@@ -321,12 +328,13 @@ export function Assessments() {
           className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 md:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!title.trim()) return;
+            const nextTitle = (title.trim() || titleRef.current?.value || "").trim();
+            if (!nextTitle) return;
             upsertAssessment({
               id: Math.random().toString(36).slice(2, 10),
               courseId,
               kind,
-              title: title.trim(),
+              title: nextTitle,
               dueDate,
               notes: dueDate
                 ? "Owner-entered deadline — verify on VULMS."
@@ -342,7 +350,14 @@ export function Assessments() {
           }}
         >
           <Field label="Title">
-            <input className="hp-field" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              ref={titleRef}
+              className="hp-field"
+              data-testid="personal-assessment-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
+            />
           </Field>
           <Field label="Due date (optional)">
             <input
@@ -372,7 +387,7 @@ export function Assessments() {
             </select>
           </Field>
           <div className="md:col-span-2">
-            <Btn type="submit">Add assessment</Btn>
+            <Btn type="submit" data-testid="personal-assessment-add">Add assessment</Btn>
           </div>
         </form>
 
