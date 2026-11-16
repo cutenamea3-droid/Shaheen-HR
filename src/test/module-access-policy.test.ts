@@ -2,16 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   assertNoTokenBridge,
   canAccessPath,
+  companySwitcherModules,
   describeAuthBoundaries,
   hasPrivilege,
   homePathFor,
   isDispatchOnly,
+  isIndependentLoginModule,
   isLocalRoleSourceOfTruth,
   moduleForPath,
   privilegesFor,
   resolveAccess,
   seatsToGrants,
   selectableModulesFor,
+  shouldDenyModulePath,
 } from "@/lib/module-access";
 
 describe("module-access policy", () => {
@@ -86,6 +89,42 @@ describe("module-access policy", () => {
     expect(moduleForPath("/personal")).toBe("personal");
     expect(moduleForPath("/cv")).toBe("public");
     expect(moduleForPath("/access-denied")).toBe("access-denied");
+  });
+
+  it("never Access-Denies Admin/Personal/Dispatch LoginGate paths when another seat exists", () => {
+    const complianceOnly = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
+    expect(isIndependentLoginModule("admin-hr")).toBe(true);
+    expect(isIndependentLoginModule("personal")).toBe(true);
+    expect(isIndependentLoginModule("dispatch")).toBe(true);
+    expect(isIndependentLoginModule("compliance")).toBe(false);
+
+    // canAccessPath remains strict (seat check); ModuleRedirector uses shouldDenyModulePath.
+    expect(canAccessPath(complianceOnly, "/admin")).toBe(false);
+    expect(canAccessPath(complianceOnly, "/dispatch")).toBe(false);
+    expect(canAccessPath(complianceOnly, "/personal")).toBe(false);
+    expect(shouldDenyModulePath(complianceOnly, "/admin")).toBe(false);
+    expect(shouldDenyModulePath(complianceOnly, "/dispatch")).toBe(false);
+    expect(shouldDenyModulePath(complianceOnly, "/personal")).toBe(false);
+    expect(shouldDenyModulePath(complianceOnly, "/")).toBe(false);
+  });
+
+  it("still Access-Denies Compliance URLs for Admin-only / Dispatch-only seats", () => {
+    const adminOnly = seatsToGrants([{ module: "admin-hr", role: "admin", active: true }]);
+    const dispatchOnly = seatsToGrants([{ module: "dispatch", role: "dispatcher", active: true }]);
+    expect(shouldDenyModulePath(adminOnly, "/")).toBe(true);
+    expect(shouldDenyModulePath(adminOnly, "/admin")).toBe(false);
+    expect(shouldDenyModulePath(dispatchOnly, "/")).toBe(true);
+    expect(shouldDenyModulePath(dispatchOnly, "/dispatch")).toBe(false);
+    expect(shouldDenyModulePath({ compliance: null, "admin-hr": null, personal: null, dispatch: null }, "/")).toBe(
+      false,
+    );
+  });
+
+  it("company switcher keeps Admin/Dispatch login surfaces except Dispatch-only", () => {
+    const complianceOnly = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
+    const dispatchOnly = seatsToGrants([{ module: "dispatch", role: "dispatcher", active: true }]);
+    expect(companySwitcherModules(complianceOnly)).toEqual(["compliance", "admin-hr", "dispatch"]);
+    expect(companySwitcherModules(dispatchOnly)).toEqual(["dispatch"]);
   });
 });
 

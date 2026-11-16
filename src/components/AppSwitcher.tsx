@@ -3,8 +3,9 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FileCheck2, ShieldX, Truck, UserRound, UsersRound } from "lucide-react";
 import {
   EMPTY_GRANTS,
+  companySwitcherModules,
+  isDispatchOnly,
   probeModuleGrants,
-  selectableModulesFor,
   type ModuleGrants,
   type ModuleId,
 } from "@/lib/module-access";
@@ -53,22 +54,22 @@ export function AppSwitcher() {
   const hasAnySeat = Boolean(
     grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
   );
-  // Anonymous / unknown: keep company login surfaces visible. Once seats resolve, filter strictly.
+  // Anonymous / unknown: all company login surfaces. After seats: keep Compliance /
+  // Admin / Dispatch reachable for independent LoginGates unless Dispatch-only.
   const selectable =
     ready && hasAnySeat
-      ? selectableModulesFor(grants, { pathname })
+      ? companySwitcherModules(grants)
       : (["compliance", "admin-hr", "dispatch"] as ModuleId[]);
 
   const show = (id: ModuleId) => {
     if (id === "personal") {
-      return shouldShowPersonalSwitcherLink(isPersonal) && Boolean(grants.personal || isPreviewOrUnknown());
+      // Privacy: Personal only while already on /personal (never advertised company-wide).
+      // Dispatch-only must not see Personal either.
+      if (ready && hasAnySeat && isDispatchOnly(grants)) return false;
+      return shouldShowPersonalSwitcherLink(isPersonal);
     }
     return selectable.includes(id);
   };
-
-  function isPreviewOrUnknown() {
-    return !ready || !hasAnySeat;
-  }
 
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";

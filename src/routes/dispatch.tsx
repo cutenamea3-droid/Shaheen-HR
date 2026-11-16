@@ -8,8 +8,8 @@ function DispatchError(props: ErrorComponentProps) {
       <ModuleErrorPanel
         {...props}
         moduleLabel="Dispatch Operations"
-        homeTo="/"
-        homeLabel="Driver Compliance"
+        homeTo="/dispatch"
+        homeLabel="Dispatch home"
       />
     </div>
   );

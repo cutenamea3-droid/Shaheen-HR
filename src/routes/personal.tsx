@@ -9,7 +9,7 @@ import { ModuleErrorPanel } from "@/components/ModuleErrorPanel";
  */
 function PersonalError(props: ErrorComponentProps) {
   return (
-    <ModuleErrorPanel {...props} moduleLabel="HR Personal" homeTo="/" homeLabel="Driver Compliance" />
+    <ModuleErrorPanel {...props} moduleLabel="HR Personal" homeTo="/personal" homeLabel="HR Personal home" />
   );
 }
 

@@ -87,6 +87,48 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
   return Boolean(grants[mod]);
 }
 
+/**
+ * Admin, Personal, and Dispatch each have their own LoginGate + auth storage.
+ * Missing a seat for those modules must NOT mean Access Denied — the user still
+ * needs to reach the login page to authenticate for that project.
+ * Compliance is different: seats without Compliance are bounced off Driver URLs.
+ */
+export function isIndependentLoginModule(mod: ModuleId | "public" | "access-denied" | null): boolean {
+  return mod === "admin-hr" || mod === "personal" || mod === "dispatch";
+}
+
+/**
+ * Whether ModuleRedirector should send the user to /access-denied for this path.
+ * Pure + testable. Returns false while anonymous (no seats) so LoginGates can run.
+ */
+export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): boolean {
+  const mod = moduleForPath(pathname);
+  if (mod === "public" || mod === "access-denied" || !mod) return false;
+  // Independent portals: never hard-deny; LoginGate / ACL inside the module decide.
+  if (isIndependentLoginModule(mod)) return false;
+
+  const hasAnySeat = Boolean(
+    grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
+  );
+  if (!hasAnySeat) return false;
+
+  // Compliance URLs only: Admin-only / Dispatch-only / Personal-only without a
+  // Compliance seat → Access Denied (legitimate cross-module ACL).
+  return !canAccessPath(grants, pathname);
+}
+
+/**
+ * Company AppSwitcher links after seats resolve.
+ * Dispatch-only: only Dispatch (must not advertise Compliance/Admin).
+ * Everyone else: keep Compliance + Admin + Dispatch as login surfaces so
+ * independent LoginGates remain reachable even when that module's seat is
+ * not probed yet. Personal stays privacy-gated separately.
+ */
+export function companySwitcherModules(grants: ModuleGrants): ModuleId[] {
+  if (isDispatchOnly(grants)) return ["dispatch"];
+  return ["compliance", "admin-hr", "dispatch"];
+}
+
 export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAccess {
   const normalized = { ...EMPTY_GRANTS, ...grants };
   return {
