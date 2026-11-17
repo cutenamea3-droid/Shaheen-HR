@@ -295,7 +295,7 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
   }
 
   const sortKey = (row: DrugPairRow) => {
-    const d = row.eventDate || row.collectionContext || "";
+    const d = asDrugText(row.eventDate || row.collectionContext || "");
     const created = Math.max(row.federal?.createdAt ?? 0, row.medical?.createdAt ?? 0);
     return `${d}\t${created}`;
   };

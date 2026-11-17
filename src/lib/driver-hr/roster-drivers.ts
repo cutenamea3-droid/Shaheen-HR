@@ -27,8 +27,9 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
       }
     }
   }
+  const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   return [...map.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+    asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
   );
 }
 

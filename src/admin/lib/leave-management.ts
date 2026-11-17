@@ -43,7 +43,10 @@ export function listLeaveDaysInMonth(
       }
     }
   }
-  return out.sort((a, b) => a.date.localeCompare(b.date) || a.employeeId.localeCompare(b.employeeId));
+  const asS = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return out.sort(
+    (a, b) => asS(a.date).localeCompare(asS(b.date)) || asS(a.employeeId).localeCompare(asS(b.employeeId)),
+  );
 }
 
 /** Roster using existing leaveBalance / openingLeave / joinMonth accrual — no new policy. */

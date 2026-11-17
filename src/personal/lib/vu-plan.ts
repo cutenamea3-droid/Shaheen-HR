@@ -73,26 +73,34 @@ export function feeTodos(plan: VuStudyPlan = VU_STUDY_PLAN): VuTodo[] {
   return todos.filter((t) => t.kind === "fee");
 }
 
+const asDue = (v: unknown, fallback = "") => {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  return s || fallback;
+};
+
 export function pendencyTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
     .filter((t) => t.statusAsOf === "open_now" || t.statusAsOf === "window_ended")
-    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+    .sort((a, b) => asDue(a.due, "9999").localeCompare(asDue(b.due, "9999")));
 }
 
 export function dueSoonTodos(plan: VuStudyPlan, todayIso: string, withinDays = 7): VuTodo[] {
   const end = addDaysIso(todayIso, withinDays);
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
-    .filter((t) => t.due && t.due >= todayIso && t.due <= end)
-    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+    .filter((t) => {
+      const due = asDue(t.due);
+      return due && due >= todayIso && due <= end;
+    })
+    .sort((a, b) => asDue(a.due).localeCompare(asDue(b.due)));
 }
 
 export function overdueTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
     .filter((t) => t.statusAsOf === "window_ended")
-    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+    .sort((a, b) => asDue(a.due).localeCompare(asDue(b.due)));
 }
 
 export function slotsForDate(plan: VuStudyPlan, dateIso: string): VuLectureSlot[] {
@@ -277,7 +285,7 @@ export function buildTodayPrescription(
     if (opts.creditHourTriage) {
       return (creditByCode.get(b.courseCode || "") || 0) - (creditByCode.get(a.courseCode || "") || 0);
     }
-    return (a.title || "").localeCompare(b.title || "");
+    return asDue(a.title).localeCompare(asDue(b.title));
   });
 
   let recoveryLeft = Math.max(recoveryPortion, gradedOrdered.length ? 45 : 0);
@@ -357,8 +365,8 @@ export function buildTodayPrescription(
   blocks.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     if (a.priority <= 1 && b.priority <= 1) {
-      const ad = a.due || "";
-      const bd = b.due || "";
+      const ad = asDue(a.due);
+      const bd = asDue(b.due);
       if (ad !== bd) return ad.localeCompare(bd);
       if (a.kind !== b.kind) return a.kind === "recovery" ? -1 : 1;
     }

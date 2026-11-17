@@ -267,7 +267,11 @@ function renderNotes(
   if (mode === "management") {
     const noteList = Array.isArray(notes) ? notes : [];
     const byEmp = new Map<string, number>();
-    for (const n of noteList) byEmp.set(n.employee, (byEmp.get(n.employee) ?? 0) + 1);
+    const asEmp = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    for (const n of noteList) {
+      const key = asEmp(n.employee);
+      byEmp.set(key, (byEmp.get(key) ?? 0) + 1);
+    }
     const rows = [...byEmp.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([name, count], i) => [String(i + 1), name, String(count), "See Full HR Audit for note text"]);
