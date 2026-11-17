@@ -96,8 +96,10 @@ export function normalizeRateInput(raw: string): string | null {
   return t.replace(/^\+/, "");
 }
 
-export function rateDisplay(value: string | undefined | null): string {
-  const t = (value ?? "").trim();
+/** Coerce a rate cell to a trimmed string — corrupt cloud may store numbers. */
+export function rateDisplay(value: unknown): string {
+  if (value == null) return "";
+  const t = typeof value === "string" ? value.trim() : String(value).trim();
   return t || "";
 }
 
@@ -109,5 +111,5 @@ export function rateCardHasContent(card: DriverRateCard | null | undefined): boo
   if (note.trim()) return true;
   const rates =
     card.rates && typeof card.rates === "object" && !Array.isArray(card.rates) ? card.rates : {};
-  return Object.values(rates).some((v) => (v ?? "").trim() !== "");
+  return Object.values(rates).some((v) => rateDisplay(v) !== "");
 }

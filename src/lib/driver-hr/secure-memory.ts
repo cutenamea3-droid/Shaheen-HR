@@ -18,7 +18,8 @@ function scrubRates(rates: Record<string, string>): Record<string, string> {
   const src = rates && typeof rates === "object" && !Array.isArray(rates) ? rates : {};
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(src)) {
-    const t = (v ?? "").trim();
+    const t =
+      v == null ? "" : typeof v === "string" ? v.trim() : String(v).trim();
     if (t) out[k] = t;
   }
   return out;
