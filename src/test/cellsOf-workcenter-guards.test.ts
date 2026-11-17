@@ -11,6 +11,16 @@ describe("cellsOf helper", () => {
     expect(cellsOf({ cells: null })).toEqual([]);
     expect(cellsOf({ cells: ["a"] })).toEqual(["a"]);
   });
+
+  it("stringifies non-string cell entries before callers trim", () => {
+    expect(cellsOf({ cells: [null, 42, true, "ok"] as unknown as string[] })).toEqual([
+      "",
+      "42",
+      "true",
+      "ok",
+    ]);
+    expect(() => cellsOf({ cells: [9911] as unknown as string[] })[0]!.trim()).not.toThrow();
+  });
 });
 
 describe("work-center / plan-dates null cells", () => {

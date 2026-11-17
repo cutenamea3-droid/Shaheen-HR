@@ -227,9 +227,10 @@ export interface Row {
   dateOfHire?: string;
 }
 
-/** Safe cells array for corrupt/missing cloud rows — never assume `row.cells` is an array. */
+/** Safe cells array for corrupt/missing cloud rows — never assume `row.cells` is an array or that entries are strings. */
 export function cellsOf(row: { cells?: unknown } | null | undefined): string[] {
-  return Array.isArray(row?.cells) ? (row!.cells as string[]) : [];
+  if (!Array.isArray(row?.cells)) return [];
+  return (row!.cells as unknown[]).map((c) => (c == null ? "" : typeof c === "string" ? c : String(c)));
 }
 
 /** Safe rows array for corrupt/missing cloud sections — never assume `section.rows` is an array. */

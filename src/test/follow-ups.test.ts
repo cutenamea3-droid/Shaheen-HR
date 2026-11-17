@@ -8,6 +8,7 @@ import {
   filterFollowUps,
   followUpCounts,
   listFollowUps,
+  rowToFollowUp,
   suggestAppliedFollowUps,
 } from "@/lib/follow-ups";
 import {
@@ -44,6 +45,28 @@ describe("follow-up tracker", () => {
     expect(sec).toBeTruthy();
     expect(sec.headers).toEqual([...FOLLOW_UP_HEADERS]);
     expect(sec.rows).toEqual([]);
+  });
+
+  test("rowToFollowUp / addFollowUp coerce non-string cells and fields", () => {
+    const parsed = rowToFollowUp({
+      id: "fu_num",
+      driverId: "d1",
+      cells: ["Driver", 42, "open", 20261117, null, "manual", "dmv", "CDL"] as unknown as string[],
+      addedAt: 1,
+    });
+    expect(parsed.subject).toBe("42");
+    expect(parsed.dueDate).toBe("20261117");
+    expect(parsed.notes).toBe("");
+    expect(() =>
+      addFollowUp({
+        driverId: "d_num",
+        driver: "Num Driver",
+        subject: 99 as unknown as string,
+        dueDate: 20261120 as unknown as string,
+        notes: null as unknown as string,
+        source: "manual",
+      }),
+    ).not.toThrow();
   });
 
   test("add / update / delete follow-ups via store (tracker_sections path)", () => {

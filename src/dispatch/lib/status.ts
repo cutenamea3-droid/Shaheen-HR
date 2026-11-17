@@ -71,7 +71,11 @@ export function filterLoads(
     exceptionOnly?: boolean;
   },
 ): DispatchLoad[] {
-  const q = (query.q ?? "").trim().toLowerCase();
+  const q = (
+    query.q == null ? "" : typeof query.q === "string" ? query.q : String(query.q)
+  )
+    .trim()
+    .toLowerCase();
   return (Array.isArray(loads) ? loads : []).filter((load) => {
     if (query.exceptionOnly && !load.exception_open) return false;
     if (query.status === "active" && !ACTIVE_LOAD_STATUSES.includes(load.status)) return false;
@@ -80,6 +84,7 @@ export function filterLoads(
     }
     if (query.driverId && query.driverId !== "all" && load.assigned_driver_id !== query.driverId) return false;
     if (!q) return true;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const hay = [
       load.load_number,
       load.customer_name,
@@ -88,6 +93,7 @@ export function filterLoads(
       load.last_manual_location,
       load.notes,
     ]
+      .map(asText)
       .filter(Boolean)
       .join(" ")
       .toLowerCase();

@@ -98,15 +98,20 @@ function normalizeFollowUpSection(sec: SectionData): SectionData {
   return { ...sec, headers, widths, hidden, rows };
 }
 
-function parseStatus(raw: string): FollowUpStatus {
-  const k = raw.trim().toLowerCase();
+function asFuText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+function parseStatus(raw: unknown): FollowUpStatus {
+  const k = asFuText(raw).trim().toLowerCase();
   if (k === "done" || k === "complete" || k === "closed") return "done";
   if (k === "snoozed" || k === "snooze") return "snoozed";
   return "open";
 }
 
-function parseSource(raw: string): FollowUpSource {
-  const k = raw.trim().toLowerCase();
+function parseSource(raw: unknown): FollowUpSource {
+  const k = asFuText(raw).trim().toLowerCase();
   if (k === "applied") return "applied";
   if (k === "plan") return "plan";
   if (k === "alert") return "alert";
@@ -114,16 +119,16 @@ function parseSource(raw: string): FollowUpSource {
 }
 
 export function rowToFollowUp(row: Row): FollowUp {
-  const cells = row.cells;
+  const cells = cellsOf(row);
   return {
     id: row.id,
     driverId: row.driverId,
     driver: (cells[0] ?? "").trim() || "Unknown",
     subject: (cells[1] ?? "").trim(),
-    status: parseStatus(cells[2] ?? ""),
+    status: parseStatus(cells[2]),
     dueDate: (cells[3] ?? "").trim(),
     notes: (cells[4] ?? "").trim(),
-    source: parseSource(cells[5] ?? ""),
+    source: parseSource(cells[5]),
     sectionId: (cells[6] ?? "").trim(),
     docType: (cells[7] ?? "").trim(),
     linkedRowId: row.id.startsWith("fu_") ? "" : row.id,

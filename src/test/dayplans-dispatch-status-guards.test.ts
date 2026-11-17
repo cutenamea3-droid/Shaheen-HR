@@ -38,6 +38,42 @@ describe("dayPlans / Dispatch status / drug pair guards", () => {
       true,
     );
     expect(filterLoads({ bad: true } as unknown as [], { q: "x" })).toEqual([]);
+    expect(() =>
+      filterLoads(
+        [
+          {
+            load_number: 101 as unknown as string,
+            customer_name: "Acme",
+            assigned_driver_name: null as unknown as string,
+            commodity: undefined as unknown as string,
+            last_manual_location: "",
+            notes: "",
+            status: "dispatched",
+            exception_open: false,
+            assigned_driver_id: "d1",
+          } as never,
+        ],
+        { q: 101 as unknown as string },
+      ),
+    ).not.toThrow();
+    expect(
+      filterLoads(
+        [
+          {
+            load_number: "101",
+            customer_name: "Acme",
+            assigned_driver_name: "",
+            commodity: "",
+            last_manual_location: "",
+            notes: "",
+            status: "dispatched",
+            exception_open: false,
+            assigned_driver_id: "d1",
+          } as never,
+        ],
+        { q: 101 as unknown as string },
+      ),
+    ).toHaveLength(1);
   });
 
   it("drug pair helpers tolerate missing events/rows arrays", () => {

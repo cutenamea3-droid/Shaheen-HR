@@ -716,13 +716,17 @@ export function addRecord(sectionId: string, cells: string[]) {
 export function setRecordPersonActive(sectionId: string, personName: string, value: string) {
   const key = recordPersonKey(personName);
   if (!key) return;
-  const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  const label =
+    (value == null ? "" : typeof value === "string" ? value : String(value)).trim().toLowerCase() ===
+    "inactive"
+      ? "Inactive"
+      : "Active";
   update((d) => {
     const sec = d.sections[sectionId];
     if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      const baseCells = Array.isArray(r.cells) ? r.cells : [];
+      const baseCells = cellsOf(r);
       if (recordPersonKey(baseCells[0] ?? "") !== key) return r;
       const cells = [...baseCells];
       while (cells.length <= RECORD_ACTIVE_COL) cells.push("");
@@ -740,7 +744,7 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
 
 export function recordPersonIsActive(rows: { cells?: unknown }[]) {
   for (const r of rows) {
-    const cells = Array.isArray(r.cells) ? (r.cells as string[]) : [];
+    const cells = cellsOf(r);
     const v = (cells[RECORD_ACTIVE_COL] ?? "").trim();
     if (v) return v.toLowerCase() !== "inactive";
   }
@@ -778,14 +782,15 @@ export function addFollowUp(input: {
   update((d) => {
     const base = ensureFollowUpSection(d);
     const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const cells = followUpToCells({
       id,
       driverId: input.driverId,
-      driver: input.driver,
-      subject: input.subject.trim(),
+      driver: asText(input.driver),
+      subject: asText(input.subject).trim(),
       status: "open",
-      dueDate: (input.dueDate ?? "").trim(),
-      notes: (input.notes ?? "").trim(),
+      dueDate: asText(input.dueDate).trim(),
+      notes: asText(input.notes).trim(),
       source: input.source ?? "manual",
       sectionId: input.sectionId ?? "",
       docType: input.docType ?? "",
@@ -860,8 +865,8 @@ export function deleteFollowUp(id: string) {
   });
 }
 
-function recordPersonKey(name: string) {
-  return name.trim().toLowerCase();
+function recordPersonKey(name: unknown) {
+  return (name == null ? "" : typeof name === "string" ? name : String(name)).trim().toLowerCase();
 }
 
 /** Move every document row for a person from one record section into another (preserves cells/driverId/addedAt; new row ids). */
@@ -895,7 +900,7 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
 
 /** Rename every document row for a person within a record section so person-card grouping stays intact. */
 export function renameRecordPerson(sectionId: string, oldName: string, newName: string) {
-  const next = newName.trim();
+  const next = (newName == null ? "" : typeof newName === "string" ? newName : String(newName)).trim();
   if (!next) return;
   const key = recordPersonKey(oldName);
   if (!key || recordPersonKey(next) === key) return;

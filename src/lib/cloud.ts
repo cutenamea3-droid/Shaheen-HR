@@ -75,7 +75,11 @@ async function finishPortalLogin(userId: string): Promise<PortalAccount> {
  * with the same email+password (no invented secrets), then continue the session.
  */
 export async function signInPortalAccount(email: string, password: string): Promise<PortalSignInResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = (
+    email == null ? "" : typeof email === "string" ? email : String(email)
+  )
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail || !password) throw new Error("Email and password are required.");
 
   for (const authPassword of authPasswordCandidates(normalizedEmail, password)) {
