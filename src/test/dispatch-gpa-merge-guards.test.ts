@@ -23,4 +23,16 @@ describe("Dispatch list coerce + GPA / mergeById guards", () => {
     expect(estimateCgpa(null as unknown as [], undefined as unknown as []).cgpa).toBeNull();
     expect(componentPercents({ bad: true } as unknown as [])).toEqual([]);
   });
+
+  it("estimateCgpa coerces non-string letter before trim", () => {
+    expect(() =>
+      estimateCgpa(
+        [{ courseId: "c1", letter: null as unknown as string, creditHours: 3 } as never],
+        [{ id: "c1", code: "CS", title: "CS", creditHours: 3 } as never],
+      ),
+    ).not.toThrow();
+    const gpaSrc = readFileSync(resolve(process.cwd(), "src/personal/lib/gpa.ts"), "utf8");
+    expect(gpaSrc).toMatch(/export function normalizeLetter\(raw: unknown\)/);
+    expect(gpaSrc).toMatch(/normalizeLetter\(g\.letter\)/);
+  });
 });

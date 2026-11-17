@@ -244,8 +244,10 @@ export function headersOf(sec: { headers?: unknown } | null | undefined): string
 }
 
 /** Parse employment status from a cell or optional Row.status. Empty → active. */
-export function parseDriverStatus(value?: string | null): DriverStatus {
-  const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+export function parseDriverStatus(value?: unknown): DriverStatus {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase().replace(/\s+/g, " ");
   if (k === "inactive") return "inactive";
   if (k === "leave" || k === "on leave") return "leave";
   return "active";

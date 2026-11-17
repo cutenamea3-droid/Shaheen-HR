@@ -32,8 +32,10 @@ export interface TempNoteSection {
 /** Sections that declare a Temporary Note column. */
 export const TEMPNOTE_SECTIONS = SECTIONS.filter((s) => s.types.includes("tempnote"));
 
-export function parseDriverClass(value?: string | null): DriverClass {
-  const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+export function parseDriverClass(value?: unknown): DriverClass {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase().replace(/\s+/g, "_");
   if (k === "owner_operator" || k === "owner-operator" || k === "oo" || k === "owner") return "owner_operator";
   return "company";
 }
@@ -42,8 +44,10 @@ export function formatDriverClass(c: DriverClass): string {
   return c === "owner_operator" ? "Owner Operator" : "Company Driver";
 }
 
-export function parseRosterKind(value?: string | null): RosterKind {
-  const k = (value ?? "").trim().toLowerCase();
+export function parseRosterKind(value?: unknown): RosterKind {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase();
   if (k === "new" || k === "onboarding") return "new";
   return "roster";
 }

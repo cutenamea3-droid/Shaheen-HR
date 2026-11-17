@@ -2,12 +2,26 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildSeed, type AppData } from "@/lib/sections";
-import { applyDriverClass, applyRosterKind, classHistoryOf } from "@/lib/driver-meta";
+import {
+  applyDriverClass,
+  applyRosterKind,
+  classHistoryOf,
+  parseDriverClass,
+  parseRosterKind,
+} from "@/lib/driver-meta";
+import { parseDriverStatus } from "@/lib/sections";
 import { buildCompleteLoadHistory, awaitingCloseoutLoads } from "@/dispatch/lib/closeout";
 import { isPersonalMeaningful } from "@/personal/lib/sync-protect";
 import { healAttendanceBackupData } from "@/admin/components/hr/Settings";
 
 describe("history / merge / backup corrupt guards", () => {
+  it("status/class/roster parsers coerce non-string values before trim", () => {
+    expect(parseDriverStatus(null)).toBe("active");
+    expect(parseDriverClass(42 as unknown as string)).toBe("company");
+    expect(parseRosterKind(true as unknown as string)).toBe("roster");
+    expect(() => parseDriverClass({} as unknown as string)).not.toThrow();
+  });
+
   it("class/roster history spreads tolerate non-array history", () => {
     const data = structuredClone(buildSeed()) as AppData;
     const id = data.sections.dmv.rows[0]!.driverId;
@@ -52,6 +66,12 @@ describe("history / merge / backup corrupt guards", () => {
         vaultNotes: "",
       }),
     ).toBe(false);
+    expect(() =>
+      isPersonalMeaningful({ vaultNotes: 123 as unknown as string }),
+    ).not.toThrow();
+    expect(isPersonalMeaningful({ vaultNotes: 123 as unknown as string })).toBe(false);
+    const src = readFileSync(resolve(process.cwd(), "src/personal/lib/sync-protect.ts"), "utf8");
+    expect(src).toMatch(/typeof blob\.vaultNotes === \"string\"/);
   });
 
   it("Personal push merge uses Array.isArray before mergeById", () => {

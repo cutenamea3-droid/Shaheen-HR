@@ -1,8 +1,9 @@
 import type { DayRec, Dept, Employee, Settings } from "./types";
 
 /** Parse a pasted machine time ("5:59 AM", "05:59:12", "17:02") into minutes after midnight. */
-export function parseTime(raw: string): number | null {
-  const s = raw.trim().toLowerCase();
+export function parseTime(raw: unknown): number | null {
+  if (raw == null) return null;
+  const s = (typeof raw === "string" ? raw : String(raw)).trim().toLowerCase();
   if (!s) return null;
   const m = s.match(/(\d{1,2})[:.](\d{2})(?::\d{2})?\s*([ap])?\.?\s*m?/);
   if (!m) return null;

@@ -33,8 +33,9 @@ export const VU_WEIGHT_BANDS = {
     "https://handbook.vu.edu.pk/HandBook_Pages/Academic%20Rules%20and%20Regulations.htm",
 } as const;
 
-export function normalizeLetter(raw: string): string {
-  return raw.trim().toUpperCase();
+export function normalizeLetter(raw: unknown): string {
+  if (raw == null) return "";
+  return (typeof raw === "string" ? raw : String(raw)).trim().toUpperCase();
 }
 
 export function pointsForLetter(letter: string): number | null {
@@ -73,7 +74,7 @@ export function estimateCgpa(
           ? course.creditHours
           : null;
     if (pts == null || hours == null) {
-      if (g.letter.trim() || hours == null) missing += 1;
+      if (normalizeLetter(g.letter) || hours == null) missing += 1;
       continue;
     }
     pointsSum += pts * hours;

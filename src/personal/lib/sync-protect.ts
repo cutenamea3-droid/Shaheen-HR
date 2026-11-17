@@ -38,7 +38,11 @@ export function isPersonalMeaningful(blob: Partial<PersonalSyncBlob> | null | un
   if (arrLen(blob.examPrepTasks) > 0) return true;
   if (blob.weeklyReviews && typeof blob.weeklyReviews === "object" && !Array.isArray(blob.weeklyReviews) && Object.keys(blob.weeklyReviews).length > 0)
     return true;
-  if (blob.vaultNotes && blob.vaultNotes.trim().length > 0) return true;
+  if (
+    typeof blob.vaultNotes === "string" &&
+    blob.vaultNotes.trim().length > 0
+  )
+    return true;
   if (blob.dayPlans && typeof blob.dayPlans === "object" && !Array.isArray(blob.dayPlans) && Object.keys(blob.dayPlans).length > 0) {
     const plans = Object.values(blob.dayPlans);
     if (plans.some((p) => (Array.isArray(p?.blocks) ? p.blocks.length : 0) > 0 || p?.mode !== "normal")) return true;
