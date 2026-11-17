@@ -27,13 +27,28 @@ export function fmtTime(m: number | null | undefined): string {
 
 export const fmtHours = (min: number) => (min / 60).toFixed(2);
 
-export function weekday(date: string) {
-  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
+/** Coerce YYYY-MM-DD before `.split("-")` — corrupt cloud/local may store numbers. */
+function asDayIso(raw: unknown, fallback = "1970-01-01"): string {
+  const s = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return fallback;
+}
+
+/** Coerce YYYY-MM month keys the same way. */
+function asMonthKey(raw: unknown, fallback = "1970-01"): string {
+  const s = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
+  if (/^\d{4}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(0, 7);
+  return fallback;
+}
+
+export function weekday(date: unknown) {
+  const [y, mo, d] = asDayIso(date).split("-").map(Number) as [number, number, number];
   return new Date(y, mo - 1, d).getDay();
 }
 
-export function prettyDate(date: string) {
-  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
+export function prettyDate(date: unknown) {
+  const [y, mo, d] = asDayIso(date).split("-").map(Number) as [number, number, number];
   return new Date(y, mo - 1, d).toLocaleDateString("en-US", {
     weekday: "short",
     day: "2-digit",
@@ -41,8 +56,8 @@ export function prettyDate(date: string) {
     year: "numeric",
   });
 }
-export function shortDate(date: string) {
-  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
+export function shortDate(date: unknown) {
+  const [y, mo, d] = asDayIso(date).split("-").map(Number) as [number, number, number];
   return new Date(y, mo - 1, d).toLocaleDateString("en-US", { weekday: "short", day: "2-digit", month: "short" });
 }
 
@@ -224,27 +239,29 @@ export function calcDay(emp: Employee, dept: Dept | undefined, date: string, rec
   return c;
 }
 
-export function monthDays(month: string) {
-  const [y, m] = month.split("-").map(Number) as [number, number, number];
+export function monthDays(month: unknown) {
+  const key = asMonthKey(month);
+  const [y, m] = key.split("-").map(Number) as [number, number, number];
   const n = new Date(y, m, 0).getDate();
-  return Array.from({ length: n }, (_, i): string => `${month}-${String(i + 1).padStart(2, "0")}`);
+  return Array.from({ length: n }, (_, i): string => `${key}-${String(i + 1).padStart(2, "0")}`);
 }
 
 /** Paid leave balance available on `date` (excludes that date). 1 leave accrues per month from joinMonth. */
 export function leaveBalance(
   emp: Employee,
-  date: string,
+  date: unknown,
   records: Record<string, Record<string, DayRec>>,
 ): number {
-  const month = date.slice(0, 7);
-  const [jy, jm] = emp.joinMonth.split("-").map(Number) as [number, number, number];
+  const dayIso = asDayIso(date);
+  const month = dayIso.slice(0, 7);
+  const [jy, jm] = asMonthKey(emp?.joinMonth).split("-").map(Number) as [number, number, number];
   const [y, m] = month.split("-").map(Number) as [number, number, number];
   const accrued = Math.max(0, (y - jy) * 12 + (m - jm) + 1);
   let used = 0;
   const days =
     records && typeof records === "object" && !Array.isArray(records) ? records : {};
   for (const [d, day] of Object.entries(days)) {
-    if (d === date || d.slice(0, 7) > month) continue;
+    if (d === dayIso || d.slice(0, 7) > month) continue;
     if (!day || typeof day !== "object" || Array.isArray(day)) continue;
     const r = day[emp.id];
     if (r?.status === "leave" && r.leavePaid) used++;

@@ -229,8 +229,10 @@ export function monthlyOvertime(data: Data, month: string): Table[] {
   ];
 }
 
-export function monthLabel(month: string) {
-  const [y = 2026, m = 1] = month.split("-").map(Number);
+export function monthLabel(month: unknown) {
+  const raw = month == null ? "" : typeof month === "string" ? month : String(month);
+  const key = /^\d{4}-\d{2}/.test(raw) ? raw.slice(0, 7) : "1970-01";
+  const [y = 2026, m = 1] = key.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 

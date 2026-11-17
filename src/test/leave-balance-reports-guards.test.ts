@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { leaveBalance, type DayCalc } from "@/admin/lib/calc";
-import { autoNote } from "@/admin/lib/reports";
+import { leaveBalance, monthDays, shortDate, weekday, type DayCalc } from "@/admin/lib/calc";
+import { autoNote, monthLabel } from "@/admin/lib/reports";
 import type { Employee } from "@/admin/lib/types";
 
 const emp: Employee = {
@@ -18,6 +18,22 @@ describe("leaveBalance + reports DayCalc array guards", () => {
   it("leaveBalance tolerates corrupt non-object records", () => {
     expect(leaveBalance(emp, "2026-03-15", null as never)).toBeGreaterThanOrEqual(0);
     expect(leaveBalance(emp, "2026-03-15", "bad" as never)).toBeGreaterThanOrEqual(0);
+  });
+
+  it("weekday / shortDate / monthDays / leaveBalance / monthLabel coerce non-string dates", () => {
+    expect(() => weekday(20261117 as unknown as string)).not.toThrow();
+    expect(() => shortDate(null as unknown as string)).not.toThrow();
+    expect(() => monthDays(202611 as unknown as string)).not.toThrow();
+    expect(monthDays("2026-11")).toHaveLength(30);
+    expect(() =>
+      leaveBalance(
+        { ...emp, joinMonth: 202601 as unknown as string },
+        20260315 as unknown as string,
+        {},
+      ),
+    ).not.toThrow();
+    expect(() => monthLabel(202611 as unknown as string)).not.toThrow();
+    expect(monthLabel("2026-11")).toMatch(/2026/);
   });
 
   it("autoNote coerces non-array violations", () => {
