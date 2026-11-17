@@ -14,7 +14,10 @@ function kindFromTodo(t: VuTodo): AssessmentKind {
 }
 
 function assessmentId(t: VuTodo): string {
-  const raw = `${t.courseCode || "gen"}-${t.title}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const raw = `${asText(t.courseCode) || "gen"}-${asText(t.title)}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
   return `vu-${raw}`.slice(0, 72);
 }
 

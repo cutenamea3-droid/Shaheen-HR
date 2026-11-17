@@ -243,13 +243,18 @@ function statusIssue(v: string, col: number, header: string, expiryRaw?: string)
   return null;
 }
 
-export const dmvDays = (state: string | null | undefined) =>
-  ((state ?? "").trim().toUpperCase() === "CA" ? 10 : 20);
+export const dmvDays = (state: unknown) =>
+  ((state == null ? "" : typeof state === "string" ? state : String(state)).trim().toUpperCase() ===
+  "CA"
+    ? 10
+    : 20);
 
 /** Returns row issues and the per-cell highlight tone map. */
 export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
   const c = cellsOf(row);
-  const hdrs = Array.isArray(headers) ? headers : [];
+  const hdrs = Array.isArray(headers)
+    ? headers.map((h) => (h == null ? "" : typeof h === "string" ? h : String(h)))
+    : [];
   const headerAt = (i: number) => (hdrs[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`;
   const issues: Issue[] = [];
   const push = (i: Issue | null) => i && issues.push(i);

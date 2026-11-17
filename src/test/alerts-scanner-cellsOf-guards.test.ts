@@ -26,6 +26,18 @@ describe("alerts / inspection scanners use cellsOf + coerce", () => {
     ).not.toThrow();
   });
 
+  it("analyzeRow stringifies non-string headers", () => {
+    const def = SECTIONS.find((s) => s.id === "dmv")!;
+    expect(() =>
+      analyzeRow(def, [null, 2, "Status"] as unknown as string[], {
+        id: "r1",
+        driverId: "d1",
+        cells: ["Alex", "CDL", "Valid"],
+        addedAt: 1,
+      }),
+    ).not.toThrow();
+  });
+
   it("normStatus / isOldExpiry / statusFromCell / work-center search coerce", () => {
     expect(normStatus(42 as unknown as string)).toBe("");
     expect(isOldExpiry(99 as unknown as string)).toBe(false);

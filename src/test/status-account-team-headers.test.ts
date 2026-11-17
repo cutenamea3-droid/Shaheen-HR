@@ -15,7 +15,7 @@ describe("Status custom / Account / Team autofill + analyzeRow headers", () => {
     const cells = readFileSync(resolve(process.cwd(), "src/components/tracker/cells.tsx"), "utf8");
     const dash = readFileSync(resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"), "utf8");
     const add = readFileSync(resolve(process.cwd(), "src/components/tracker/AddDriverDialog.tsx"), "utf8");
-    expect(cells).toMatch(/safeOptions = Array\.isArray\(options\) \? options : \[\]/);
+    expect(cells).toMatch(/safeOptions = Array\.isArray\(options\) \? options\.map\(asCellText\) : \[\]/);
     expect(dash).toMatch(/Array\.isArray\(def\.statusOptions\) \? def\.statusOptions : \[\]/);
     expect(add).toMatch(/Array\.isArray\(def\.statusOptions\) \? def\.statusOptions : \[\]/);
   });
