@@ -469,9 +469,9 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
     const sec = sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
 
-    let headers = [...sec.headers];
-    let widths = [...(sec.widths ?? [])];
-    let hidden = [...(sec.hidden ?? [])];
+    let headers = Array.isArray(sec.headers) ? [...sec.headers] : [];
+    let widths = [...(Array.isArray(sec.widths) ? sec.widths : [])];
+    let hidden = [...(Array.isArray(sec.hidden) ? sec.hidden : [])];
     let rows = sec.rows.map((r) => ({ ...r, cells: [...r.cells] }));
     let touched = false;
 

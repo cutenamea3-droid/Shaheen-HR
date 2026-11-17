@@ -153,3 +153,23 @@ test("normalizeSections appends without shifting existing values", () => {
   const again = normalizeSections(data);
   expect(again.changed).toEqual([]);
 });
+
+test("normalizeSections tolerates missing headers/widths/hidden arrays", () => {
+  const base = buildSeed();
+  const broken = {
+    ...base,
+    sections: {
+      ...base.sections,
+      dmv: {
+        ...base.sections.dmv,
+        headers: null as unknown as string[],
+        widths: null as unknown as number[],
+        hidden: null as unknown as boolean[],
+      },
+    },
+  } as AppData;
+  expect(() => normalizeSections(broken)).not.toThrow();
+  const { data } = normalizeSections(broken);
+  expect(Array.isArray(data.sections.dmv.headers)).toBe(true);
+  expect(data.sections.dmv.headers.length).toBeGreaterThan(0);
+});

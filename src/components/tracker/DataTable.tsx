@@ -108,7 +108,7 @@ export function DataTable({
   const rlock = useResizeLock();
   const [editHead, setEditHead] = useState<number | null>(null);
   const [headDraft, setHeadDraft] = useState("");
-  const [widths, setWidths] = useState(sec.widths);
+  const [widths, setWidths] = useState(Array.isArray(sec.widths) ? sec.widths : []);
   const [addOpen, setAddOpen] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
   useEffect(() => {
@@ -116,10 +116,11 @@ export function DataTable({
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, []);
-  useEffect(() => setWidths(sec.widths), [sec.widths]);
+  useEffect(() => setWidths(Array.isArray(sec.widths) ? sec.widths : []), [sec.widths]);
 
   const safeRows = Array.isArray(sec.rows) ? sec.rows : [];
   const safeHeaders = Array.isArray(sec.headers) ? sec.headers : [];
+  const safeHidden = Array.isArray(sec.hidden) ? sec.hidden : [];
 
   const analyzed = useMemo(
     () =>
@@ -222,7 +223,7 @@ export function DataTable({
     return () => clearTimeout(t);
   }, [focusRow]);
 
-  const visible = def.types.map((_, i) => !sec.hidden[i]);
+  const visible = def.types.map((_, i) => !safeHidden[i]);
   // Status (Active/Inactive) column is always shown last; stored data order is unchanged
   const order = def.types
     .map((_, i) => i)
@@ -432,7 +433,7 @@ export function DataTable({
                     disabled={i === 0}
                     onChange={() =>
                       patchSection(sectionId, {
-                        hidden: sec.hidden.map((x, j) => (j === i ? !x : x)),
+                        hidden: safeHidden.map((x, j) => (j === i ? !x : x)),
                       })
                     }
                     className="size-4 accent-primary"
@@ -443,7 +444,7 @@ export function DataTable({
             </div>
             <button
               type="button"
-              onClick={() => patchSection(sectionId, { hidden: sec.hidden.map(() => false) })}
+              onClick={() => patchSection(sectionId, { hidden: safeHidden.map(() => false) })}
               className="mt-2 w-full rounded-lg bg-muted py-1.5 text-sm font-semibold"
             >
               Show all columns

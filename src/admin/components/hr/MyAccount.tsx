@@ -37,21 +37,28 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
         onSubmit={async (e) => {
           e.preventDefault();
           setMsg(null);
-          if (!current) return setMsg({ ok: false, text: "Enter your current password." });
-          if (pass.length < 8) return setMsg({ ok: false, text: "Password must be at least 8 characters." });
-          if (pass !== confirm) return setMsg({ ok: false, text: "Passwords do not match." });
-          if (pass === current) return setMsg({ ok: false, text: "New password must be different from the current password." });
+          const fd = new FormData(e.currentTarget);
+          const cur = String(fd.get("admin-current-password") ?? current) || current;
+          const next = String(fd.get("admin-new-password") ?? pass) || pass;
+          const conf = String(fd.get("admin-confirm-password") ?? confirm) || confirm;
+          setCurrent(cur);
+          setPass(next);
+          setConfirm(conf);
+          if (!cur) return setMsg({ ok: false, text: "Enter your current password." });
+          if (next.length < 8) return setMsg({ ok: false, text: "Password must be at least 8 characters." });
+          if (next !== conf) return setMsg({ ok: false, text: "Passwords do not match." });
+          if (next === cur) return setMsg({ ok: false, text: "New password must be different from the current password." });
           setBusy(true);
           try {
             const mail = email.trim().toLowerCase();
             // Accept current if it matches local hash OR the live cloud password.
             // Local-only checks used to reject the password the user just signed in with
             // after a prior local-fallback save left the two out of sync.
-            let currentOk = hasHrLocalPassword(mail) && (await verifyHrLocalPassword(mail, current));
+            let currentOk = hasHrLocalPassword(mail) && (await verifyHrLocalPassword(mail, cur));
             if (!currentOk) {
               const { error: signErr } = await supabase.auth.signInWithPassword({
                 email: mail,
-                password: current,
+                password: cur,
               });
               currentOk = !signErr;
             }
@@ -60,13 +67,13 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
             const { data: sessionData } = await supabase.auth.getSession();
             let cloudOk = false;
             if (sessionData.session) {
-              const { error } = await supabase.auth.updateUser({ password: pass });
+              const { error } = await supabase.auth.updateUser({ password: next });
               cloudOk = !error;
             }
 
             // Always mirror to localStorage so the next sign-in honors the new password
             // even when the cloud update is unavailable (local-only session).
-            await setHrLocalPassword(mail, pass);
+            await setHrLocalPassword(mail, next);
             addLog(email, cloudOk ? "Changed password" : "Changed password (local fallback)");
             setCurrent("");
             setPass("");
@@ -87,15 +94,47 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
         </h2>
         <label className="block">
           <span className="lbl">Current password</span>
-          <input type="password" className="field" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+          <input
+            type="password"
+            className="field"
+            name="admin-current-password"
+            data-testid="admin-current-password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            onInput={(e) => setCurrent((e.target as HTMLInputElement).value)}
+            autoComplete="current-password"
+            required
+          />
         </label>
         <label className="block">
           <span className="lbl">New password</span>
-          <input type="password" className="field" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <input
+            type="password"
+            className="field"
+            name="admin-new-password"
+            data-testid="admin-new-password"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            onInput={(e) => setPass((e.target as HTMLInputElement).value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
         </label>
         <label className="block">
           <span className="lbl">Confirm new password</span>
-          <input type="password" className="field" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={8} required />
+          <input
+            type="password"
+            className="field"
+            name="admin-confirm-password"
+            data-testid="admin-confirm-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            onInput={(e) => setConfirm((e.target as HTMLInputElement).value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
         </label>
         {msg && (
           <p role="status" className={`text-sm ${msg.ok ? "text-primary" : "text-destructive"}`}>

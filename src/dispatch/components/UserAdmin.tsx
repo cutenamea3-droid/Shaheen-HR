@@ -44,9 +44,16 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
         className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_140px_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const nextName = String(fd.get("dispatch-invite-name") ?? displayName).trim() || displayName.trim();
+          const nextEmail = String(fd.get("dispatch-invite-email") ?? email).trim() || email.trim();
+          const nextPassword = String(fd.get("dispatch-invite-password") ?? password) || password;
+          setDisplayName(nextName);
+          setEmail(nextEmail);
+          setPassword(nextPassword);
           setBusy(true);
           setMsg("");
-          void inviteDispatchUser({ email, displayName, password, role })
+          void inviteDispatchUser({ email: nextEmail, displayName: nextName, password: nextPassword, role })
             .then(async () => {
               setEmail("");
               setDisplayName("");
@@ -61,19 +68,39 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
       >
         <label className="grid gap-1 text-sm">
           <span>Name</span>
-          <input className="dispatch-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+          <input
+            className="dispatch-field"
+            name="dispatch-invite-name"
+            data-testid="dispatch-invite-name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label className="grid gap-1 text-sm">
           <span>Email</span>
-          <input className="dispatch-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            className="dispatch-field"
+            type="email"
+            name="dispatch-invite-email"
+            data-testid="dispatch-invite-email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label className="grid gap-1 text-sm">
           <span>Temp password</span>
           <input
             className="dispatch-field"
             type="password"
+            name="dispatch-invite-password"
+            data-testid="dispatch-invite-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
             required
             minLength={8}
           />

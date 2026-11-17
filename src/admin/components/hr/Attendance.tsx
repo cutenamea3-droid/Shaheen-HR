@@ -358,7 +358,15 @@ export function Attendance() {
                               <option value="custom">Custom hours</option>
                             </select>
                             {r.otMode === "custom" && (
-                              <input type="number" step="0.25" min="0" className="field h-9 w-24" value={r.otHours} onChange={(ev) => set({ otHours: +ev.target.value })} />
+                              <input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                className="field h-9 w-24"
+                                value={r.otHours}
+                                onChange={(ev) => set({ otHours: +ev.target.value })}
+                                onInput={(ev) => set({ otHours: +(ev.target as HTMLInputElement).value })}
+                              />
                             )}
                           </span>
                         )}
@@ -373,12 +381,22 @@ export function Attendance() {
                               className="field h-9 w-24"
                               value={r.extraHours ?? ""}
                               onChange={(ev) => set({ extraHours: ev.target.value === "" ? null : +ev.target.value })}
+                              onInput={(ev) => {
+                                const v = (ev.target as HTMLInputElement).value;
+                                set({ extraHours: v === "" ? null : +v });
+                              }}
                             />
                           </span>
                         )}
                       </div>
                       {r.status === "half" && (
-                        <input className="field mt-3" placeholder="Half day reason" value={r.halfReason} onChange={(ev) => set({ halfReason: ev.target.value })} />
+                        <input
+                          className="field mt-3"
+                          placeholder="Half day reason"
+                          value={r.halfReason}
+                          onChange={(ev) => set({ halfReason: ev.target.value })}
+                          onInput={(ev) => set({ halfReason: (ev.target as HTMLInputElement).value })}
+                        />
                       )}
                     </>
                   )}
@@ -388,6 +406,7 @@ export function Attendance() {
                     placeholder="Note / reason (e.g. informed HR about late arrival)"
                     value={r.note}
                     onChange={(ev) => set({ note: ev.target.value })}
+                    onInput={(ev) => set({ note: (ev.target as HTMLTextAreaElement).value })}
                   />
 
                   {rec && (() => {

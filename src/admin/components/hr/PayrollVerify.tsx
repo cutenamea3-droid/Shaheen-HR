@@ -224,15 +224,23 @@ export function PayrollVerify() {
                 <input
                   className="field mt-1 w-36"
                   value={bonusDraft[r.employeeId] ?? ""}
+                  data-testid={`admin-bonus-${r.employeeId}`}
                   onChange={(e) => setBonusDraft((s) => ({ ...s, [r.employeeId]: e.target.value }))}
+                  onInput={(e) =>
+                    setBonusDraft((s) => ({ ...s, [r.employeeId]: (e.target as HTMLInputElement).value }))
+                  }
                   placeholder="0"
                 />
               </label>
               <button
                 type="button"
                 className="btn-ghost"
-                onClick={() => {
-                  const n = Number(bonusDraft[r.employeeId] ?? "0");
+                onClick={(e) => {
+                  const dom =
+                    (e.currentTarget.previousElementSibling as HTMLElement | null)
+                      ?.querySelector?.("input")
+                      ?.value ?? "";
+                  const n = Number((bonusDraft[r.employeeId] ?? "").trim() || dom || "0");
                   const res = upsertBonus(r.employeeId, month, n, "manual bonus");
                   if (!res.ok) setErr(res.error ?? "Bonus failed");
                 }}
