@@ -8,8 +8,9 @@ import { SECTIONS, rowsOf } from "@/lib/sections";
 import { mapDriverRows } from "@/lib/driver-meta";
 
 /** Parse picker ISO or typed MM/DD/YYYY → ISO, "" for clear, null if invalid. */
-export function parseHireDateInput(raw: string): string | null {
-  const t = raw.trim();
+export function parseHireDateInput(raw: unknown): string | null {
+  if (raw == null) return "";
+  const t = typeof raw === "string" ? raw.trim() : String(raw).trim();
   if (!t) return "";
   if (parseISO(t)) return t.trim();
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t);
@@ -22,8 +23,9 @@ export function parseHireDateInput(raw: string): string | null {
 }
 
 /** Display as MM/DD/YYYY when ISO; otherwise raw text. */
-export function formatHireDateDisplay(value: string | undefined | null): string {
-  const t = (value ?? "").trim();
+export function formatHireDateDisplay(value: unknown): string {
+  if (value == null) return "";
+  const t = typeof value === "string" ? value.trim() : String(value).trim();
   if (!t) return "";
   const d = parseISO(t);
   if (!d) return t;
@@ -35,14 +37,18 @@ export function formatHireDateDisplay(value: string | undefined | null): string 
 export function dateOfHireOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
     const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
-    if (r && r.dateOfHire !== undefined) return (r.dateOfHire ?? "").trim();
+    if (r && r.dateOfHire !== undefined) {
+      const raw = r.dateOfHire;
+      return raw == null ? "" : typeof raw === "string" ? raw.trim() : String(raw).trim();
+    }
   }
   return "";
 }
 
 export function applyDateOfHire(data: AppData, driverId: string, next: string): AppData {
   const prev = dateOfHireOf(data, driverId);
-  const value = (next ?? "").trim();
+  const value =
+    next == null ? "" : typeof next === "string" ? next.trim() : String(next).trim();
   if (prev === value) return data;
   return mapDriverRows(data, driverId, (r: Row, _def: SectionDef) => ({
     ...r,

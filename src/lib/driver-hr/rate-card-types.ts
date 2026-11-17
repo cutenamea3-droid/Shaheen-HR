@@ -87,8 +87,9 @@ export function emptyRateCard(driverId: string): DriverRateCard {
  * - Preserve significant decimals (e.g. "0.550" stays "0.550")
  * - Reject non-numeric garbage → returns null (caller should keep previous / show error)
  */
-export function normalizeRateInput(raw: string): string | null {
-  const t = raw.trim();
+export function normalizeRateInput(raw: unknown): string | null {
+  if (raw == null) return "";
+  const t = typeof raw === "string" ? raw.trim() : String(raw).trim();
   if (!t) return "";
   // Allow optional leading +/-, digits, one decimal point; no scientific notation invent.
   if (!/^[+-]?\d+(\.\d+)?$/.test(t) && !/^[+-]?\.\d+$/.test(t)) return null;

@@ -46,6 +46,8 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(normalizeRateInput("0.550")).toBe("0.550");
     expect(normalizeRateInput("")).toBe("");
     expect(normalizeRateInput("abc")).toBeNull();
+    expect(normalizeRateInput(0.55 as unknown as string)).toBe("0.55");
+    expect(normalizeRateInput(null as unknown as string)).toBe("");
     const card = useRateCardMock.getState().get("d_new");
     expect(card.rates).toEqual({});
     expect(rateCardHasContent(emptyRateCard("x"))).toBe(false);
@@ -95,7 +97,9 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(parseHireDateInput("2024-03-15")).toBe("2024-03-15");
     expect(parseHireDateInput("")).toBe("");
     expect(parseHireDateInput("nope")).toBeNull();
+    expect(parseHireDateInput(null as unknown as string)).toBe("");
     expect(formatHireDateDisplay("2024-03-15")).toBe("03/15/2024");
+    expect(formatHireDateDisplay(20240315 as unknown as string)).toBe("20240315");
     expect(lengthOfService("")).toBeNull();
   });
 
