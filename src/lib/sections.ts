@@ -271,12 +271,14 @@ export interface AppData {
   sections: Record<string, SectionData>;
 }
 
-export const normName = (n: string) =>
-  n
+export const normName = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  return s
     .toLowerCase()
     .replace(/\bs\d+\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
+};
 
 export function defaultWidth(t: ColType) {
   switch (t) {

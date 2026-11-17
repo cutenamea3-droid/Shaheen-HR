@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildSeed, type AppData } from "@/lib/sections";
 import { buildComplianceHistory } from "@/lib/compliance-history";
 import { migrateDiscipline } from "@/personal/lib/defaults";
@@ -99,5 +101,23 @@ describe("expenses / discipline / ops corrupt guards", () => {
     expect(buildEquipmentBoard(null as unknown as [], { bad: true } as unknown as [])).toEqual([]);
     expect(renumberStops(null as unknown as [])).toEqual([]);
     expect(removeStop(null as unknown as [], 0)).toEqual([]);
+  });
+
+  it("buildEquipmentBoard coerces non-string equipment before trim", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/dispatch/lib/ops-controls.ts"), "utf8");
+    expect(src).toMatch(/typeof eq === \"string\" \? eq : String\(eq\)/);
+    expect(() =>
+      buildEquipmentBoard(
+        [{ id: "d1", display_name: "A", unit_number: "1" } as never],
+        [
+          {
+            id: "l1",
+            assigned_driver_id: "d1",
+            status: "in_transit",
+            equipment: 48 as unknown as string,
+          } as never,
+        ],
+      ),
+    ).not.toThrow();
   });
 });

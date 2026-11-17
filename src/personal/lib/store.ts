@@ -412,9 +412,10 @@ export const usePersonal = create<PersonalStore>()(
       importVuStudyPlan: (plan = VU_STUDY_PLAN) => {
         const seed = buildVuSeed(plan);
         const s = get();
-        const vaultNotes = s.vaultNotes.includes("VU export seed")
-          ? s.vaultNotes
-          : [s.vaultNotes.trim(), seed.vaultAppendix].filter(Boolean).join("\n\n");
+        const prevVault = typeof s.vaultNotes === "string" ? s.vaultNotes : "";
+        const vaultNotes = prevVault.includes("VU export seed")
+          ? prevVault
+          : [prevVault.trim(), seed.vaultAppendix].filter(Boolean).join("\n\n");
         set({
           courses: seed.courses,
           assessments: seed.assessments,

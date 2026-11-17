@@ -96,7 +96,11 @@ export function buildEquipmentBoard(
       const equipmentLabels = [
         ...new Set(
           activeLoads
-            .map((l) => (l.equipment ?? "").trim())
+            .map((l) => {
+              const eq = l.equipment;
+              if (eq == null) return "";
+              return (typeof eq === "string" ? eq : String(eq)).trim();
+            })
             .filter(Boolean),
         ),
       ];

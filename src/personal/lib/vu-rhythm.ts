@@ -68,8 +68,9 @@ export const VU_LESSON_RHYTHM: VuRhythmStep[] = [
   },
 ];
 
-export function normalizeVuTerm(raw: string): string {
-  const t = raw.trim();
+export function normalizeVuTerm(raw: unknown): string {
+  if (raw == null) return "";
+  const t = (typeof raw === "string" ? raw : String(raw)).trim();
   const aliasesRaw = patterns?.terminology?.aliases;
   const aliases =
     aliasesRaw && typeof aliasesRaw === "object" && !Array.isArray(aliasesRaw)

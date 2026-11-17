@@ -111,8 +111,10 @@ export function addDaysIso(iso: string, days: number): string {
   return isoTodayLocal(d);
 }
 
-export function parseVuTime(label: string): number {
-  const m = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+export function parseVuTime(label: unknown): number {
+  if (label == null) return 0;
+  const text = typeof label === "string" ? label : String(label);
+  const m = text.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
   if (!m) return 0;
   let h = Number(m[1]);
   const min = Number(m[2]);

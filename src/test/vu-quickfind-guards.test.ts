@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { normalizeVuTerm } from "@/personal/lib/vu-rhythm";
 import { buildVuSeed } from "@/personal/lib/vu-import";
-import { buildTodayPrescription, VU_STUDY_PLAN } from "@/personal/lib/vu-plan";
+import { buildTodayPrescription, parseVuTime, VU_STUDY_PLAN } from "@/personal/lib/vu-plan";
+import { normName } from "@/lib/sections";
 
 describe("VU rhythm + QuickFind guards", () => {
   it("normalizeVuTerm coerces aliases object before Object.entries", () => {
@@ -11,6 +12,16 @@ describe("VU rhythm + QuickFind guards", () => {
     expect(src).toMatch(/typeof aliasesRaw === "object" && !Array\.isArray\(aliasesRaw\)/);
     expect(normalizeVuTerm("GDDB")).toMatch(/GDB/i);
     expect(normalizeVuTerm("  hello  ")).toBe("hello");
+    expect(normalizeVuTerm(null)).toBe("");
+    expect(() => normalizeVuTerm(12 as unknown as string)).not.toThrow();
+  });
+
+  it("parseVuTime and normName coerce non-string inputs", () => {
+    expect(parseVuTime("9:30 AM")).toBe(9 * 60 + 30);
+    expect(parseVuTime(null)).toBe(0);
+    expect(() => parseVuTime(930 as unknown as string)).not.toThrow();
+    expect(normName(null)).toBe("");
+    expect(normName("  Jane   Doe S1 ")).toBe("jane doe");
   });
 
   it("QuickFind coerces buildFinderDrivers result", () => {
