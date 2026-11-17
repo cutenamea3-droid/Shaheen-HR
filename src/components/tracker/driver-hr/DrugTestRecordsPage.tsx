@@ -55,7 +55,10 @@ export function DrugTestRecordsPage() {
   const view = useViewMode();
   const isAdmin = role === "admin";
   const data = useData();
-  const roster = useMemo(() => listRosterDrivers(data), [data]);
+  const roster = useMemo(() => {
+    const list = listRosterDrivers(data);
+    return Array.isArray(list) ? list : [];
+  }, [data]);
   const mode = getDriverDrugTestMode();
   const persistOk = canPersistDrugTests();
   const blocked = drugTestPersistBlockedReason(mode);

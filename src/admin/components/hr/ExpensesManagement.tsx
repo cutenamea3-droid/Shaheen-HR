@@ -38,10 +38,14 @@ export function ExpensesManagement() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const company = useApp((s) => s.settings.company);
-  const categories = useExpensesStore((s) => s.categories);
-  const expenses = useExpensesStore((s) => s.expenses);
-  const templates = useExpensesStore((s) => s.templates);
-  const budgets = useExpensesStore((s) => s.budgets);
+  const categoriesRaw = useExpensesStore((s) => s.categories);
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
+  const expensesRaw = useExpensesStore((s) => s.expenses);
+  const expenses = Array.isArray(expensesRaw) ? expensesRaw : [];
+  const templatesRaw = useExpensesStore((s) => s.templates);
+  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
+  const budgetsRaw = useExpensesStore((s) => s.budgets);
+  const budgets = Array.isArray(budgetsRaw) ? budgetsRaw : [];
   const upsertExpense = useExpensesStore((s) => s.upsertExpense);
   const softDeleteExpense = useExpensesStore((s) => s.softDeleteExpense);
   const restoreExpense = useExpensesStore((s) => s.restoreExpense);
@@ -107,7 +111,11 @@ export function ExpensesManagement() {
 
   const monthActive = expenses.filter((e) => !e.deletedAt && e.expenseDate.startsWith(month));
   const summary = summarizeExpenses(monthActive);
-  const chartMax = Math.max(1, ...Object.values(summary.byCategory));
+  const byCategory =
+    summary.byCategory && typeof summary.byCategory === "object" && !Array.isArray(summary.byCategory)
+      ? summary.byCategory
+      : {};
+  const chartMax = Math.max(1, ...Object.values(byCategory));
 
   const save = (andAnother: boolean) => {
     setErr("");
@@ -279,11 +287,11 @@ export function ExpensesManagement() {
       {/* Optional category chart */}
       <div className="admin-emp-card space-y-2">
         <div className="font-bold">Category spend ({month})</div>
-        {Object.keys(summary.byCategory).length === 0 ? (
+        {Object.keys(byCategory).length === 0 ? (
           <p className="text-sm text-muted-foreground">No expenses this month yet.</p>
         ) : (
           <div className="space-y-1.5">
-            {Object.entries(summary.byCategory)
+            {Object.entries(byCategory)
               .sort((a, b) => b[1] - a[1])
               .map(([catId, amt]) => {
                 const name = activeCats.find((c) => c.id === catId)?.name ?? catId;
