@@ -652,7 +652,7 @@ export function DataTable({
                               onClick={() => {
                                 if (
                                   confirm(
-                                    `Delete ${it.name.trim()} from ALL sections? This cannot be undone.`,
+                                    `Delete ${(it.name == null ? "" : typeof it.name === "string" ? it.name : String(it.name)).trim()} from ALL sections? This cannot be undone.`,
                                   )
                                 )
                                   deleteDriver(it.driverId);

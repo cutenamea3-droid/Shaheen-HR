@@ -5,8 +5,10 @@ import {
   normalizeAssessment,
   normalizeBacklogItem,
   normalizeCourse,
+  normalizeExamPrepTask,
   normalizeNote,
 } from "@/personal/lib/assessment-phases";
+import { migrateDiscipline } from "@/personal/lib/defaults";
 
 describe("normalizeAssessment coerce guards", () => {
   it("stringifies corrupt kind/title and never leaves non-string kind", () => {
@@ -52,6 +54,20 @@ describe("normalizeAssessment coerce guards", () => {
     expect(n.title).toBe("2");
     expect(n.body).toBe("3");
     expect(n.tags).toEqual(["4", "ok"]);
+    const prep = normalizeExamPrepTask({
+      id: 1 as unknown as string,
+      examKind: "MIDTERM" as unknown as "midterm",
+      label: 9 as unknown as string,
+    });
+    expect(prep.examKind).toBe("midterm");
+    expect(prep.label).toBe("9");
+    const disc = migrateDiscipline([
+      { id: "open-vulms", label: "x", doneDates: [20260101 as unknown as string, "2026-01-02"] },
+    ]);
+    expect(disc.find((d) => d.id === "open-vulms")?.doneDates).toEqual([
+      "20260101",
+      "2026-01-02",
+    ]);
   });
 
   it("source keeps kind coerce + revision/attendance/overview/quickfind guards", () => {
@@ -83,8 +99,10 @@ describe("normalizeAssessment coerce guards", () => {
     expect(store).toMatch(/normalizeCourse\(c as Partial<Course>/);
     expect(store).toMatch(/normalizeBacklogItem\(b as Partial<BacklogItem>/);
     expect(store).toMatch(/normalizeNote\(n as Partial<Note>/);
+    expect(store).toMatch(/normalizeExamPrepTask\(t as Partial<ExamPrepTask>/);
     expect(courses).toMatch(/typeof id === "string" \? id : String\(id\)\)\.toUpperCase\(\)/);
     expect(phases).toMatch(/export function normalizeBacklogItem/);
     expect(phases).toMatch(/export function normalizeNote/);
+    expect(phases).toMatch(/export function normalizeExamPrepTask/);
   });
 });

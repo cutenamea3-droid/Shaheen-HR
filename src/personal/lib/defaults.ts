@@ -155,24 +155,40 @@ export function defaultDiscipline(): DisciplineCheck[] {
   ];
 }
 
+function asDayList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((d) => (d == null ? "" : typeof d === "string" ? d : String(d)))
+    .filter(Boolean);
+}
+
 /** Merge legacy discipline lists without wiping doneDates. */
 export function migrateDiscipline(raw: DisciplineCheck[] | undefined): DisciplineCheck[] {
   const base = defaultDiscipline();
   const src = Array.isArray(raw) ? raw : [];
   if (!src.length) return base;
-  const byId = new Map(src.map((d) => [d.id, d]));
+  const byId = new Map(
+    src.map((d) => {
+      const id = d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id);
+      return [id, d] as const;
+    }),
+  );
   return base
     .map((d) => {
       const prev = byId.get(d.id);
-      const doneDates = Array.isArray(prev?.doneDates) ? prev!.doneDates : [];
+      const doneDates = asDayList(prev?.doneDates);
       return prev ? { ...d, doneDates } : d;
     })
     .concat(
       src
-        .filter((d) => !base.some((b) => b.id === d.id))
+        .filter((d) => {
+          const id = d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id);
+          return id && !base.some((b) => b.id === id);
+        })
         .map((d) => ({
-          ...d,
-          doneDates: Array.isArray(d.doneDates) ? d.doneDates : [],
+          id: d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id),
+          label: d?.label == null ? "" : typeof d.label === "string" ? d.label : String(d.label),
+          doneDates: asDayList(d.doneDates),
         })),
     );
 }

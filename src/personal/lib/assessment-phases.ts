@@ -4,6 +4,7 @@ import type {
   BacklogItem,
   Course,
   DeadlineSource,
+  ExamPrepTask,
   Note,
 } from "./types";
 
@@ -164,6 +165,26 @@ export function normalizeNote(raw: Partial<Note> & Pick<Note, "id">): Note {
           ? Number(raw.updatedAt)
           : Date.now(),
     tags,
+  };
+}
+
+const EXAM_KIND_SET = new Set<string>(["midterm", "final", "quiz", "other"]);
+
+/** Coerce exam-prep checklist scalars before Assessments UI render. */
+export function normalizeExamPrepTask(
+  raw: Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">,
+): ExamPrepTask {
+  const kindRaw = asText(raw.examKind, "other").trim().toLowerCase();
+  const examKind = (
+    EXAM_KIND_SET.has(kindRaw) ? kindRaw : "other"
+  ) as ExamPrepTask["examKind"];
+  return {
+    id: asText(raw.id) || "exam-prep",
+    courseId: asText(raw.courseId, "general") || "general",
+    examKind,
+    label: asText(raw.label),
+    done: Boolean(raw.done),
+    notes: asText(raw.notes),
   };
 }
 

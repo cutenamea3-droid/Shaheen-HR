@@ -29,6 +29,7 @@ import {
   normalizeAssessment,
   normalizeBacklogItem,
   normalizeCourse,
+  normalizeExamPrepTask,
   normalizeNote,
   withPrepDone,
   withSubmitted,
@@ -504,7 +505,9 @@ export const usePersonal = create<PersonalStore>()(
           vaultNotes: typeof raw.vaultNotes === "string" ? raw.vaultNotes : current.vaultNotes,
           gradeEntries: arr(raw.gradeEntries, []),
           courseGrades: arr(raw.courseGrades, []),
-          examPrepTasks: arr(raw.examPrepTasks, []),
+          examPrepTasks: arr(raw.examPrepTasks, []).map((t) =>
+            normalizeExamPrepTask(t as Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">),
+          ),
           weeklyReviews: obj(raw.weeklyReviews, current.weeklyReviews ?? {}),
           vuSeededAt: raw.vuSeededAt ?? null,
           vuPlanAsOf: raw.vuPlanAsOf ?? null,
