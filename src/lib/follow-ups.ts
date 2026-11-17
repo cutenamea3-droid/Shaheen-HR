@@ -166,9 +166,11 @@ export function followUpTone(fu: FollowUp): Tone {
 }
 
 export function followUpDueLabel(fu: FollowUp): string {
-  if (!fu.dueDate.trim()) return "No due date";
-  const d = parseISO(fu.dueDate);
-  if (!d) return fu.dueDate;
+  const due =
+    fu.dueDate == null ? "" : typeof fu.dueDate === "string" ? fu.dueDate : String(fu.dueDate);
+  if (!due.trim()) return "No due date";
+  const d = parseISO(due);
+  if (!d) return due;
   const n = daysUntil(d);
   const base = fmtDate(d);
   if (n < 0) return `${base} · ${-n}d overdue`;
@@ -225,7 +227,15 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
             f.driverId === row.driverId &&
             f.sectionId === def.id &&
             f.source === "applied" &&
-            (f.docType === docType || f.subject.toLowerCase().includes("applied")),
+            (f.docType === docType ||
+              (f.subject == null
+                ? ""
+                : typeof f.subject === "string"
+                  ? f.subject
+                  : String(f.subject)
+              )
+                .toLowerCase()
+                .includes("applied")),
         );
         if (already) return;
 
@@ -251,9 +261,12 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
 export function filterFollowUps(
   items: FollowUp[],
   filter: "all" | "open" | "today" | "overdue" | "done" | "snoozed",
-  search: string,
+  search: unknown,
 ): FollowUp[] {
-  const q = search.trim().toLowerCase();
+  const q = (search == null ? "" : typeof search === "string" ? search : String(search))
+    .trim()
+    .toLowerCase();
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const t = today();
   const list = Array.isArray(items) ? items : [];
   return list.filter((fu) => {
@@ -270,10 +283,10 @@ export function filterFollowUps(
     }
     if (!q) return true;
     return (
-      fu.driver.toLowerCase().includes(q) ||
-      fu.subject.toLowerCase().includes(q) ||
-      fu.docType.toLowerCase().includes(q) ||
-      fu.notes.toLowerCase().includes(q)
+      asText(fu.driver).toLowerCase().includes(q) ||
+      asText(fu.subject).toLowerCase().includes(q) ||
+      asText(fu.docType).toLowerCase().includes(q) ||
+      asText(fu.notes).toLowerCase().includes(q)
     );
   }).sort((a, b) => {
     const da = parseISO(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;

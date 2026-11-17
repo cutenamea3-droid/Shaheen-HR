@@ -10,7 +10,7 @@
  */
 import { fmtDate } from "./alerts";
 import { classHistoryOf, rosterKindOf, driverClassOf } from "./driver-meta";
-import { SECTIONS, rowsOf, type AppData, type RosterHistoryEntry } from "./sections";
+import { SECTIONS, cellsOf, rowsOf, type AppData, type RosterHistoryEntry } from "./sections";
 import type { LocalActivity } from "./portal-local";
 import type { SensitiveAuditEntry } from "./driver-hr/sensitive-audit";
 
@@ -46,8 +46,7 @@ function nameOf(data: AppData, driverId: string): string {
     const rows = data.sections[def.id]?.rows;
     if (!Array.isArray(rows)) continue;
     const r = rows.find((x) => x.driverId === driverId);
-    const cells = Array.isArray(r?.cells) ? r!.cells : [];
-    const n = (cells[0] ?? "").trim();
+    const n = (cellsOf(r)[0] ?? "").trim();
     if (n) return n;
   }
   return driverId;
@@ -152,9 +151,15 @@ export function buildComplianceHistory(
     if (!Number.isFinite(at)) continue;
 
     let matchedDriver: string | null = null;
+    const actionText =
+      entry.action == null
+        ? ""
+        : typeof entry.action === "string"
+          ? entry.action
+          : String(entry.action);
     for (const driverId of allDriverIds(data)) {
       const n = nameOf(data, driverId).toLowerCase();
-      if (n && n !== "(unnamed)" && entry.action.toLowerCase().includes(n)) {
+      if (n && n !== "(unnamed)" && actionText.toLowerCase().includes(n)) {
         matchedDriver = driverId;
         break;
       }

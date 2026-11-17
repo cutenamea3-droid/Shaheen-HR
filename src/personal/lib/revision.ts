@@ -81,9 +81,12 @@ export function suggestRevisionTargets(
 export function filterNotesByTag(notes: Note[], tag: string | "all"): Note[] {
   const list = Array.isArray(notes) ? notes : [];
   if (tag === "all") return list;
-  const t = tag.toLowerCase();
+  const t = (tag == null ? "" : typeof tag === "string" ? tag : String(tag)).toLowerCase();
   return list.filter((n) =>
-    (Array.isArray(n.tags) ? n.tags : []).some((x) => x.toLowerCase() === t),
+    (Array.isArray(n.tags) ? n.tags : []).some((x) => {
+      const s = x == null ? "" : typeof x === "string" ? x : String(x);
+      return s.toLowerCase() === t;
+    }),
   );
 }
 

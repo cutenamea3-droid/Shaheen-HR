@@ -8,7 +8,7 @@ import {
   statusExpiryCol,
   today,
 } from "./alerts";
-import { driverEmploymentStatus, normName, type AppData } from "./sections";
+import { cellsOf, driverEmploymentStatus, headersOf, normName, type AppData } from "./sections";
 import { dateOfHireOf, formatHireDateDisplay } from "./driver-hr/hire-date";
 
 export interface DossierLine {
@@ -44,8 +44,7 @@ export interface DriverDossier {
 }
 
 function cell(row: { cells?: unknown } | undefined, i: number) {
-  const cells = Array.isArray(row?.cells) ? (row!.cells as string[]) : [];
-  return (cells[i] ?? "").trim();
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function statusOf(row: { cells: string[] } | undefined, i: number) {
@@ -93,7 +92,7 @@ const RECORD_TABS = [
 function buildOtherDocs(data: AppData, driverId: string): DossierLine[] {
   const docs = onlyThisDriver(data.sections.docs?.rows, driverId);
   if (!docs) return [];
-  const headers = Array.isArray(data.sections.docs?.headers) ? data.sections.docs!.headers : [];
+  const headers = headersOf(data.sections.docs);
   const lines: DossierLine[] = [];
   for (let i = 2; i <= 13; i++) {
     const label = (headers[i] ?? DEFAULT_DOC_HEADERS[i - 2] ?? `Document ${i - 1}`).trim() || `Document ${i - 1}`;
@@ -249,7 +248,9 @@ function tableRows(
   let lastSection = "";
   return lines
     .map((r) => {
-      const section = (r.section ?? "").trim();
+      const section = (
+        r.section == null ? "" : typeof r.section === "string" ? r.section : String(r.section)
+      ).trim();
       const showBanner = !!opts?.showSection && section && section !== lastSection;
       if (showBanner) lastSection = section;
       const banner = showBanner
