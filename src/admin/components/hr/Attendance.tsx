@@ -40,7 +40,7 @@ const FOCUS_CHIPS: { id: AttFocus; label: string }[] = [
 export function Attendance() {
   const { date, setDate } = useWorkDate();
   const [saveMsg, setSaveMsg] = useState("");
-  const month = date.slice(0, 7);
+  const month = (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7);
   const monthSpan = useMemo(() => monthDays(month), [month]);
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);

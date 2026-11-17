@@ -55,7 +55,7 @@ export function suggestRevisionTargets(
       id: `asm-${a.id}`,
       courseId: a.courseId,
       courseCode: code,
-      reason: `${a.kind.toUpperCase()}: ${a.title} · ${prepHint}`,
+      reason: `${(a.kind == null ? "" : typeof a.kind === "string" ? a.kind : String(a.kind)).toUpperCase()}: ${a.title == null ? "" : typeof a.title === "string" ? a.title : String(a.title)} · ${prepHint}`,
       urgency,
     });
   }

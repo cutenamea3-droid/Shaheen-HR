@@ -348,7 +348,15 @@ export function DriverCards({
                   <td className={cn("px-4 py-3", d.issues > 0 && "border-l-4 border-l-danger")}>
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand font-display font-extrabold text-primary-foreground">
-                        {d.name.trim().charAt(0).toUpperCase() || "?"}
+                        {(d.name == null
+                          ? ""
+                          : typeof d.name === "string"
+                            ? d.name
+                            : String(d.name)
+                        )
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase() || "?"}
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-1.5">

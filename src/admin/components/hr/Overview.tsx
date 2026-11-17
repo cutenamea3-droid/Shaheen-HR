@@ -64,7 +64,7 @@ export function Overview() {
   const density = useDensity();
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
   const rows = employees.filter((e) => records[date]?.[e.id]).map((e) => calcDay(e, resolveDeptAsOf(e, depts, date), date, records[date]![e.id]!, settings));
-  const month = date.slice(0, 7);
+  const month = (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7);
   let ot = 0, extra = 0;
   employees.forEach((e) =>
     monthDays(month).forEach((d) => {

@@ -42,21 +42,29 @@ export function withSubmitted(a: Assessment, submitted: boolean): Assessment {
   };
 }
 
+const asText = (v: unknown, fallback = "") =>
+  v == null ? fallback : typeof v === "string" ? v : String(v);
+
+const KIND_SET = new Set<string>(["assignment", "quiz", "gdb", "other"]);
+
 export function normalizeAssessment(raw: Partial<Assessment> & Pick<Assessment, "id" | "title">): Assessment {
   const submitted = Boolean(raw.submitted ?? raw.done);
   const prepDone = Boolean(raw.prepDone);
+  const kindRaw = asText(raw.kind, "other").trim().toLowerCase();
+  const kind = (KIND_SET.has(kindRaw) ? kindRaw : "other") as AssessmentKind;
+  const dueDate = asText(raw.dueDate);
   return {
-    id: raw.id,
-    courseId: raw.courseId ?? "general",
-    kind: (raw.kind as AssessmentKind) ?? "other",
-    title: raw.title,
-    dueDate: raw.dueDate ?? "",
-    notes: raw.notes ?? "",
+    id: asText(raw.id),
+    courseId: asText(raw.courseId, "general") || "general",
+    kind,
+    title: asText(raw.title),
+    dueDate,
+    notes: asText(raw.notes),
     prepDone,
     submitted,
     done: submitted,
     verifyOnVulms: raw.verifyOnVulms ?? true,
-    deadlineSource: raw.deadlineSource ?? (raw.dueDate ? "user_entered" : "unset"),
+    deadlineSource: raw.deadlineSource ?? (dueDate ? "user_entered" : "unset"),
   };
 }
 
