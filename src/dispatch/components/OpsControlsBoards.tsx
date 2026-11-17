@@ -286,7 +286,7 @@ export function FollowUpsBoard({
         {!due.length ? (
           <EmptyHint>No follow-ups due.</EmptyHint>
         ) : (
-          <FollowUpList rows={due} loads={loads} onOpenLoad={onOpenLoad} onChanged={reload} />
+          <FollowUpList rows={due} loads={safeLoads} onOpenLoad={onOpenLoad} onChanged={reload} />
         )}
       </div>
       <div>
@@ -296,7 +296,7 @@ export function FollowUpsBoard({
         {!open.length ? (
           <EmptyHint>No open follow-ups.</EmptyHint>
         ) : (
-          <FollowUpList rows={open} loads={loads} onOpenLoad={onOpenLoad} onChanged={reload} />
+          <FollowUpList rows={open} loads={safeLoads} onOpenLoad={onOpenLoad} onChanged={reload} />
         )}
       </div>
     </section>
@@ -314,10 +314,12 @@ function FollowUpList({
   onOpenLoad: (id: string) => void;
   onChanged: () => Promise<void>;
 }) {
+  const list = Array.isArray(rows) ? rows : [];
+  const loadList = Array.isArray(loads) ? loads : [];
   return (
     <ul className="divide-y divide-[color:var(--dispatch-border)]">
-      {rows.map((row) => {
-        const load = loads.find((l) => l.id === row.load_id);
+      {list.map((row) => {
+        const load = loadList.find((l) => l.id === row.load_id);
         return (
           <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
             <div>
