@@ -154,13 +154,14 @@ export function fileCompletenessCsv(report: FileCompletenessReport): string {
     "N/A",
     "Formula note",
   ];
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
   const lines = [
     `# File Completeness — Shaheen Transport LLC`,
     `# Generated ${report.generatedAt}`,
     `# Fleet ${report.fleetPercent}% (${report.fleetComplete}/${report.fleetApplicable})`,
     `# Formula: ${report.formula}`,
     head.join(","),
-    ...report.drivers.map((d) =>
+    ...drivers.map((d) =>
       [
         d.driverName,
         d.driverId,
@@ -194,7 +195,8 @@ export function downloadFileCompletenessCsv(report: FileCompletenessReport) {
 
 export function downloadFileCompletenessPdf(report: FileCompletenessReport) {
   const head = ["Driver", "%", "Complete", "Applicable", "Missing", "Expired", "Pending", "Unable", "Note"];
-  const body = report.drivers.map((d) => [
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
+  const body = drivers.map((d) => [
     d.driverName,
     `${d.percent}%`,
     String(d.complete),

@@ -109,4 +109,9 @@ describe("data quality review", () => {
       true,
     );
   });
+
+  test("counts/filter tolerate non-array findings", () => {
+    expect(dataQualityCounts(null as never).all).toBe(0);
+    expect(filterDataQualityFindings(undefined as never)).toEqual([]);
+  });
 });

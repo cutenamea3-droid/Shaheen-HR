@@ -86,4 +86,17 @@ describe("file completeness", () => {
     expect(csv).toContain("Formula:");
     expect(csv).toContain("Pct Driver");
   });
+
+  test("fileCompletenessCsv tolerates missing drivers array", () => {
+    expect(() =>
+      fileCompletenessCsv({
+        generatedAt: "x",
+        formula: "y",
+        fleetPercent: 0,
+        fleetComplete: 0,
+        fleetApplicable: 0,
+        drivers: null as never,
+      }),
+    ).not.toThrow();
+  });
 });

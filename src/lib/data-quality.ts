@@ -274,12 +274,13 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
 }
 
 export function dataQualityCounts(findings: DataQualityFinding[]) {
+  const list = Array.isArray(findings) ? findings : [];
   return {
-    all: findings.length,
-    high: findings.filter((f) => f.severity === "high").length,
-    medium: findings.filter((f) => f.severity === "medium").length,
-    low: findings.filter((f) => f.severity === "low").length,
-    info: findings.filter((f) => f.severity === "info").length,
+    all: list.length,
+    high: list.filter((f) => f.severity === "high").length,
+    medium: list.filter((f) => f.severity === "medium").length,
+    low: list.filter((f) => f.severity === "low").length,
+    info: list.filter((f) => f.severity === "info").length,
   };
 }
 
@@ -290,7 +291,8 @@ export function filterDataQualityFindings(
 ): DataQualityFinding[] {
   const severity = opts?.severity ?? "all";
   const q = (opts?.q ?? "").trim().toLowerCase();
-  return findings.filter((f) => {
+  const list = Array.isArray(findings) ? findings : [];
+  return list.filter((f) => {
     if (severity !== "all" && f.severity !== severity) return false;
     if (!q) return true;
     return (
