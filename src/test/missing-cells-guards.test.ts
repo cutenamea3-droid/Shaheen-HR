@@ -22,7 +22,8 @@ describe("missing cells array guards", () => {
     const storeSrc = readFileSync(resolve(process.cwd(), "src/lib/store.ts"), "utf8");
     expect(storeSrc).toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
     const alerts = readFileSync(resolve(process.cwd(), "src/lib/alerts.ts"), "utf8");
-    expect(alerts).toMatch(/const c = Array\.isArray\(row\.cells\) \? row\.cells : \[\]/);
+    expect(alerts).toMatch(/const c = cellsOf\(row\)/);
+    expect(alerts).not.toMatch(/Array\.isArray\(row\.cells\) \? row\.cells : \[\]/);
     const fu = readFileSync(resolve(process.cwd(), "src/lib/follow-ups.ts"), "utf8");
     expect(fu).toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
     const sec = readFileSync(resolve(process.cwd(), "src/lib/sections.ts"), "utf8");
