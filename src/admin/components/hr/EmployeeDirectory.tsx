@@ -393,7 +393,13 @@ export function EmployeeDirectory() {
                   </label>
                   <label>
                     <span className="lbl">Note</span>
-                    <input className="field" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+                    <input
+                      className="field"
+                      data-testid="admin-bank-note"
+                      value={form.note}
+                      onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   {bankErr && (
                     <p className="text-sm text-destructive" role="alert">

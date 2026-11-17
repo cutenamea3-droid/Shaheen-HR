@@ -454,7 +454,13 @@ export function ExpensesManagement() {
           )}
           <label className="md:col-span-2 lg:col-span-3">
             <span className="lbl">Note</span>
-            <input className="field" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+            <input
+              className="field"
+              data-testid="admin-expense-note"
+              value={form.note}
+              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
+            />
           </label>
           {err && (
             <p className="md:col-span-2 lg:col-span-3 text-sm text-destructive" role="alert">
@@ -597,15 +603,25 @@ export function ExpensesManagement() {
             className="admin-toolbar gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const r = addCategory(customCat);
+              const fd = new FormData(e.currentTarget);
+              const name = String(fd.get("admin-custom-category") ?? customCat).trim() || customCat.trim();
+              const r = addCategory(name);
               if (!r.ok) setErr(r.error ?? "Failed");
               else {
                 setCustomCat("");
-                setMsg(`Category “${customCat}” added.`);
+                setMsg(`Category “${name}” added.`);
               }
             }}
           >
-            <input className="field" placeholder="Custom category" value={customCat} onChange={(e) => setCustomCat(e.target.value)} />
+            <input
+              className="field"
+              name="admin-custom-category"
+              data-testid="admin-custom-category"
+              placeholder="Custom category"
+              value={customCat}
+              onChange={(e) => setCustomCat(e.target.value)}
+              onInput={(e) => setCustomCat((e.target as HTMLInputElement).value)}
+            />
             <button type="submit" className="btn-ghost">
               Add
             </button>

@@ -92,14 +92,17 @@ export function Team() {
                     className="field"
                     value={i + 1}
                     onChange={(ev) => moveEmployee(e.id, +ev.target.value - 1)}
+                    onInput={(ev) => moveEmployee(e.id, +(ev.target as HTMLInputElement).value - 1)}
                   />
                 </label>
                 <label>
                   <span className="lbl">Name</span>
                   <input
                     className="field"
+                    data-testid={`admin-emp-name-${e.id}`}
                     value={e.name}
                     onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { name: (ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <label>
@@ -143,6 +146,7 @@ export function Team() {
                     className="field"
                     value={e.openingLeave}
                     onChange={(ev) => updateEmployee(e.id, { openingLeave: +ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { openingLeave: +(ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <div className="admin-toolbar gap-1">

@@ -944,11 +944,21 @@ function DriverUpdatesBoard({
                       Manual location
                       <input
                         className="dispatch-field"
+                        data-testid={`dispatch-check-location-${load.id}`}
                         value={draft.location}
                         onChange={(e) =>
                           setDrafts((d) => ({
                             ...d,
                             [load.id]: { ...draftFor(load.id), location: e.target.value },
+                          }))
+                        }
+                        onInput={(e) =>
+                          setDrafts((d) => ({
+                            ...d,
+                            [load.id]: {
+                              ...draftFor(load.id),
+                              location: (e.target as HTMLInputElement).value,
+                            },
                           }))
                         }
                         placeholder="City, mile marker, yard…"
@@ -958,11 +968,21 @@ function DriverUpdatesBoard({
                       Check-call notes
                       <input
                         className="dispatch-field"
+                        data-testid={`dispatch-check-notes-${load.id}`}
                         value={draft.notes}
                         onChange={(e) =>
                           setDrafts((d) => ({
                             ...d,
                             [load.id]: { ...draftFor(load.id), notes: e.target.value },
+                          }))
+                        }
+                        onInput={(e) =>
+                          setDrafts((d) => ({
+                            ...d,
+                            [load.id]: {
+                              ...draftFor(load.id),
+                              notes: (e.target as HTMLInputElement).value,
+                            },
                           }))
                         }
                         placeholder="What the driver reported"
@@ -979,8 +999,16 @@ function DriverUpdatesBoard({
                       setBusyId(load.id);
                       setError(null);
                       try {
-                        const location = draft.location.trim();
-                        const notes = draft.notes.trim() || "Manual check-call";
+                        const locDom =
+                          document.querySelector<HTMLInputElement>(
+                            `[data-testid="dispatch-check-location-${load.id}"]`,
+                          )?.value ?? "";
+                        const notesDom =
+                          document.querySelector<HTMLInputElement>(
+                            `[data-testid="dispatch-check-notes-${load.id}"]`,
+                          )?.value ?? "";
+                        const location = draft.location.trim() || locDom.trim();
+                        const notes = (draft.notes.trim() || notesDom.trim()) || "Manual check-call";
                         await addCheckCall({
                           load_id: load.id,
                           notes,
@@ -1473,6 +1501,10 @@ function LoadEditor({
                       planned_at: e.target.value ? new Date(e.target.value).toISOString() : null,
                     })
                   }
+                  onInput={(e) => {
+                    const v = (e.target as HTMLInputElement).value;
+                    setStop(i, { planned_at: v ? new Date(v).toISOString() : null });
+                  }}
                 />
               </label>
               <label className="grid gap-1 text-xs">
@@ -1486,6 +1518,10 @@ function LoadEditor({
                       actual_at: e.target.value ? new Date(e.target.value).toISOString() : null,
                     })
                   }
+                  onInput={(e) => {
+                    const v = (e.target as HTMLInputElement).value;
+                    setStop(i, { actual_at: v ? new Date(v).toISOString() : null });
+                  }}
                 />
               </label>
             </div>
