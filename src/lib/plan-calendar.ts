@@ -155,14 +155,16 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
 }
 
 export function eventsOnDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
+  const list = Array.isArray(events) ? events : [];
   const iso = toIso(startOfDay(day));
-  return events.filter((e) => e.dateIso === iso);
+  return list.filter((e) => e.dateIso === iso);
 }
 
 export function eventsInRange(events: CalendarEvent[], start: Date, end: Date): CalendarEvent[] {
+  const list = Array.isArray(events) ? events : [];
   const a = startOfDay(start).getTime();
   const b = startOfDay(end).getTime();
-  return events.filter((e) => {
+  return list.filter((e) => {
     const t = e.date.getTime();
     return t >= a && t <= b;
   });
