@@ -25,7 +25,12 @@ import type {
   StudyMode,
   WeeklyReview,
 } from "./types";
-import { normalizeAssessment, withPrepDone, withSubmitted } from "./assessment-phases";
+import {
+  normalizeAssessment,
+  normalizeCourse,
+  withPrepDone,
+  withSubmitted,
+} from "./assessment-phases";
 import { modeBudgetMinutes } from "./schedule";
 import { buildVuSeed } from "./vu-import";
 import { VU_STUDY_PLAN, courseIdFromCode, type VuStudyPlan } from "./vu-plan";
@@ -481,7 +486,9 @@ export const usePersonal = create<PersonalStore>()(
           ...current,
           ...raw,
           settings: migrateSettings(raw.settings),
-          courses: arr(raw.courses, current.courses),
+          courses: arr(raw.courses, current.courses).map((c) =>
+            normalizeCourse(c as Partial<Course> & Pick<Course, "id">),
+          ),
           backlog: arr(raw.backlog, current.backlog),
           assessments: arr(raw.assessments, current.assessments).map((a) => normalizeAssessment(a)),
           notes: arr(raw.notes, current.notes),

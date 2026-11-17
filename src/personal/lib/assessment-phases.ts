@@ -1,4 +1,4 @@
-import type { Assessment, AssessmentKind, DeadlineSource } from "./types";
+import type { Assessment, AssessmentKind, Course, DeadlineSource } from "./types";
 
 /** Graded LMS activity nouns — GDB is first-class (not “other”). */
 export const GRADED_KINDS: AssessmentKind[] = ["assignment", "quiz", "gdb"];
@@ -45,7 +45,14 @@ export function withSubmitted(a: Assessment, submitted: boolean): Assessment {
 const asText = (v: unknown, fallback = "") =>
   v == null ? fallback : typeof v === "string" ? v : String(v);
 
-const KIND_SET = new Set<string>(["assignment", "quiz", "gdb", "other"]);
+const KIND_SET = new Set<string>([
+  "assignment",
+  "quiz",
+  "gdb",
+  "midterm",
+  "final",
+  "other",
+]);
 
 export function normalizeAssessment(raw: Partial<Assessment> & Pick<Assessment, "id" | "title">): Assessment {
   const submitted = Boolean(raw.submitted ?? raw.done);
@@ -65,6 +72,51 @@ export function normalizeAssessment(raw: Partial<Assessment> & Pick<Assessment, 
     done: submitted,
     verifyOnVulms: raw.verifyOnVulms ?? true,
     deadlineSource: raw.deadlineSource ?? (dueDate ? "user_entered" : "unset"),
+  };
+}
+
+/** Coerce corrupt cloud/local course scalars before UI `.toUpperCase` / `.trim`. */
+export function normalizeCourse(raw: Partial<Course> & Pick<Course, "id">): Course {
+  const req = asText(raw.requirementType).trim();
+  const requirementType =
+    req === "Required" || req === "Elective" || req === "unknown"
+      ? req
+      : raw.requirementType == null
+        ? undefined
+        : "unknown";
+  const credit =
+    raw.creditHours == null
+      ? null
+      : typeof raw.creditHours === "number" && Number.isFinite(raw.creditHours)
+        ? raw.creditHours
+        : Number(raw.creditHours);
+  return {
+    id: asText(raw.id) || "course",
+    code: asText(raw.code),
+    title: asText(raw.title),
+    lecturesTotal:
+      raw.lecturesTotal == null
+        ? null
+        : typeof raw.lecturesTotal === "number" && Number.isFinite(raw.lecturesTotal)
+          ? raw.lecturesTotal
+          : Number.isFinite(Number(raw.lecturesTotal))
+            ? Number(raw.lecturesTotal)
+            : null,
+    lecturesDone:
+      raw.lecturesDone == null
+        ? null
+        : typeof raw.lecturesDone === "number" && Number.isFinite(raw.lecturesDone)
+          ? raw.lecturesDone
+          : Number.isFinite(Number(raw.lecturesDone))
+            ? Number(raw.lecturesDone)
+            : null,
+    notes: asText(raw.notes),
+    isTbd: Boolean(raw.isTbd),
+    ...(requirementType ? { requirementType } : {}),
+    ...(raw.instructor != null ? { instructor: asText(raw.instructor) } : {}),
+    ...(raw.creditHours !== undefined
+      ? { creditHours: Number.isFinite(credit as number) ? (credit as number) : null }
+      : {}),
   };
 }
 

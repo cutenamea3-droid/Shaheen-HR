@@ -75,7 +75,13 @@ export function buildWeeklyStats(
   let disciplineDoneThisWeek = 0;
   for (const d of disc) {
     const doneDates = Array.isArray(d.doneDates) ? d.doneDates : [];
-    if (doneDates.some((x) => datesInWeek.includes(x))) disciplineDoneThisWeek += 1;
+    if (
+      doneDates.some((x) => {
+        const day = x == null ? "" : typeof x === "string" ? x : String(x);
+        return day ? datesInWeek.includes(day) : false;
+      })
+    )
+      disciplineDoneThisWeek += 1;
   }
 
   const graded = asses.filter((a) =>

@@ -83,7 +83,9 @@ function CourseEditor({
     <div className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="rounded bg-[var(--hp-violet)]/20 px-2 py-0.5 text-xs font-bold text-[var(--hp-violet)]">
-          {isTbd ? "Editable TBD" : id.toUpperCase()}
+          {isTbd
+            ? "Editable TBD"
+            : (id == null ? "" : typeof id === "string" ? id : String(id)).toUpperCase()}
         </span>
         {requirementType ? (
           <span
