@@ -649,7 +649,7 @@ export function migrateData(input: AppData): { data: AppData; changed: string[] 
   const sections = { ...data.sections };
   for (const sp of SPLITS) {
     const sec = sections[sp.id];
-    if (!sec || !Array.isArray(sec.rows) || sec.headers.length !== sp.oldLen) continue;
+    if (!sec || !Array.isArray(sec.rows) || !Array.isArray(sec.headers) || sec.headers.length !== sp.oldLen) continue;
     const ins = <T>(a: T[], v: T) => [...a.slice(0, sp.at), v, ...a.slice(sp.at)];
     const headers = ins(sec.headers, "Future Plans");
     headers[sp.at - 1] = "Notes";

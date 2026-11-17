@@ -9,7 +9,9 @@ describe("sections migrate/link tolerate missing rows", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/sections.ts"), "utf8");
     expect(src).toMatch(/if \(!sec \|\| !Array\.isArray\(sec\.rows\)\) continue;/);
     expect(src).toMatch(/if \(!Array\.isArray\(inaSec\.rows\)\) return/);
-    expect(src).toMatch(/!Array\.isArray\(sec\.rows\) \|\| sec\.headers\.length !== sp\.oldLen/);
+    expect(src).toMatch(
+      /!Array\.isArray\(sec\.rows\) \|\| !Array\.isArray\(sec\.headers\) \|\| sec\.headers\.length !== sp\.oldLen/,
+    );
   });
 
   it("migrateData does not throw when a section omits rows", () => {

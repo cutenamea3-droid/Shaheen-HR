@@ -2228,6 +2228,9 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
   const [loadId, setLoadId] = useState("");
   const [level, setLevel] = useState<DispatchIssue["escalation_level"]>("ops");
   const [seniorNote, setSeniorNote] = useState("");
+  const issueTitleRef = useRef<HTMLInputElement>(null);
+  const issueDetailRef = useRef<HTMLInputElement>(null);
+  const seniorNoteRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
     setIssues(await listIssues());
@@ -2249,10 +2252,13 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
         </SectionHelp>
         <div className="mb-3 grid gap-2 sm:grid-cols-2">
           <input
+            ref={issueTitleRef}
+            data-testid="dispatch-issue-title"
             className="dispatch-field"
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
           />
           <select
             className="dispatch-field"
@@ -2277,20 +2283,25 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             <option value="critical">critical</option>
           </select>
           <input
+            ref={issueDetailRef}
+            data-testid="dispatch-issue-detail"
             className="dispatch-field"
             placeholder="Detail"
             value={detail}
             onChange={(e) => setDetail(e.target.value)}
+            onInput={(e) => setDetail((e.target as HTMLInputElement).value)}
           />
         </div>
         <button
           type="button"
           className="dispatch-btn-primary"
           onClick={async () => {
-            if (!title.trim()) return;
+            const nextTitle = (title.trim() || issueTitleRef.current?.value || "").trim();
+            const nextDetail = detail || issueDetailRef.current?.value || "";
+            if (!nextTitle) return;
             await saveIssue({
-              title: title.trim(),
-              detail,
+              title: nextTitle,
+              detail: nextDetail,
               load_id: loadId || null,
               escalation_level: level,
               senior_informed: false,
@@ -2352,10 +2363,13 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                   <label className="grid flex-1 gap-1 text-xs">
                     Senior Informed note (manual)
                     <input
+                      ref={seniorNoteRef}
+                      data-testid="dispatch-senior-note"
                       className="dispatch-field"
                       placeholder="Who/when you informed — desk record only"
                       value={seniorNote}
                       onChange={(e) => setSeniorNote(e.target.value)}
+                      onInput={(e) => setSeniorNote((e.target as HTMLInputElement).value)}
                     />
                   </label>
                   <button
@@ -2365,7 +2379,9 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                       await saveIssue({
                         ...issue,
                         senior_informed: true,
-                        senior_informed_note: seniorNote.trim() || "Marked informed by desk",
+                        senior_informed_note:
+                          (seniorNote.trim() || seniorNoteRef.current?.value || "").trim() ||
+                          "Marked informed by desk",
                         senior_informed_at: new Date().toISOString(),
                       });
                       setSeniorNote("");
