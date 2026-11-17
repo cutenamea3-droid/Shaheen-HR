@@ -326,11 +326,13 @@ export function downloadCsv(tables: Table[], filename: string) {
 }
 
 /** Inclusive YYYY-MM-DD range (local calendar days). */
-export function datesInRange(from: string, to: string): string[] {
-  if (!from || !to || from > to) return [];
+export function datesInRange(from: unknown, to: unknown): string[] {
+  const f = from == null ? "" : typeof from === "string" ? from : String(from);
+  const t = to == null ? "" : typeof to === "string" ? to : String(to);
+  if (!f || !t || f > t) return [];
   const out: string[] = [];
-  const cur = new Date(+from.slice(0, 4), +from.slice(5, 7) - 1, +from.slice(8, 10));
-  const end = new Date(+to.slice(0, 4), +to.slice(5, 7) - 1, +to.slice(8, 10));
+  const cur = new Date(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10));
+  const end = new Date(+t.slice(0, 4), +t.slice(5, 7) - 1, +t.slice(8, 10));
   while (cur <= end) {
     const y = cur.getFullYear();
     const m = String(cur.getMonth() + 1).padStart(2, "0");

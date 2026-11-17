@@ -244,7 +244,8 @@ export function buildCompleteLoadHistory(input: {
     });
   }
 
-  return events.sort((a, b) => b.at.localeCompare(a.at));
+  const asAt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return events.sort((a, b) => asAt(b.at).localeCompare(asAt(a.at)));
 }
 
 /** Explicit fence: Batch 9 never posts accessorials into Admin HR expense/payroll. */

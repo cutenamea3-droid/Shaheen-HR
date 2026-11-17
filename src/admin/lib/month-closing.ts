@@ -133,15 +133,17 @@ export const useMonthClosing = create<State>()(
 );
 
 /** Pure helper for tests / guards. */
-export function monthOfDate(date: string): string {
-  return date.slice(0, 7);
+export function monthOfDate(date: unknown): string {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  return s.slice(0, 7);
 }
 
 /**
  * Whether attendance/performance edits for a calendar date should be blocked.
  * Closing ≠ Paid — this only gates month-period edits, never payment status.
  */
-export function isDateInClosedMonth(date: string, isClosed: (month: string) => boolean): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  return isClosed(monthOfDate(date));
+export function isDateInClosedMonth(date: unknown, isClosed: (month: string) => boolean): boolean {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return isClosed(monthOfDate(s));
 }

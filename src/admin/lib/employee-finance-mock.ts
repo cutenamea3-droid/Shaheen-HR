@@ -51,9 +51,16 @@ const MOCK_IBANS = {
 } as const;
 
 function withLast4(row: Omit<BankingAccountRecord, "accountLast4"> & { accountLast4?: string }): BankingAccountRecord {
+  const ref =
+    row.accountRef == null
+      ? ""
+      : typeof row.accountRef === "string"
+        ? row.accountRef
+        : String(row.accountRef);
   return {
     ...row,
-    accountLast4: row.accountLast4 ?? (row.isIban ? pkIbanLast4(row.accountRef) : row.accountRef.slice(-4)),
+    accountRef: ref,
+    accountLast4: row.accountLast4 ?? (row.isIban ? pkIbanLast4(ref) : ref.slice(-4)),
   };
 }
 
@@ -337,16 +344,18 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
 
   currentBanking: (employeeId) => {
     const banking = Array.isArray(get().banking) ? get().banking : [];
+    const asEff = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return banking
       .filter((b) => b.employeeId === employeeId && !b.supersededAt)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+      .sort((a, b) => asEff(b.effectiveFrom).localeCompare(asEff(a.effectiveFrom)))[0];
   },
 
   bankingHistory: (employeeId) => {
     const banking = Array.isArray(get().banking) ? get().banking : [];
+    const asEff = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return banking
       .filter((b) => b.employeeId === employeeId)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+      .sort((a, b) => asEff(b.effectiveFrom).localeCompare(asEff(a.effectiveFrom)));
   },
 
   addBankingChange: (input) => {
