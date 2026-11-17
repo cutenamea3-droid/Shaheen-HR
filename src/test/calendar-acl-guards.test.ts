@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { eventsInRange, eventsOnDay } from "@/lib/plan-calendar";
-import { resolveAccess, seatsToGrants, isDispatchOnly } from "@/lib/module-access/policy";
+import {
+  resolveAccess,
+  seatsToGrants,
+  isDispatchOnly,
+  homePathFor,
+  selectableModulesFor,
+  denialRedirect,
+} from "@/lib/module-access/policy";
 
 describe("calendar / ACL corrupt-shape guards", () => {
   it("eventsOnDay/eventsInRange tolerate non-array events", () => {
@@ -19,5 +26,11 @@ describe("calendar / ACL corrupt-shape guards", () => {
       dispatch: null,
     });
     expect(isDispatchOnly(null as never)).toBe(false);
+  });
+
+  it("homePathFor / selectableModulesFor / denialRedirect tolerate null grants", () => {
+    expect(homePathFor(null as never)).toBe("/access-denied");
+    expect(selectableModulesFor(null as never, { pathname: "/" })).toEqual([]);
+    expect(denialRedirect(null as never)).toBe("/access-denied");
   });
 });

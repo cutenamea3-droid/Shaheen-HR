@@ -52,18 +52,20 @@ export function selectableModulesFor(
   grants: ModuleGrants,
   opts: { pathname: string },
 ): ModuleId[] {
-  const modules: ModuleId[] = activeModules(grants).filter((m) => m !== "personal");
+  const g = asGrants(grants);
+  const modules: ModuleId[] = activeModules(g).filter((m) => m !== "personal");
   const onPersonal = opts.pathname === "/personal" || opts.pathname.startsWith("/personal/");
-  if (onPersonal && grants.personal) modules.push("personal");
+  if (onPersonal && g.personal) modules.push("personal");
   return modules;
 }
 
 export function homePathFor(grants: ModuleGrants): string {
-  if (isDispatchOnly(grants)) return "/dispatch";
-  if (grants.compliance) return "/";
-  if (grants["admin-hr"]) return "/admin";
-  if (grants.dispatch) return "/dispatch";
-  if (grants.personal) return "/personal";
+  const g = asGrants(grants);
+  if (isDispatchOnly(g)) return "/dispatch";
+  if (g.compliance) return "/";
+  if (g["admin-hr"]) return "/admin";
+  if (g.dispatch) return "/dispatch";
+  if (g.personal) return "/personal";
   return "/access-denied";
 }
 
@@ -133,7 +135,7 @@ export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): bo
  * not probed yet. Personal stays privacy-gated separately.
  */
 export function companySwitcherModules(grants: ModuleGrants): ModuleId[] {
-  if (isDispatchOnly(grants)) return ["dispatch"];
+  if (isDispatchOnly(asGrants(grants))) return ["dispatch"];
   return ["compliance", "admin-hr", "dispatch"];
 }
 
@@ -150,7 +152,7 @@ export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAcc
 
 /** Where to send a user who hit a URL they are not entitled to. */
 export function denialRedirect(grants: ModuleGrants): string {
-  const home = homePathFor(grants);
+  const home = homePathFor(asGrants(grants));
   if (home === "/access-denied") return "/access-denied";
   return `/access-denied?from=${encodeURIComponent(home)}`;
 }

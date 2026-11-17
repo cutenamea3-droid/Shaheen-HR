@@ -380,11 +380,19 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
 
   toggleReveal: (accountId) => {
     const s = get();
-    if (s.revealAccountIds.has(accountId)) {
+    const revealed =
+      s.revealAccountIds instanceof Set ? s.revealAccountIds : new Set<string>();
+    if (revealed.has(accountId)) {
       set((st) => {
-        const next = new Set(st.revealAccountIds);
+        const next = new Set(st.revealAccountIds instanceof Set ? st.revealAccountIds : []);
         next.delete(accountId);
-        const { [accountId]: _, ...rest } = st.revealedPlaintext;
+        const plain =
+          st.revealedPlaintext &&
+          typeof st.revealedPlaintext === "object" &&
+          !Array.isArray(st.revealedPlaintext)
+            ? st.revealedPlaintext
+            : {};
+        const { [accountId]: _, ...rest } = plain;
         return { revealAccountIds: next, revealedPlaintext: rest };
       });
       return;
@@ -397,18 +405,36 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
     const row = banking.find((b) => b.id === accountId);
     if (!row) return { ok: false, error: "Account not found" };
     set((s) => {
-      const next = new Set(s.revealAccountIds);
+      const next = new Set(s.revealAccountIds instanceof Set ? s.revealAccountIds : []);
       next.add(accountId);
+      const plain =
+        s.revealedPlaintext &&
+        typeof s.revealedPlaintext === "object" &&
+        !Array.isArray(s.revealedPlaintext)
+          ? s.revealedPlaintext
+          : {};
       return {
         revealAccountIds: next,
-        revealedPlaintext: { ...s.revealedPlaintext, [accountId]: row.accountRef },
+        revealedPlaintext: { ...plain, [accountId]: row.accountRef },
       };
     });
     return { ok: true, data: row.accountRef };
   },
 
-  isRevealed: (accountId) => get().revealAccountIds.has(accountId),
-  getRevealedPlaintext: (accountId) => get().revealedPlaintext[accountId],
+  isRevealed: (accountId) => {
+    const revealed =
+      get().revealAccountIds instanceof Set ? get().revealAccountIds : new Set<string>();
+    return revealed.has(accountId);
+  },
+  getRevealedPlaintext: (accountId) => {
+    const plain =
+      get().revealedPlaintext &&
+      typeof get().revealedPlaintext === "object" &&
+      !Array.isArray(get().revealedPlaintext)
+        ? get().revealedPlaintext
+        : {};
+    return plain[accountId];
+  },
 
   paymentsForMonth: (month) => {
     const payments = Array.isArray(get().payments) ? get().payments : [];
