@@ -389,8 +389,17 @@ export function loadFromStorage() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as AppData;
-      if (parsed?.sections) state = migrateData(parsed).data;
+      const parsed = JSON.parse(raw) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        (parsed as AppData).sections &&
+        typeof (parsed as AppData).sections === "object" &&
+        !Array.isArray((parsed as AppData).sections)
+      ) {
+        state = migrateData(parsed as AppData).data;
+      }
     }
   } catch {
     /* ignore corrupt storage */
@@ -632,9 +641,18 @@ export function exportBackup() {
   return JSON.stringify(state, null, 2);
 }
 export function importBackup(json: string) {
-  const parsed = JSON.parse(json) as AppData;
-  if (!parsed?.sections) throw new Error("Not a valid backup file");
-  update(() => migrateData(parsed).data);
+  const parsed = JSON.parse(json) as unknown;
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    !(parsed as AppData).sections ||
+    typeof (parsed as AppData).sections !== "object" ||
+    Array.isArray((parsed as AppData).sections)
+  ) {
+    throw new Error("Not a valid backup file");
+  }
+  update(() => migrateData(parsed as AppData).data);
 }
 
 /** Adds an empty row for an existing driver in a section where they are missing (keeps rows line-by-line). */

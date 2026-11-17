@@ -165,7 +165,11 @@ export function clearLocalSession() {
 }
 
 export function readLocalSessionAccount(): PortalAccount | null {
-  const session = readJson<{ user_id?: string; email?: string } | null>(SESSION_KEY, null);
+  const raw = readJson<unknown>(SESSION_KEY, null);
+  const session =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { user_id?: string; email?: string })
+      : null;
   if (!session?.user_id) return null;
   const list = listLocalAccounts();
   const match = list.find((a) => a.user_id === session.user_id) ?? (session.email ? findLocalAccountByEmail(session.email) : null);

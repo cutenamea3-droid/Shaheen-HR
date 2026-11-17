@@ -90,8 +90,16 @@ export function downloadBackup() {
 
 export async function restoreBackup(file: File) {
   try {
-    const parsed = JSON.parse(await file.text());
-    const data = parsed?.app === "hr-attendance" ? parsed.data : null;
+    const parsed = JSON.parse(await file.text()) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      toast.error("That file is not an Attendance backup");
+      return;
+    }
+    const envelope = parsed as { app?: unknown; data?: unknown };
+    const data =
+      envelope.app === "hr-attendance" && envelope.data && typeof envelope.data === "object" && !Array.isArray(envelope.data)
+        ? (envelope.data as Record<string, unknown>)
+        : null;
     if (!data || !Array.isArray(data.employees) || !Array.isArray(data.depts)) {
       toast.error("That file is not an Attendance backup");
       return;
