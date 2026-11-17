@@ -14,7 +14,7 @@ import {
   type WorkCenterItem,
 } from "@/lib/alerts-work-center";
 import { setCell, useData } from "@/lib/store";
-import { SECTIONS, cellsOf } from "@/lib/sections";
+import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { DateCell, EditableText, StatusToggle, Chip } from "./cells";
 import { FuturePlanSuggest } from "./FuturePlanSuggest";
@@ -77,7 +77,7 @@ function safeSave(
 
 function ItemEditor({ item }: { item: WorkCenterItem }) {
   const data = useData();
-  const rawRow = data.sections[item.sectionId]?.rows?.find((r) => r.id === item.rowId);
+  const rawRow = rowsOf(data.sections[item.sectionId]).find((r) => r.id === item.rowId);
   const row = rawRow ? { ...rawRow, cells: cellsOf(rawRow) } : undefined;
   if (!row) {
     return <p className="text-sm font-semibold text-danger">Row missing — refresh or open full record.</p>;

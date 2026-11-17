@@ -65,7 +65,8 @@ function statusDisplay(sectionId: string, statusCol: number, row: { cells: strin
 }
 
 function onlyThisDriver<T extends { driverId: string }>(rows: T[] | undefined, driverId: string): T | undefined {
-  return rows?.find((r) => r.driverId === driverId);
+  if (!Array.isArray(rows)) return undefined;
+  return rows.find((r) => r.driverId === driverId);
 }
 
 const DEFAULT_DOC_HEADERS = [
@@ -92,7 +93,7 @@ const RECORD_TABS = [
 function buildOtherDocs(data: AppData, driverId: string): DossierLine[] {
   const docs = onlyThisDriver(data.sections.docs?.rows, driverId);
   if (!docs) return [];
-  const headers = data.sections.docs?.headers ?? [];
+  const headers = Array.isArray(data.sections.docs?.headers) ? data.sections.docs!.headers : [];
   const lines: DossierLine[] = [];
   for (let i = 2; i <= 13; i++) {
     const label = (headers[i] ?? DEFAULT_DOC_HEADERS[i - 2] ?? `Document ${i - 1}`).trim() || `Document ${i - 1}`;

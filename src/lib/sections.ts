@@ -232,6 +232,17 @@ export function cellsOf(row: { cells?: unknown } | null | undefined): string[] {
   return Array.isArray(row?.cells) ? (row!.cells as string[]) : [];
 }
 
+/** Safe rows array for corrupt/missing cloud sections — never assume `section.rows` is an array. */
+export function rowsOf(sec: { rows?: unknown } | null | undefined): Row[] {
+  return Array.isArray(sec?.rows) ? (sec!.rows as Row[]) : [];
+}
+
+/** Safe headers array for corrupt/missing cloud sections. */
+export function headersOf(sec: { headers?: unknown } | null | undefined): string[] {
+  if (!Array.isArray(sec?.headers)) return [];
+  return (sec!.headers as unknown[]).map((h) => (h == null ? "" : String(h)));
+}
+
 /** Parse employment status from a cell or optional Row.status. Empty → active. */
 export function parseDriverStatus(value?: string | null): DriverStatus {
   const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");

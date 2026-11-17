@@ -11,7 +11,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SECTIONS, cellsOf, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
+import { SECTIONS, cellsOf, formatDriverStatus, rowsOf, type DriverStatus, type Row } from "@/lib/sections";
 import {
   alertsMuteBanner,
   analyzeRow,
@@ -491,7 +491,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
   const statusInfo = useMemo(() => {
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
-      const row = sec?.rows?.find((r) => r.driverId === driverId);
+      const row = rowsOf(sec).find((r) => r.driverId === driverId);
       if (!row) continue;
       const col = def.types.indexOf("active");
       if (col < 0) continue;

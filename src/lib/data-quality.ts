@@ -11,7 +11,7 @@ import {
   parseISO,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, normName, type AppData, type Row } from "./sections";
+import { SECTIONS, headersOf, normName, rowsOf, type AppData, type Row } from "./sections";
 
 export type DataQualitySeverity = "high" | "medium" | "low" | "info";
 
@@ -84,7 +84,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
   for (const driverId of allDriverIds(data)) {
     const names = new Map<string, { sectionId: string; rowId: string; name: string }>();
     for (const sectionId of WIZARD_SECTIONS) {
-      const row = data.sections[sectionId]?.rows?.find((r) => r.driverId === driverId);
+      const row = rowsOf(data.sections[sectionId]).find((r) => r.driverId === driverId);
       if (!row) {
         push({
           id: `missing_row:${driverId}:${sectionId}`,
@@ -184,7 +184,8 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
         const expCol = expiryPair(def.id, col);
         if (expCol == null) continue; // e.g. SSC — no expiry pair
         const rawDate = cell(row, expCol);
-        const header = sec.headers[col] ?? `col ${col}`;
+        const hdrs = headersOf(sec);
+        const header = hdrs[col] ?? `col ${col}`;
 
         if ((status === "Valid" || status === "Applied") && !rawDate) {
           push({
@@ -207,7 +208,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
             kind: "date_without_status",
             severity: "medium",
             title: "Date without status",
-            detail: `${sec.headers[expCol] ?? "Expiry"} is “${fmtCell(rawDate)}” but status is empty.`,
+            detail: `${headersOf(sec)[expCol] ?? "Expiry"} is “${fmtCell(rawDate)}” but status is empty.`,
             driverId: row.driverId,
             driverName: cell(row, 0) || nameOf(data, row.driverId),
             sectionId: def.id,

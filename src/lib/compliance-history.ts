@@ -10,7 +10,7 @@
  */
 import { fmtDate } from "./alerts";
 import { classHistoryOf, rosterKindOf, driverClassOf } from "./driver-meta";
-import { SECTIONS, type AppData, type RosterHistoryEntry } from "./sections";
+import { SECTIONS, rowsOf, type AppData, type RosterHistoryEntry } from "./sections";
 import type { LocalActivity } from "./portal-local";
 import type { SensitiveAuditEntry } from "./driver-hr/sensitive-audit";
 
@@ -101,7 +101,7 @@ export function buildComplianceHistory(
     // addedAt — first seen on any row for this driver
     let addedAt: number | undefined;
     for (const def of SECTIONS) {
-      const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+      const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
       if (r?.addedAt != null && (addedAt == null || r.addedAt < addedAt)) addedAt = r.addedAt;
     }
     if (addedAt != null) {

@@ -4,7 +4,7 @@
  */
 import { parseISO, today } from "@/lib/alerts";
 import type { AppData, Row, SectionDef } from "@/lib/sections";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, rowsOf } from "@/lib/sections";
 import { mapDriverRows } from "@/lib/driver-meta";
 
 /** Parse picker ISO or typed MM/DD/YYYY → ISO, "" for clear, null if invalid. */
@@ -34,7 +34,7 @@ export function formatHireDateDisplay(value: string | undefined | null): string 
 
 export function dateOfHireOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
     if (r && r.dateOfHire !== undefined) return (r.dateOfHire ?? "").trim();
   }
   return "";

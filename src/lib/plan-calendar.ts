@@ -19,7 +19,7 @@ import {
   toISODateLocal,
 } from "./plan-dates";
 import { listFollowUps, followUpTone, type FollowUp } from "./follow-ups";
-import { SECTIONS, cellsOf, type AppData } from "./sections";
+import { SECTIONS, cellsOf, rowsOf, type AppData } from "./sections";
 import { rowIsActive, rowOrdinaryComplianceMuted } from "./alerts";
 
 function startOfDay(d: Date): Date {
@@ -87,7 +87,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
   // Fill driverId from section rows for plan events
   for (const ev of out) {
     if (ev.driverId) continue;
-    const row = data.sections[ev.sectionId]?.rows?.find((r) => r.id === ev.rowId);
+    const row = rowsOf(data.sections[ev.sectionId]).find((r) => r.id === ev.rowId);
     if (row) ev.driverId = row.driverId;
   }
 

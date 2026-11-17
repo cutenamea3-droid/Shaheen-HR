@@ -9,6 +9,7 @@
  */
 import {
   SECTIONS,
+  rowsOf,
   type AppData,
   type ClassHistoryEntry,
   type DriverClass,
@@ -196,7 +197,7 @@ export function applyRosterKind(
 /** Class history for a driver (from any row that has it). */
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
     if (r?.classHistory?.length) return r.classHistory;
   }
   return [];
