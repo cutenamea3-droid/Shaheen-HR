@@ -29,4 +29,13 @@ describe("inspection / expenses UI list guards", () => {
     );
     expect(src).toMatch(/Array\.isArray\(list\) \? list : \[\]/);
   });
+
+  it("FileCompletenessPanel coerces report.drivers", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/FileCompletenessPanel.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/const drivers = Array\.isArray\(report\.drivers\) \? report\.drivers : \[\]/);
+    expect(src).not.toMatch(/report\.drivers\.map\(/);
+  });
 });
