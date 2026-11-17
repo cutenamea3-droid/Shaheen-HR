@@ -42,13 +42,14 @@ export function InspectionReadinessPanel() {
   const fleet = useMemo(() => fleetInspectionCounts(summaries), [summaries]);
 
   const visible = useMemo(() => {
-    const qq = q.trim().toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const qq = asText(q).trim().toLowerCase();
     return summaries.filter((s) => {
       const counts: Partial<Record<InspectionStatus, number>> =
         s?.counts && typeof s.counts === "object" && !Array.isArray(s.counts) ? s.counts : {};
       if (filter !== "all" && (counts[filter] ?? 0) === 0) return false;
       if (!qq) return true;
-      return s.driverName.toLowerCase().includes(qq);
+      return asText(s.driverName).toLowerCase().includes(qq);
     });
   }, [summaries, filter, q]);
 

@@ -52,7 +52,8 @@ export function leaveRoster(
   records: Record<string, Record<string, DayRec>>,
   asOf: string,
 ): LeaveRosterRow[] {
-  const month = asOf.slice(0, 7);
+  const asOfDay = asOf == null ? "" : typeof asOf === "string" ? asOf : String(asOf);
+  const month = asOfDay.slice(0, 7);
   const roster = Array.isArray(employees) ? employees : [];
   const days =
     records && typeof records === "object" && !Array.isArray(records) ? records : {};
@@ -60,7 +61,7 @@ export function leaveRoster(
     let paidThisMonth = 0;
     let unpaidThisMonth = 0;
     for (const d of monthDays(month)) {
-      if (d > asOf) continue;
+      if (d > asOfDay) continue;
       const r = days[d]?.[e.id];
       if (r?.status !== "leave") continue;
       if (r.leavePaid) paidThisMonth++;
@@ -69,7 +70,7 @@ export function leaveRoster(
     return {
       employeeId: e.id,
       name: e.name,
-      balanceAsOf: leaveBalance(e, asOf, days),
+      balanceAsOf: leaveBalance(e, asOfDay, days),
       paidThisMonth,
       unpaidThisMonth,
       openingLeave: e.openingLeave,

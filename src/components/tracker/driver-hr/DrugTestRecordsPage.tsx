@@ -31,6 +31,7 @@ import {
 import {
   DRUG_DOC_KIND_LABEL,
   DRUG_PAIR_STATUS_LABEL,
+  asDrugText,
   formatDrugDocKind,
   newTestingEventId,
   pairDrugTestEvents,
@@ -156,12 +157,15 @@ export function DrugTestRecordsPage() {
 
   const reasonOptions = useMemo(() => {
     const s = new Set<string>();
-    for (const r of pairsByDriver) if (r.reason.trim()) s.add(r.reason.trim());
+    for (const r of pairsByDriver) {
+      const reason = asDrugText(r.reason).trim();
+      if (reason) s.add(reason);
+    }
     return [...s].sort((a, b) => a.localeCompare(b));
   }, [pairsByDriver]);
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = asDrugText(q).trim().toLowerCase();
     let rows = pairsByDriver.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!needle) return true;
@@ -177,12 +181,14 @@ export function DrugTestRecordsPage() {
         r.federal ? DRUG_DOC_KIND_LABEL.federal_drug : "",
         r.medical ? DRUG_DOC_KIND_LABEL.medical_review : "",
       ]
+        .map(asDrugText)
         .join(" ")
         .toLowerCase();
       return hay.includes(needle);
     });
     if (reasonFilter !== "all") {
-      rows = rows.filter((r) => r.reason.trim().toLowerCase() === reasonFilter.toLowerCase());
+      const want = asDrugText(reasonFilter).trim().toLowerCase();
+      rows = rows.filter((r) => asDrugText(r.reason).trim().toLowerCase() === want);
     }
     return rows;
   }, [pairsByDriver, statusFilter, q, reasonFilter]);
@@ -193,7 +199,7 @@ export function DrugTestRecordsPage() {
   const showingEvents = filtered.length;
   const showingDrivers = useMemo(() => new Set(filtered.map((r) => r.driverId)).size, [filtered]);
   const isFiltered =
-    q.trim() !== "" || statusFilter !== "all" || reasonFilter !== "all";
+    asDrugText(q).trim() !== "" || statusFilter !== "all" || reasonFilter !== "all";
 
   const grouped = useMemo(() => {
     if (!groupByDriver) return null;
@@ -296,7 +302,7 @@ export function DrugTestRecordsPage() {
     const testingEventId =
       resolution.status === "attach"
         ? resolution.testingEventId
-        : draft.testingEventId.trim() || newTestingEventId();
+        : asDrugText(draft.testingEventId).trim() || newTestingEventId();
 
     try {
       await addDrugTestEvent(

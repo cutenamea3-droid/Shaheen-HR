@@ -65,13 +65,14 @@ export function ComplianceHistoryPanel() {
   }, [data, portal, driverId]);
 
   const filtered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const qq = asText(q).trim().toLowerCase();
     if (!qq) return events;
     return events.filter(
       (e) =>
-        e.title.toLowerCase().includes(qq) ||
-        e.detail.toLowerCase().includes(qq) ||
-        (e.actor ?? "").toLowerCase().includes(qq) ||
+        asText(e.title).toLowerCase().includes(qq) ||
+        asText(e.detail).toLowerCase().includes(qq) ||
+        asText(e.actor).toLowerCase().includes(qq) ||
         historySourceLabel(e.source).toLowerCase().includes(qq),
     );
   }, [events, q]);
