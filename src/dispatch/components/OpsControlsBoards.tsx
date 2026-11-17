@@ -123,17 +123,18 @@ function DocList({
   onPatch: (load: DispatchLoad, field: "bol_status" | "pod_status", value: DocStatus) => Promise<void>;
   onOpen: (id: string) => void;
 }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <section className="dispatch-panel">
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">{title}</h2>
-        <span className="text-xs text-[color:var(--dispatch-muted)]">{items.length}</span>
+        <span className="text-xs text-[color:var(--dispatch-muted)]">{list.length}</span>
       </div>
-      {!items.length ? (
+      {!list.length ? (
         <EmptyHint>Nothing awaiting.</EmptyHint>
       ) : (
         <ul className="divide-y divide-[color:var(--dispatch-border)]">
-          {items.map((load) => (
+          {list.map((load) => (
             <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <div>
                 <p className="text-sm font-semibold">
@@ -386,19 +387,22 @@ export function EquipmentBoard({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row) => {
+                const labels = Array.isArray(row.equipmentLabels) ? row.equipmentLabels : [];
+                const active = Array.isArray(row.activeLoads) ? row.activeLoads : [];
+                return (
                 <tr key={row.driver.id}>
                   <td className="font-semibold">{row.driver.display_name}</td>
                   <td>{row.unit_number || "—"}</td>
                   <td className="text-xs">
-                    {row.equipmentLabels.length ? row.equipmentLabels.join(", ") : "— (none recorded)"}
+                    {labels.length ? labels.join(", ") : "— (none recorded)"}
                   </td>
                   <td>
-                    {!row.activeLoads.length ? (
+                    {!active.length ? (
                       <span className="text-xs text-[color:var(--dispatch-muted)]">No active loads</span>
                     ) : (
                       <ul className="space-y-1">
-                        {row.activeLoads.map((l) => (
+                        {active.map((l) => (
                           <li key={l.id} className="flex flex-wrap items-center gap-2 text-xs">
                             <span>
                               {l.load_number} · {statusLabel(l.status)}
@@ -413,7 +417,8 @@ export function EquipmentBoard({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
