@@ -102,9 +102,11 @@ export function EmployeeDirectory() {
     const st = meta[r.id]?.status ?? "active";
     if (statusFilter !== "all" && st !== statusFilter) return false;
     if (bankFilter !== "all" && bankStatus(r.id) !== bankFilter) return false;
-    if (q.trim()) {
-      const hay = `${r.name} ${r.deptLabel} ${r.id} ${meta[r.id]?.designation ?? ""}`.toLowerCase();
-      if (!hay.includes(q.trim().toLowerCase())) return false;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const needle = asText(q).trim().toLowerCase();
+    if (needle) {
+      const hay = `${asText(r.name)} ${asText(r.deptLabel)} ${asText(r.id)} ${asText(meta[r.id]?.designation)}`.toLowerCase();
+      if (!hay.includes(needle)) return false;
     }
     return true;
   });

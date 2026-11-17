@@ -85,7 +85,7 @@ function normalizeFollowUpSection(sec: SectionData): SectionData {
   }
   const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
   const rows = srcRows.map((r) => {
-    const base = Array.isArray(r.cells) ? r.cells : [];
+    const base = cellsOf(r);
     if (!Array.isArray(r.cells)) touched = true;
     const cells = [...base];
     while (cells.length < FOLLOW_UP_HEADERS.length) {

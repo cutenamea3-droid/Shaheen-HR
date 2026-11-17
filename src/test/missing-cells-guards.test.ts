@@ -20,13 +20,14 @@ describe("missing cells array guards", () => {
 
   it("setCell / normalizeRecord / follow-ups coerce missing cells", () => {
     const storeSrc = readFileSync(resolve(process.cwd(), "src/lib/store.ts"), "utf8");
-    expect(storeSrc).toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
+    expect(storeSrc).toMatch(/cellsOf\(r\)/);
+    expect(storeSrc).not.toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
     const alerts = readFileSync(resolve(process.cwd(), "src/lib/alerts.ts"), "utf8");
     expect(alerts).toMatch(/const c = cellsOf\(row\)/);
     expect(alerts).not.toMatch(/Array\.isArray\(row\.cells\) \? row\.cells : \[\]/);
     const fu = readFileSync(resolve(process.cwd(), "src/lib/follow-ups.ts"), "utf8");
-    expect(fu).toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
+    expect(fu).toMatch(/const base = cellsOf\(r\)/);
     const sec = readFileSync(resolve(process.cwd(), "src/lib/sections.ts"), "utf8");
-    expect(sec).toMatch(/Array\.isArray\(r\.cells\) \? r\.cells : \[\]/);
+    expect(sec).toMatch(/cells: \[\.\.\.cellsOf\(r\)\]/);
   });
 });

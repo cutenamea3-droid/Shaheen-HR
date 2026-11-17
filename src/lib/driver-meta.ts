@@ -9,6 +9,7 @@
  */
 import {
   SECTIONS,
+  cellsOf,
   rowsOf,
   type AppData,
   type ClassHistoryEntry,
@@ -137,8 +138,7 @@ export function collectTempNotes(data: AppData, driverId: string): TempNoteSecti
     if (!row) continue;
     const idx = def.types.indexOf("tempnote");
     if (idx < 0) continue;
-    const cells = Array.isArray(row.cells) ? row.cells : [];
-    const text = (cells[idx] ?? "").trim();
+    const text = (cellsOf(row)[idx] ?? "").trim();
     if (!text) continue;
     out.push({ sectionId: def.id, sectionTitle: def.title, short: def.short, text });
   }

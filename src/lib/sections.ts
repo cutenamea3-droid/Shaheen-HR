@@ -496,7 +496,7 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
     let hidden = [...(Array.isArray(sec.hidden) ? sec.hidden : [])];
     let rows = sec.rows.map((r) => ({
       ...r,
-      cells: [...(Array.isArray(r.cells) ? r.cells : [])],
+      cells: [...cellsOf(r)],
     }));
     let touched = sec.rows.some((r) => !Array.isArray(r.cells));
 

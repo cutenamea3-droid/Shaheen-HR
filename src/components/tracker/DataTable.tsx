@@ -191,7 +191,11 @@ export function DataTable({
   }, [data, sec, sectionId, nameOf, listScope, safeRows]);
   const showMissing = listScope !== "new" && filter === "all" && !alertsOnly;
   const shownMissing = showMissing
-    ? missing.filter((m) => !q.trim() || m.name.toLowerCase().includes(q.toLowerCase()))
+    ? missing.filter((m) => {
+        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+        const needle = asText(q).trim().toLowerCase();
+        return !needle || asText(m.name).toLowerCase().includes(needle);
+      })
     : [];
   type Item =
     { kind: "row"; a: (typeof rows)[number] } | { kind: "missing"; driverId: string; name: string };
@@ -199,8 +203,9 @@ export function DataTable({
     ...rows.map((a) => ({ kind: "row" as const, a })),
     ...shownMissing.map((m) => ({ kind: "missing" as const, ...m })),
   ].sort((x, y) => {
-    const nx = x.kind === "row" ? canon(x.a.row) : x.name.trim();
-    const ny = y.kind === "row" ? canon(y.a.row) : y.name.trim();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const nx = x.kind === "row" ? canon(x.a.row) : asText(x.name).trim();
+    const ny = y.kind === "row" ? canon(y.a.row) : asText(y.name).trim();
     return nx.localeCompare(ny, undefined, { sensitivity: "base" });
   });
   void keepTick;

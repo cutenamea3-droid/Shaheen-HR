@@ -126,7 +126,7 @@ function normalizeRecordSection(sec: SectionData): SectionData {
   const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
   let rows = srcRows.map((r) => ({
     ...r,
-    cells: [...(Array.isArray(r.cells) ? r.cells : [])],
+    cells: [...cellsOf(r)],
   }));
   let touched = !Array.isArray(sec.rows) || srcRows.some((r) => !Array.isArray(r.cells));
 
@@ -486,7 +486,7 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
           ...cur,
           rows: cur.rows.map((r) => {
             if (r.driverId !== row.driverId) return r;
-            const cells = Array.isArray(r.cells) ? r.cells : [];
+            const cells = cellsOf(r);
             return {
               ...r,
               status,
@@ -523,9 +523,9 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       ...sec,
       rows: sec.rows.map((r) => {
         if (r.id !== rowId) return r;
-        const cells = Array.isArray(r.cells) ? r.cells : [];
+        const cells = cellsOf(r);
         const next = cells.length > col ? cells.slice() : [...cells, ...Array(col - cells.length + 1).fill("")];
-        next[col] = value;
+        next[col] = value == null ? "" : typeof value === "string" ? value : String(value);
         return { ...r, cells: next };
       }),
     };
@@ -687,7 +687,7 @@ export function addRecord(sectionId: string, cells: string[]) {
       ...secRaw,
       rows: Array.isArray(secRaw.rows) ? secRaw.rows : [],
     };
-    const padded = [...(Array.isArray(cells) ? cells : [])];
+    const padded = [...cellsOf({ cells })];
     while (padded.length < RECORD_HEADERS.length) {
       padded.push(padded.length === RECORD_ACTIVE_COL ? "Active" : "");
     }
@@ -909,7 +909,7 @@ export function renameRecordPerson(sectionId: string, oldName: string, newName: 
     if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      const cells = Array.isArray(r.cells) ? r.cells : [];
+      const cells = cellsOf(r);
       if (recordPersonKey(cells[0] ?? "") !== key) return r;
       touched = true;
       return { ...r, cells: cells.map((c, i) => (i === 0 ? next : c)) };

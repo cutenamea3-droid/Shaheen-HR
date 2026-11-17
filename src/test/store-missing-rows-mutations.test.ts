@@ -10,7 +10,7 @@ describe("store mutations tolerate missing section.rows", () => {
     expect(src).toMatch(/export function deleteRecord[\s\S]*!Array\.isArray\(sec\.rows\)/);
     expect(src).toMatch(/export function deleteFollowUp[\s\S]*!Array\.isArray\(sec\.rows\)/);
     expect(src).toMatch(/export function addRecord[\s\S]*Array\.isArray\(secRaw\.rows\)/);
-    expect(src).toMatch(/export function addRecord[\s\S]*Array\.isArray\(cells\)/);
+    expect(src).toMatch(/export function addRecord[\s\S]*cellsOf\(\{ cells \}\)/);
     expect(src).toMatch(/normalizeRecordSection[\s\S]*Array\.isArray\(sec\.rows\)/);
     const fu = readFileSync(resolve(process.cwd(), "src/lib/follow-ups.ts"), "utf8");
     expect(fu).toMatch(/normalizeFollowUpSection[\s\S]*Array\.isArray\(sec\.rows\)/);

@@ -101,9 +101,11 @@ export function ExpensesManagement() {
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (scopeFilter !== "all" && e.scope !== scopeFilter) return false;
       if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
-      if (q.trim()) {
-        const hay = `${e.title} ${e.note} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => nameById.get(id) ?? "").join(" ")}`.toLowerCase();
-        if (!hay.includes(q.trim().toLowerCase())) return false;
+      const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      const needle = asText(q).trim().toLowerCase();
+      if (needle) {
+        const hay = `${asText(e.title)} ${asText(e.note)} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => asText(nameById.get(id))).join(" ")}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
       }
       return true;
     });
