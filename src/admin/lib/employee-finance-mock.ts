@@ -253,63 +253,79 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   revealedPlaintext: {},
 
   ensureMeta: (employeeId) => {
-    if (get().meta[employeeId]) return;
-    set((s) => ({
-      meta: {
-        ...s.meta,
-        [employeeId]: {
-          employeeId,
-          status: "active",
-          joiningDate: null,
-          designation: null,
-          deactivatedAt: null,
-          reactivatedAt: null,
+    const meta =
+      get().meta && typeof get().meta === "object" && !Array.isArray(get().meta) ? get().meta : {};
+    if (meta[employeeId]) return;
+    set((s) => {
+      const prev = s.meta && typeof s.meta === "object" && !Array.isArray(s.meta) ? s.meta : {};
+      return {
+        meta: {
+          ...prev,
+          [employeeId]: {
+            employeeId,
+            status: "active",
+            joiningDate: null,
+            designation: null,
+            deactivatedAt: null,
+            reactivatedAt: null,
+          },
         },
-      },
-    }));
+      };
+    });
   },
 
   setStatus: (employeeId, status, confirmDeactivate = false) => {
     get().ensureMeta(employeeId);
-    const cur = get().meta[employeeId]!;
+    const meta =
+      get().meta && typeof get().meta === "object" && !Array.isArray(get().meta) ? get().meta : {};
+    const cur = meta[employeeId]!;
     if (status === "inactive" && cur.status !== "inactive" && !confirmDeactivate) {
       return { ok: false, error: "Confirm deactivation required" };
     }
     const today = new Date().toISOString().slice(0, 10);
-    set((s) => ({
-      meta: {
-        ...s.meta,
-        [employeeId]: {
-          ...cur,
-          status,
-          deactivatedAt: status === "inactive" ? today : cur.deactivatedAt,
-          reactivatedAt: status === "active" && cur.status === "inactive" ? today : cur.reactivatedAt,
+    set((s) => {
+      const prev = s.meta && typeof s.meta === "object" && !Array.isArray(s.meta) ? s.meta : {};
+      return {
+        meta: {
+          ...prev,
+          [employeeId]: {
+            ...cur,
+            status,
+            deactivatedAt: status === "inactive" ? today : cur.deactivatedAt,
+            reactivatedAt: status === "active" && cur.status === "inactive" ? today : cur.reactivatedAt,
+          },
         },
-      },
-    }));
+      };
+    });
     return { ok: true };
   },
 
   setJoiningDate: (employeeId, joiningDate) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(joiningDate)) return { ok: false, error: "Invalid joining date" };
     get().ensureMeta(employeeId);
-    set((s) => ({
-      meta: {
-        ...s.meta,
-        [employeeId]: { ...s.meta[employeeId]!, joiningDate },
-      },
-    }));
+    set((s) => {
+      const prev = s.meta && typeof s.meta === "object" && !Array.isArray(s.meta) ? s.meta : {};
+      return {
+        meta: {
+          ...prev,
+          [employeeId]: { ...prev[employeeId]!, joiningDate },
+        },
+      };
+    });
     return { ok: true };
   },
 
   setDesignation: (employeeId, designation) => {
     get().ensureMeta(employeeId);
-    set((s) => ({
-      meta: {
-        ...s.meta,
-        [employeeId]: { ...s.meta[employeeId]!, designation: designation.trim() || null },
-      },
-    }));
+    set((s) => {
+      const prev = s.meta && typeof s.meta === "object" && !Array.isArray(s.meta) ? s.meta : {};
+      return {
+        meta: {
+          ...prev,
+          [employeeId]: { ...prev[employeeId]!, designation: designation.trim() || null },
+        },
+      };
+    });
     return { ok: true };
   },
 

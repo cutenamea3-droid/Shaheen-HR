@@ -128,6 +128,13 @@ type PolicyState = {
   resetPolicy: () => void;
 };
 
+/** Heal corrupt/session-tampered policy shapes before merge or UI read. */
+export function asPayrollPolicy(v: unknown): PayrollPolicy {
+  return v && typeof v === "object" && !Array.isArray(v)
+    ? { ...DEFAULT_PAYROLL_POLICY, ...(v as Partial<PayrollPolicy>) }
+    : { ...DEFAULT_PAYROLL_POLICY };
+}
+
 export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
   policy: { ...DEFAULT_PAYROLL_POLICY },
 
@@ -135,7 +142,9 @@ export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
     try {
       const v = assertWholePkr(pkr);
       if (v <= 0) return { ok: false, error: "Additional day rate must be positive whole PKR" };
-      set((s) => ({ policy: { ...s.policy, additionalDayRatePkr: v, updatedAt: Date.now() } }));
+      set((s) => ({
+        policy: { ...asPayrollPolicy(s.policy), additionalDayRatePkr: v, updatedAt: Date.now() },
+      }));
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Invalid rate" };
@@ -146,14 +155,14 @@ export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
     try {
       if (pkr == null) {
         set((s) => ({
-          policy: { ...s.policy, overtimeHourlyRatePkr: null, updatedAt: Date.now() },
+          policy: { ...asPayrollPolicy(s.policy), overtimeHourlyRatePkr: null, updatedAt: Date.now() },
         }));
         return { ok: true };
       }
       const v = assertWholePkr(pkr);
       if (v <= 0) return { ok: false, error: "OT hourly rate must be positive whole PKR" };
       set((s) => ({
-        policy: { ...s.policy, overtimeHourlyRatePkr: v, updatedAt: Date.now() },
+        policy: { ...asPayrollPolicy(s.policy), overtimeHourlyRatePkr: v, updatedAt: Date.now() },
       }));
       return { ok: true };
     } catch (e) {
@@ -165,7 +174,7 @@ export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
     if (n == null) {
       set((s) => ({
         policy: {
-          ...s.policy,
+          ...asPayrollPolicy(s.policy),
           workingDaysDivisor: null,
           divisorPolicyConfirmed: false,
           updatedAt: Date.now(),
@@ -179,7 +188,7 @@ export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
     // Changing divisor clears confirmation — owner must re-confirm (no silent 26/27).
     set((s) => ({
       policy: {
-        ...s.policy,
+        ...asPayrollPolicy(s.policy),
         workingDaysDivisor: n,
         divisorPolicyConfirmed: false,
         updatedAt: Date.now(),
@@ -190,7 +199,11 @@ export const usePayrollPolicyStore = create<PolicyState>()((set) => ({
 
   confirmDivisorPolicy: (confirmed) =>
     set((s) => ({
-      policy: { ...s.policy, divisorPolicyConfirmed: confirmed, updatedAt: Date.now() },
+      policy: {
+        ...asPayrollPolicy(s.policy),
+        divisorPolicyConfirmed: confirmed,
+        updatedAt: Date.now(),
+      },
     })),
 
   resetPolicy: () => set({ policy: { ...DEFAULT_PAYROLL_POLICY } }),

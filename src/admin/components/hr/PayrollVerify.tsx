@@ -4,6 +4,7 @@ import { SYNTHETIC_EMPLOYEES, useEmployeeFinanceMock } from "@/admin/lib/employe
 import { useOtApprovalStore } from "@/admin/lib/ot-approval";
 import {
   HISTORICAL_ADDITIONAL_DAY_RATE_PKR,
+  asPayrollPolicy,
   usePayrollPolicyStore,
 } from "@/admin/lib/payroll-policy";
 import { buildPayrollVerifyRow, summarizePayrollVerify } from "@/admin/lib/payroll-verify";
@@ -21,7 +22,8 @@ export function PayrollVerify() {
     approvalsRaw && typeof approvalsRaw === "object" && !Array.isArray(approvalsRaw)
       ? approvalsRaw
       : {};
-  const policy = usePayrollPolicyStore((s) => s.policy);
+  const policyRaw = usePayrollPolicyStore((s) => s.policy);
+  const policy = asPayrollPolicy(policyRaw);
   const setAdditionalDayRate = usePayrollPolicyStore((s) => s.setAdditionalDayRate);
   const setOvertimeHourlyRate = usePayrollPolicyStore((s) => s.setOvertimeHourlyRate);
   const setWorkingDaysDivisor = usePayrollPolicyStore((s) => s.setWorkingDaysDivisor);
