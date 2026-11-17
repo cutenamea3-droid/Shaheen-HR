@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildSeed, type Row } from "@/lib/sections";
 import {
   FOLLOW_UP_SECTION_ID,
@@ -8,7 +10,14 @@ import {
   listFollowUps,
   suggestAppliedFollowUps,
 } from "@/lib/follow-ups";
-import { addFollowUp, updateFollowUp, deleteFollowUp, getData, FOLLOW_UP_HEADERS } from "@/lib/store";
+import {
+  addFollowUp,
+  updateFollowUp,
+  deleteFollowUp,
+  getData,
+  patchSection,
+  FOLLOW_UP_HEADERS,
+} from "@/lib/store";
 
 function row(partial: Partial<Row> & { cells: string[] }): Row {
   return {
@@ -55,6 +64,26 @@ describe("follow-up tracker", () => {
 
     deleteFollowUp(id);
     expect(listFollowUps(getData()).some((f) => f.id === id)).toBe(false);
+  });
+
+  test("updateFollowUp heals corrupt non-array cells on the target row", () => {
+    const id = addFollowUp({
+      driverId: "d_corrupt",
+      driver: "Corrupt Cells",
+      subject: "Heal me",
+      dueDate: iso(1),
+      source: "manual",
+    });
+    const sec = getData().sections[FOLLOW_UP_SECTION_ID]!;
+    const rows = (Array.isArray(sec.rows) ? sec.rows : []).map((r) =>
+      r.id === id ? { ...r, cells: null as never } : r,
+    );
+    patchSection(FOLLOW_UP_SECTION_ID, { rows });
+    expect(() => updateFollowUp(id, { subject: "Healed", status: "open" })).not.toThrow();
+    expect(listFollowUps(getData()).find((f) => f.id === id)?.subject).toBe("Healed");
+    const src = readFileSync(resolve(process.cwd(), "src/lib/store.ts"), "utf8");
+    expect(src).toMatch(/updateFollowUp[\s\S]*?cellsOf\(r\)/);
+    deleteFollowUp(id);
   });
 
   test("filters: open / today / overdue", () => {

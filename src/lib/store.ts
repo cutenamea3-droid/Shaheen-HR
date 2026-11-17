@@ -832,7 +832,7 @@ export function updateFollowUp(
     const existingRows = Array.isArray(sec.rows) ? sec.rows : [];
     const rows = existingRows.map((r) => {
       if (r.id !== id) return r;
-      const cells = [...r.cells];
+      const cells = [...cellsOf(r)];
       while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
       if (patch.driver != null) cells[0] = patch.driver;
       if (patch.subject != null) cells[1] = patch.subject;
