@@ -24,11 +24,14 @@ export function listLeaveDaysInMonth(
   employees: Employee[],
   records: Record<string, Record<string, DayRec>>,
 ): LeaveDayEntry[] {
+  const roster = Array.isArray(employees) ? employees : [];
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
   const out: LeaveDayEntry[] = [];
   for (const d of monthDays(month)) {
-    const day = records[d];
+    const day = days[d];
     if (!day) continue;
-    for (const e of employees) {
+    for (const e of roster) {
       const r = day[e.id];
       if (r?.status === "leave") {
         out.push({
@@ -50,12 +53,15 @@ export function leaveRoster(
   asOf: string,
 ): LeaveRosterRow[] {
   const month = asOf.slice(0, 7);
-  return (Array.isArray(employees) ? employees : []).map((e) => {
+  const roster = Array.isArray(employees) ? employees : [];
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  return roster.map((e) => {
     let paidThisMonth = 0;
     let unpaidThisMonth = 0;
     for (const d of monthDays(month)) {
       if (d > asOf) continue;
-      const r = records[d]?.[e.id];
+      const r = days[d]?.[e.id];
       if (r?.status !== "leave") continue;
       if (r.leavePaid) paidThisMonth++;
       else unpaidThisMonth++;
@@ -63,7 +69,7 @@ export function leaveRoster(
     return {
       employeeId: e.id,
       name: e.name,
-      balanceAsOf: leaveBalance(e, asOf, records),
+      balanceAsOf: leaveBalance(e, asOf, days),
       paidThisMonth,
       unpaidThisMonth,
       openingLeave: e.openingLeave,
@@ -77,8 +83,11 @@ export function leaveDaysOnDate(
   employees: Employee[],
   records: Record<string, Record<string, DayRec>>,
 ): LeaveDayEntry[] {
-  const day = records[date] ?? {};
-  return employees
+  const roster = Array.isArray(employees) ? employees : [];
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  const day = days[date] ?? {};
+  return roster
     .filter((e) => day[e.id]?.status === "leave")
     .map((e) => ({
       date,

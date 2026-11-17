@@ -21,8 +21,12 @@ function dayRollup(
   let inactive = 0;
   let missing = 0;
   let review = 0;
-  const day = records[date] ?? {};
-  for (const e of employees) {
+  const roster = Array.isArray(employees) ? employees : [];
+  const deptList = Array.isArray(depts) ? depts : [];
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  const day = days[date] ?? {};
+  for (const e of roster) {
     const rec = day[e.id];
     if (!rec) {
       missing++;
@@ -31,7 +35,7 @@ function dayRollup(
     if (rec.status === "leave") leave++;
     else if (rec.status === "absent") inactive++;
     else active++; // present | half
-    const dept = resolveDeptAsOf(e, depts, date);
+    const dept = resolveDeptAsOf(e, deptList, date);
     const c = calcDay(e, dept, date, rec, settings);
     const needsReview =
       c.missPunch ||
@@ -40,7 +44,7 @@ function dayRollup(
       (c.breakLevel === "over" && !rec.note);
     if (needsReview) review++;
   }
-  return { active, leave, inactive, missing, review, total: employees.length };
+  return { active, leave, inactive, missing, review, total: roster.length };
 }
 
 export function Overview() {
