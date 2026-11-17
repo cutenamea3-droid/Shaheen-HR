@@ -10,7 +10,8 @@ describe("Dispatch follow-ups + LoadEditor field autofill", () => {
     );
     expect(src).toMatch(/fuTitleRef\.current\?\.value/);
     expect(src).toMatch(/data-testid="dispatch-fu-title"/);
-    expect(src).toMatch(/due_at: new Date\(nextDue\)\.toISOString\(\)/);
+    expect(src).toMatch(/const dueMs = Date\.parse\(nextDue\)/);
+    expect(src).toMatch(/due_at: new Date\(dueMs\)\.toISOString\(\)/);
   });
 
   it("LoadEditor commodity/equipment/location/datetimes update on input", () => {

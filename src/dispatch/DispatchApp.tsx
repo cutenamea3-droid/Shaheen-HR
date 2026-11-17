@@ -160,6 +160,14 @@ function asDtLocal(v: unknown): string {
   return s.slice(0, 16);
 }
 
+/** Parse editor datetime to ISO — never call `Invalid Date#toISOString`. */
+function toIsoOrNull(v: unknown): string | null {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  if (!s) return null;
+  const ms = Date.parse(s);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
 export function DispatchApp() {
   const [account, setAccount] = useState<DispatchAccount | null>(null);
   const [booting, setBooting] = useState(true);
@@ -1518,15 +1526,10 @@ function LoadEditor({
                   className="dispatch-field"
                   type="datetime-local"
                   value={asDtLocal(stop.planned_at)}
-                  onChange={(e) =>
-                    setStop(i, {
-                      planned_at: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
+                  onChange={(e) => setStop(i, { planned_at: toIsoOrNull(e.target.value) })}
+                  onInput={(e) =>
+                    setStop(i, { planned_at: toIsoOrNull((e.target as HTMLInputElement).value) })
                   }
-                  onInput={(e) => {
-                    const v = (e.target as HTMLInputElement).value;
-                    setStop(i, { planned_at: v ? new Date(v).toISOString() : null });
-                  }}
                 />
               </label>
               <label className="grid gap-1 text-xs">
@@ -1535,15 +1538,10 @@ function LoadEditor({
                   className="dispatch-field"
                   type="datetime-local"
                   value={asDtLocal(stop.actual_at)}
-                  onChange={(e) =>
-                    setStop(i, {
-                      actual_at: e.target.value ? new Date(e.target.value).toISOString() : null,
-                    })
+                  onChange={(e) => setStop(i, { actual_at: toIsoOrNull(e.target.value) })}
+                  onInput={(e) =>
+                    setStop(i, { actual_at: toIsoOrNull((e.target as HTMLInputElement).value) })
                   }
-                  onInput={(e) => {
-                    const v = (e.target as HTMLInputElement).value;
-                    setStop(i, { actual_at: v ? new Date(v).toISOString() : null });
-                  }}
                 />
               </label>
             </div>
@@ -1629,9 +1627,8 @@ function LoadEditor({
               className="dispatch-btn-primary"
               disabled={opsBusy}
               onClick={async () => {
-                const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
-                const pickup = toIso(form.planned_pickup_at);
-                const delivery = toIso(form.planned_delivery_at);
+                const pickup = toIsoOrNull(form.planned_pickup_at);
+                const delivery = toIsoOrNull(form.planned_delivery_at);
                 const nextReschedule = (
                   form.reschedule_note.trim() ||
                   rescheduleNoteRef.current?.value ||
@@ -2074,7 +2071,6 @@ function LoadEditor({
               form.customer_name || customerRef.current?.value || "";
             const notes = form.notes || notesRef.current?.value || "";
             const driver = safeDrivers.find((d) => d.id === form.assigned_driver_id);
-            const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
             await onSaved({
               ...(form.id ? { id: form.id } : {}),
               load_number: loadNumber,
@@ -2090,10 +2086,10 @@ function LoadEditor({
               assigned_driver_name: driver?.display_name ?? null,
               external_ref_label: form.external_ref_label || null,
               external_ref_url: form.external_ref_url || null,
-              planned_pickup_at: toIso(form.planned_pickup_at),
-              actual_pickup_at: toIso(form.actual_pickup_at),
-              planned_delivery_at: toIso(form.planned_delivery_at),
-              actual_delivery_at: toIso(form.actual_delivery_at),
+              planned_pickup_at: toIsoOrNull(form.planned_pickup_at),
+              actual_pickup_at: toIsoOrNull(form.actual_pickup_at),
+              planned_delivery_at: toIsoOrNull(form.planned_delivery_at),
+              actual_delivery_at: toIsoOrNull(form.actual_delivery_at),
               last_manual_location: form.last_manual_location || null,
               last_manual_location_at: form.last_manual_location
                 ? (load?.last_manual_location_at ?? new Date().toISOString())

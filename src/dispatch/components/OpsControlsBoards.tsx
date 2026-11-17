@@ -262,11 +262,16 @@ export function FollowUpsBoard({
             setError("Title and due time are required.");
             return;
           }
+          const dueMs = Date.parse(nextDue);
+          if (!Number.isFinite(dueMs)) {
+            setError("Due time is invalid.");
+            return;
+          }
           setError(null);
           await saveFollowUp({
             title: nextTitle,
             notes: nextNotes || null,
-            due_at: new Date(nextDue).toISOString(),
+            due_at: new Date(dueMs).toISOString(),
             load_id: loadId || null,
           });
           setTitle("");

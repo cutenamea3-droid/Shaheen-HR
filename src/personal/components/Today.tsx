@@ -227,7 +227,17 @@ export function Today() {
           setAssessmentSubmitted(a.id, done);
         }
       }
-      const b = backlog.find((x) => x.label.includes(block.todoTitle || ""));
+      const needle =
+        block.todoTitle == null
+          ? ""
+          : typeof block.todoTitle === "string"
+            ? block.todoTitle
+            : String(block.todoTitle);
+      const b = backlog.find((x) => {
+        const label =
+          x.label == null ? "" : typeof x.label === "string" ? x.label : String(x.label);
+        return needle ? label.includes(needle) : false;
+      });
       if (b && b.done !== done) toggleBacklog(b.id);
     }
   };
