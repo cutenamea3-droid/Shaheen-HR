@@ -1,4 +1,11 @@
-import type { Assessment, AssessmentKind, Course, DeadlineSource } from "./types";
+import type {
+  Assessment,
+  AssessmentKind,
+  BacklogItem,
+  Course,
+  DeadlineSource,
+  Note,
+} from "./types";
 
 /** Graded LMS activity nouns — GDB is first-class (not “other”). */
 export const GRADED_KINDS: AssessmentKind[] = ["assignment", "quiz", "gdb"];
@@ -117,6 +124,46 @@ export function normalizeCourse(raw: Partial<Course> & Pick<Course, "id">): Cour
     ...(raw.creditHours !== undefined
       ? { creditHours: Number.isFinite(credit as number) ? (credit as number) : null }
       : {}),
+  };
+}
+
+/** Coerce backlog scalars before Today/Backlog `.includes` / display. */
+export function normalizeBacklogItem(
+  raw: Partial<BacklogItem> & Pick<BacklogItem, "id">,
+): BacklogItem {
+  const mins = Number(raw.estimatedMinutes);
+  return {
+    id: asText(raw.id) || "backlog",
+    courseId: asText(raw.courseId, "general") || "general",
+    label: asText(raw.label),
+    estimatedMinutes: Number.isFinite(mins) && mins > 0 ? mins : 30,
+    done: Boolean(raw.done),
+    createdAt:
+      typeof raw.createdAt === "number" && Number.isFinite(raw.createdAt)
+        ? raw.createdAt
+        : Number.isFinite(Number(raw.createdAt))
+          ? Number(raw.createdAt)
+          : Date.now(),
+  };
+}
+
+/** Coerce note scalars before Notes editor controlled inputs / `.trim`. */
+export function normalizeNote(raw: Partial<Note> & Pick<Note, "id">): Note {
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags.map((t) => (t == null ? "" : typeof t === "string" ? t : String(t))).filter(Boolean)
+    : [];
+  return {
+    id: asText(raw.id) || "note",
+    courseId: (asText(raw.courseId, "general") || "general") as Note["courseId"],
+    title: asText(raw.title),
+    body: asText(raw.body),
+    updatedAt:
+      typeof raw.updatedAt === "number" && Number.isFinite(raw.updatedAt)
+        ? raw.updatedAt
+        : Number.isFinite(Number(raw.updatedAt))
+          ? Number(raw.updatedAt)
+          : Date.now(),
+    tags,
   };
 }
 

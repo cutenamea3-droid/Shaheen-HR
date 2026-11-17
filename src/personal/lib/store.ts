@@ -27,7 +27,9 @@ import type {
 } from "./types";
 import {
   normalizeAssessment,
+  normalizeBacklogItem,
   normalizeCourse,
+  normalizeNote,
   withPrepDone,
   withSubmitted,
 } from "./assessment-phases";
@@ -489,9 +491,13 @@ export const usePersonal = create<PersonalStore>()(
           courses: arr(raw.courses, current.courses).map((c) =>
             normalizeCourse(c as Partial<Course> & Pick<Course, "id">),
           ),
-          backlog: arr(raw.backlog, current.backlog),
+          backlog: arr(raw.backlog, current.backlog).map((b) =>
+            normalizeBacklogItem(b as Partial<BacklogItem> & Pick<BacklogItem, "id">),
+          ),
           assessments: arr(raw.assessments, current.assessments).map((a) => normalizeAssessment(a)),
-          notes: arr(raw.notes, current.notes),
+          notes: arr(raw.notes, current.notes).map((n) =>
+            normalizeNote(n as Partial<Note> & Pick<Note, "id">),
+          ),
           sessions: arr(raw.sessions, current.sessions),
           dayPlans: healDayPlans(raw.dayPlans, current.dayPlans),
           discipline: migrateDiscipline(arr(raw.discipline, current.discipline)),

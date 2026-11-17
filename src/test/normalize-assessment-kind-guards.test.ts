@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { normalizeAssessment, normalizeCourse } from "@/personal/lib/assessment-phases";
+import {
+  normalizeAssessment,
+  normalizeBacklogItem,
+  normalizeCourse,
+  normalizeNote,
+} from "@/personal/lib/assessment-phases";
 
 describe("normalizeAssessment coerce guards", () => {
   it("stringifies corrupt kind/title and never leaves non-string kind", () => {
@@ -19,7 +24,7 @@ describe("normalizeAssessment coerce guards", () => {
     expect(a.kind.toUpperCase()).toBe("OTHER");
   });
 
-  it("preserves midterm/final kinds and normalizes course id/code", () => {
+  it("preserves midterm/final kinds and normalizes course/backlog/note scalars", () => {
     expect(normalizeAssessment({ id: "1", title: "M", kind: "midterm" }).kind).toBe("midterm");
     expect(normalizeAssessment({ id: "1", title: "F", kind: "final" }).kind).toBe("final");
     const c = normalizeCourse({
@@ -30,6 +35,23 @@ describe("normalizeAssessment coerce guards", () => {
     expect(c.id).toBe("9");
     expect(c.code).toBe("101");
     expect(c.title).toBe("");
+    const b = normalizeBacklogItem({
+      id: 3 as unknown as string,
+      label: 55 as unknown as string,
+      estimatedMinutes: "12" as unknown as number,
+    });
+    expect(b.id).toBe("3");
+    expect(b.label).toBe("55");
+    expect(b.estimatedMinutes).toBe(12);
+    const n = normalizeNote({
+      id: 1 as unknown as string,
+      title: 2 as unknown as string,
+      body: 3 as unknown as string,
+      tags: [4, "ok"] as unknown as string[],
+    });
+    expect(n.title).toBe("2");
+    expect(n.body).toBe("3");
+    expect(n.tags).toEqual(["4", "ok"]);
   });
 
   it("source keeps kind coerce + revision/attendance/overview/quickfind guards", () => {
@@ -59,6 +81,10 @@ describe("normalizeAssessment coerce guards", () => {
     expect(att).toMatch(/typeof date === "string" \? date : String\(date\)\)\.slice\(0,\s*7\)/);
     expect(overview).toMatch(/typeof date === "string" \? date : String\(date\)\)\.slice\(0,\s*7\)/);
     expect(store).toMatch(/normalizeCourse\(c as Partial<Course>/);
+    expect(store).toMatch(/normalizeBacklogItem\(b as Partial<BacklogItem>/);
+    expect(store).toMatch(/normalizeNote\(n as Partial<Note>/);
     expect(courses).toMatch(/typeof id === "string" \? id : String\(id\)\)\.toUpperCase\(\)/);
+    expect(phases).toMatch(/export function normalizeBacklogItem/);
+    expect(phases).toMatch(/export function normalizeNote/);
   });
 });

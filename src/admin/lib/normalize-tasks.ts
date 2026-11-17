@@ -8,13 +8,17 @@ import type { Task } from "./types";
 export function normalizeTask(raw: unknown): Task | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const t = raw as Record<string, unknown>;
-  const id = typeof t.id === "string" && t.id ? t.id : null;
-  const title = typeof t.title === "string" ? t.title : "";
+  const idRaw = t.id == null ? "" : typeof t.id === "string" ? t.id : String(t.id);
+  const id = idRaw.trim() ? idRaw : null;
+  const title = t.title == null ? "" : typeof t.title === "string" ? t.title : String(t.title);
   const kind = t.kind === "daily" ? "daily" : t.kind === "dated" ? "dated" : null;
-  const due = typeof t.due === "string" ? t.due : "";
+  const dueRaw = t.due == null ? "" : typeof t.due === "string" ? t.due : String(t.due);
+  const due = dueRaw.trim();
   if (!id || !kind || !due) return null;
   const doneDays = Array.isArray(t.doneDays)
-    ? t.doneDays.filter((d): d is string => typeof d === "string")
+    ? t.doneDays
+        .map((d) => (d == null ? "" : typeof d === "string" ? d : String(d)))
+        .filter(Boolean)
     : [];
   return {
     id,
