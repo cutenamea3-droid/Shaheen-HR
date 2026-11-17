@@ -43,8 +43,8 @@ export function fmtCell(v: string) {
 }
 
 /** Pull a date out of free text like "I will Apply On December 12 , 2026 (Saturday)". */
-export function parsePlanDate(text: string): Date | null {
-  if (!text) return null;
+export function parsePlanDate(text: string | null | undefined): Date | null {
+  if (text == null || typeof text !== "string" || !text) return null;
   const iso = parseISO(text);
   if (iso) return iso;
   const low = text.toLowerCase();
@@ -339,8 +339,13 @@ export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): Drive
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
     if (i < 0 || s.id === "inactive") continue;
-    const r = data.sections[s.id]?.rows?.find((x) => x.driverId === row.driverId);
-    if (r) return r.status ?? parseDriverStatus(r.cells[i]);
+    const rows = data.sections[s.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === row.driverId);
+    if (r) {
+      const cells = Array.isArray(r.cells) ? r.cells : [];
+      return r.status ?? parseDriverStatus(cells[i]);
+    }
   }
   return "active";
 }
@@ -412,8 +417,9 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
+      const cells = Array.isArray(row.cells) ? row.cells : [];
       for (const { col, label } of horizonDateCols(def)) {
-        const raw = row.cells[col] ?? "";
+        const raw = cells[col] ?? "";
         if (isOldExpiry(raw)) continue;
         const d = parseISO(raw);
         if (!d) continue;
@@ -425,7 +431,7 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
           sectionTitle: def.title,
           rowId: row.id,
           driverId: row.driverId,
-          driver: (row.cells[0] ?? "").trim(),
+          driver: (cells[0] ?? "").trim(),
           label,
           date: d,
           col,
@@ -453,19 +459,35 @@ export function collectPlans(data: AppData): PlanItem[] {
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
+      const cells = Array.isArray(row.cells) ? row.cells : [];
       def.types.forEach((t, i) => {
         if (t !== "plan") return;
-        const txt = row.cells[i];
+        const txt = cells[i] ?? "";
         const d = parsePlanDate(txt);
-        if (d) out.push({ date: d, sectionId: def.id, rowId: row.id, driver: row.cells[0], text: txt.trim(), derived: false });
+        if (d)
+          out.push({
+            date: d,
+            sectionId: def.id,
+            rowId: row.id,
+            driver: cells[0] ?? "",
+            text: txt.trim(),
+            derived: false,
+          });
       });
       // DMV rows without a written plan: derive apply date from expiration
-      if (def.id === "dmv" && !row.cells[7].trim()) {
-        const e = parseISO(row.cells[3]);
+      if (def.id === "dmv" && !(cells[7] ?? "").trim()) {
+        const e = parseISO(cells[3]);
         if (e) {
           const d = new Date(e);
-          d.setDate(d.getDate() - dmvDays(row.cells[8]));
-          out.push({ date: d, sectionId: "dmv", rowId: row.id, driver: row.cells[0], text: "Apply DMV pull notice (auto from expiration)", derived: true });
+          d.setDate(d.getDate() - dmvDays(cells[8]));
+          out.push({
+            date: d,
+            sectionId: "dmv",
+            rowId: row.id,
+            driver: cells[0] ?? "",
+            text: "Apply DMV pull notice (auto from expiration)",
+            derived: true,
+          });
         }
       }
     }
@@ -496,10 +518,13 @@ const EXPIRY_COLS: Record<string, number[]> = {
 export function driverExpiryDays(data: AppData, driverId: string): number[] {
   const out: number[] = [];
   for (const [sid, cols] of Object.entries(EXPIRY_COLS)) {
-    const row = data.sections[sid]?.rows?.find((r) => r.driverId === driverId);
+    const rows = data.sections[sid]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const row = rows.find((r) => r.driverId === driverId);
     if (!row) continue;
+    const cells = Array.isArray(row.cells) ? row.cells : [];
     for (const i of cols) {
-      const v = row.cells[i] ?? "";
+      const v = cells[i] ?? "";
       if (isOldExpiry(v)) continue;
       if (normStatus(v) === "Expired") {
         out.push(-1);
@@ -551,8 +576,9 @@ export interface SmartAlert {
   target: "section" | "drivers";
 }
 
-function docName(headers: string[], col: number, fallback: string) {
-  const h = (headers[col] ?? "").trim();
+function docName(headers: string[] | null | undefined, col: number, fallback: string) {
+  const hdrs = Array.isArray(headers) ? headers : [];
+  const h = (hdrs[col] ?? "").trim();
   if (!h) return fallback;
   const cleaned = h.replace(/\s*(exp(iry|iration|ires)?|date)\s*$/i, "").trim();
   return cleaned || h;
@@ -577,7 +603,8 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
-      const driver = (row.cells[0] ?? "").trim() || "—";
+      const cells = Array.isArray(row.cells) ? row.cells : [];
+      const driver = (cells[0] ?? "").trim() || "—";
       const base = {
         driver,
         driverId: row.driverId,
@@ -588,7 +615,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
 
       // Missing CDL status → Incomplete (opens Driver Cards)
       if (def.id === "ssccdl") {
-        const cdlStatus = normStatus(row.cells[2] ?? "");
+        const cdlStatus = normStatus(cells[2] ?? "");
         if (!cdlStatus || cdlStatus === "Missing" || cdlStatus === "Invalid" || cdlStatus === "Expired") {
           out.push({
             ...base,
@@ -604,7 +631,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
 
       def.types.forEach((t, i) => {
         if (t !== "date") return;
-        const raw = row.cells[i] ?? "";
+        const raw = cells[i] ?? "";
         if (isOldExpiry(raw)) return;
         const document = docName(sec.headers, i, def.short);
         const d = parseISO(raw);

@@ -161,10 +161,20 @@ export const useApp = create<State>()(
           persisted && typeof persisted === "object" && !Array.isArray(persisted)
             ? (persisted as Partial<State>)
             : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        const obj = <T extends object>(v: unknown, fallback: T): T =>
+          v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
         return {
           ...current,
           ...p,
-          tasks: normalizeTasks(p.tasks ?? current.tasks),
+          tasks: normalizeTasks(arr(p.tasks, current.tasks)),
+          employees: arr(p.employees, current.employees),
+          team: arr(p.team, current.team),
+          depts: arr(p.depts, current.depts),
+          logs: arr(p.logs, current.logs),
+          records: obj(p.records, current.records),
+          perf: obj(p.perf, current.perf),
+          settings: obj(p.settings, current.settings),
         };
       },
     },
