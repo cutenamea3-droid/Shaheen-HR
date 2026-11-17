@@ -53,7 +53,9 @@ function cell(row: Row | undefined, i: number) {
 
 function nameOf(data: AppData, driverId: string): string {
   for (const id of WIZARD_SECTIONS) {
-    const r = data.sections[id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     const n = cell(r, 0);
     if (n) return n;
   }
@@ -63,7 +65,9 @@ function nameOf(data: AppData, driverId: string): string {
 function allDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const id of WIZARD_SECTIONS) {
-    for (const r of data.sections[id]?.rows ?? []) ids.add(r.driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) ids.add(r.driverId);
   }
   return [...ids];
 }

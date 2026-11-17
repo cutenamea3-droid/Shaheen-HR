@@ -14,7 +14,7 @@ import {
 } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
-import type { Row } from "@/lib/sections";
+import { cellsOf, type Row } from "@/lib/sections";
 
 /** Manual record lists — kept separate from the driver sections (not counted in alerts or Driver Cards). */
 export const RECORD_TABS = [
@@ -39,7 +39,7 @@ type PersonGroup = {
 function groupByPerson(rows: Row[]): PersonGroup[] {
   const map = new Map<string, PersonGroup>();
   for (const r of rows) {
-    const name = (r.cells[0] ?? "").trim() || "Unnamed";
+    const name = (cellsOf(r)[0] ?? "").trim() || "Unnamed";
     const key = nameKey(name);
     const g = map.get(key);
     if (g) g.rows.push(r);
@@ -51,7 +51,7 @@ function groupByPerson(rows: Row[]): PersonGroup[] {
 
 function personCount(rows: Row[] | undefined) {
   if (!rows?.length) return 0;
-  return new Set(rows.map((r) => nameKey(r.cells[0] ?? ""))).size;
+  return new Set(rows.map((r) => nameKey(cellsOf(r)[0] ?? ""))).size;
 }
 
 export function Records() {
@@ -73,11 +73,13 @@ export function Records() {
   }, [tab]);
 
   const people = useMemo(() => {
-    const rows = data.sections[tab]?.rows ?? [];
+    const rows = Array.isArray(data.sections[tab]?.rows) ? data.sections[tab]!.rows : [];
     const needle = q.trim().toLowerCase();
     const filtered = !needle
       ? rows
-      : rows.filter((r) => r.cells.some((c) => c.toLowerCase().includes(needle)));
+      : rows.filter((r) =>
+          cellsOf(r).some((c) => (c ?? "").toLowerCase().includes(needle)),
+        );
     const grouped = groupByPerson(filtered);
     if (!ownersTab || activeFilter === "all") return grouped;
     return grouped.filter((p) => (activeFilter === "active" ? p.active : !p.active));

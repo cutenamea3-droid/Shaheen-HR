@@ -70,3 +70,23 @@ describe("sections / follow-ups / dossier null cells", () => {
     expect(() => driverEmploymentStatus(broken, base.sections.dmv.rows[0]?.driverId ?? "d")).not.toThrow();
   });
 });
+
+describe("UI Records/DataTable/Dashboard cellsOf", () => {
+  it("Records and DataTable search use cellsOf", () => {
+    const records = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Records.tsx"),
+      "utf8",
+    );
+    expect(records).toMatch(/cellsOf\(r\)/);
+    const table = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DataTable.tsx"),
+      "utf8",
+    );
+    expect(table).toMatch(/cellsOf\(a\.row\)/);
+    const dash = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
+      "utf8",
+    );
+    expect(dash).toMatch(/cellsOf\(x\.row\)/);
+  });
+});

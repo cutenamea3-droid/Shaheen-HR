@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { SECTIONS, type SectionDef } from "@/lib/sections";
+import { SECTIONS, cellsOf, type SectionDef } from "@/lib/sections";
 import {
   analyzeRow,
   buildSafetyDigest,
@@ -313,7 +313,11 @@ function SectionAlerts({
       .filter((r) => matchesExpFilter(data, r.driverId, exp))
       .map((r) => ({ row: r, issues: analyzeRow(def, headers, r).issues }))
       .filter((x) => x.issues.length)
-      .filter((x) => !q.trim() || x.row.cells[0].toLowerCase().includes(q.toLowerCase()));
+      .filter(
+        (x) =>
+          !q.trim() ||
+          (cellsOf(x.row)[0] ?? "").toLowerCase().includes(q.toLowerCase()),
+      );
   }, [sec, def, data, af, q, exp]);
   const catMatch = (c: Cat) => CATS.find((k) => k.id === c)?.match;
   const catCount = (c: Cat) => {
@@ -332,9 +336,9 @@ function SectionAlerts({
       .map((x) => ({ x, iss: x.issues.filter(m) }))
       .filter((y) => y.iss.length)
       .map(({ x, iss }) => [
-        x.row.cells[0].trim(),
+        (cellsOf(x.row)[0] ?? "").trim(),
         iss.map((i) => i.label).join("\n"),
-        noteText(def, x.row.cells),
+        noteText(def, cellsOf(x.row)),
       ]);
     const label =
       report === "all" ? "All alerts" : report === "applied" ? "Applied" : "Missing & Invalid";
@@ -414,7 +418,7 @@ function SectionAlerts({
             className="ui-press group flex w-full items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3 text-left transition hover:border-primary/50 hover:bg-accent"
           >
             <div className="min-w-0 flex-1">
-              <div className="text-[1.05rem] font-extrabold">{row.cells[0].trim()}</div>
+              <div className="text-[1.05rem] font-extrabold">{(cellsOf(row)[0] ?? "").trim()}</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {dedupe(issues).map((i, k) => (
                   <Chip key={k} tone={i.tone}>
@@ -422,9 +426,9 @@ function SectionAlerts({
                   </Chip>
                 ))}
               </div>
-              {noteText(def, row.cells) && (
+              {noteText(def, cellsOf(row)) && (
                 <p className="mt-2 whitespace-pre-wrap break-words rounded-lg bg-note-soft px-3 py-2 text-sm">
-                  {noteText(def, row.cells)}
+                  {noteText(def, cellsOf(row))}
                 </p>
               )}
             </div>
@@ -775,9 +779,10 @@ function TodayPanel() {
       for (const r of sec.rows) {
         // Leave / inactive / New / Owner Op excluded from ordinary compliance & urgent counters.
         if (rowOrdinaryComplianceMuted(def, r, data)) continue;
-        const name = r.cells[0].trim();
+        const name = (cellsOf(r)[0] ?? "").trim();
+        if (!name) continue;
         names.add(name.toLowerCase());
-        for (const i of analyzeRow(def, sec.headers, r).issues) {
+        for (const i of analyzeRow(def, Array.isArray(sec.headers) ? sec.headers : [], r).issues) {
           if (i.tone !== "note") bad.add(name.toLowerCase());
           const left = urgentLeft(i);
           if (left !== null)

@@ -11,7 +11,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SECTIONS, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
+import { SECTIONS, cellsOf, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
 import {
   alertsMuteBanner,
   analyzeRow,
@@ -598,7 +598,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
   const data = useData();
   const def = SECTIONS.find((s) => s.id === sectionId);
   const sec = data.sections[sectionId];
-  const headers = sec?.headers ?? [];
+  const headers = Array.isArray(sec?.headers) ? sec!.headers : [];
   if (!def || !sec) {
     return (
       <p className="px-4 py-3 text-sm text-muted-foreground italic">
@@ -606,18 +606,20 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
       </p>
     );
   }
-  const { cellTone } = analyzeRow(def, headers, row);
+  const cells = cellsOf(row);
+  const safeRow = { ...row, cells };
+  const { cellTone } = analyzeRow(def, headers, safeRow);
   return (
     <div className="grid gap-x-4 gap-y-3 p-4 sm:grid-cols-2">
       {def.types.map((t, i) => {
         if (t === "name") return null;
-        const v = row.cells[i] ?? "";
+        const v = cells[i] ?? "";
         const tone = cellTone[i];
         const save = (nv: string) => {
           if (nv !== v) setCell(sectionId, row.id, i, nv);
         };
         const wide = t === "note" || t === "plan" || t === "tempnote";
-        const planSuggestion = t === "plan" ? suggestPlanForCell(sectionId, i, row) : null;
+        const planSuggestion = t === "plan" ? suggestPlanForCell(sectionId, i, safeRow) : null;
         return (
           <div key={i} className={cn(wide && "sm:col-span-2")}>
             <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
@@ -665,7 +667,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                   def.types.findIndex(
                     (x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i,
                   ) >= 0
-                    ? row.cells[
+                    ? cells[
                         def.types.findIndex(
                           (x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i,
                         )
@@ -681,7 +683,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 onSave={save}
                 expiryValue={(() => {
                   const exp = statusExpiryCol(sectionId, i);
-                  return exp != null ? row.cells[exp] : undefined;
+                  return exp != null ? cells[exp] : undefined;
                 })()}
               />
             )}

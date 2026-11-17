@@ -29,7 +29,8 @@ describe("missing section rows UI guards", () => {
       "utf8",
     );
     expect(src).toMatch(/Section unavailable \(missing or corrupt cloud data\)/);
-    expect(src).toMatch(/const headers = sec\?\.headers \?\? \[\]/);
+    expect(src).toMatch(/const headers = Array\.isArray\(sec\?\.headers\) \? sec!\.headers : \[\]/);
+    expect(src).toMatch(/const cells = cellsOf\(row\)/);
   });
 
   it("Dashboard section alert panel skips missing rows/headers", () => {

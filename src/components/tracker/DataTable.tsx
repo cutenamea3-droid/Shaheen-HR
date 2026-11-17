@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol } from "@/lib/alerts";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
-import { sectionById } from "@/lib/sections";
+import { cellsOf, sectionById } from "@/lib/sections";
 import {
   addRowForDriver,
   deleteDriver,
@@ -134,13 +134,18 @@ export function DataTable({
   // one main name per driver (first main section that has them) so rows sort identically everywhere
   const nameOf = useMemo(() => {
     const m = new Map<string, string>();
-    for (const id of [...CORE, "inactive"])
-      for (const r of data.sections[id]?.rows ?? [])
-        if (!m.has(r.driverId) && r.cells[0]?.trim()) m.set(r.driverId, r.cells[0].trim());
+    for (const id of [...CORE, "inactive"]) {
+      const rows = data.sections[id]?.rows;
+      if (!Array.isArray(rows)) continue;
+      for (const r of rows) {
+        const name = cellsOf(r)[0]?.trim();
+        if (!m.has(r.driverId) && name) m.set(r.driverId, name);
+      }
+    }
     return m;
   }, [data]);
-  const canon = (r: { driverId: string; cells: string[] }) =>
-    nameOf.get(r.driverId) ?? (r.cells[0] ?? "").trim();
+  const canon = (r: { driverId: string; cells?: unknown }) =>
+    nameOf.get(r.driverId) ?? (cellsOf(r)[0] ?? "").trim();
   const scopeCounts = useMemo(() => {
     const c: Record<ListScope, number> = { company: 0, owner_operator: 0, new: 0 };
     for (const a of analyzed) c[listScopeOf(data, a.row.driverId)]++;
@@ -162,7 +167,7 @@ export function DataTable({
       }
       if (q.trim()) {
         const s = q.toLowerCase();
-        return a.row.cells.some((c) => c.toLowerCase().includes(s));
+        return cellsOf(a.row).some((c) => (c ?? "").toLowerCase().includes(s));
       }
       return true;
     })
@@ -705,7 +710,8 @@ export function DataTable({
                     .map((ci) => [def.types[ci], ci] as const)
                     .map(([t, ci]) => {
                       if (!visible[ci]) return null;
-                      const v = row.cells[ci] ?? "";
+                      const cells = cellsOf(row);
+                      const v = cells[ci] ?? "";
                       const save = (nv: string) => setCell(sectionId, row.id, ci, nv);
                       const tone = cellTone[ci];
                       const flagged = !!tone && tone !== "ok" && tone !== "muted";
@@ -782,7 +788,7 @@ export function DataTable({
                                   (x, idx) =>
                                     x === "status" && statusExpiryCol(sectionId, idx) === ci,
                                 ) >= 0
-                                  ? row.cells[
+                                  ? cells[
                                       def.types.findIndex(
                                         (x, idx) =>
                                           x === "status" && statusExpiryCol(sectionId, idx) === ci,
@@ -799,7 +805,7 @@ export function DataTable({
                               onSave={save}
                               expiryValue={(() => {
                                 const exp = statusExpiryCol(sectionId, ci);
-                                return exp != null ? row.cells[exp] : undefined;
+                                return exp != null ? cells[exp] : undefined;
                               })()}
                             />
                           )}
@@ -820,7 +826,7 @@ export function DataTable({
                         onClick={() => {
                           if (
                             confirm(
-                              `Delete ${row.cells[0].trim()} from ALL sections? This cannot be undone.`,
+                              `Delete ${(cellsOf(row)[0] ?? "").trim() || "driver"} from ALL sections? This cannot be undone.`,
                             )
                           )
                             deleteDriver(row.driverId);
