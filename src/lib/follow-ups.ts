@@ -86,12 +86,14 @@ function normalizeFollowUpSection(sec: SectionData): SectionData {
   }
   const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
   const rows = srcRows.map((r) => {
-    const cells = [...r.cells];
+    const base = Array.isArray(r.cells) ? r.cells : [];
+    if (!Array.isArray(r.cells)) touched = true;
+    const cells = [...base];
     while (cells.length < FOLLOW_UP_HEADERS.length) {
       cells.push("");
       touched = true;
     }
-    return cells === r.cells ? r : { ...r, cells };
+    return cells.length === base.length && Array.isArray(r.cells) ? r : { ...r, cells };
   });
   if (!touched) return sec;
   return { ...sec, headers, widths, hidden, rows };

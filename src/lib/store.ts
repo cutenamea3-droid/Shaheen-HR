@@ -102,8 +102,11 @@ function normalizeRecordSection(sec: SectionData): SectionData {
   let widths = [...(sec.widths ?? [])];
   let hidden = [...(sec.hidden ?? [])];
   const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
-  let rows = srcRows.map((r) => ({ ...r, cells: [...r.cells] }));
-  let touched = !Array.isArray(sec.rows);
+  let rows = srcRows.map((r) => ({
+    ...r,
+    cells: [...(Array.isArray(r.cells) ? r.cells : [])],
+  }));
+  let touched = !Array.isArray(sec.rows) || srcRows.some((r) => !Array.isArray(r.cells));
 
   const hasActive = headers.some((h) => /^active\s*status$/i.test(h.trim()));
   if (!hasActive) {
@@ -436,15 +439,15 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
           sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
         sections[sid] = {
           ...cur,
-          rows: cur.rows.map((r) =>
-            r.driverId === row.driverId
-              ? {
-                  ...r,
-                  status,
-                  cells: r.cells.map((c, i) => (i === idx ? cellLabel : c)),
-                }
-              : r,
-          ),
+          rows: cur.rows.map((r) => {
+            if (r.driverId !== row.driverId) return r;
+            const cells = Array.isArray(r.cells) ? r.cells : [];
+            return {
+              ...r,
+              status,
+              cells: cells.map((c, i) => (i === idx ? cellLabel : c)),
+            };
+          }),
         };
       }
       // Inactive Drivers tab must list anyone marked Inactive (create row if missing)
@@ -473,9 +476,13 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
     }
     sections[sectionId] = {
       ...sec,
-      rows: sec.rows.map((r) =>
-        r.id === rowId ? { ...r, cells: r.cells.map((c, i) => (i === col ? value : c)) } : r,
-      ),
+      rows: sec.rows.map((r) => {
+        if (r.id !== rowId) return r;
+        const cells = Array.isArray(r.cells) ? r.cells : [];
+        const next = cells.length > col ? cells.slice() : [...cells, ...Array(col - cells.length + 1).fill("")];
+        next[col] = value;
+        return { ...r, cells: next };
+      }),
     };
     return { ...d, sections };
   });
@@ -659,8 +666,9 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
     if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
-      const cells = [...r.cells];
+      const baseCells = Array.isArray(r.cells) ? r.cells : [];
+      if (recordPersonKey(baseCells[0] ?? "") !== key) return r;
+      const cells = [...baseCells];
       while (cells.length <= RECORD_ACTIVE_COL) cells.push("");
       const wasInactive = cells[RECORD_ACTIVE_COL].trim().toLowerCase() === "inactive";
       if (label === "Inactive" && wasInactive) return r;
@@ -839,9 +847,10 @@ export function renameRecordPerson(sectionId: string, oldName: string, newName: 
     if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
+      const cells = Array.isArray(r.cells) ? r.cells : [];
+      if (recordPersonKey(cells[0] ?? "") !== key) return r;
       touched = true;
-      return { ...r, cells: r.cells.map((c, i) => (i === 0 ? next : c)) };
+      return { ...r, cells: cells.map((c, i) => (i === 0 ? next : c)) };
     });
     if (!touched) return d;
     return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows } } };

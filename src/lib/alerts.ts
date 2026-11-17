@@ -27,7 +27,8 @@ export function today() {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-export function parseISO(v: string): Date | null {
+export function parseISO(v: string | null | undefined): Date | null {
+  if (v == null || typeof v !== "string") return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim());
   if (!m) return null;
   return new Date(+m[1], +m[2] - 1, +m[3]);
@@ -55,7 +56,8 @@ export function parsePlanDate(text: string): Date | null {
   return new Date(+yy[1], MONTHS.indexOf(mm[1]), nums[0]);
 }
 
-export function normStatus(v: string): string {
+export function normStatus(v: string | null | undefined): string {
+  if (v == null || typeof v !== "string") return "";
   const k = v.toLowerCase().replace(/[^a-z]/g, "");
   if (!k) return "";
   if (k === "valid") return "Valid";
@@ -234,11 +236,12 @@ function statusIssue(v: string, col: number, header: string, expiryRaw?: string)
   return null;
 }
 
-export const dmvDays = (state: string) => (state.trim().toUpperCase() === "CA" ? 10 : 20);
+export const dmvDays = (state: string | null | undefined) =>
+  ((state ?? "").trim().toUpperCase() === "CA" ? 10 : 20);
 
 /** Returns row issues and the per-cell highlight tone map. */
 export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
-  const c = row.cells;
+  const c = Array.isArray(row.cells) ? row.cells : [];
   const hdrs = Array.isArray(headers) ? headers : [];
   const headerAt = (i: number) => (hdrs[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`;
   const issues: Issue[] = [];
@@ -255,8 +258,8 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
       const di = dateIssue(c[3], dmvDays(c[8]), 3, "DMV");
       push(di);
       if (di) issues.push({ tone: di.tone, label: "Future plan: apply now", col: 7 });
-      const rep = c[4].trim().toUpperCase();
-      if (rep && rep !== "NONE" && normStatus(c[4]) !== "Applied") push({ tone: "note", label: `Report: ${c[4].trim()}`, col: 4 });
+      const rep = (c[4] ?? "").trim().toUpperCase();
+      if (rep && rep !== "NONE" && normStatus(c[4]) !== "Applied") push({ tone: "note", label: `Report: ${(c[4] ?? "").trim()}`, col: 4 });
       else if (normStatus(c[4]) === "Applied") push({ tone: "info", label: "Report: Applied", col: 4 });
       noteIssues();
       break;
@@ -302,7 +305,9 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
     }
     case "info": {
       [1, 2].forEach((i) => {
-        if (!filled(c[i]) || normStatus(c[i]) === "Invalid") push({ tone: "danger", label: `${headerAt(i)}: ${c[i].trim() || "empty"}`, col: i });
+        const raw = c[i] ?? "";
+        if (!filled(raw) || normStatus(raw) === "Invalid")
+          push({ tone: "danger", label: `${headerAt(i)}: ${raw.trim() || "empty"}`, col: i });
       });
       break;
     }
@@ -317,10 +322,11 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
 }
 
 export function complianceScore(row: Row) {
+  const cells = Array.isArray(row.cells) ? row.cells : [];
   let valid = 0;
-  for (let i = 2; i <= 13; i++) if (normStatus(row.cells[i]) === "Valid") valid++;
+  for (let i = 2; i <= 13; i++) if (normStatus(cells[i]) === "Valid") valid++;
   let score = (valid / 12) * 100;
-  if (filled(row.cells[14])) score -= 5;
+  if (filled(cells[14])) score -= 5;
   return Math.max(0, Math.round(score));
 }
 
@@ -328,7 +334,7 @@ export function complianceScore(row: Row) {
 export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): DriverStatus {
   if (row.status) return row.status;
   const idx = def.types.indexOf("active");
-  if (idx >= 0) return parseDriverStatus(row.cells[idx]);
+  if (idx >= 0) return parseDriverStatus((Array.isArray(row.cells) ? row.cells : [])[idx]);
   // sections without a status column follow the driver's DMV / other status
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
