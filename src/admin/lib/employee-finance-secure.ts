@@ -119,7 +119,13 @@ export async function secureListBanking(employeeId?: string): Promise<FinanceRes
 }
 
 export async function secureAddBanking(input: AddBankingInput): Promise<FinanceResult<BankingAccountMasked>> {
-  const ref = input.isIban ? normalizePkIban(input.accountRef) : input.accountRef.trim();
+  const ref = input.isIban
+    ? normalizePkIban(input.accountRef)
+    : input.accountRef == null
+      ? ""
+      : typeof input.accountRef === "string"
+        ? input.accountRef.trim()
+        : String(input.accountRef).trim();
   if (input.isIban && !isValidPkIban(ref)) return { ok: false, error: "Invalid Pakistan IBAN" };
   const { data, error } = await supabase.rpc("hr_add_banking_account" as never, {
     p_employee_id: input.employeeId,

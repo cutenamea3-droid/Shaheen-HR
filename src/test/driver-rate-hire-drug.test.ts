@@ -14,6 +14,7 @@ import {
 import {
   isEventIncomplete,
   normalizeSpecimenId,
+  parseDrugDocKind,
   pairDrugTestEvents,
   type DrugTestEvent,
 } from "@/lib/driver-hr/drug-tests";
@@ -175,6 +176,9 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
   it("8. Leading zeros preserved; 01234 ≠ 1234; multi Random/Follow-up 1:1", () => {
     expect(normalizeSpecimenId("01234")).toBe("01234");
     expect(normalizeSpecimenId("01234")).not.toBe(normalizeSpecimenId("1234"));
+    expect(normalizeSpecimenId(null as unknown as string)).toBe("");
+    expect(() => normalizeSpecimenId(1234 as unknown as string)).not.toThrow();
+    expect(parseDrugDocKind(null)).toBe("");
     const rows = pairDrugTestEvents([
       ev({ id: "f1", kind: "federal_drug", specimenId: "A1", reason: "Random", collectionContext: "C1" }),
       ev({ id: "f2", kind: "federal_drug", specimenId: "A2", reason: "Follow-up", collectionContext: "C2" }),

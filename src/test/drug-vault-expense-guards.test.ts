@@ -55,4 +55,27 @@ describe("drug matching / Vault / expense employeeIds guards", () => {
     });
     expect(bad).toEqual({ ok: true });
   });
+
+  it("validateExpenseInput coerces non-string title before trim", () => {
+    expect(() =>
+      validateExpenseInput({
+        title: null as unknown as string,
+        categoryId: "fuel",
+        amountPkr: 100,
+        expenseDate: "2026-11-17",
+        scope: "all",
+        employeeIds: [],
+      }),
+    ).not.toThrow();
+    expect(
+      validateExpenseInput({
+        title: null as unknown as string,
+        categoryId: "fuel",
+        amountPkr: 100,
+        expenseDate: "2026-11-17",
+        scope: "all",
+        employeeIds: [],
+      }),
+    ).toEqual({ ok: false, error: "Title is required" });
+  });
 });

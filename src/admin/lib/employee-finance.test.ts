@@ -105,6 +105,32 @@ describe("employee-finance-mock security", () => {
     expect(useEmployeeFinanceMock.getState().meta["mock-emp-a1"]?.reactivatedAt).toBeTruthy();
   });
 
+  it("setDesignation and addBankingChange coerce non-string fields", () => {
+    const s = useEmployeeFinanceMock.getState();
+    expect(() => s.setDesignation("mock-emp-a1", null as unknown as string)).not.toThrow();
+    expect(() =>
+      s.addBankingChange({
+        employeeId: "mock-emp-a1",
+        institutionId: "other",
+        accountTitle: null as unknown as string,
+        accountRef: null as unknown as string,
+        isIban: false,
+        otherLabel: null as unknown as string,
+        note: 9 as unknown as string,
+      }),
+    ).not.toThrow();
+    expect(
+      s.addBankingChange({
+        employeeId: "mock-emp-a1",
+        institutionId: "other",
+        accountTitle: null as unknown as string,
+        accountRef: null as unknown as string,
+        isIban: false,
+        otherLabel: null as unknown as string,
+      }).ok,
+    ).toBe(false);
+  });
+
   it("keeps banking history without overwrite", () => {
     const s = useEmployeeFinanceMock.getState();
     const before = s.bankingHistory("mock-emp-d4").length;

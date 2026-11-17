@@ -17,10 +17,22 @@ export function defaultExpenseCategories() {
 /** Salary / payroll words — expenses must never double-count salary payments. */
 const SALARY_LIKE = /\b(salary|salaries|payroll|wage|wages|basic\s*pay)\b/i;
 
-export function looksLikeSalaryExpense(title: string, categoryId: string, categoryName?: string): boolean {
-  if (SALARY_LIKE.test(title)) return true;
-  if (SALARY_LIKE.test(categoryId)) return true;
-  if (categoryName && SALARY_LIKE.test(categoryName)) return true;
+export function looksLikeSalaryExpense(
+  title: unknown,
+  categoryId: unknown,
+  categoryName?: unknown,
+): boolean {
+  const t = title == null ? "" : typeof title === "string" ? title : String(title);
+  const c = categoryId == null ? "" : typeof categoryId === "string" ? categoryId : String(categoryId);
+  const n =
+    categoryName == null
+      ? ""
+      : typeof categoryName === "string"
+        ? categoryName
+        : String(categoryName);
+  if (SALARY_LIKE.test(t)) return true;
+  if (SALARY_LIKE.test(c)) return true;
+  if (n && SALARY_LIKE.test(n)) return true;
   return false;
 }
 
@@ -33,9 +45,15 @@ export function validateExpenseInput(input: {
   employeeIds: string[];
   categoryName?: string;
 }): { ok: true } | { ok: false; error: string } {
-  if (!input.title.trim()) return { ok: false, error: "Title is required" };
+  const title =
+    input.title == null
+      ? ""
+      : typeof input.title === "string"
+        ? input.title.trim()
+        : String(input.title).trim();
+  if (!title) return { ok: false, error: "Title is required" };
   if (!input.categoryId) return { ok: false, error: "Category is required" };
-  if (looksLikeSalaryExpense(input.title, input.categoryId, input.categoryName)) {
+  if (looksLikeSalaryExpense(title, input.categoryId, input.categoryName)) {
     return {
       ok: false,
       error: "Salary / payroll belongs on Salary pay — do not record it as an expense (avoids double-count)",
@@ -127,7 +145,15 @@ export function findDuplicateExpense(
     if (r.scope !== candidate.scope) return false;
     if ([...(Array.isArray(r.employeeIds) ? r.employeeIds : [])].sort().join(",") !== ids) return false;
     // Same title OR empty titles both count as duplicate signal
-    return r.title.trim().toLowerCase() === candidate.title.trim().toLowerCase();
+    const a =
+      r.title == null ? "" : typeof r.title === "string" ? r.title : String(r.title);
+    const b =
+      candidate.title == null
+        ? ""
+        : typeof candidate.title === "string"
+          ? candidate.title
+          : String(candidate.title);
+    return a.trim().toLowerCase() === b.trim().toLowerCase();
   });
 }
 

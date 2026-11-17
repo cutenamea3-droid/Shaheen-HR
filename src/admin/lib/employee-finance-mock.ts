@@ -317,12 +317,18 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
 
   setDesignation: (employeeId, designation) => {
     get().ensureMeta(employeeId);
+    const label =
+      designation == null
+        ? ""
+        : typeof designation === "string"
+          ? designation.trim()
+          : String(designation).trim();
     set((s) => {
       const prev = s.meta && typeof s.meta === "object" && !Array.isArray(s.meta) ? s.meta : {};
       return {
         meta: {
           ...prev,
-          [employeeId]: { ...prev[employeeId]!, designation: designation.trim() || null },
+          [employeeId]: { ...prev[employeeId]!, designation: label || null },
         },
       };
     });
@@ -344,25 +350,49 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   },
 
   addBankingChange: (input) => {
-    const ref = input.isIban ? normalizePkIban(input.accountRef) : input.accountRef.trim();
-    if (!input.accountTitle.trim()) return { ok: false, error: "Account title required" };
+    const title =
+      input.accountTitle == null
+        ? ""
+        : typeof input.accountTitle === "string"
+          ? input.accountTitle.trim()
+          : String(input.accountTitle).trim();
+    const ref = input.isIban
+      ? normalizePkIban(input.accountRef)
+      : input.accountRef == null
+        ? ""
+        : typeof input.accountRef === "string"
+          ? input.accountRef.trim()
+          : String(input.accountRef).trim();
+    if (!title) return { ok: false, error: "Account title required" };
     if (!ref) return { ok: false, error: "Account / IBAN required" };
     if (input.isIban && !isValidPkIban(ref)) return { ok: false, error: "Invalid Pakistan IBAN" };
-    if (input.institutionId === "other" && !input.otherLabel?.trim()) {
+    const otherLabel =
+      input.otherLabel == null
+        ? ""
+        : typeof input.otherLabel === "string"
+          ? input.otherLabel.trim()
+          : String(input.otherLabel).trim();
+    if (input.institutionId === "other" && !otherLabel) {
       return { ok: false, error: "Label required for Other institution" };
     }
+    const note =
+      input.note == null
+        ? ""
+        : typeof input.note === "string"
+          ? input.note.trim()
+          : String(input.note).trim();
     const today = input.effectiveFrom || new Date().toISOString().slice(0, 10);
     const newRow = withLast4({
       id: uid(),
       employeeId: input.employeeId,
       institutionId: input.institutionId,
-      ...(input.otherLabel != null && input.otherLabel !== "" ? { otherLabel: input.otherLabel } : {}),
-      accountTitle: input.accountTitle.trim(),
+      ...(otherLabel ? { otherLabel } : {}),
+      accountTitle: title,
       accountRef: ref,
       isIban: input.isIban,
       effectiveFrom: today,
       supersededAt: null,
-      note: input.note?.trim() ?? "",
+      note,
     });
     set((s) => {
       const banking = Array.isArray(s.banking) ? s.banking : [];

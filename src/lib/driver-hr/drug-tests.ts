@@ -93,8 +93,13 @@ export function newTestingEventId(): string {
   return crypto.randomUUID?.() ?? `te_${Math.random().toString(36).slice(2)}_${Date.now()}`;
 }
 
-export function parseDrugDocKind(raw: string | undefined | null): DrugDocKind | "" {
-  const k = (raw ?? "").trim().toLowerCase();
+function asDrugText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+export function parseDrugDocKind(raw: unknown): DrugDocKind | "" {
+  const k = asDrugText(raw).trim().toLowerCase();
   if (!k) return "";
   if (k === "federal_drug" || k === "fd" || k === "ccf" || k.startsWith("federal drug")) return "federal_drug";
   if (k === "medical_review" || k === "mr" || k === "mro" || k.startsWith("medical review")) return "medical_review";
@@ -107,12 +112,12 @@ export function formatDrugDocKind(kind: DrugDocKind | ""): string {
 }
 
 /** Preserve leading zeros; only trim + casefold + drop cosmetic separators. */
-export function normalizeSpecimenId(s: string): string {
-  return s.trim().toLowerCase().replace(/[\s\-_.]/g, "");
+export function normalizeSpecimenId(s: unknown): string {
+  return asDrugText(s).trim().toLowerCase().replace(/[\s\-_.]/g, "");
 }
 
-function normKey(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
+function normKey(s: unknown): string {
+  return asDrugText(s).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function normalizeCollectionContext(s: string): string {
@@ -185,21 +190,21 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
   ): DrugPairRow => ({
     id: `pair_${fd?.id ?? "x"}_${mr?.id ?? "x"}`,
     status,
-    testingEventId: (fd?.testingEventId || mr?.testingEventId || "").trim(),
+    testingEventId: asDrugText(fd?.testingEventId || mr?.testingEventId || "").trim(),
     federal: fd,
     medical: mr,
-    specimenId: (fd?.specimenId || mr?.specimenId || "").trim(),
-    reason: (fd?.reason || mr?.reason || "").trim(),
-    collectionContext: (fd?.collectionContext || mr?.collectionContext || "").trim(),
-    eventDate: (fd?.eventDate || mr?.eventDate || "").trim(),
+    specimenId: asDrugText(fd?.specimenId || mr?.specimenId || "").trim(),
+    reason: asDrugText(fd?.reason || mr?.reason || "").trim(),
+    collectionContext: asDrugText(fd?.collectionContext || mr?.collectionContext || "").trim(),
+    eventDate: asDrugText(fd?.eventDate || mr?.eventDate || "").trim(),
   });
 
   // Pass 0 — same testingEventId → linked to that individual testing event
   for (const f of fds) {
     if (f.used) continue;
-    const tid = (f.ev.testingEventId || "").trim();
+    const tid = asDrugText(f.ev.testingEventId).trim();
     if (!tid) continue;
-    const m = mrs.find((x) => !x.used && (x.ev.testingEventId || "").trim() === tid);
+    const m = mrs.find((x) => !x.used && asDrugText(x.ev.testingEventId).trim() === tid);
     if (!m) continue;
     f.used = true;
     m.used = true;
@@ -208,8 +213,8 @@ export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
 
   /** Classic key pairing only when ids are not both set to different testing events. */
   const classicCompatible = (a: DrugTestEvent, b: DrugTestEvent) => {
-    const ta = (a.testingEventId || "").trim();
-    const tb = (b.testingEventId || "").trim();
+    const ta = asDrugText(a.testingEventId).trim();
+    const tb = asDrugText(b.testingEventId).trim();
     if (ta && tb && ta !== tb) return false; // independent testing events
     return true;
   };
@@ -303,7 +308,7 @@ export function filterDrugPairs(
   opts: { status?: DrugPairStatus | "all"; q?: string } = {},
 ): DrugPairRow[] {
   const status = opts.status ?? "all";
-  const q = (opts.q ?? "").trim().toLowerCase();
+  const q = asDrugText(opts.q).trim().toLowerCase();
   return (Array.isArray(rows) ? rows : []).filter((r) => {
     if (status !== "all" && r.status !== status) return false;
     if (!q) return true;
@@ -319,6 +324,7 @@ export function filterDrugPairs(
       r.federal ? DRUG_DOC_KIND_LABEL.federal_drug : "",
       r.medical ? DRUG_DOC_KIND_LABEL.medical_review : "",
     ]
+      .map((x) => asDrugText(x))
       .join(" ")
       .toLowerCase();
     return hay.includes(q);
