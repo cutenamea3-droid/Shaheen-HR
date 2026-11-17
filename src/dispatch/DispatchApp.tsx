@@ -154,6 +154,12 @@ function stopsOf(stops: unknown): LoadStop[] {
   return Array.isArray(stops) && stops.length ? (stops as LoadStop[]) : blankStops();
 }
 
+/** datetime-local value from cloud/local timestamps — coerce before `.slice`. */
+function asDtLocal(v: unknown): string {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  return s.slice(0, 16);
+}
+
 export function DispatchApp() {
   const [account, setAccount] = useState<DispatchAccount | null>(null);
   const [booting, setBooting] = useState(true);
@@ -1099,10 +1105,10 @@ function LoadEditor({
     assigned_driver_id: load?.assigned_driver_id ?? "",
     external_ref_label: load?.external_ref_label ?? "",
     external_ref_url: load?.external_ref_url ?? "",
-    planned_pickup_at: load?.planned_pickup_at?.slice(0, 16) ?? "",
-    actual_pickup_at: load?.actual_pickup_at?.slice(0, 16) ?? "",
-    planned_delivery_at: load?.planned_delivery_at?.slice(0, 16) ?? "",
-    actual_delivery_at: load?.actual_delivery_at?.slice(0, 16) ?? "",
+    planned_pickup_at: asDtLocal(load?.planned_pickup_at),
+    actual_pickup_at: asDtLocal(load?.actual_pickup_at),
+    planned_delivery_at: asDtLocal(load?.planned_delivery_at),
+    actual_delivery_at: asDtLocal(load?.actual_delivery_at),
     last_manual_location: load?.last_manual_location ?? "",
     cancel_reason: load?.cancel_reason ?? "",
     reschedule_note: load?.reschedule_note ?? "",
@@ -1511,7 +1517,7 @@ function LoadEditor({
                 <input
                   className="dispatch-field"
                   type="datetime-local"
-                  value={stop.planned_at?.slice(0, 16) ?? ""}
+                  value={asDtLocal(stop.planned_at)}
                   onChange={(e) =>
                     setStop(i, {
                       planned_at: e.target.value ? new Date(e.target.value).toISOString() : null,
@@ -1528,7 +1534,7 @@ function LoadEditor({
                 <input
                   className="dispatch-field"
                   type="datetime-local"
-                  value={stop.actual_at?.slice(0, 16) ?? ""}
+                  value={asDtLocal(stop.actual_at)}
                   onChange={(e) =>
                     setStop(i, {
                       actual_at: e.target.value ? new Date(e.target.value).toISOString() : null,
