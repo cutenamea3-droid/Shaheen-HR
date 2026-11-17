@@ -222,8 +222,12 @@ export function buildMonthlyReportModel(data: Data, month: string): MonthlyRepor
   const notes = withRecords.flatMap(collectNotes);
   const ratingTotals = emptyRatings();
   for (const e of withRecords) {
+    const counts =
+      e.ratingCounts && typeof e.ratingCounts === "object" && !Array.isArray(e.ratingCounts)
+        ? e.ratingCounts
+        : emptyRatings();
     (Object.keys(ratingTotals) as Rating[]).forEach((r) => {
-      ratingTotals[r] += e.ratingCounts[r];
+      ratingTotals[r] += counts[r] ?? 0;
     });
   }
   const depts = new Set(withRecords.map((e) => e.deptName));

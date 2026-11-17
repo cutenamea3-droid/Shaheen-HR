@@ -730,7 +730,8 @@ export function buildSafetyDigest(data: AppData) {
     hour: "numeric",
     minute: "2-digit",
   });
-  const totalDrivers = data.sections.dmv?.rows?.length ?? 0;
+  const dmvRows = data.sections.dmv?.rows;
+  const totalDrivers = Array.isArray(dmvRows) ? dmvRows.length : 0;
   const compliance = fleetCompliancePct(data);
   const alerts = collectSmartAlerts(data);
   const critical = alerts.filter((a) => a.group === "critical");

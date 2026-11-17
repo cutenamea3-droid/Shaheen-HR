@@ -192,7 +192,11 @@ function ensureRecordSections(data: AppData): AppData {
 }
 
 function markAllSectionsDirty() {
-  Object.keys(state.sections).forEach((id) => dirty.add(id));
+  const sections =
+    state.sections && typeof state.sections === "object" && !Array.isArray(state.sections)
+      ? state.sections
+      : {};
+  Object.keys(sections).forEach((id) => dirty.add(id));
 }
 
 /** localStorage is a short cache only — Supabase tracker_sections is source of truth once signed in. */
@@ -311,7 +315,9 @@ async function pullCloud(force = false) {
     if (cloudReady && (dirty.size || flushing)) return;
     const r = await cloudLoad();
     if (cloudReady && (dirty.size || flushing)) return;
-    const ids = Object.keys(r.sections);
+    const remoteSections =
+      r.sections && typeof r.sections === "object" && !Array.isArray(r.sections) ? r.sections : {};
+    const ids = Object.keys(remoteSections);
     if (!ids.length) {
       // Cloud empty → seed/local cache is first durable copy (incl. record tabs), then upload.
       state = ensureRecordSections(state);
@@ -326,7 +332,7 @@ async function pullCloud(force = false) {
     // One corrupt section must not fail the whole pull (outer catch → "error" sync forever).
     const sections = { ...state.sections };
     for (const id of ids) {
-      const parsed = parseCloudSectionJson(r.sections[id]);
+      const parsed = parseCloudSectionJson(remoteSections[id]);
       if (parsed !== undefined) sections[id] = parsed;
       else console.warn(`[cloud] skipped corrupt tracker section "${id}"`);
     }
@@ -336,9 +342,9 @@ async function pullCloud(force = false) {
     m.changed.forEach((id) => dirty.add(id));
     // Upload record shells / follow-ups (or other local-only sections) missing from remote.
     for (const id of RECORD_SECTION_IDS) {
-      if (!r.sections[id]) dirty.add(id);
+      if (!remoteSections[id]) dirty.add(id);
     }
-    if (!r.sections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
+    if (!remoteSections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
     if (dirty.size) scheduleFlush();
     lastStamp = r.stamp;
     cloudReady = true;
@@ -428,8 +434,16 @@ export const useLoaded = () =>
 function update(fn: (d: AppData) => AppData) {
   const prev = state;
   state = fn(state);
-  for (const id of Object.keys(state.sections))
-    if (state.sections[id] !== prev.sections[id]) dirty.add(id);
+  const nextSections =
+    state.sections && typeof state.sections === "object" && !Array.isArray(state.sections)
+      ? state.sections
+      : {};
+  const prevSections =
+    prev.sections && typeof prev.sections === "object" && !Array.isArray(prev.sections)
+      ? prev.sections
+      : {};
+  for (const id of Object.keys(nextSections))
+    if (nextSections[id] !== prevSections[id]) dirty.add(id);
   persist();
   emit();
   scheduleFlush();
@@ -558,9 +572,11 @@ export function deleteDriver(driverId: string) {
 export function addDriver(values: Record<string, string[]>) {
   const driverId = "d_" + uid();
   const addedAt = Date.now();
+  const valuesMap =
+    values && typeof values === "object" && !Array.isArray(values) ? values : {};
   update((d) => {
     const sections = { ...d.sections };
-    for (const [sid, cells] of Object.entries(values)) {
+    for (const [sid, cells] of Object.entries(valuesMap)) {
       const prev = sections[sid];
       // Skip unknown section ids — spreading undefined.rows previously crashed Add Driver.
       if (!prev || !Array.isArray(prev.rows)) continue;

@@ -202,6 +202,8 @@ export function SalaryPayments() {
           <tbody>
             {monthRows.map((p) => {
               const bank = p.bankingAccountId ? bankById.get(p.bankingAccountId) : undefined;
+              const eventsRaw = paymentEvents(p.id);
+              const events = Array.isArray(eventsRaw) ? eventsRaw : [];
               return (
                 <tr key={p.id} className="border-b border-border/70 align-top">
                   <td className="py-3 pr-2">
@@ -272,7 +274,7 @@ export function SalaryPayments() {
                     </div>
                     {historyFor === p.id && (
                       <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        {paymentEvents(p.id).map((ev) => (
+                        {events.map((ev) => (
                           <li key={ev.id}>
                             {new Date(ev.createdAt).toISOString().slice(0, 10)} · {ev.eventType}
                             {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
@@ -280,7 +282,7 @@ export function SalaryPayments() {
                             {ev.note ? ` · ${ev.note}` : ""}
                           </li>
                         ))}
-                        {paymentEvents(p.id).length === 0 && <li>No events yet.</li>}
+                        {events.length === 0 && <li>No events yet.</li>}
                       </ul>
                     )}
                   </td>

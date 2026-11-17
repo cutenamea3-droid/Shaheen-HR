@@ -90,12 +90,19 @@ function saveDoneMap(date: string, map: Record<string, boolean>) {
 }
 
 function loadModes(): { handoutFirst: boolean; creditTriage: boolean } {
+  const fallback = { handoutFirst: true, creditTriage: false };
   try {
     const raw = localStorage.getItem(MODE_KEY);
-    if (!raw) return { handoutFirst: true, creditTriage: false };
-    return JSON.parse(raw) as { handoutFirst: boolean; creditTriage: boolean };
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
+    const o = parsed as { handoutFirst?: unknown; creditTriage?: unknown };
+    return {
+      handoutFirst: typeof o.handoutFirst === "boolean" ? o.handoutFirst : fallback.handoutFirst,
+      creditTriage: typeof o.creditTriage === "boolean" ? o.creditTriage : fallback.creditTriage,
+    };
   } catch {
-    return { handoutFirst: true, creditTriage: false };
+    return fallback;
   }
 }
 
