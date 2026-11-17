@@ -18,7 +18,10 @@ function normalizeLogin(login: string): string {
 function read(): SecretsMap {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem(SECRETS_KEY) || "{}") as SecretsMap;
+    const parsed = JSON.parse(localStorage.getItem(SECRETS_KEY) || "{}") as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as SecretsMap)
+      : {};
   } catch {
     return {};
   }
@@ -97,8 +100,10 @@ export function readPersonalSession(): boolean {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return false;
-    const parsed = JSON.parse(raw) as { login?: string; handle?: string };
-    return Boolean(parsed.login || parsed.handle);
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+    const o = parsed as { login?: string; handle?: string };
+    return Boolean(o.login || o.handle);
   } catch {
     return false;
   }
@@ -109,8 +114,10 @@ export function readPersonalSessionLogin(): string | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { login?: string; handle?: string };
-    return parsed.login || parsed.handle || null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const o = parsed as { login?: string; handle?: string };
+    return o.login || o.handle || null;
   } catch {
     return null;
   }

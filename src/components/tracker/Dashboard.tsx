@@ -756,13 +756,20 @@ function TodayPanel() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   useEffect(() => {
     try {
-      setDone(JSON.parse(localStorage.getItem(dayKey) || "{}"));
+      const parsed = JSON.parse(localStorage.getItem(dayKey) || "{}") as unknown;
+      setDone(
+        parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? (parsed as Record<string, boolean>)
+          : {},
+      );
     } catch {
       /* ignore */
     }
   }, [dayKey]);
+  const safeDone =
+    done && typeof done === "object" && !Array.isArray(done) ? done : {};
   const toggle = (k: string) => {
-    const n = { ...done, [k]: !done[k] };
+    const n = { ...safeDone, [k]: !safeDone[k] };
     setDone(n);
     localStorage.setItem(dayKey, JSON.stringify(n));
   };
@@ -898,11 +905,11 @@ function TodayPanel() {
               >
                 <input
                   type="checkbox"
-                  checked={!!done[t.k]}
+                  checked={!!safeDone[t.k]}
                   onChange={() => toggle(t.k)}
                   className="size-5 accent-[var(--primary)]"
                 />
-                <span className={cn("text-sm", done[t.k] && "text-muted-foreground line-through")}>
+                <span className={cn("text-sm", safeDone[t.k] && "text-muted-foreground line-through")}>
                   <b>{t.n}</b> {t.label}
                 </span>
               </label>

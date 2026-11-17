@@ -9,7 +9,10 @@ type SecretsMap = Record<string, string>;
 function read(): SecretsMap {
   if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(localStorage.getItem(SECRETS_KEY) || "{}") as SecretsMap;
+    const parsed = JSON.parse(localStorage.getItem(SECRETS_KEY) || "{}") as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as SecretsMap)
+      : {};
   } catch {
     return {};
   }
@@ -61,8 +64,10 @@ export function readHrLocalSessionEmail(): string | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { email?: string };
-    return parsed.email?.trim().toLowerCase() || null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const email = (parsed as { email?: string }).email;
+    return typeof email === "string" ? email.trim().toLowerCase() || null : null;
   } catch {
     return null;
   }

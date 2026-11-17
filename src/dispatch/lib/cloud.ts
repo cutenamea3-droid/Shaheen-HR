@@ -300,7 +300,12 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     }
   }
 
-  return (await getLoad(load.id)) ?? { ...load, stops: nextStops ?? [] };
+  return (
+    (await getLoad(load.id)) ?? {
+      ...load,
+      stops: Array.isArray(nextStops) ? nextStops : [],
+    }
+  );
 }
 
 export async function addCheckCall(input: {

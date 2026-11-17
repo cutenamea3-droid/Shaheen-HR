@@ -71,21 +71,26 @@ export function upsertLocalAccount(account: PortalAccount) {
   saveLocalAccounts(list);
 }
 
+function readSecretsMap(): SecretsMap {
+  const raw = readJson<unknown>(SECRETS_KEY, {});
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as SecretsMap) : {};
+}
+
 export function removeLocalAccount(userId: string) {
   saveLocalAccounts(listLocalAccounts().filter((a) => a.user_id !== userId));
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   delete secrets[userId];
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function setLocalPassword(userId: string, password: string) {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   secrets[userId] = await hashSecret(password);
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function verifyLocalPassword(userId: string, password: string): Promise<boolean> {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   const stored = secrets[userId];
   if (!stored) return false;
   return stored === (await hashSecret(password));
@@ -93,7 +98,7 @@ export async function verifyLocalPassword(userId: string, password: string): Pro
 
 /** True when this user has a locally stored password hash. */
 export function hasLocalPassword(userId: string): boolean {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   return Boolean(secrets[userId]);
 }
 
