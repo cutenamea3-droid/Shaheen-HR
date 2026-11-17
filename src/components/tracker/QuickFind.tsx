@@ -50,7 +50,10 @@ export function QuickFind() {
     if (!open) setPicked(null);
   }, [open]);
 
-  const drivers = useMemo(() => buildFinderDrivers(data), [data]);
+  const drivers = useMemo(() => {
+    const list = buildFinderDrivers(data);
+    return Array.isArray(list) ? list : [];
+  }, [data]);
 
   function close() {
     setPicked(null);

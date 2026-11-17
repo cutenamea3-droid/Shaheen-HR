@@ -70,7 +70,11 @@ export const VU_LESSON_RHYTHM: VuRhythmStep[] = [
 
 export function normalizeVuTerm(raw: string): string {
   const t = raw.trim();
-  const aliases = patterns.terminology.aliases as Record<string, string>;
+  const aliasesRaw = patterns?.terminology?.aliases;
+  const aliases =
+    aliasesRaw && typeof aliasesRaw === "object" && !Array.isArray(aliasesRaw)
+      ? (aliasesRaw as Record<string, string>)
+      : {};
   for (const [from, to] of Object.entries(aliases)) {
     if (t.toLowerCase() === from.toLowerCase()) return to;
   }
