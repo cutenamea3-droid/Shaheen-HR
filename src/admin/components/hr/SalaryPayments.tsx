@@ -20,10 +20,9 @@ export function SalaryPayments() {
   const paymentsRaw = useEmployeeFinanceMock((s) => s.payments);
   const bankingRaw = useEmployeeFinanceMock((s) => s.banking);
   const meta = useEmployeeFinanceMock((s) => s.meta);
-  const paymentEventsRaw = useEmployeeFinanceMock((s) => s.paymentEvents);
+  const paymentEvents = useEmployeeFinanceMock((s) => s.paymentEvents);
   const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
   const banking = Array.isArray(bankingRaw) ? bankingRaw : [];
-  const paymentEvents = Array.isArray(paymentEventsRaw) ? paymentEventsRaw : [];
   const upsertPaymentDue = useEmployeeFinanceMock((s) => s.upsertPaymentDue);
   const recordPayment = useEmployeeFinanceMock((s) => s.recordPayment);
   const setPaymentStatus = useEmployeeFinanceMock((s) => s.setPaymentStatus);

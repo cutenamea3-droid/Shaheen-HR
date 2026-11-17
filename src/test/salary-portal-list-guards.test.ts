@@ -15,13 +15,14 @@ describe("salary + portal list Array.isArray guards", () => {
     expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as LocalActivity\[\]\) : \[\]/);
   });
 
-  it("SalaryPayments UI coerces payments/banking/paymentEvents", () => {
+  it("SalaryPayments UI coerces payments/banking; paymentEvents stays store fn", () => {
     const src = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/SalaryPayments.tsx"),
       "utf8",
     );
     expect(src).toMatch(/const payments = Array\.isArray\(paymentsRaw\)/);
     expect(src).toMatch(/const banking = Array\.isArray\(bankingRaw\)/);
-    expect(src).toMatch(/const paymentEvents = Array\.isArray\(paymentEventsRaw\)/);
+    expect(src).toMatch(/const paymentEvents = useEmployeeFinanceMock\(\(s\) => s\.paymentEvents\)/);
+    expect(src).not.toMatch(/Array\.isArray\(paymentEventsRaw\)/);
   });
 });
