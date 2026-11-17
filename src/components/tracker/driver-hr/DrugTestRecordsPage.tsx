@@ -109,7 +109,7 @@ export function DrugTestRecordsPage() {
         actor,
       ).then((res) => {
         if (!alive) return;
-        setEvents(res.events);
+        setEvents(Array.isArray(res.events) ? res.events : []);
         setLoadError(res.error);
         setLoading(false);
       });
@@ -122,9 +122,11 @@ export function DrugTestRecordsPage() {
     };
   }, [roster, actor, persistOk, blocked]);
 
+  const safeEvents = Array.isArray(events) ? events : [];
+
   const pairsByDriver = useMemo(() => {
     const byDriver = new Map<string, DrugTestEvent[]>();
-    for (const ev of events) {
+    for (const ev of safeEvents) {
       const list = byDriver.get(ev.driverId) ?? [];
       list.push(ev);
       byDriver.set(ev.driverId, list);
@@ -147,7 +149,7 @@ export function DrugTestRecordsPage() {
       return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
     });
     return rows;
-  }, [events, nameById]);
+  }, [safeEvents, nameById]);
 
   const reasonOptions = useMemo(() => {
     const s = new Set<string>();
@@ -226,8 +228,11 @@ export function DrugTestRecordsPage() {
   };
 
   const driverEvents = useMemo(
-    () => (pickedDriverId ? events.filter((e) => e.driverId === pickedDriverId && !e.deletedAt) : []),
-    [events, pickedDriverId],
+    () =>
+      pickedDriverId
+        ? safeEvents.filter((e) => e.driverId === pickedDriverId && !e.deletedAt)
+        : [],
+    [safeEvents, pickedDriverId],
   );
 
   const saveNewEvent = async (draft: DrugEventDraft, opts?: DrugEventSaveOpts) => {
@@ -641,7 +646,7 @@ export function DrugTestRecordsPage() {
             compact
             disabled={!persistOk}
             initial={editEv}
-            linkOptions={events
+            linkOptions={safeEvents
               .filter((e) => e.driverId === editEv.driverId && e.kind === "federal_drug" && e.testingEventId)
               .map((e) => ({
                 id: e.testingEventId,
@@ -806,7 +811,7 @@ export function DrugTestRecordsPage() {
         </table>
         {!loading && !filtered.length && (
           <p className="px-3 py-6 text-[15px] text-muted-foreground">
-            {events.length
+            {safeEvents.length
               ? "No rows match this filter."
               : persistOk
                 ? "No drug test events yet — use + Add with a searchable driver."

@@ -21,6 +21,18 @@ describe("drug matching / Vault / expense employeeIds guards", () => {
     expect(src).not.toMatch(/events: s\.events\.map/);
   });
 
+  it("drug list API + Records page coerce events/driverIds", () => {
+    const api = readFileSync(resolve(process.cwd(), "src/lib/driver-hr/drug-test-api.ts"), "utf8");
+    expect(api).toMatch(/const ids = Array\.isArray\(driverIds\) \? driverIds : \[\]/);
+    expect(api).toMatch(/const list = Array\.isArray\(rows\) \? rows : \[\]/);
+    const page = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestRecordsPage.tsx"),
+      "utf8",
+    );
+    expect(page).toMatch(/setEvents\(Array\.isArray\(res\.events\) \? res\.events : \[\]\)/);
+    expect(page).toMatch(/const safeEvents = Array\.isArray\(events\) \? events : \[\]/);
+  });
+
   it("Vault discipline doneDates uses Array.isArray before includes/length", () => {
     const src = readFileSync(
       resolve(process.cwd(), "src/personal/components/Vault.tsx"),
