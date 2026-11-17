@@ -2216,7 +2216,11 @@ function HandoverBoard({
     (async () => {
       const [issues, followUps] = await Promise.all([listIssues(), listFollowUps()]);
       if (cancelled) return;
-      const hints = buildHandoverWatchHints({ loads, issues, followUps });
+      const hints = buildHandoverWatchHints({
+        loads: safeLoads,
+        issues: Array.isArray(issues) ? issues : [],
+        followUps: Array.isArray(followUps) ? followUps : [],
+      });
       if (hints && !hintsReady) {
         setWatch((prev) => (prev.trim() ? prev : hints));
         setHintsReady(true);
@@ -2772,7 +2776,7 @@ function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: Rost
         <button
           type="button"
           className="dispatch-btn-ghost"
-          onClick={() => exportAccessorialsPdf(accessorials, loads)}
+          onClick={() => exportAccessorialsPdf(accessorials, safeLoads)}
         >
           Accessorials PDF
         </button>

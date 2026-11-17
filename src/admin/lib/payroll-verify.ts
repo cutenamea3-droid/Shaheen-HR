@@ -134,10 +134,11 @@ export function summarizePayrollVerify(rows: PayrollVerifyRow[]): {
   variancePkr: number;
   needsPolicyCount: number;
 } {
+  const list = Array.isArray(rows) ? rows : [];
   let payablePkr = 0;
   let actualPaidPkr = 0;
   let needsPolicyCount = 0;
-  for (const r of rows) {
+  for (const r of list) {
     payablePkr += r.payablePkr;
     actualPaidPkr += r.actualPaidPkr;
     if (r.needsPolicyConfirmation) needsPolicyCount++;

@@ -32,10 +32,13 @@ export function AccessorialsBoard({
   loads: DispatchLoad[];
   onOpen: (id: string) => void;
 }) {
+  const safeLoads = Array.isArray(loads) ? loads : [];
   const [rows, setRows] = useState<DispatchAccessorial[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [loadId, setLoadId] = useState(loads.find((l) => l.status === "delivered")?.id ?? loads[0]?.id ?? "");
+  const [loadId, setLoadId] = useState(
+    safeLoads.find((l) => l.status === "delivered")?.id ?? safeLoads[0]?.id ?? "",
+  );
   const [kind, setKind] = useState<AccessorialKind>("detention");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -47,7 +50,8 @@ export function AccessorialsBoard({
   const freeTimeNoteRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
-    setRows(await listAccessorials());
+    const next = await listAccessorials();
+    setRows(Array.isArray(next) ? next : []);
   }
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export function AccessorialsBoard({
   }, [loads]);
 
   const open = openAccessorials(rows);
-  const byLoad = new Map(loads.map((l) => [l.id, l]));
+  const byLoad = new Map(safeLoads.map((l) => [l.id, l]));
 
   return (
     <div className="grid gap-3">
@@ -75,7 +79,7 @@ export function AccessorialsBoard({
           <label className="grid gap-1 text-xs">
             Load
             <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
-              {loads.map((l) => (
+              {safeLoads.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.load_number} · {statusLabel(l.status)} · pay {paymentStatusLabel(l.payment_status)}
                 </option>

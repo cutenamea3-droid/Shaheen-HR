@@ -26,8 +26,9 @@ export function DocsBoard({
   onOpen: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
-  const bol = awaitingBolLoads(loads);
-  const pod = awaitingPodLoads(loads);
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const bol = awaitingBolLoads(safeLoads);
+  const pod = awaitingPodLoads(safeLoads);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -187,8 +188,11 @@ export function FollowUpsBoard({
   const fuNotesRef = useRef<HTMLInputElement>(null);
   const fuDueRef = useRef<HTMLInputElement>(null);
 
+  const safeLoads = Array.isArray(loads) ? loads : [];
+
   async function reload() {
-    setRows(await listFollowUps());
+    const next = await listFollowUps();
+    setRows(Array.isArray(next) ? next : []);
   }
 
   useEffect(() => {
@@ -230,7 +234,7 @@ export function FollowUpsBoard({
         />
         <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
           <option value="">No load link</option>
-          {loads.map((l) => (
+          {safeLoads.map((l) => (
             <option key={l.id} value={l.id}>
               {l.load_number}
             </option>
@@ -358,7 +362,10 @@ export function EquipmentBoard({
   loads: DispatchLoad[];
   onOpen: (id: string) => void;
 }) {
-  const rows = buildEquipmentBoard(drivers, loads);
+  const rows = buildEquipmentBoard(
+    Array.isArray(drivers) ? drivers : [],
+    Array.isArray(loads) ? loads : [],
+  );
   return (
     <section className="dispatch-panel">
       <SectionHelp>
