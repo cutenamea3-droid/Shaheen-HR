@@ -49,7 +49,8 @@ export async function hashSecret(value: string): Promise<string> {
 }
 
 export function listLocalAccounts(): PortalAccount[] {
-  return readJson<PortalAccount[]>(ACCOUNTS_KEY, []);
+  const raw = readJson<unknown>(ACCOUNTS_KEY, []);
+  return Array.isArray(raw) ? (raw as PortalAccount[]) : [];
 }
 
 export function saveLocalAccounts(accounts: PortalAccount[]) {
@@ -97,7 +98,9 @@ export function hasLocalPassword(userId: string): boolean {
 }
 
 export function listLocalActivity(limit = 500): LocalActivity[] {
-  return readJson<LocalActivity[]>(ACTIVITY_KEY, []).slice(0, limit);
+  const raw = readJson<unknown>(ACTIVITY_KEY, []);
+  const list = Array.isArray(raw) ? (raw as LocalActivity[]) : [];
+  return list.slice(0, limit);
 }
 
 export function logLocalActivity(input: {

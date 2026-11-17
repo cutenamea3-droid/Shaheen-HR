@@ -1,0 +1,27 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { salaryPaymentsCsv, summarizePayments } from "@/admin/lib/salary-payments";
+
+describe("salary + portal list Array.isArray guards", () => {
+  it("summarizePayments / salaryPaymentsCsv tolerate non-array rows", () => {
+    expect(summarizePayments(null as never).employees).toBe(0);
+    expect(salaryPaymentsCsv("bad" as never)).toContain('"Employee"');
+  });
+
+  it("portal-local listAccounts/Activity coerce with Array.isArray", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/portal-local.ts"), "utf8");
+    expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as PortalAccount\[\]\) : \[\]/);
+    expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as LocalActivity\[\]\) : \[\]/);
+  });
+
+  it("SalaryPayments UI coerces payments/banking/paymentEvents", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/SalaryPayments.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/const payments = Array\.isArray\(paymentsRaw\)/);
+    expect(src).toMatch(/const banking = Array\.isArray\(bankingRaw\)/);
+    expect(src).toMatch(/const paymentEvents = Array\.isArray\(paymentEventsRaw\)/);
+  });
+});

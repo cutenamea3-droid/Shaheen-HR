@@ -17,10 +17,13 @@ import { SectionTitle, todayStr } from "./common";
 export function SalaryPayments() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
-  const payments = useEmployeeFinanceMock((s) => s.payments);
-  const banking = useEmployeeFinanceMock((s) => s.banking);
+  const paymentsRaw = useEmployeeFinanceMock((s) => s.payments);
+  const bankingRaw = useEmployeeFinanceMock((s) => s.banking);
   const meta = useEmployeeFinanceMock((s) => s.meta);
-  const paymentEvents = useEmployeeFinanceMock((s) => s.paymentEvents);
+  const paymentEventsRaw = useEmployeeFinanceMock((s) => s.paymentEvents);
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
+  const banking = Array.isArray(bankingRaw) ? bankingRaw : [];
+  const paymentEvents = Array.isArray(paymentEventsRaw) ? paymentEventsRaw : [];
   const upsertPaymentDue = useEmployeeFinanceMock((s) => s.upsertPaymentDue);
   const recordPayment = useEmployeeFinanceMock((s) => s.recordPayment);
   const setPaymentStatus = useEmployeeFinanceMock((s) => s.setPaymentStatus);
