@@ -35,7 +35,8 @@ const emptyForm = (): ExpenseUpsertInput => ({
 });
 
 export function ExpensesManagement() {
-  const liveEmployees = useApp((s) => s.employees);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const company = useApp((s) => s.settings.company);
   const categories = useExpensesStore((s) => s.categories);
   const expenses = useExpensesStore((s) => s.expenses);

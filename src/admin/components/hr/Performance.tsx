@@ -22,11 +22,25 @@ import { useWorkDate } from "@/admin/lib/workdate";
  */
 export function Performance() {
   const { date, setDate } = useWorkDate();
-  const { employees, depts, records, perf, settings, setPerf } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setPerf,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const closed = isDateInClosedMonth(date, isClosedFn);
-  const hrStatements = usePerfFollowUps((s) => s.hrStatements);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const hrStatementsRaw = usePerfFollowUps((s) => s.hrStatements);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const hrStatements = Array.isArray(hrStatementsRaw) ? hrStatementsRaw : [];
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
   const addFollowUp = usePerfFollowUps((s) => s.addFollowUp);
   const completeFollowUp = usePerfFollowUps((s) => s.completeFollowUp);
   const addHrStatement = usePerfFollowUps((s) => s.addHrStatement);

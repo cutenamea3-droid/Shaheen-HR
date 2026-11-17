@@ -44,7 +44,18 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const [remDue, setRemDue] = useState(todayStr());
   const [remEmp, setRemEmp] = useState("");
   const [remMsg, setRemMsg] = useState("");
-  const { employees, depts, records, settings, tasks } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+    tasks: tasksRaw,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const currentBanking = useEmployeeFinanceMock((s) => s.currentBanking);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const requestTab = useAdminNav((s) => s.requestTab);
@@ -53,11 +64,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   // Select stable store slices — NEVER call dueOnOrBefore/openFollowUps inside the
   // zustand selector (they allocate a new array every getSnapshot → React #185
   // "Maximum update depth exceeded" after My HR Today first paint).
-  const reminders = useHrReminders((s) => s.reminders);
+  const remindersRaw = useHrReminders((s) => s.reminders);
+  const reminders = Array.isArray(remindersRaw) ? remindersRaw : [];
   const addReminder = useHrReminders((s) => s.add);
   const completeReminder = useHrReminders((s) => s.complete);
   const recordAudit = useHrAuditHistory((s) => s.record);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
 
   useEffect(() => {
     for (const e of employees) ensureMeta(e.id);

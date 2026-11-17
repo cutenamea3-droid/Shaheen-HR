@@ -7,7 +7,8 @@ import { normalizeTasks } from "@/admin/lib/normalize-tasks";
 import { SectionTitle, TimeInput, Toggle } from "./common";
 
 export function SettingsPanel() {
-  const { depts, upsertDept, removeDept, settings, setSettings } = useApp();
+  const { depts: deptsRaw, upsertDept, removeDept, settings, setSettings } = useApp();
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
   const num = (k: "grace" | "breakMin" | "breakLeeway" | "satTargetHours", label: string) => (
     <label><span className="lbl">{label}</span><input type="number" min={0} className="field" value={settings[k]} onChange={(e) => setSettings({ [k]: +e.target.value })} onInput={(e) => setSettings({ [k]: +(e.target as HTMLInputElement).value })} /></label>
   );

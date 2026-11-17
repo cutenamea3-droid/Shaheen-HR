@@ -15,7 +15,8 @@ import { formatPkr, salaryPaymentsCsv, summarizePayments } from "@/admin/lib/sal
 import { SectionTitle, todayStr } from "./common";
 
 export function SalaryPayments() {
-  const liveEmployees = useApp((s) => s.employees);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const payments = useEmployeeFinanceMock((s) => s.payments);
   const banking = useEmployeeFinanceMock((s) => s.banking);
   const meta = useEmployeeFinanceMock((s) => s.meta);

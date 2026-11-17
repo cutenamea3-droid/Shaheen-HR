@@ -12,7 +12,8 @@ import { formatPkr } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
 export function PayrollVerify() {
-  const liveEmployees = useApp((s) => s.employees);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const payments = useEmployeeFinanceMock((s) => s.payments);
   const approvals = useOtApprovalStore((s) => s.rows);
   const policy = usePayrollPolicyStore((s) => s.policy);

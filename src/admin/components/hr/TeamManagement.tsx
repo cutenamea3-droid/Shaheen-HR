@@ -4,7 +4,8 @@ import { useApp } from "@/admin/lib/store";
 import type { Role } from "@/admin/lib/types";
 
 export function TeamManagement({ adminEmail }: { adminEmail: string }) {
-  const team = useApp((s) => s.team);
+  const teamRaw = useApp((s) => s.team);
+  const team = Array.isArray(teamRaw) ? teamRaw : [];
   const upsert = useApp((s) => s.upsertMember);
   const remove = useApp((s) => s.removeMember);
   const addLog = useApp((s) => s.addLog);

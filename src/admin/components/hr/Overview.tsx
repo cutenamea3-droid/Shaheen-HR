@@ -45,7 +45,18 @@ function dayRollup(
 
 export function Overview() {
   const [date, setDate] = useState(todayStr());
-  const { employees, depts, records, settings, tasks } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+    tasks: tasksRaw,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const density = useDensity();
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
   const rows = employees.filter((e) => records[date]?.[e.id]).map((e) => calcDay(e, resolveDeptAsOf(e, depts, date), date, records[date]![e.id]!, settings));

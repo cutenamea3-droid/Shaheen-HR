@@ -5,7 +5,19 @@ import { normalizeAssignments } from "@/admin/lib/shift-assignment";
 import { SectionTitle, Toggle, todayStr } from "./common";
 
 export function Team() {
-  const { employees, depts, records, addEmployee, updateEmployee, removeEmployee, moveEmployee } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    addEmployee,
+    updateEmployee,
+    removeEmployee,
+    moveEmployee,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const [name, setName] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   const [deptId, setDeptId] = useState(depts[0]?.id ?? "");

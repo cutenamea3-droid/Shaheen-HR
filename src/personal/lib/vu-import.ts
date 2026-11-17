@@ -50,7 +50,7 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
         `Progress quizzes submitted ${prog.quizSummary.submitted ?? 0}/${prog.quizSummary.totalQuizzes}`,
       );
     }
-    if (prog?.notes?.length) notesParts.push(...prog.notes);
+    if (Array.isArray(prog?.notes) && prog.notes.length) notesParts.push(...prog.notes);
     return {
       id: courseIdFromCode(code),
       code,

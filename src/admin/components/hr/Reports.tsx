@@ -38,7 +38,12 @@ export function Reports() {
   const reopenReasonRef = useRef<HTMLInputElement>(null);
   const [closeMsg, setCloseMsg] = useState("");
   const s = useApp();
-  const data = { depts: s.depts, employees: s.employees, records: s.records, perf: s.perf, settings: s.settings };
+  const employees = Array.isArray(s.employees) ? s.employees : [];
+  const depts = Array.isArray(s.depts) ? s.depts : [];
+  const records =
+    s.records && typeof s.records === "object" && !Array.isArray(s.records) ? s.records : {};
+  const perf = s.perf && typeof s.perf === "object" && !Array.isArray(s.perf) ? s.perf : {};
+  const data = { depts, employees, records, perf, settings: s.settings };
   const company = s.settings.company;
   const closeMonth = useMonthClosing((st) => st.closeMonth);
   const reopenMonth = useMonthClosing((st) => st.reopenMonth);
@@ -233,7 +238,7 @@ export function Reports() {
                 onChange={(e) => setEmpId(e.target.value)}
               >
                 <option value="">Select employee</option>
-                {s.employees.map((e) => (
+                {employees.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name}
                   </option>

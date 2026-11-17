@@ -177,67 +177,99 @@ export const usePersonal = create<PersonalStore>()(
           return { settings: next };
         }),
       upsertCourse: (c) =>
-        set((s) => ({
-          courses: s.courses.some((x) => x.id === c.id)
-            ? s.courses.map((x) => (x.id === c.id ? c : x))
-            : [...s.courses, c],
-        })),
+        set((s) => {
+          const courses = Array.isArray(s.courses) ? s.courses : [];
+          return {
+            courses: courses.some((x) => x.id === c.id)
+              ? courses.map((x) => (x.id === c.id ? c : x))
+              : [...courses, c],
+          };
+        }),
       updateCourse: (id, p) =>
-        set((s) => ({ courses: s.courses.map((c) => (c.id === id ? { ...c, ...p } : c)) })),
+        set((s) => {
+          const courses = Array.isArray(s.courses) ? s.courses : [];
+          return { courses: courses.map((c) => (c.id === id ? { ...c, ...p } : c)) };
+        }),
       addBacklog: (item) =>
-        set((s) => ({
-          backlog: [
-            ...s.backlog,
-            { ...item, id: uid(), done: false, createdAt: Date.now() },
-          ],
-        })),
+        set((s) => {
+          const backlog = Array.isArray(s.backlog) ? s.backlog : [];
+          return {
+            backlog: [...backlog, { ...item, id: uid(), done: false, createdAt: Date.now() }],
+          };
+        }),
       toggleBacklog: (id) =>
-        set((s) => ({
-          backlog: s.backlog.map((b) => (b.id === id ? { ...b, done: !b.done } : b)),
-        })),
-      removeBacklog: (id) => set((s) => ({ backlog: s.backlog.filter((b) => b.id !== id) })),
+        set((s) => {
+          const backlog = Array.isArray(s.backlog) ? s.backlog : [];
+          return { backlog: backlog.map((b) => (b.id === id ? { ...b, done: !b.done } : b)) };
+        }),
+      removeBacklog: (id) =>
+        set((s) => {
+          const backlog = Array.isArray(s.backlog) ? s.backlog : [];
+          return { backlog: backlog.filter((b) => b.id !== id) };
+        }),
       upsertAssessment: (a) =>
         set((s) => {
           const next = normalizeAssessment(a);
+          const assessments = Array.isArray(s.assessments) ? s.assessments : [];
           return {
-            assessments: s.assessments.some((x) => x.id === next.id)
-              ? s.assessments.map((x) => (x.id === next.id ? next : x))
-              : [...s.assessments, next],
+            assessments: assessments.some((x) => x.id === next.id)
+              ? assessments.map((x) => (x.id === next.id ? next : x))
+              : [...assessments, next],
           };
         }),
       removeAssessment: (id) =>
-        set((s) => ({ assessments: s.assessments.filter((a) => a.id !== id) })),
+        set((s) => {
+          const assessments = Array.isArray(s.assessments) ? s.assessments : [];
+          return { assessments: assessments.filter((a) => a.id !== id) };
+        }),
       toggleAssessment: (id) =>
-        set((s) => ({
-          assessments: s.assessments.map((a) => {
-            if (a.id !== id) return a;
-            // Legacy toggle flips submitted only — never touches prepDone
-            return withSubmitted(normalizeAssessment(a), !a.submitted && !a.done);
-          }),
-        })),
+        set((s) => {
+          const assessments = Array.isArray(s.assessments) ? s.assessments : [];
+          return {
+            assessments: assessments.map((a) => {
+              if (a.id !== id) return a;
+              // Legacy toggle flips submitted only — never touches prepDone
+              return withSubmitted(normalizeAssessment(a), !a.submitted && !a.done);
+            }),
+          };
+        }),
       setAssessmentPrep: (id, prepDone) =>
-        set((s) => ({
-          assessments: s.assessments.map((a) =>
-            a.id === id ? withPrepDone(normalizeAssessment(a), prepDone) : a,
-          ),
-        })),
+        set((s) => {
+          const assessments = Array.isArray(s.assessments) ? s.assessments : [];
+          return {
+            assessments: assessments.map((a) =>
+              a.id === id ? withPrepDone(normalizeAssessment(a), prepDone) : a,
+            ),
+          };
+        }),
       setAssessmentSubmitted: (id, submitted) =>
-        set((s) => ({
-          assessments: s.assessments.map((a) =>
-            a.id === id ? withSubmitted(normalizeAssessment(a), submitted) : a,
-          ),
-        })),
+        set((s) => {
+          const assessments = Array.isArray(s.assessments) ? s.assessments : [];
+          return {
+            assessments: assessments.map((a) =>
+              a.id === id ? withSubmitted(normalizeAssessment(a), submitted) : a,
+            ),
+          };
+        }),
       upsertNote: (n) =>
-        set((s) => ({
-          notes: s.notes.some((x) => x.id === n.id)
-            ? s.notes.map((x) => (x.id === n.id ? n : x))
-            : [...s.notes, n],
-        })),
-      removeNote: (id) => set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
+        set((s) => {
+          const notes = Array.isArray(s.notes) ? s.notes : [];
+          return {
+            notes: notes.some((x) => x.id === n.id)
+              ? notes.map((x) => (x.id === n.id ? n : x))
+              : [...notes, n],
+          };
+        }),
+      removeNote: (id) =>
+        set((s) => {
+          const notes = Array.isArray(s.notes) ? s.notes : [];
+          return { notes: notes.filter((n) => n.id !== id) };
+        }),
       addSession: (sIn) =>
-        set((s) => ({
-          sessions: [{ ...sIn, id: uid() }, ...s.sessions].slice(0, 500),
-        })),
+        set((s) => {
+          const sessions = Array.isArray(s.sessions) ? s.sessions : [];
+          return { sessions: [{ ...sIn, id: uid() }, ...sessions].slice(0, 500) };
+        }),
       ensureDayPlan: (date, mode) => {
         const s = get();
         if (s.dayPlans[date]) return;
