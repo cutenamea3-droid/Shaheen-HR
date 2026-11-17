@@ -10,7 +10,10 @@ import { SectionTitle, todayStr } from "./common";
  * Does not invent accrual policy (uses leaveBalance / openingLeave / joinMonth).
  */
 export function LeaveManagement() {
-  const { employees, records } = useApp();
+  const { employees: employeesRaw, records: recordsRaw } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const requestTab = useAdminNav((s) => s.requestTab);
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const asOf = month === todayStr().slice(0, 7) ? todayStr() : `${month}-28`;

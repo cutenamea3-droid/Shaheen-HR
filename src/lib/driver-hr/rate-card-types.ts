@@ -87,8 +87,9 @@ export function emptyRateCard(driverId: string): DriverRateCard {
  * - Preserve significant decimals (e.g. "0.550" stays "0.550")
  * - Reject non-numeric garbage → returns null (caller should keep previous / show error)
  */
-export function normalizeRateInput(raw: string): string | null {
-  const t = raw.trim();
+export function normalizeRateInput(raw: unknown): string | null {
+  if (raw == null) return "";
+  const t = typeof raw === "string" ? raw.trim() : String(raw).trim();
   if (!t) return "";
   // Allow optional leading +/-, digits, one decimal point; no scientific notation invent.
   if (!/^[+-]?\d+(\.\d+)?$/.test(t) && !/^[+-]?\.\d+$/.test(t)) return null;
@@ -96,8 +97,10 @@ export function normalizeRateInput(raw: string): string | null {
   return t.replace(/^\+/, "");
 }
 
-export function rateDisplay(value: string | undefined | null): string {
-  const t = (value ?? "").trim();
+/** Coerce a rate cell to a trimmed string — corrupt cloud may store numbers. */
+export function rateDisplay(value: unknown): string {
+  if (value == null) return "";
+  const t = typeof value === "string" ? value.trim() : String(value).trim();
   return t || "";
 }
 
@@ -105,6 +108,9 @@ export function rateDisplay(value: string | undefined | null): string {
 export function rateCardHasContent(card: DriverRateCard | null | undefined): boolean {
   if (!card) return false;
   if (card.payMethod) return true;
-  if (card.payMethodNote.trim()) return true;
-  return Object.values(card.rates).some((v) => (v ?? "").trim() !== "");
+  const note = typeof card.payMethodNote === "string" ? card.payMethodNote : "";
+  if (note.trim()) return true;
+  const rates =
+    card.rates && typeof card.rates === "object" && !Array.isArray(card.rates) ? card.rates : {};
+  return Object.values(rates).some((v) => rateDisplay(v) !== "");
 }

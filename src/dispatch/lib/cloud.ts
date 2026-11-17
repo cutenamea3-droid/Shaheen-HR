@@ -37,19 +37,40 @@ export function resetDispatchFixtureMemory(): void {
   memory = null;
 }
 
+/** Only real arrays leave the cloud boundary — never truthy string `.length`. */
+function asRows<T>(data: unknown): T[] {
+  return Array.isArray(data) ? (data as T[]) : [];
+}
+
+/** Desk text fields may arrive as corrupt non-strings — never assume `.trim()`. */
+function asText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+/** Only real stop arrays may round-trip — never truthy string `.length`. */
+function arrayStops(stops: unknown): LoadStop[] | undefined {
+  return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
+}
+
+function withStops(stops: unknown): { stops: LoadStop[] } | Record<string, never> {
+  const list = arrayStops(stops);
+  return list ? { stops: list } : {};
+}
+
 function newId(): string {
   return crypto.randomUUID();
 }
 
 export async function listRosterDrivers(): Promise<RosterDriver[]> {
-  if (isDispatchPreviewMode()) return mem().drivers.filter((d) => d.active);
+  if (isDispatchPreviewMode()) return asRows<RosterDriver>(mem().drivers).filter((d) => d.active);
   const { data, error } = await dispatchSupabase
     .from("dispatch_roster_drivers")
     .select("*")
     .eq("active", true)
     .order("display_name");
   if (error) throw error;
-  return (data ?? []) as RosterDriver[];
+  return asRows<RosterDriver>(data);
 }
 
 export async function upsertRosterDriver(
@@ -93,14 +114,16 @@ export async function upsertRosterDriver(
 
 export async function listLoads(): Promise<DispatchLoad[]> {
   if (isDispatchPreviewMode()) {
-    return [...mem().loads].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return [...asRows<DispatchLoad>(mem().loads)].sort((a, b) =>
+      asText(b.updated_at).localeCompare(asText(a.updated_at)),
+    );
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_loads")
     .select("*")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  const loads = (data ?? []) as DispatchLoad[];
+  const loads = asRows<DispatchLoad>(data);
   const ids = loads.map((l) => l.id);
   if (!ids.length) return loads;
   const { data: stops, error: stopError } = await dispatchSupabase
@@ -110,7 +133,7 @@ export async function listLoads(): Promise<DispatchLoad[]> {
     .order("sequence");
   if (stopError) throw stopError;
   const byLoad = new Map<string, LoadStop[]>();
-  for (const stop of (stops ?? []) as LoadStop[]) {
+  for (const stop of asRows<LoadStop>(stops)) {
     const list = byLoad.get(stop.load_id!) ?? [];
     list.push(stop);
     byLoad.set(stop.load_id!, list);
@@ -157,6 +180,9 @@ export type LoadWriteInput = {
 
 export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   const now = new Date().toISOString();
+  if (!asText(input.load_number).trim()) {
+    throw new Error("Load number is required.");
+  }
   if (input.status === "cancelled") {
     const err = validateCancel(input.cancel_reason ?? "");
     if (err) throw new Error(err);
@@ -217,7 +243,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
       reopened_at: input.reopened_at ?? base.reopened_at,
       payment_status: input.payment_status ?? base.payment_status ?? "unpaid",
       updated_at: now,
-      stops: input.stops ?? base.stops ?? [],
+      stops: arrayStops(input.stops) ?? arrayStops(base.stops) ?? [],
     };
     if (idx >= 0) mem().loads[idx] = next;
     else mem().loads.unshift(next);
@@ -226,7 +252,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
 
   const row = {
     id: input.id,
-    load_number: input.load_number.trim(),
+    load_number: asText(input.load_number).trim(),
     customer_name: input.customer_name ?? null,
     commodity: input.commodity ?? null,
     equipment: input.equipment ?? null,
@@ -260,10 +286,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   if (error) throw error;
   const load = data as DispatchLoad;
 
-  if (input.stops) {
+  const nextStops = arrayStops(input.stops);
+  if (nextStops) {
     await dispatchSupabase.from("dispatch_load_stops").delete().eq("load_id", load.id);
-    if (input.stops.length) {
-      const stopRows = input.stops.map((s, i) => ({
+    if (nextStops.length) {
+      const stopRows = nextStops.map((s, i) => ({
         load_id: load.id,
         sequence: s.sequence || i + 1,
         stop_type: s.stop_type,
@@ -281,7 +308,12 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     }
   }
 
-  return (await getLoad(load.id)) ?? { ...load, stops: input.stops ?? [] };
+  return (
+    (await getLoad(load.id)) ?? {
+      ...load,
+      stops: Array.isArray(nextStops) ? nextStops : [],
+    }
+  );
 }
 
 export async function addCheckCall(input: {
@@ -338,7 +370,7 @@ export async function addCheckCall(input: {
 
 export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
   if (isDispatchPreviewMode()) {
-    return mem().checkCalls.filter((c) => c.load_id === loadId);
+    return asRows<CheckCall>(mem().checkCalls).filter((c) => c.load_id === loadId);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_check_calls")
@@ -346,17 +378,17 @@ export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
     .eq("load_id", loadId)
     .order("called_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as CheckCall[];
+  return asRows<CheckCall>(data);
 }
 
 export async function listExceptions(): Promise<DispatchException[]> {
-  if (isDispatchPreviewMode()) return mem().exceptions;
+  if (isDispatchPreviewMode()) return asRows<DispatchException>(mem().exceptions);
   const { data, error } = await dispatchSupabase
     .from("dispatch_exceptions")
     .select("*")
     .order("opened_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as DispatchException[];
+  return asRows<DispatchException>(data);
 }
 
 export async function saveException(
@@ -405,13 +437,13 @@ export async function saveException(
 }
 
 export async function listIssues(): Promise<DispatchIssue[]> {
-  if (isDispatchPreviewMode()) return mem().issues;
+  if (isDispatchPreviewMode()) return asRows<DispatchIssue>(mem().issues);
   const { data, error } = await dispatchSupabase
     .from("dispatch_issues")
     .select("*")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as DispatchIssue[];
+  return asRows<DispatchIssue>(data);
 }
 
 export async function saveIssue(
@@ -473,14 +505,16 @@ export async function saveIssue(
 
 export async function listFollowUps(): Promise<DispatchFollowUp[]> {
   if (isDispatchPreviewMode()) {
-    return [...mem().followUps].sort((a, b) => a.due_at.localeCompare(b.due_at));
+    return [...asRows<DispatchFollowUp>(mem().followUps)].sort((a, b) =>
+      asText(a.due_at).localeCompare(asText(b.due_at)),
+    );
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_follow_ups")
     .select("*")
     .order("due_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as DispatchFollowUp[];
+  return asRows<DispatchFollowUp>(data);
 }
 
 export async function saveFollowUp(
@@ -537,7 +571,7 @@ export async function cancelLoad(
     id: load.id,
     load_number: load.load_number,
     status: "cancelled",
-    cancel_reason: reason.trim(),
+    cancel_reason: asText(reason).trim(),
     customer_name: load.customer_name,
     commodity: load.commodity,
     equipment: load.equipment,
@@ -562,7 +596,7 @@ export async function cancelLoad(
     reopened_at: load.reopened_at,
     payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -580,13 +614,13 @@ export async function rescheduleLoad(
   const delivery = input.planned_delivery_at ?? load.planned_delivery_at;
   const err = validateReschedule(input.note, pickup, delivery);
   if (err) throw new Error(err);
-  const stops = input.stops ?? load.stops;
+  const stops = arrayStops(input.stops) ?? arrayStops(load.stops);
   return saveLoad({
     id: load.id,
     load_number: load.load_number,
     status: load.status === "cancelled" ? "planned" : load.status,
     cancel_reason: load.cancel_reason,
-    reschedule_note: input.note.trim(),
+    reschedule_note: asText(input.note).trim(),
     planned_pickup_at: pickup,
     planned_delivery_at: delivery,
     customer_name: load.customer_name,
@@ -610,19 +644,19 @@ export async function rescheduleLoad(
     reopened_at: load.reopened_at,
     payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
-    ...(stops ? { stops } : {}),
+    ...withStops(stops),
   });
 }
 
 export async function listHandovers(): Promise<ShiftHandover[]> {
-  if (isDispatchPreviewMode()) return mem().handovers;
+  if (isDispatchPreviewMode()) return asRows<ShiftHandover>(mem().handovers);
   const { data, error } = await dispatchSupabase
     .from("dispatch_shift_handovers")
     .select("*")
     .order("shift_date", { ascending: false })
     .limit(30);
   if (error) throw error;
-  return (data ?? []) as ShiftHandover[];
+  return asRows<ShiftHandover>(data);
 }
 
 export async function saveHandover(
@@ -639,7 +673,7 @@ export async function saveHandover(
       from_dispatcher: input.from_dispatcher,
       to_dispatcher: input.to_dispatcher ?? null,
       summary: input.summary,
-      open_load_ids: input.open_load_ids ?? [],
+      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
       watch_items: input.watch_items ?? "",
       next_day_priorities: input.next_day_priorities ?? "",
       created_at: new Date().toISOString(),
@@ -658,7 +692,7 @@ export async function saveHandover(
       from_dispatcher: input.from_dispatcher,
       to_dispatcher: input.to_dispatcher ?? null,
       summary: input.summary,
-      open_load_ids: input.open_load_ids ?? [],
+      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
       watch_items: input.watch_items ?? "",
       next_day_priorities: input.next_day_priorities ?? "",
     })
@@ -669,9 +703,9 @@ export async function saveHandover(
 }
 
 export function driverLoadHistory(loads: DispatchLoad[], driverId: string): DispatchLoad[] {
-  return loads
+  return asRows<DispatchLoad>(loads)
     .filter((l) => l.assigned_driver_id === driverId)
-    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    .sort((a, b) => asText(b.updated_at).localeCompare(asText(a.updated_at)));
 }
 
 /** Close a delivered load. Does NOT mark payment paid. */
@@ -689,7 +723,7 @@ export async function closeLoad(
     id: load.id,
     load_number: load.load_number,
     status: "closed",
-    closeout_note: note.trim(),
+    closeout_note: asText(note).trim(),
     closed_at: now,
     payment_status: load.payment_status,
     reopen_reason: load.reopen_reason,
@@ -714,7 +748,7 @@ export async function closeLoad(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -733,7 +767,7 @@ export async function reopenLoad(
     id: load.id,
     load_number: load.load_number,
     status: "delivered",
-    reopen_reason: reason.trim(),
+    reopen_reason: asText(reason).trim(),
     reopened_at: now,
     closeout_note: load.closeout_note,
     closed_at: load.closed_at,
@@ -758,7 +792,7 @@ export async function reopenLoad(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -796,22 +830,22 @@ export async function setLoadPaymentStatus(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
 export async function listAccessorials(loadId?: string): Promise<DispatchAccessorial[]> {
   if (isDispatchPreviewMode()) {
-    const rows = mem().accessorials;
+    const rows = asRows<DispatchAccessorial>(mem().accessorials);
     return (loadId ? rows.filter((a) => a.load_id === loadId) : [...rows]).sort((a, b) =>
-      b.updated_at.localeCompare(a.updated_at),
+      asText(b.updated_at).localeCompare(asText(a.updated_at)),
     );
   }
   let q = dispatchSupabase.from("dispatch_accessorials").select("*").order("updated_at", { ascending: false });
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as DispatchAccessorial[];
+  return asRows<DispatchAccessorial>(data);
 }
 
 export async function saveAccessorial(
@@ -833,7 +867,7 @@ export async function saveAccessorial(
     const existing = mem().accessorials.find((a) => a.id === input.id);
     if (existing) {
       Object.assign(existing, input, {
-        description: input.description.trim(),
+        description: asText(input.description).trim(),
         updated_at: now,
       });
       return existing;
@@ -843,7 +877,7 @@ export async function saveAccessorial(
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: input.description.trim(),
+      description: asText(input.description).trim(),
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
       free_time_note: input.free_time_note ?? null,
@@ -862,7 +896,7 @@ export async function saveAccessorial(
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: input.description.trim(),
+      description: asText(input.description).trim(),
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
       free_time_note: input.free_time_note ?? null,
@@ -876,9 +910,9 @@ export async function saveAccessorial(
 
 export async function listCommunications(loadId?: string): Promise<DispatchCommunication[]> {
   if (isDispatchPreviewMode()) {
-    const rows = mem().communications;
+    const rows = asRows<DispatchCommunication>(mem().communications);
     return (loadId ? rows.filter((c) => c.load_id === loadId) : [...rows]).sort((a, b) =>
-      b.created_at.localeCompare(a.created_at),
+      asText(b.created_at).localeCompare(asText(a.created_at)),
     );
   }
   let q = dispatchSupabase
@@ -888,7 +922,7 @@ export async function listCommunications(loadId?: string): Promise<DispatchCommu
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as DispatchCommunication[];
+  return asRows<DispatchCommunication>(data);
 }
 
 export async function saveCommunication(
@@ -908,14 +942,14 @@ export async function saveCommunication(
   if (isDispatchPreviewMode()) {
     const existing = mem().communications.find((c) => c.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { summary: input.summary.trim() });
+      Object.assign(existing, input, { summary: asText(input.summary).trim() });
       return existing;
     }
     const row: DispatchCommunication = {
       id: newId(),
       load_id: input.load_id,
       kind: input.kind,
-      summary: input.summary.trim(),
+      summary: asText(input.summary).trim(),
       detail: input.detail ?? null,
       decided_action: input.decided_action ?? null,
       created_by: input.created_by ?? null,
@@ -930,7 +964,7 @@ export async function saveCommunication(
       id: input.id,
       load_id: input.load_id,
       kind: input.kind,
-      summary: input.summary.trim(),
+      summary: asText(input.summary).trim(),
       detail: input.detail ?? null,
       decided_action: input.decided_action ?? null,
     })

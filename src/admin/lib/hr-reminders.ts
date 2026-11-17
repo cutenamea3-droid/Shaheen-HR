@@ -44,40 +44,67 @@ export const useHrReminders = create<State>()(
     (set, get) => ({
       reminders: [],
       add: (input) => {
-        const title = input.title.trim();
+        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+        const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
         const r: HrReminder = {
           id: uid(),
           title,
           due: input.due,
-          employeeId: input.employeeId ?? "",
-          employeeName: input.employeeName ?? "",
+          employeeId: asText(input.employeeId),
+          employeeName: asText(input.employeeName),
           status: "open",
-          note: (input.note ?? "").trim(),
+          note: asText(input.note).trim(),
           createdAt: Date.now(),
           completedAt: null,
         };
-        set({ reminders: [r, ...get().reminders] });
+        const prev = Array.isArray(get().reminders) ? get().reminders : [];
+        set({ reminders: [r, ...prev] });
         return r;
       },
       complete: (id) =>
-        set((s) => ({
-          reminders: s.reminders.map((r) =>
-            r.id === id ? { ...r, status: "done", completedAt: Date.now() } : r,
-          ),
-        })),
+        set((s) => {
+          const list = Array.isArray(s.reminders) ? s.reminders : [];
+          return {
+            reminders: list.map((r) =>
+              r.id === id ? { ...r, status: "done", completedAt: Date.now() } : r,
+            ),
+          };
+        }),
       reopen: (id) =>
-        set((s) => ({
-          reminders: s.reminders.map((r) =>
-            r.id === id ? { ...r, status: "open", completedAt: null } : r,
-          ),
-        })),
-      remove: (id) => set((s) => ({ reminders: s.reminders.filter((r) => r.id !== id) })),
-      dueOnOrBefore: (date) =>
-        get().reminders.filter((r) => r.status === "open" && r.due <= date),
+        set((s) => {
+          const list = Array.isArray(s.reminders) ? s.reminders : [];
+          return {
+            reminders: list.map((r) =>
+              r.id === id ? { ...r, status: "open", completedAt: null } : r,
+            ),
+          };
+        }),
+      remove: (id) =>
+        set((s) => {
+          const list = Array.isArray(s.reminders) ? s.reminders : [];
+          return { reminders: list.filter((r) => r.id !== id) };
+        }),
+      dueOnOrBefore: (date) => {
+        const list = Array.isArray(get().reminders) ? get().reminders : [];
+        return list.filter((r) => r.status === "open" && r.due <= date);
+      },
       openCount: (date) => get().dueOnOrBefore(date).length,
     }),
-    { name: HR_REMINDERS_STORAGE_KEY },
+    {
+      name: HR_REMINDERS_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        return {
+          ...current,
+          ...raw,
+          reminders: Array.isArray(raw.reminders) ? raw.reminders : current.reminders,
+        };
+      },
+    },
   ),
 );

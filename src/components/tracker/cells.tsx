@@ -74,6 +74,11 @@ function SaveBar({ onSave, onCancel }: { onSave: () => void; onCancel: () => voi
 }
 
 /** Click to edit any text; save with the tick button (or Ctrl+Enter). */
+function asCellText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
 export function EditableText({
   value,
   onSave,
@@ -93,9 +98,10 @@ export function EditableText({
   tone?: Tone;
   mask?: boolean;
 }) {
+  const safeValue = asCellText(value);
   const view = useViewMode();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useState(safeValue);
   const [show, setShow] = useState(!mask);
   const ref = useRef<HTMLTextAreaElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,7 +115,7 @@ export function EditableText({
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const commit = (v: string) => {
     if (timer.current) clearTimeout(timer.current);
-    if (v !== value) onSave(v);
+    if (v !== safeValue) onSave(v);
   };
 
   if (editing && !view)
@@ -117,6 +123,7 @@ export function EditableText({
       <div className="w-full">
         <textarea
           ref={ref}
+          data-testid="editable-text"
           value={draft}
           onChange={(e) => {
             const v = e.target.value;
@@ -124,13 +131,19 @@ export function EditableText({
             e.target.style.height = "auto";
             e.target.style.height = e.target.scrollHeight + "px";
           }}
+          onInput={(e) => {
+            const el = e.target as HTMLTextAreaElement;
+            setDraft(el.value);
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              commit(draft);
+              commit(draft || ref.current?.value || "");
               setEditing(false);
             }
             if (e.key === "Escape") {
-              setDraft(value);
+              setDraft(safeValue);
               setEditing(false);
             }
           }}
@@ -139,26 +152,27 @@ export function EditableText({
         />
         <SaveBar
           onSave={() => {
-            commit(draft);
+            const next = draft || ref.current?.value || "";
+            commit(next);
             setEditing(false);
           }}
           onCancel={() => {
-            setDraft(value);
+            setDraft(safeValue);
             setEditing(false);
           }}
         />
       </div>
     );
 
-  const empty = !value.trim();
-  const shown = mask && !show && !empty ? "•••-••-" + value.trim().slice(-4) : value;
+  const empty = !safeValue.trim();
+  const shown = mask && !show && !empty ? "•••-••-" + safeValue.trim().slice(-4) : safeValue;
   return (
     <div className="group flex w-full items-start gap-1">
       <button
         type="button"
         onClick={() => {
           if (view) return;
-          setDraft(value);
+          setDraft(safeValue);
           setEditing(true);
         }}
         className={cn(
@@ -196,31 +210,41 @@ export function DateCell({
   /** May be omitted or explicitly undefined when the date column has no paired Applied status. */
   appliedStatus?: string | undefined;
 }) {
+  const safeValue = asCellText(value);
   const view = useViewMode();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const isDate = !!parseISO(value);
+  const [draft, setDraft] = useState(safeValue);
+  const datePickerRef = useRef<HTMLInputElement>(null);
+  const dateTextRef = useRef<HTMLInputElement>(null);
+  const isDate = !!parseISO(safeValue);
   const applied = normStatus(appliedStatus ?? "") === "Applied";
-  const appliedView = applied ? appliedExpiryView(value) : null;
+  const appliedView = applied ? appliedExpiryView(safeValue) : null;
   const change = (v: string) => setDraft(v); // saved only on Save
   if (editing && !view)
     return (
       <div className="w-full space-y-2">
         <input
+          ref={datePickerRef}
+          data-testid="date-cell-picker"
           type="date"
           value={parseISO(draft) ? draft : ""}
           onChange={(e) => change(e.target.value)}
+          onInput={(e) => change((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1 text-base"
         />
         <input
+          ref={dateTextRef}
+          data-testid="date-cell-text"
           value={draft}
           onChange={(e) => change(e.target.value)}
+          onInput={(e) => change((e.target as HTMLInputElement).value)}
           placeholder="…or type text (e.g. New Driver!)"
           className="w-full rounded-lg border bg-card px-2.5 py-1 text-sm"
         />
         <SaveBar
           onSave={() => {
-            onSave(draft);
+            const next = draft || dateTextRef.current?.value || datePickerRef.current?.value || "";
+            onSave(next);
             setEditing(false);
           }}
           onCancel={() => setEditing(false)}
@@ -239,18 +263,18 @@ export function DateCell({
       type="button"
       disabled={view}
       onClick={() => {
-        setDraft(value);
+        setDraft(safeValue);
         setEditing(true);
       }}
       className={cn(
         "inline-flex min-h-9 w-full flex-col items-start justify-center gap-0.5 whitespace-pre-wrap break-words rounded-lg border px-2.5 py-1 text-left text-base font-semibold",
         tone ? TONE_BOX[tone] : "bg-card hover:border-primary/60",
-        !value.trim() && "border-dashed font-normal italic text-muted-foreground/70",
+        !safeValue.trim() && "border-dashed font-normal italic text-muted-foreground/70",
       )}
     >
       <span className="inline-flex items-center gap-2">
         {isDate && <CalendarDays className="size-4 shrink-0 opacity-70" />}
-        {value.trim() ? fmtCell(value) : "Add date"}
+        {safeValue.trim() ? fmtCell(safeValue) : "Add date"}
       </span>
       {dateSub && <span className="text-xs font-bold leading-tight opacity-95">{dateSub}</span>}
     </button>
@@ -270,18 +294,21 @@ export function StatusToggle({
   /** May be omitted or explicitly undefined when the status column has no paired expiry. */
   expiryValue?: string | undefined;
 }) {
+  const safeOptions = Array.isArray(options) ? options.map(asCellText) : [];
+  const safeValue = asCellText(value);
   const view = useViewMode();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
-  const applied = normStatus(value) === "Applied";
-  const appliedView = applied && expiryValue != null ? appliedExpiryView(expiryValue) : null;
-  const tone = appliedView?.tone ?? statusTone(value);
+  const customRef = useRef<HTMLInputElement>(null);
+  const applied = normStatus(safeValue) === "Applied";
+  const appliedView = applied && expiryValue != null ? appliedExpiryView(asCellText(expiryValue)) : null;
+  const tone = appliedView?.tone ?? statusTone(safeValue);
   // Application axis stays the stored value (Applied). Never auto-rewrite to Valid/Renewed.
   // When past expiry, show "Expired + Applied" so both axes remain visible together.
   const primary =
     applied && appliedView?.expiration === "Expired"
       ? "Expired + Applied"
-      : value.trim() || (view ? "—" : "Select");
+      : safeValue.trim() || (view ? "—" : "Select");
   // Expiration axis + countdown under Application (display only — onSave still writes the dropdown value).
   const hint = applied && appliedView ? appliedView.hint : null;
   if (view)
@@ -310,9 +337,9 @@ export function StatusToggle({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" align="start">
         <div className="grid grid-cols-2 gap-2">
-          {options.map((o) => {
+          {safeOptions.map((o) => {
             const t = statusTone(o);
-            const active = normStatus(value) === o;
+            const active = normStatus(safeValue) === o;
             return (
               <button
                 key={o}
@@ -334,16 +361,21 @@ export function StatusToggle({
         </div>
         <div className="mt-3 flex gap-2">
           <input
+            ref={customRef}
+            data-testid="status-custom"
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
+            onInput={(e) => setCustom((e.target as HTMLInputElement).value)}
             placeholder="Custom…"
             className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-sm"
           />
           <button
             type="button"
-            disabled={!custom.trim()}
+            disabled={!(custom.trim() || customRef.current?.value?.trim())}
             onClick={() => {
-              onSave(custom.trim());
+              const next = (custom.trim() || customRef.current?.value || "").trim();
+              if (!next) return;
+              onSave(next);
               setCustom("");
               setOpen(false);
             }}
@@ -395,7 +427,7 @@ export function ActiveToggle({
   const view = useViewMode();
   const opts = mode === "binary" ? BINARY_OPTS : EMPLOYMENT_OPTS;
   const cur = (() => {
-    const k = value.trim().toLowerCase();
+    const k = asCellText(value).trim().toLowerCase();
     if (k === "inactive") return "Inactive";
     if (mode === "employment" && (k === "leave" || k === "on leave")) return "Leave";
     return "Active";

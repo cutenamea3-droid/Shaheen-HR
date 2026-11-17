@@ -42,4 +42,10 @@ describe("leave-management", () => {
     expect(leaveDaysOnDate("2026-03-02", [emp], records)).toHaveLength(1);
     expect(leaveDaysOnDate("2026-03-03", [emp], records)).toHaveLength(0);
   });
+
+  it("tolerates corrupt non-array employees / records", () => {
+    expect(listLeaveDaysInMonth("2026-03", "bad" as never, null as never)).toEqual([]);
+    expect(leaveDaysOnDate("2026-03-02", null as never, undefined as never)).toEqual([]);
+    expect(leaveRoster("x" as never, "y" as never, "2026-03-15")).toEqual([]);
+  });
 });

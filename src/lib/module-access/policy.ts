@@ -6,22 +6,30 @@ import {
   type ResolvedAccess,
 } from "./types";
 
+function asGrants(grants: ModuleGrants | null | undefined): ModuleGrants {
+  return grants && typeof grants === "object" && !Array.isArray(grants)
+    ? { ...EMPTY_GRANTS, ...grants }
+    : { ...EMPTY_GRANTS };
+}
+
 function activeModules(grants: ModuleGrants): ModuleId[] {
+  const g = asGrants(grants);
   const out: ModuleId[] = [];
-  if (grants.compliance) out.push("compliance");
-  if (grants["admin-hr"]) out.push("admin-hr");
-  if (grants.personal) out.push("personal");
-  if (grants.dispatch) out.push("dispatch");
+  if (g.compliance) out.push("compliance");
+  if (g["admin-hr"]) out.push("admin-hr");
+  if (g.personal) out.push("personal");
+  if (g.dispatch) out.push("dispatch");
   return out;
 }
 
 /** Drug + rate: Compliance admin only. Finance: Admin-HR admin only. */
 export function privilegesFor(grants: ModuleGrants): Privilege[] {
+  const g = asGrants(grants);
   const priv: Privilege[] = [];
-  if (grants.compliance === "admin") {
+  if (g.compliance === "admin") {
     priv.push("drug", "rate");
   }
-  if (grants["admin-hr"] === "admin") {
+  if (g["admin-hr"] === "admin") {
     priv.push("finance");
   }
   return priv;
@@ -32,7 +40,8 @@ export function hasPrivilege(grants: ModuleGrants, privilege: Privilege): boolea
 }
 
 export function isDispatchOnly(grants: ModuleGrants): boolean {
-  return Boolean(grants.dispatch) && !grants.compliance && !grants["admin-hr"] && !grants.personal;
+  const g = asGrants(grants);
+  return Boolean(g.dispatch) && !g.compliance && !g["admin-hr"] && !g.personal;
 }
 
 /**
@@ -43,18 +52,20 @@ export function selectableModulesFor(
   grants: ModuleGrants,
   opts: { pathname: string },
 ): ModuleId[] {
-  const modules: ModuleId[] = activeModules(grants).filter((m) => m !== "personal");
+  const g = asGrants(grants);
+  const modules: ModuleId[] = activeModules(g).filter((m) => m !== "personal");
   const onPersonal = opts.pathname === "/personal" || opts.pathname.startsWith("/personal/");
-  if (onPersonal && grants.personal) modules.push("personal");
+  if (onPersonal && g.personal) modules.push("personal");
   return modules;
 }
 
 export function homePathFor(grants: ModuleGrants): string {
-  if (isDispatchOnly(grants)) return "/dispatch";
-  if (grants.compliance) return "/";
-  if (grants["admin-hr"]) return "/admin";
-  if (grants.dispatch) return "/dispatch";
-  if (grants.personal) return "/personal";
+  const g = asGrants(grants);
+  if (isDispatchOnly(g)) return "/dispatch";
+  if (g.compliance) return "/";
+  if (g["admin-hr"]) return "/admin";
+  if (g.dispatch) return "/dispatch";
+  if (g.personal) return "/personal";
   return "/access-denied";
 }
 
@@ -84,7 +95,7 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
   if (mod === "public" || mod === "access-denied") return true;
   if (!mod) return false;
-  return Boolean(grants[mod]);
+  return Boolean(asGrants(grants)[mod]);
 }
 
 /**
@@ -107,9 +118,8 @@ export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): bo
   // Independent portals: never hard-deny; LoginGate / ACL inside the module decide.
   if (isIndependentLoginModule(mod)) return false;
 
-  const hasAnySeat = Boolean(
-    grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
-  );
+  const g = asGrants(grants);
+  const hasAnySeat = Boolean(g.compliance || g["admin-hr"] || g.personal || g.dispatch);
   if (!hasAnySeat) return false;
 
   // Compliance URLs only: Admin-only / Dispatch-only / Personal-only without a
@@ -125,12 +135,12 @@ export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): bo
  * not probed yet. Personal stays privacy-gated separately.
  */
 export function companySwitcherModules(grants: ModuleGrants): ModuleId[] {
-  if (isDispatchOnly(grants)) return ["dispatch"];
+  if (isDispatchOnly(asGrants(grants))) return ["dispatch"];
   return ["compliance", "admin-hr", "dispatch"];
 }
 
 export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAccess {
-  const normalized = { ...EMPTY_GRANTS, ...grants };
+  const normalized = asGrants(grants);
   return {
     grants: normalized,
     privileges: privilegesFor(normalized),
@@ -142,7 +152,7 @@ export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAcc
 
 /** Where to send a user who hit a URL they are not entitled to. */
 export function denialRedirect(grants: ModuleGrants): string {
-  const home = homePathFor(grants);
+  const home = homePathFor(asGrants(grants));
   if (home === "/access-denied") return "/access-denied";
   return `/access-denied?from=${encodeURIComponent(home)}`;
 }
@@ -151,8 +161,9 @@ export function seatsToGrants(
   seats: Array<{ module: ModuleId; role: string; active: boolean }>,
 ): ModuleGrants {
   const grants: ModuleGrants = { ...EMPTY_GRANTS };
-  for (const seat of seats) {
-    if (!seat.active) continue;
+  const list = Array.isArray(seats) ? seats : [];
+  for (const seat of list) {
+    if (!seat?.active) continue;
     if (seat.module === "compliance" && (seat.role === "admin" || seat.role === "standard")) {
       grants.compliance = seat.role;
     } else if (seat.module === "admin-hr" && (seat.role === "admin" || seat.role === "standard")) {

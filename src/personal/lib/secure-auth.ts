@@ -3,7 +3,10 @@
  * Falls back is handled by callers using personalAuthMode() — this module never
  * talks to Driver or Admin clients.
  */
-import { getPersonalSupabase } from "@/personal/integrations/supabase/client";
+import {
+  getPersonalSupabase,
+  PERSONAL_SB_AUTH_STORAGE_KEY,
+} from "@/personal/integrations/supabase/client";
 import { isPersonalSecureEnabled, isPersonalSignupAllowed } from "./secure-config";
 
 export type PersonalSecureSession = {
@@ -34,7 +37,8 @@ export async function signInPersonalSecure(
   password: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (!isPersonalSecureEnabled()) return { ok: false, message: "Invalid credentials." };
-  const login = email.trim().toLowerCase();
+  const login =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!login || password.length < 4) return { ok: false, message: "Invalid credentials." };
   try {
     const sb = clientOrThrow();
@@ -51,7 +55,8 @@ export async function signUpPersonalSecure(
   password: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (!isPersonalSignupAllowed()) return { ok: false, message: "Invalid credentials." };
-  const login = email.trim().toLowerCase();
+  const login =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!login || password.length < 4) return { ok: false, message: "Invalid credentials." };
   try {
     const sb = clientOrThrow();
@@ -71,9 +76,25 @@ export async function signOutPersonalSecure(): Promise<void> {
   const sb = getPersonalSupabase();
   if (!sb) return;
   try {
-    await sb.auth.signOut();
+    // Local scope clears this tab's session; also scrub prefixed storage so
+    // probePersonalOwnerSeat / hydrate cannot resurrect a stale JWT.
+    await sb.auth.signOut({ scope: "local" });
   } catch {
     // ignore
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const prefix = `${PERSONAL_SB_AUTH_STORAGE_KEY}:`;
+      const kill: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (!k) continue;
+        if (k === PERSONAL_SB_AUTH_STORAGE_KEY || k.startsWith(prefix)) kill.push(k);
+      }
+      kill.forEach((k) => window.localStorage.removeItem(k));
+    } catch {
+      /* ignore */
+    }
   }
 }
 

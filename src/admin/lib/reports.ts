@@ -20,30 +20,46 @@ export const ratingTone = (r: Rating | ""): Tone | undefined =>
 const shiftText = (d?: Dept) => (d ? `${fmtTime(d.start)} – ${fmtTime(d.end)}` : "—");
 
 export function autoNote(c: DayCalc) {
-  return c.violations.join(" · ");
+  const violations = Array.isArray(c.violations) ? c.violations : [];
+  return violations.join(" · ");
 }
 
 function punchCell(rec: DayRec, c: DayCalc, k: "in" | "bin" | "bout" | "out"): Cell {
   if (rec.status === "leave") return C("Leave");
   if (rec.status === "absent") return C("Absent", "red");
   if ((k === "bin" || k === "bout") && (c.isSat || rec.noBreak)) return C("No break");
-  if (c.missing.includes(k)) return C("Miss punch", "red");
+  const missing = Array.isArray(c.missing) ? c.missing : [];
+  if (missing.includes(k)) return C("Miss punch", "red");
   const v = rec[k];
   const tone = (k === "in" && c.lateLevel === "late") || ((k === "bin" || k === "bout") && c.breakLevel === "over") ? "red" : undefined;
   return C(fmtTime(v), tone);
 }
 
+function rosterEmployees(data: Data): Employee[] {
+  return Array.isArray(data.employees) ? data.employees : [];
+}
+
+function rosterDepts(data: Data): Dept[] {
+  return Array.isArray(data.depts) ? data.depts : [];
+}
+
 function dayRows(data: Data, date: string) {
-  const day = data.records[date] ?? {};
-  return data.employees
-    .map((e, i) => ({ e, i, rec: day[e.id], dept: data.depts.find((d) => d.id === e.deptId) }))
+  const day =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records)
+      ? data.records[date] ?? {}
+      : {};
+  const depts = rosterDepts(data);
+  return rosterEmployees(data)
+    .map((e, i) => ({ e, i, rec: day[e.id], dept: depts.find((d) => d.id === e.deptId) }))
     .filter((x) => x.rec)
-    .map((x) => ({ ...x, c: calcDay(x.e, x.dept, date, x.rec!, data.settings), p: data.perf[date]?.[x.e.id] }));
+    .map((x) => ({ ...x, c: calcDay(x.e, x.dept, date, x.rec!, data.settings), p: data.perf?.[date]?.[x.e.id] }));
 }
 
 function attendanceCells(x: ReturnType<typeof dayRows>[number]): Cell[] {
   const { rec, c } = x as { rec: DayRec; c: DayCalc };
-  const remarks = c.flags.join(" · ") || "On time";
+  const flags = Array.isArray(c.flags) ? c.flags : [];
+  const violations = Array.isArray(c.violations) ? c.violations : [];
+  const remarks = flags.join(" · ") || "On time";
   return [
     C(x.i + 1),
     C(x.e.name),
@@ -56,7 +72,7 @@ function attendanceCells(x: ReturnType<typeof dayRows>[number]): Cell[] {
     C(c.breakTaken != null ? `${c.breakTaken}m` : "—", c.breakLevel === "over" ? "red" : undefined),
     C(c.worked != null ? fmtHours(c.worked) : "—", c.satTargetMiss ? "red" : undefined),
     C(c.overtimeMin ? fmtHours(c.overtimeMin) : "—"),
-    C(remarks, c.violations.length ? "red" : undefined),
+    C(remarks, violations.length ? "red" : undefined),
     C(rec.note),
   ];
 }
@@ -75,7 +91,7 @@ export function dailyPerformance(data: Data, date: string): Table {
       C(x.e.name),
       C(x.dept?.name ?? "—"),
       C(x.p?.rating ? RATING_LABEL[x.p.rating] : "Not rated", tone),
-      C(autoNote(x.c) || "None", x.c.violations.length ? "red" : undefined),
+      C(autoNote(x.c) || "None", (Array.isArray(x.c.violations) ? x.c.violations : []).length ? "red" : undefined),
       C(x.p?.note ?? "", tone),
     ];
   });
@@ -96,7 +112,7 @@ export function dailyCombined(data: Data, date: string): Table {
 }
 
 function monthCalcs(data: Data, month: string, e: Employee) {
-  const dept = data.depts.find((d) => d.id === e.deptId);
+  const dept = rosterDepts(data).find((d) => d.id === e.deptId);
   return monthDays(month)
     .filter((d) => data.records[d]?.[e.id])
     .map((d) => {
@@ -106,14 +122,18 @@ function monthCalcs(data: Data, month: string, e: Employee) {
 }
 
 /** Long names use just the first name so the notes column never wraps. */
-export const shortName = (n: string) => (n.trim().length > 14 ? n.trim().split(/\s+/)[0]! : n.trim());
+export const shortName = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  const t = s.trim();
+  return t.length > 14 ? t.split(/\s+/)[0]! : t;
+};
 
 const list = (items: string[]) => (items.length ? `${items.length}\n${items.join("\n")}` : "0");
 
 export function monthlyAttendance(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
   const notes: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const worked = m.filter((x) => x.rec.status === "present" || x.rec.status === "half");
     const grace = m.filter((x) => x.c.lateLevel === "grace").map((x) => `${shortDate(x.d)}: ${x.c.lateMin}m`);
@@ -129,7 +149,7 @@ export function monthlyAttendance(data: Data, month: string): Table[] {
     rows.push([
       C(i + 1),
       C(e.name),
-      C(data.depts.find((d) => d.id === e.deptId)?.name ?? "—"),
+      C(rosterDepts(data).find((d) => d.id === e.deptId)?.name ?? "—"),
       C(worked.length),
       C(fmtHours(hours)),
       C(list(grace)),
@@ -159,11 +179,13 @@ export function monthlyAttendance(data: Data, month: string): Table[] {
 export function monthlyPerformance(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
   const notes: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const cnt = (r: Rating) => m.filter((x) => x.p?.rating === r).length;
     const bad = m.filter((x) => x.p?.rating === "needs" || x.p?.rating === "poor").map((x) => `${shortDate(x.d)}: ${RATING_LABEL[x.p!.rating as Rating]}`);
-    const viol = m.filter((x) => x.c.violations.length).map((x) => `${shortDate(x.d)}: ${x.c.violations.join(", ")}`);
+    const viol = m
+      .filter((x) => (Array.isArray(x.c.violations) ? x.c.violations : []).length)
+      .map((x) => `${shortDate(x.d)}: ${(Array.isArray(x.c.violations) ? x.c.violations : []).join(", ")}`);
     rows.push([
       C(i + 1),
       C(e.name),
@@ -183,7 +205,7 @@ export function monthlyPerformance(data: Data, month: string): Table[] {
 
 export function monthlyOvertime(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const ot = m.filter((x) => x.c.overtimeMin > 0);
     const ex = m.filter((x) => x.c.extraDay);
@@ -207,8 +229,10 @@ export function monthlyOvertime(data: Data, month: string): Table[] {
   ];
 }
 
-export function monthLabel(month: string) {
-  const [y = 2026, m = 1] = month.split("-").map(Number);
+export function monthLabel(month: unknown) {
+  const raw = month == null ? "" : typeof month === "string" ? month : String(month);
+  const key = /^\d{4}-\d{2}/.test(raw) ? raw.slice(0, 7) : "1970-01";
+  const [y = 2026, m = 1] = key.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
@@ -239,14 +263,17 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
   doc.setFont("helvetica", "bold").setFontSize(15).text(company, logo ? 78 : 30, y);
   doc.setFont("helvetica", "normal").setFontSize(9).text("Prepared by HR Department", W - 30, y, { align: "right" });
   y += 8;
-  tables.forEach((t, ti) => {
+  const list = Array.isArray(tables) ? tables : [];
+  list.forEach((t, ti) => {
     if (ti === 0) y += 16;
     else y += 14;
+    const head = Array.isArray(t.head) ? t.head : [];
+    const rows = Array.isArray(t.rows) ? t.rows : [];
     doc.setFont("helvetica", "bold").setFontSize(12).text(t.title, 30, y + 14);
     autoTable(doc, {
       startY: y + 22,
-      head: [t.head],
-      body: t.rows.map((r) => r.map((c) => c.t)),
+      head: [head],
+      body: rows.map((r) => (Array.isArray(r) ? r : []).map((c) => c.t)),
       theme: "grid",
       margin: { left: 30, right: 30 },
       styles: { fontSize: 8.5, cellPadding: 4, overflow: "linebreak", valign: "top", lineColor: [90, 90, 90], lineWidth: 0.5, textColor: [20, 20, 20] },
@@ -254,21 +281,21 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
       columnStyles: t.noWrapFirst ? { 0: { cellWidth: "wrap" }, 1: { cellWidth: "wrap" } } : { 0: { cellWidth: 22, halign: "center" } },
       didParseCell: (h) => {
         if (h.section !== "body") return;
-        const tone = t.rows[h.row.index]?.[h.column.index]?.c;
+        const tone = rows[h.row.index]?.[h.column.index]?.c;
         if (tone) {
           h.cell.styles.textColor = TONE[tone];
           h.cell.styles.fontStyle = "bold";
         }
       },
     });
-    if (!t.rows.length) {
+    if (!rows.length) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fy = (doc as any).lastAutoTable.finalY;
       doc.setFont("helvetica", "italic").setFontSize(9).text("No entries.", 30, fy + 12);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable.finalY + 10;
-    if (y > doc.internal.pageSize.getHeight() - 80 && ti < tables.length - 1) {
+    if (y > doc.internal.pageSize.getHeight() - 80 && ti < list.length - 1) {
       doc.addPage();
       y = 30;
     }
@@ -278,8 +305,17 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
 
 export function downloadCsv(tables: Table[], filename: string) {
   const esc = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, "; ")}"`;
-  const out = tables
-    .map((t) => [esc(t.title), t.head.map(esc).join(","), ...t.rows.map((r) => r.map((c) => esc(c.t)).join(","))].join("\n"))
+  const list = Array.isArray(tables) ? tables : [];
+  const out = list
+    .map((t) => {
+      const head = Array.isArray(t.head) ? t.head : [];
+      const rows = Array.isArray(t.rows) ? t.rows : [];
+      return [
+        esc(t.title),
+        head.map(esc).join(","),
+        ...rows.map((r) => (Array.isArray(r) ? r : []).map((c) => esc(c.t)).join(",")),
+      ].join("\n");
+    })
     .join("\n\n");
   const blob = new Blob(["\ufeff" + out], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
@@ -290,11 +326,13 @@ export function downloadCsv(tables: Table[], filename: string) {
 }
 
 /** Inclusive YYYY-MM-DD range (local calendar days). */
-export function datesInRange(from: string, to: string): string[] {
-  if (!from || !to || from > to) return [];
+export function datesInRange(from: unknown, to: unknown): string[] {
+  const f = from == null ? "" : typeof from === "string" ? from : String(from);
+  const t = to == null ? "" : typeof to === "string" ? to : String(to);
+  if (!f || !t || f > t) return [];
   const out: string[] = [];
-  const cur = new Date(+from.slice(0, 4), +from.slice(5, 7) - 1, +from.slice(8, 10));
-  const end = new Date(+to.slice(0, 4), +to.slice(5, 7) - 1, +to.slice(8, 10));
+  const cur = new Date(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10));
+  const end = new Date(+t.slice(0, 4), +t.slice(5, 7) - 1, +t.slice(8, 10));
   while (cur <= end) {
     const y = cur.getFullYear();
     const m = String(cur.getMonth() + 1).padStart(2, "0");
@@ -322,15 +360,17 @@ export type PayrollRow = {
  */
 export function payrollSummary(data: Data, from: string, to: string): PayrollRow[] {
   const days = datesInRange(from, to);
-  return data.employees.map((e) => {
-    const dept = data.depts.find((d) => d.id === e.deptId);
+  const records =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records) ? data.records : {};
+  return rosterEmployees(data).map((e) => {
+    const dept = rosterDepts(data).find((d) => d.id === e.deptId);
     let regularMin = 0;
     let overtimeMin = 0;
     let additionalMin = 0;
     let daysPresent = 0;
     let daysAbsent = 0;
     for (const d of days) {
-      const rec = data.records[d]?.[e.id];
+      const rec = records[d]?.[e.id];
       if (!rec) continue;
       if (rec.status === "absent") {
         daysAbsent++;
@@ -372,8 +412,13 @@ const PAYROLL_HEAD = [
   "Total Days Absent",
 ];
 
-export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel = from.slice(0, 7)) {
-  const rows = payrollSummary(data, from, to);
+export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel?: string) {
+  const f = from == null ? "" : typeof from === "string" ? from : String(from);
+  const t = to == null ? "" : typeof to === "string" ? to : String(to);
+  const labelRaw =
+    monthLabel == null ? f : typeof monthLabel === "string" ? monthLabel : String(monthLabel);
+  const label = labelRaw.slice(0, 7);
+  const rows = payrollSummary(data, f, t);
   // CSV cells are string | number (hours already .toFixed strings; day counts are numbers).
   // esc already coerces via String(s) — widen the param for exact typing only (no output change).
   const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
@@ -396,7 +441,7 @@ export function downloadPayrollCsv(data: Data, from: string, to: string, monthLa
   const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `Shaheen_Payroll_Summary_${monthLabel}.csv`;
+  a.download = `Shaheen_Payroll_Summary_${label}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

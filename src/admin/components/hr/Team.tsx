@@ -1,12 +1,25 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { fmtTime, leaveBalance } from "@/admin/lib/calc";
 import { normalizeAssignments } from "@/admin/lib/shift-assignment";
 import { SectionTitle, Toggle, todayStr } from "./common";
 
 export function Team() {
-  const { employees, depts, records, addEmployee, updateEmployee, removeEmployee, moveEmployee } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    addEmployee,
+    updateEmployee,
+    removeEmployee,
+    moveEmployee,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const [name, setName] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
   const [deptId, setDeptId] = useState(depts[0]?.id ?? "");
   const [after, setAfter] = useState(false);
   const [deptEffectiveFrom, setDeptEffectiveFrom] = useState(todayStr());
@@ -21,9 +34,10 @@ export function Team() {
         className="admin-emp-card mb-1 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!name.trim()) return;
+          const nextName = (name.trim() || nameRef.current?.value || "").trim();
+          if (!nextName) return;
           addEmployee({
-            name: name.trim(),
+            name: nextName,
             deptId,
             afterHours: after,
             joinMonth: todayStr().slice(0, 7),
@@ -35,7 +49,14 @@ export function Team() {
       >
         <label>
           <span className="lbl">Name</span>
-          <input className="field" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            ref={nameRef}
+            data-testid="admin-add-employee-name"
+            className="field"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onInput={(e) => setName((e.target as HTMLInputElement).value)}
+          />
         </label>
         <label>
           <span className="lbl">Department</span>
@@ -83,14 +104,17 @@ export function Team() {
                     className="field"
                     value={i + 1}
                     onChange={(ev) => moveEmployee(e.id, +ev.target.value - 1)}
+                    onInput={(ev) => moveEmployee(e.id, +(ev.target as HTMLInputElement).value - 1)}
                   />
                 </label>
                 <label>
                   <span className="lbl">Name</span>
                   <input
                     className="field"
+                    data-testid={`admin-emp-name-${e.id}`}
                     value={e.name}
                     onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { name: (ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <label>
@@ -134,6 +158,7 @@ export function Team() {
                     className="field"
                     value={e.openingLeave}
                     onChange={(ev) => updateEmployee(e.id, { openingLeave: +ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { openingLeave: +(ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <div className="admin-toolbar gap-1">

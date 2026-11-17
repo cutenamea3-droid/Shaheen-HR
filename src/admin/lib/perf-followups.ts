@@ -105,7 +105,10 @@ export function collectPerfFacts(input: {
   if (c.lateLevel === "grace") facts.push({ ...base, kind: "Within grace", detail: `${c.lateMin}m` });
   if (v.earlyOutMin > 0) facts.push({ ...base, kind: "Early out", detail: `${v.earlyOutMin}m` });
   if (c.breakLevel === "over") facts.push({ ...base, kind: "Over break", detail: `${c.overBreak}m` });
-  if (c.missPunch) facts.push({ ...base, kind: "Miss punch", detail: c.missing.join(", ") || "miss" });
+  if (c.missPunch) {
+    const missing = Array.isArray(c.missing) ? c.missing : [];
+    facts.push({ ...base, kind: "Miss punch", detail: missing.join(", ") || "miss" });
+  }
   if (c.overtimeMin > 0) facts.push({ ...base, kind: "OT marked hours", detail: `${(c.overtimeMin / 60).toFixed(2)}h` });
   if (c.extraDay) facts.push({ ...base, kind: "Additional day", detail: `${(c.extraDayMin / 60).toFixed(2)}h` });
 
@@ -120,32 +123,37 @@ export function collectPerfStatements(input: {
   hrStatements?: HrStatement[];
 }): PerfStatementView[] {
   const out: PerfStatementView[] = [];
-  if (input.rec?.note?.trim()) {
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const recNote = asText(input.rec?.note).trim();
+  if (recNote) {
     out.push({
       layer: "statement",
       date: input.date,
       employeeId: input.employeeId,
       source: "attendance_note",
-      text: input.rec.note.trim(),
+      text: recNote,
     });
   }
-  if (input.perf?.note?.trim()) {
+  const perfNote = asText(input.perf?.note).trim();
+  if (perfNote) {
     out.push({
       layer: "statement",
       date: input.date,
       employeeId: input.employeeId,
       source: "performance_note",
-      text: input.perf.note.trim(),
+      text: perfNote,
     });
   }
-  for (const s of input.hrStatements ?? []) {
-    if (s.employeeId === input.employeeId && s.date === input.date && s.text.trim()) {
+  const hrStatements = Array.isArray(input.hrStatements) ? input.hrStatements : [];
+  for (const s of hrStatements) {
+    const text = asText(s.text).trim();
+    if (s.employeeId === input.employeeId && s.date === input.date && text) {
       out.push({
         layer: "statement",
         date: input.date,
         employeeId: input.employeeId,
         source: "hr_statement",
-        text: s.text.trim(),
+        text,
       });
     }
   }
@@ -197,52 +205,82 @@ export const usePerfFollowUps = create<State>()(
       followUps: [],
       hrStatements: [],
       addFollowUp: (input) => {
-        const title = input.title.trim();
+        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+        const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
         if (!input.employeeId) return { error: "Employee required" };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
         const row: PerfFollowUp = {
           id: uid(),
           employeeId: input.employeeId,
-          employeeName: input.employeeName,
+          employeeName: asText(input.employeeName),
           due: input.due,
           title,
           status: "open",
-          linkedDate: input.linkedDate ?? "",
-          note: (input.note ?? "").trim(),
+          linkedDate: asText(input.linkedDate),
+          note: asText(input.note).trim(),
           createdAt: Date.now(),
           completedAt: null,
         };
-        set({ followUps: [row, ...get().followUps] });
+        const prev = Array.isArray(get().followUps) ? get().followUps : [];
+        set({ followUps: [row, ...prev] });
         return row;
       },
       completeFollowUp: (id) =>
-        set((s) => ({
-          followUps: s.followUps.map((f) =>
-            f.id === id ? { ...f, status: "done", completedAt: Date.now() } : f,
-          ),
-        })),
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return {
+            followUps: list.map((f) =>
+              f.id === id ? { ...f, status: "done", completedAt: Date.now() } : f,
+            ),
+          };
+        }),
       reopenFollowUp: (id) =>
-        set((s) => ({
-          followUps: s.followUps.map((f) =>
-            f.id === id ? { ...f, status: "open", completedAt: null } : f,
-          ),
-        })),
-      removeFollowUp: (id) => set((s) => ({ followUps: s.followUps.filter((f) => f.id !== id) })),
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return {
+            followUps: list.map((f) =>
+              f.id === id ? { ...f, status: "open", completedAt: null } : f,
+            ),
+          };
+        }),
+      removeFollowUp: (id) =>
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return { followUps: list.filter((f) => f.id !== id) };
+        }),
       addHrStatement: (employeeId, date, text) => {
-        const t = text.trim();
+        const t = (text == null ? "" : typeof text === "string" ? text : String(text)).trim();
         if (!t) return { error: "Statement text required" };
         if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Employee and date required" };
         const row: HrStatement = { id: uid(), employeeId, date, text: t, createdAt: Date.now() };
-        set({ hrStatements: [row, ...get().hrStatements].slice(0, 500) });
+        const prev = Array.isArray(get().hrStatements) ? get().hrStatements : [];
+        set({ hrStatements: [row, ...prev].slice(0, 500) });
         return row;
       },
       openFollowUps: (date) => {
-        const open = get().followUps.filter((f) => f.status === "open");
+        const open = (Array.isArray(get().followUps) ? get().followUps : []).filter(
+          (f) => f.status === "open",
+        );
         if (!date) return open;
         return open.filter((f) => f.due <= date);
       },
     }),
-    { name: PERF_FOLLOWUPS_STORAGE_KEY },
+    {
+      name: PERF_FOLLOWUPS_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        return {
+          ...current,
+          ...raw,
+          followUps: arr(raw.followUps, current.followUps),
+          hrStatements: arr(raw.hrStatements, current.hrStatements),
+        };
+      },
+    },
   ),
 );

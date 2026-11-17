@@ -11,13 +11,15 @@ import {
   type DriverRateCard,
   type RatePayMethod,
 } from "./rate-card-types";
-import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
+import { asDrugText, newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 
 function scrubRates(rates: Record<string, string>): Record<string, string> {
+  const src = rates && typeof rates === "object" && !Array.isArray(rates) ? rates : {};
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(rates)) {
-    const t = (v ?? "").trim();
+  for (const [k, v] of Object.entries(src)) {
+    const t =
+      v == null ? "" : typeof v === "string" ? v.trim() : String(v).trim();
     if (t) out[k] = t;
   }
   return out;
@@ -88,7 +90,9 @@ export function memorySetRateField(
   const norm = normalizeRateInput(raw);
   if (norm === null) return { ok: false, error: "Enter a number (decimals allowed) or leave blank." };
   const prev = memoryGetRateCard(driverId, actor);
-  const rates = { ...prev.rates };
+  const prevRates =
+    prev.rates && typeof prev.rates === "object" && !Array.isArray(prev.rates) ? prev.rates : {};
+  const rates = { ...prevRates };
   if (norm === "") delete rates[key];
   else rates[key] = norm;
   return { ok: true, card: memoryUpsertRateCard({ ...prev, rates }, actor) };
@@ -128,12 +132,12 @@ export function memoryAddDrugTest(
   const ev: DrugTestEvent = {
     ...input,
     id: crypto.randomUUID?.() ?? `mem_${Math.random().toString(36).slice(2)}`,
-    testingEventId: input.testingEventId?.trim() || newTestingEventId(),
-    specimenId: input.specimenId ?? "",
-    reason: input.reason ?? "",
-    collectionContext: input.collectionContext ?? "",
-    eventDate: input.eventDate ?? "",
-    notes: input.notes ?? "",
+    testingEventId: asDrugText(input.testingEventId).trim() || newTestingEventId(),
+    specimenId: asDrugText(input.specimenId),
+    reason: asDrugText(input.reason),
+    collectionContext: asDrugText(input.collectionContext),
+    eventDate: asDrugText(input.eventDate),
+    notes: asDrugText(input.notes),
     createdAt: Date.now(),
   };
   drugEvents.set(ev.id, ev);
@@ -159,18 +163,20 @@ export function memoryUpdateDrugTest(
 ): DrugTestEvent | null {
   const prev = drugEvents.get(id);
   if (!prev || prev.deletedAt) return null;
+  const nextTid =
+    patch.testingEventId !== undefined ? asDrugText(patch.testingEventId).trim() : "";
   const next: DrugTestEvent = {
     ...prev,
     kind: patch.kind !== undefined ? patch.kind : prev.kind,
-    specimenId: patch.specimenId !== undefined ? patch.specimenId : prev.specimenId,
-    reason: patch.reason !== undefined ? patch.reason : prev.reason,
-    collectionContext: patch.collectionContext !== undefined ? patch.collectionContext : prev.collectionContext,
-    eventDate: patch.eventDate !== undefined ? patch.eventDate : prev.eventDate,
-    notes: patch.notes !== undefined ? patch.notes : prev.notes,
-    testingEventId:
-      patch.testingEventId !== undefined && patch.testingEventId.trim()
-        ? patch.testingEventId.trim()
-        : prev.testingEventId,
+    specimenId: patch.specimenId !== undefined ? asDrugText(patch.specimenId) : prev.specimenId,
+    reason: patch.reason !== undefined ? asDrugText(patch.reason) : prev.reason,
+    collectionContext:
+      patch.collectionContext !== undefined
+        ? asDrugText(patch.collectionContext)
+        : prev.collectionContext,
+    eventDate: patch.eventDate !== undefined ? asDrugText(patch.eventDate) : prev.eventDate,
+    notes: patch.notes !== undefined ? asDrugText(patch.notes) : prev.notes,
+    testingEventId: nextTid || prev.testingEventId,
   };
   drugEvents.set(id, next);
   recordSensitiveAudit({

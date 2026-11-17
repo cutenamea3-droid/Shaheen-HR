@@ -2,9 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, FolderOpen, Trash2, X, Printer } from "lucide-react";
 import { toast } from "sonner";
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SECTIONS, formatDriverStatus, type DriverStatus, type Row } from "@/lib/sections";
+import {
+  SECTIONS,
+  cellsOf,
+  formatDriverStatus,
+  headersOf,
+  rowsOf,
+  type DriverStatus,
+  type Row,
+} from "@/lib/sections";
 import {
   alertsMuteBanner,
   analyzeRow,
@@ -79,10 +94,16 @@ export function DriverCards({
   const navigate = useNavigate();
   const prefs = loadDriverCardsPrefs();
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(() => prefs.statusFilter ?? "active");
-  const [listScope, setListScopeState] = useState<ListScope>(() => initialScope ?? prefs.listScope ?? "company");
+  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(
+    () => prefs.statusFilter ?? "active",
+  );
+  const [listScope, setListScopeState] = useState<ListScope>(
+    () => initialScope ?? prefs.listScope ?? "company",
+  );
   const [exp, setExpState] = useState<ExpFilter>(() => initialExp ?? prefs.exp ?? "all");
-  const [tempNotesOnly, setTempNotesOnlyState] = useState(() => initialTempNotes ?? prefs.tempNotesOnly ?? false);
+  const [tempNotesOnly, setTempNotesOnlyState] = useState(
+    () => initialTempNotes ?? prefs.tempNotesOnly ?? false,
+  );
   const setStatusFilter = (v: StatusFilter) => {
     setStatusFilterState(v);
     saveDriverCardsPrefs({ statusFilter: v });
@@ -98,7 +119,10 @@ export function DriverCards({
   };
   const setTempNotesOnly = (v: boolean) => {
     setTempNotesOnlyState(v);
-    saveDriverCardsPrefs({ tempNotesOnly: v, ...(v ? { statusFilter: "all" as const, exp: "all" as const } : {}) });
+    saveDriverCardsPrefs({
+      tempNotesOnly: v,
+      ...(v ? { statusFilter: "all" as const, exp: "all" as const } : {}),
+    });
     if (v) {
       setStatusFilterState("all");
       setExpState("all");
@@ -119,7 +143,9 @@ export function DriverCards({
     const map = new Map<string, Driver>();
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
-      for (const r of sec.rows) {
+      if (!sec || !Array.isArray(sec.rows)) continue;
+      for (const raw of sec.rows) {
+        const r = { ...raw, cells: cellsOf(raw) };
         let d = map.get(r.driverId);
         if (!d) {
           d = {
@@ -144,9 +170,10 @@ export function DriverCards({
         if (!d.name.trim()) d.name = r.cells[0] ?? "";
         // Issue counts only for ordinary company lists (New/OO have dedicated scopes).
         const muted = rowAlertsMuted(def, r, data) || d.scope !== "company";
-        if (!muted) d.issues += analyzeRow(def, sec.headers, r).issues.length;
+        if (!muted) d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
         const aidx = def.types.indexOf("active");
-        if (aidx >= 0 && !d.statusTarget) d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
+        if (aidx >= 0 && !d.statusTarget)
+          d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
         def.types.forEach((t, i) => {
           if (t === "status") {
             d.total++;
@@ -158,7 +185,11 @@ export function DriverCards({
         if (def.id === "ssccdl") d.cdl = (r.cells[1] ?? "").trim();
       }
     }
-    return [...map.values()].sort((a, b) => a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }));
+    const asName = (v: unknown) =>
+      (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
+    return [...map.values()].sort((a, b) =>
+      asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
+    );
   }, [data]);
 
   const scopeCounts = useMemo(() => {
@@ -168,18 +199,22 @@ export function DriverCards({
   }, [allDrivers]);
 
   const drivers = useMemo(() => {
-    return allDrivers
-      .filter((d) => matchesListScope(data, d.driverId, listScope))
-      // Show all / Active / Leave / Inactive never include New when viewing company or OO.
-      .filter((d) => {
-        if (listScope === "new") return true;
-        if (statusFilter === "all") return true;
-        return d.status === statusFilter;
-      })
-      .filter((d) => matchesExpFilter(data, d.driverId, exp))
-      // Temp notes filter is UI-only — never an issue/alert category.
-      .filter((d) => !tempNotesOnly || countTempNotes(data, d.driverId) > 0)
-      .filter((d) => (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()));
+    return (
+      allDrivers
+        .filter((d) => matchesListScope(data, d.driverId, listScope))
+        // Show all / Active / Leave / Inactive never include New when viewing company or OO.
+        .filter((d) => {
+          if (listScope === "new") return true;
+          if (statusFilter === "all") return true;
+          return d.status === statusFilter;
+        })
+        .filter((d) => matchesExpFilter(data, d.driverId, exp))
+        // Temp notes filter is UI-only — never an issue/alert category.
+        .filter((d) => !tempNotesOnly || countTempNotes(data, d.driverId) > 0)
+        .filter((d) =>
+          (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()),
+        )
+    );
   }, [allDrivers, data, q, statusFilter, listScope, exp, tempNotesOnly]);
 
   // Quick Find / deep link: clear filters, open sheet, scroll+flash the row.
@@ -207,7 +242,12 @@ export function DriverCards({
   const th = "px-4 py-3 text-left text-xs font-extrabold tracking-wider uppercase";
 
   return (
-    <div className={cn("flex h-full flex-col overflow-hidden px-3 py-3 sm:p-5", density === "compact" ? "gap-2" : "gap-4")}>
+    <div
+      className={cn(
+        "flex h-full flex-col overflow-hidden px-3 py-3 sm:p-5",
+        density === "compact" ? "gap-2" : "gap-4",
+      )}
+    >
       <div className="tracker-no-print tracker-toolbar">
         <div className="relative max-w-md min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -225,14 +265,21 @@ export function DriverCards({
           </FilterGroup>
           {listScope !== "new" && (
             <FilterGroup label="Employment">
-              <div className="tracker-filter-group" role="group" aria-label="Driver employment filter">
+              <div
+                className="tracker-filter-group"
+                role="group"
+                aria-label="Driver employment filter"
+              >
                 {(["active", "leave", "inactive", "all"] as StatusFilter[]).map((f) => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setStatusFilter(f)}
                     aria-pressed={statusFilter === f}
-                    className={cn("tracker-filter-btn ui-press capitalize", statusFilter === f && "tracker-filter-btn-on")}
+                    className={cn(
+                      "tracker-filter-btn ui-press capitalize",
+                      statusFilter === f && "tracker-filter-btn-on",
+                    )}
                   >
                     {f === "all" ? "Show all" : f}
                   </button>
@@ -268,7 +315,12 @@ export function DriverCards({
         <ExpirationFilter value={exp} onChange={setExp} />
       </div>
       <div className="ui-lift ui-row-hover tracker-table-wrap">
-        <table className={cn("w-full min-w-[640px] border-collapse", density === "compact" && "tracker-table-compact")}>
+        <table
+          className={cn(
+            "w-full min-w-[640px] border-collapse",
+            density === "compact" && "tracker-table-compact",
+          )}
+        >
           <thead className="sticky top-0 z-10 bg-brand text-primary-foreground">
             <tr>
               <th className={th}>Driver</th>
@@ -296,11 +348,21 @@ export function DriverCards({
                   <td className={cn("px-4 py-3", d.issues > 0 && "border-l-4 border-l-danger")}>
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand font-display font-extrabold text-primary-foreground">
-                        {d.name.trim().charAt(0).toUpperCase() || "?"}
+                        {(d.name == null
+                          ? ""
+                          : typeof d.name === "string"
+                            ? d.name
+                            : String(d.name)
+                        )
+                          .trim()
+                          .charAt(0)
+                          .toUpperCase() || "?"}
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <div data-driver-name className="font-extrabold">{d.name.trim() || "—"}</div>
+                          <div data-driver-name className="font-extrabold">
+                            {d.name.trim() || "—"}
+                          </div>
                           <TempNotesBadge driverId={d.driverId} />
                           {d.scope === "owner_operator" && (
                             <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase">
@@ -322,11 +384,33 @@ export function DriverCards({
                     {d.statusTarget && !view ? (
                       <ActiveToggle
                         value={formatDriverStatus(d.status)}
-                        onSave={(v) => setCell(d.statusTarget!.sectionId, d.statusTarget!.rowId, d.statusTarget!.col, v)}
+                        onSave={(v) =>
+                          setCell(
+                            d.statusTarget!.sectionId,
+                            d.statusTarget!.rowId,
+                            d.statusTarget!.col,
+                            v,
+                          )
+                        }
                       />
                     ) : (
-                      <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[d.status])}>
-                        <span className={cn("tracker-status-dot", d.status === "active" ? "bg-ok" : d.status === "leave" ? "bg-warn" : "bg-muted-foreground")} aria-hidden />
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-sm font-bold",
+                          STATUS_BADGE[d.status],
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "tracker-status-dot",
+                            d.status === "active"
+                              ? "bg-ok"
+                              : d.status === "leave"
+                                ? "bg-warn"
+                                : "bg-muted-foreground",
+                          )}
+                          aria-hidden
+                        />
                         {formatDriverStatus(d.status)}
                       </span>
                     )}
@@ -341,7 +425,9 @@ export function DriverCards({
                       const los = lengthOfService(hire);
                       return (
                         <>
-                          <div className="font-semibold">{hire ? formatHireDateDisplay(hire) : "—"}</div>
+                          <div className="font-semibold">
+                            {hire ? formatHireDateDisplay(hire) : "—"}
+                          </div>
                           {los && <div className="text-sm text-muted-foreground">{los.label}</div>}
                         </>
                       );
@@ -349,10 +435,19 @@ export function DriverCards({
                   </td>
                   <td className="w-64 px-4 py-3">
                     <div className="font-bold">{pct}% complete</div>
-                    <div className="tracker-doc-bar mt-1" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Documents complete">
+                    <div
+                      className="tracker-doc-bar mt-1"
+                      role="progressbar"
+                      aria-valuenow={pct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Documents complete"
+                    >
                       <div className="tracker-doc-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className={cn("mt-1 text-sm font-bold", d.issues ? "text-danger" : "text-ok")}>
+                    <div
+                      className={cn("mt-1 text-sm font-bold", d.issues ? "text-danger" : "text-ok")}
+                    >
                       {d.issues ? `${d.issues} action item${d.issues > 1 ? "s" : ""}` : "All clear"}
                     </div>
                   </td>
@@ -369,7 +464,12 @@ export function DriverCards({
                         <button
                           type="button"
                           onClick={() => {
-                            if (confirm(`Delete ${d.name.trim()} from ALL sections? This cannot be undone.`)) deleteDriver(d.driverId);
+                            if (
+                              confirm(
+                                `Delete ${d.name.trim()} from ALL sections? This cannot be undone.`,
+                              )
+                            )
+                              deleteDriver(d.driverId);
                           }}
                           className="rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"
                           aria-label="Delete driver"
@@ -409,7 +509,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
   const statusInfo = useMemo(() => {
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
-      const row = sec?.rows.find((r) => r.driverId === driverId);
+      const row = rowsOf(sec).find((r) => r.driverId === driverId);
       if (!row) continue;
       const col = def.types.indexOf("active");
       if (col < 0) continue;
@@ -430,9 +530,13 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
           <X className="size-5 stroke-[2.5]" aria-hidden />
           <span className="sr-only">Close</span>
         </SheetClose>
-        <div className="text-xs font-extrabold tracking-widest uppercase opacity-90">Driver file</div>
+        <div className="text-xs font-extrabold tracking-widest uppercase opacity-90">
+          Driver file
+        </div>
         <SheetHeader>
-          <SheetTitle className="font-display text-2xl text-primary-foreground">{name.trim()}</SheetTitle>
+          <SheetTitle className="font-display text-2xl text-primary-foreground">
+            {name.trim()}
+          </SheetTitle>
           <SheetDescription className="text-primary-foreground/90">
             All documents in one place. Changes here are the same as editing in each section.
           </SheetDescription>
@@ -456,7 +560,12 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
           <div className="tracker-manage-panel mt-4">
             <div className="tracker-manage-title mb-2">Employment status</div>
             {view ? (
-              <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-sm font-bold", STATUS_BADGE[statusInfo.status])}>
+              <span
+                className={cn(
+                  "inline-flex rounded-full px-2.5 py-0.5 text-sm font-bold",
+                  STATUS_BADGE[statusInfo.status],
+                )}
+              >
                 {formatDriverStatus(statusInfo.status)}
               </span>
             ) : (
@@ -470,7 +579,10 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
         <DriverManageControls driverId={driverId} name={name} />
       </div>
       {mute && (
-        <div className="border-b border-warn/30 bg-warn-soft px-6 py-3 text-sm font-bold text-warn" role="status">
+        <div
+          className="border-b border-warn/30 bg-warn-soft px-6 py-3 text-sm font-bold text-warn"
+          role="status"
+        >
           {mute}
         </div>
       )}
@@ -480,14 +592,18 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
         <DrugTestRegister driverId={driverId} driverName={name} />
         {CARD_SECTIONS.map((def) => {
           const sec = data.sections[def.id];
-          const row = sec.rows.find((r) => r.driverId === driverId);
+          const row = Array.isArray(sec?.rows)
+            ? sec.rows.find((r) => r.driverId === driverId)
+            : undefined;
           return (
             <section key={def.id} className="tracker-profile-section">
               <h3 className="tracker-profile-section-h">{def.title}</h3>
               {row ? (
                 <SectionFields sectionId={def.id} row={row} />
               ) : (
-                <p className="px-4 py-3 text-sm text-muted-foreground italic">Not in this section.</p>
+                <p className="px-4 py-3 text-sm text-muted-foreground italic">
+                  Not in this section.
+                </p>
               )}
             </section>
           );
@@ -499,24 +615,38 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
 
 function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
   const data = useData();
-  const def = SECTIONS.find((s) => s.id === sectionId)!;
-  const headers = data.sections[sectionId].headers;
-  const { cellTone } = analyzeRow(def, headers, row);
+  const def = SECTIONS.find((s) => s.id === sectionId);
+  const sec = data.sections[sectionId];
+  const headers = headersOf(sec);
+  if (!def || !sec) {
+    return (
+      <p className="px-4 py-3 text-sm text-muted-foreground italic">
+        Section unavailable (missing or corrupt cloud data).
+      </p>
+    );
+  }
+  const cells = cellsOf(row);
+  const safeRow = { ...row, cells };
+  const { cellTone } = analyzeRow(def, headers, safeRow);
   return (
     <div className="grid gap-x-4 gap-y-3 p-4 sm:grid-cols-2">
       {def.types.map((t, i) => {
         if (t === "name") return null;
-        const v = row.cells[i] ?? "";
+        const v = cells[i] ?? "";
         const tone = cellTone[i];
         const save = (nv: string) => {
           if (nv !== v) setCell(sectionId, row.id, i, nv);
         };
         const wide = t === "note" || t === "plan" || t === "tempnote";
-        const planSuggestion = t === "plan" ? suggestPlanForCell(sectionId, i, row) : null;
+        const planSuggestion = t === "plan" ? suggestPlanForCell(sectionId, i, safeRow) : null;
         return (
           <div key={i} className={cn(wide && "sm:col-span-2")}>
-            <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">{headers[i]?.trim()}</div>
-            {(t === "text" || t === "state") && <EditableText value={v} onSave={save} boxed tone={tone} />}
+            <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+              {(headers[i] ?? "").trim()}
+            </div>
+            {(t === "text" || t === "state") && (
+              <EditableText value={v} onSave={save} boxed tone={tone} />
+            )}
             {t === "secret" && <EditableText value={v} onSave={save} mask boxed tone={tone} />}
             {(t === "note" || t === "plan" || t === "tempnote") && (
               <div>
@@ -553,9 +683,13 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 onSave={save}
                 tone={tone}
                 appliedStatus={
-                  def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i) >= 0
-                    ? row.cells[
-                        def.types.findIndex((x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i)
+                  def.types.findIndex(
+                    (x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i,
+                  ) >= 0
+                    ? cells[
+                        def.types.findIndex(
+                          (x, idx) => x === "status" && statusExpiryCol(sectionId, idx) === i,
+                        )
                       ]
                     : undefined
                 }
@@ -568,12 +702,14 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 onSave={save}
                 expiryValue={(() => {
                   const exp = statusExpiryCol(sectionId, i);
-                  return exp != null ? row.cells[exp] : undefined;
+                  return exp != null ? cells[exp] : undefined;
                 })()}
               />
             )}
             {t === "active" && <ActiveToggle value={v} onSave={save} />}
-            {t === "score" && <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>}
+            {t === "score" && (
+              <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>
+            )}
           </div>
         );
       })}

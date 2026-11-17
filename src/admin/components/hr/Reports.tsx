@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { monthDays } from "@/admin/lib/calc";
 import {
@@ -35,9 +35,15 @@ export function Reports() {
   const [to, setTo] = useState(days[days.length - 1] ?? `${month}-01`);
   const [empId, setEmpId] = useState("");
   const [reopenReason, setReopenReason] = useState("");
+  const reopenReasonRef = useRef<HTMLInputElement>(null);
   const [closeMsg, setCloseMsg] = useState("");
   const s = useApp();
-  const data = { depts: s.depts, employees: s.employees, records: s.records, perf: s.perf, settings: s.settings };
+  const employees = Array.isArray(s.employees) ? s.employees : [];
+  const depts = Array.isArray(s.depts) ? s.depts : [];
+  const records =
+    s.records && typeof s.records === "object" && !Array.isArray(s.records) ? s.records : {};
+  const perf = s.perf && typeof s.perf === "object" && !Array.isArray(s.perf) ? s.perf : {};
+  const data = { depts, employees, records, perf, settings: s.settings };
   const company = s.settings.company;
   const closeMonth = useMonthClosing((st) => st.closeMonth);
   const reopenMonth = useMonthClosing((st) => st.reopenMonth);
@@ -91,7 +97,8 @@ export function Reports() {
   };
 
   const onReopen = () => {
-    const r = reopenMonth(month, who, reopenReason);
+    const nextReason = (reopenReason.trim() || reopenReasonRef.current?.value || "").trim();
+    const r = reopenMonth(month, who, nextReason);
     if (!r.ok) {
       setCloseMsg(r.error);
       return;
@@ -99,7 +106,7 @@ export function Reports() {
     recordAudit({
       who,
       kind: "month_reopen",
-      detail: `Reopened ${month}: ${reopenReason.trim()}`,
+      detail: `Reopened ${month}: ${nextReason}`,
       month,
     });
     setReopenReason("");
@@ -125,10 +132,13 @@ export function Reports() {
           ) : (
             <>
               <input
+                ref={reopenReasonRef}
+                data-testid="admin-reopen-reason"
                 className="field min-w-[220px] flex-1"
                 placeholder="Reopen reason (required)"
                 value={reopenReason}
                 onChange={(e) => setReopenReason(e.target.value)}
+                onInput={(e) => setReopenReason((e.target as HTMLInputElement).value)}
                 aria-label="Reopen reason"
               />
               <button type="button" className="btn-ghost" onClick={onReopen}>
@@ -161,7 +171,14 @@ export function Reports() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => downloadPayrollCsv(data, from, to, from.slice(0, 7))}
+                onClick={() =>
+                  downloadPayrollCsv(
+                    data,
+                    from,
+                    to,
+                    (from == null ? "" : typeof from === "string" ? from : String(from)).slice(0, 7),
+                  )
+                }
               >
                 Export Payroll CSV
               </button>
@@ -228,7 +245,7 @@ export function Reports() {
                 onChange={(e) => setEmpId(e.target.value)}
               >
                 <option value="">Select employee</option>
-                {s.employees.map((e) => (
+                {employees.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name}
                   </option>

@@ -9,6 +9,8 @@
  */
 import {
   SECTIONS,
+  cellsOf,
+  rowsOf,
   type AppData,
   type ClassHistoryEntry,
   type DriverClass,
@@ -31,8 +33,10 @@ export interface TempNoteSection {
 /** Sections that declare a Temporary Note column. */
 export const TEMPNOTE_SECTIONS = SECTIONS.filter((s) => s.types.includes("tempnote"));
 
-export function parseDriverClass(value?: string | null): DriverClass {
-  const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, "_");
+export function parseDriverClass(value?: unknown): DriverClass {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase().replace(/\s+/g, "_");
   if (k === "owner_operator" || k === "owner-operator" || k === "oo" || k === "owner") return "owner_operator";
   return "company";
 }
@@ -41,8 +45,10 @@ export function formatDriverClass(c: DriverClass): string {
   return c === "owner_operator" ? "Owner Operator" : "Company Driver";
 }
 
-export function parseRosterKind(value?: string | null): RosterKind {
-  const k = (value ?? "").trim().toLowerCase();
+export function parseRosterKind(value?: unknown): RosterKind {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase();
   if (k === "new" || k === "onboarding") return "new";
   return "roster";
 }
@@ -50,7 +56,9 @@ export function parseRosterKind(value?: string | null): RosterKind {
 /** Resolve class from any compliance row for this driverId (missing → company). */
 export function driverClassOf(data: AppData, driverId: string): DriverClass {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (r?.driverClass) return parseDriverClass(r.driverClass);
   }
   return "company";
@@ -59,7 +67,9 @@ export function driverClassOf(data: AppData, driverId: string): DriverClass {
 /** Resolve onboarding kind (missing → roster — never invent "new" for seed drivers). */
 export function rosterKindOf(data: AppData, driverId: string): RosterKind {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (r?.rosterKind) return parseRosterKind(r.rosterKind);
   }
   return "roster";
@@ -123,12 +133,12 @@ export function collectTempNotes(data: AppData, driverId: string): TempNoteSecti
   const out: TempNoteSection[] = [];
   for (const def of TEMPNOTE_SECTIONS) {
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     const row = sec.rows.find((r) => r.driverId === driverId);
     if (!row) continue;
     const idx = def.types.indexOf("tempnote");
     if (idx < 0) continue;
-    const text = (row.cells[idx] ?? "").trim();
+    const text = (cellsOf(row)[idx] ?? "").trim();
     if (!text) continue;
     out.push({ sectionId: def.id, sectionTitle: def.title, short: def.short, text });
   }
@@ -144,7 +154,7 @@ export function mapDriverRows(data: AppData, driverId: string, patch: (row: Row,
   const sections = { ...data.sections };
   for (const def of SECTIONS) {
     const sec = sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     let touched = false;
     const rows = sec.rows.map((r) => {
       if (r.driverId !== driverId) return r;
@@ -166,7 +176,7 @@ export function applyDriverClass(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: ClassHistoryEntry = { at, from: prev, to: next };
-    const classHistory = [...(r.classHistory ?? []), entry];
+    const classHistory = [...(Array.isArray(r.classHistory) ? r.classHistory : []), entry];
     return { ...r, driverClass: next, classHistory };
   });
 }
@@ -181,7 +191,7 @@ export function applyRosterKind(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: RosterHistoryEntry = { at, from: prev, to: next };
-    const rosterHistory = [...(r.rosterHistory ?? []), entry];
+    const rosterHistory = [...(Array.isArray(r.rosterHistory) ? r.rosterHistory : []), entry];
     return { ...r, rosterKind: next, rosterHistory };
   });
 }
@@ -191,8 +201,8 @@ export function applyRosterKind(
 /** Class history for a driver (from any row that has it). */
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
-    if (r?.classHistory?.length) return r.classHistory;
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
+    if (Array.isArray(r?.classHistory) && r!.classHistory.length) return r!.classHistory;
   }
   return [];
 }

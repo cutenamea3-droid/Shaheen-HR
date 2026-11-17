@@ -8,10 +8,11 @@ import { listSensitiveAudit } from "@/lib/driver-hr/sensitive-audit";
 import {
   buildComplianceHistory,
   complianceHistoryEmptyMessage,
+  historyAtIso,
   historySourceLabel,
   type ComplianceHistoryEvent,
 } from "@/lib/compliance-history";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 
 export function ComplianceHistoryPanel() {
   const data = useData();
@@ -27,12 +28,13 @@ export function ComplianceHistoryPanel() {
     void listPortalActivity()
       .then((items) => {
         if (!active) return;
-        setPortal(items);
+        setPortal(Array.isArray(items) ? items : []);
         setPortalNote("");
       })
       .catch(() => {
         if (!active) return;
-        setPortal(listLocalActivity(500));
+        const local = listLocalActivity(500);
+        setPortal(Array.isArray(local) ? local : []);
         setPortalNote("Cloud activity unavailable — showing local activity cache only.");
       });
     return () => {
@@ -43,14 +45,15 @@ export function ComplianceHistoryPanel() {
   const drivers = useMemo(() => {
     const map = new Map<string, string>();
     for (const def of SECTIONS) {
-      for (const r of data.sections[def.id]?.rows ?? []) {
-        const n = (r.cells[0] ?? "").trim();
+      for (const r of rowsOf(data.sections[def.id])) {
+        const n = (cellsOf(r)[0] ?? "").trim();
         if (n && !map.has(r.driverId)) map.set(r.driverId, n);
       }
     }
+    const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      .sort((a, b) => asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }));
   }, [data]);
 
   const events = useMemo(() => {
@@ -64,13 +67,14 @@ export function ComplianceHistoryPanel() {
   }, [data, portal, driverId]);
 
   const filtered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const qq = asText(q).trim().toLowerCase();
     if (!qq) return events;
     return events.filter(
       (e) =>
-        e.title.toLowerCase().includes(qq) ||
-        e.detail.toLowerCase().includes(qq) ||
-        (e.actor ?? "").toLowerCase().includes(qq) ||
+        asText(e.title).toLowerCase().includes(qq) ||
+        asText(e.detail).toLowerCase().includes(qq) ||
+        asText(e.actor).toLowerCase().includes(qq) ||
         historySourceLabel(e.source).toLowerCase().includes(qq),
     );
   }, [events, q]);
@@ -145,7 +149,7 @@ function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
           <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-extrabold">
             {historySourceLabel(event.source)}
           </span>
-          <time className="text-xs font-semibold text-muted-foreground" dateTime={new Date(event.at).toISOString()}>
+          <time className="text-xs font-semibold text-muted-foreground" dateTime={historyAtIso(event.at)}>
             {event.atLabel}
           </time>
         </div>

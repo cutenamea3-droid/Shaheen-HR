@@ -19,7 +19,7 @@ export function isDocAwaiting(status: DispatchLoad["bol_status"] | DispatchLoad[
 }
 
 export function awaitingBolLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       l.status !== "cancelled" &&
       l.status !== "draft" &&
@@ -28,7 +28,7 @@ export function awaitingBolLoads(loads: DispatchLoad[]): DispatchLoad[] {
 }
 
 export function awaitingPodLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       (l.status === "delivered" || l.status === "at_delivery" || l.status === "closed") &&
       isDocAwaiting(l.pod_status),
@@ -36,21 +36,27 @@ export function awaitingPodLoads(loads: DispatchLoad[]): DispatchLoad[] {
 }
 
 /** Open desk follow-ups due by `now` (inclusive). Manual reminders only — not notifications. */
+const asTs = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function dueFollowUps(
   followUps: DispatchFollowUp[],
   now = Date.now(),
 ): DispatchFollowUp[] {
-  return followUps
-    .filter((f) => f.status === "open" && Date.parse(f.due_at) <= now)
-    .sort((a, b) => a.due_at.localeCompare(b.due_at));
+  return (Array.isArray(followUps) ? followUps : [])
+    .filter((f) => f.status === "open" && Date.parse(asTs(f.due_at)) <= now)
+    .sort((a, b) => asTs(a.due_at).localeCompare(asTs(b.due_at)));
 }
 
 export function openFollowUps(followUps: DispatchFollowUp[]): DispatchFollowUp[] {
-  return followUps.filter((f) => f.status === "open").sort((a, b) => a.due_at.localeCompare(b.due_at));
+  return (Array.isArray(followUps) ? followUps : [])
+    .filter((f) => f.status === "open")
+    .sort((a, b) => asTs(a.due_at).localeCompare(asTs(b.due_at)));
 }
 
 export function openEscalations(issues: DispatchIssue[]): DispatchIssue[] {
-  return issues.filter((i) => i.status === "open" || i.status === "escalated");
+  return (Array.isArray(issues) ? issues : []).filter(
+    (i) => i.status === "open" || i.status === "escalated",
+  );
 }
 
 export function issuesMissingSeniorInformed(issues: DispatchIssue[]): DispatchIssue[] {
@@ -79,10 +85,12 @@ export function buildEquipmentBoard(
   drivers: RosterDriver[],
   loads: DispatchLoad[],
 ): EquipmentBoardRow[] {
-  return drivers
+  const roster = Array.isArray(drivers) ? drivers : [];
+  const deskLoads = Array.isArray(loads) ? loads : [];
+  return roster
     .filter((d) => d.active)
     .map((driver) => {
-      const activeLoads = loads.filter(
+      const activeLoads = deskLoads.filter(
         (l) =>
           l.assigned_driver_id === driver.id &&
           (ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered"),
@@ -90,7 +98,11 @@ export function buildEquipmentBoard(
       const equipmentLabels = [
         ...new Set(
           activeLoads
-            .map((l) => (l.equipment ?? "").trim())
+            .map((l) => {
+              const eq = l.equipment;
+              if (eq == null) return "";
+              return (typeof eq === "string" ? eq : String(eq)).trim();
+            })
             .filter(Boolean),
         ),
       ];
@@ -101,22 +113,30 @@ export function buildEquipmentBoard(
         activeLoads,
       };
     })
-    .sort((a, b) => a.driver.display_name.localeCompare(b.driver.display_name));
+    .sort((a, b) =>
+      asTs(a.driver.display_name).localeCompare(asTs(b.driver.display_name)),
+    );
 }
 
 export function canCancelLoad(status: DispatchLoad["status"]): boolean {
   return status !== "closed" && status !== "cancelled";
 }
 
-export function validateCancel(reason: string): string | null {
-  const trimmed = reason.trim();
+export function validateCancel(reason: unknown): string | null {
+  const trimmed =
+    reason == null ? "" : (typeof reason === "string" ? reason : String(reason)).trim();
   if (!trimmed) return "Cancel requires a manual reason.";
   if (trimmed.length < 3) return "Cancel reason is too short.";
   return null;
 }
 
-export function validateReschedule(note: string, plannedPickup: string | null, plannedDelivery: string | null): string | null {
-  const trimmed = note.trim();
+export function validateReschedule(
+  note: unknown,
+  plannedPickup: string | null,
+  plannedDelivery: string | null,
+): string | null {
+  const trimmed =
+    note == null ? "" : (typeof note === "string" ? note : String(note)).trim();
   if (!trimmed) return "Reschedule requires a manual note (no invented ETAs).";
   if (!plannedPickup && !plannedDelivery) {
     return "Set at least one planned pickup or delivery time when rescheduling.";
@@ -126,13 +146,14 @@ export function validateReschedule(note: string, plannedPickup: string | null, p
 
 /** Re-number stop sequences after reorder/remove. */
 export function renumberStops(stops: LoadStop[]): LoadStop[] {
-  return stops.map((s, i) => ({ ...s, sequence: i + 1 }));
+  return (Array.isArray(stops) ? stops : []).map((s, i) => ({ ...s, sequence: i + 1 }));
 }
 
 export function moveStop(stops: LoadStop[], index: number, direction: -1 | 1): LoadStop[] {
+  const list = Array.isArray(stops) ? stops : [];
   const j = index + direction;
-  if (j < 0 || j >= stops.length) return renumberStops(stops);
-  const next = [...stops];
+  if (j < 0 || j >= list.length) return renumberStops(list);
+  const next = [...list];
   const tmp = next[index];
   next[index] = next[j];
   next[j] = tmp;
@@ -140,8 +161,9 @@ export function moveStop(stops: LoadStop[], index: number, direction: -1 | 1): L
 }
 
 export function removeStop(stops: LoadStop[], index: number): LoadStop[] {
-  if (stops.length <= 1) return renumberStops(stops);
-  return renumberStops(stops.filter((_, i) => i !== index));
+  const list = Array.isArray(stops) ? stops : [];
+  if (list.length <= 1) return renumberStops(list);
+  return renumberStops(list.filter((_, i) => i !== index));
 }
 
 /** Handover watch-item hints from live desk state — never invents docs/ETAs. */
@@ -150,44 +172,47 @@ export function buildHandoverWatchHints(input: {
   issues: DispatchIssue[];
   followUps: DispatchFollowUp[];
 }): string {
-  const buckets = homeActionBuckets(input.loads);
+  const loads = Array.isArray(input.loads) ? input.loads : [];
+  const issues = Array.isArray(input.issues) ? input.issues : [];
+  const followUps = Array.isArray(input.followUps) ? input.followUps : [];
+  const buckets = homeActionBuckets(loads);
   const lines: string[] = [];
   if (buckets.awaitingDocs.length) {
     lines.push(
       `BOL/POD awaiting: ${buckets.awaitingDocs.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const openIss = openEscalations(input.issues);
+  const openIss = openEscalations(issues);
   if (openIss.length) {
     lines.push(
       `Open issues: ${openIss.map((i) => i.title).slice(0, 6).join("; ")}`,
     );
   }
-  const needSenior = issuesMissingSeniorInformed(input.issues);
+  const needSenior = issuesMissingSeniorInformed(issues);
   if (needSenior.length) {
     lines.push(
       `Senior Informed still manual/unchecked: ${needSenior.map((i) => i.title).slice(0, 4).join("; ")}`,
     );
   }
-  const due = dueFollowUps(input.followUps);
+  const due = dueFollowUps(followUps);
   if (due.length) {
     lines.push(
       `Follow-ups due: ${due.map((f) => f.title).slice(0, 6).join("; ")}`,
     );
   }
-  const cancelled = input.loads.filter((l) => l.status === "cancelled").slice(0, 5);
+  const cancelled = loads.filter((l) => l.status === "cancelled").slice(0, 5);
   if (cancelled.length) {
     lines.push(
       `Cancelled (manual reason on file): ${cancelled.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const awaitingClose = input.loads.filter((l) => l.status === "delivered").slice(0, 8);
+  const awaitingClose = loads.filter((l) => l.status === "delivered").slice(0, 8);
   if (awaitingClose.length) {
     lines.push(
       `Awaiting closeout (Delivered ≠ Closed ≠ Paid): ${awaitingClose.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const unpaidClosed = input.loads
+  const unpaidClosed = loads
     .filter((l) => l.status === "closed" && (l.payment_status === "unpaid" || l.payment_status === "partial"))
     .slice(0, 6);
   if (unpaidClosed.length) {

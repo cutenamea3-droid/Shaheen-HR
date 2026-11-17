@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import {
   SYNTHETIC_EMPLOYEES,
@@ -37,8 +37,10 @@ type DirectoryRow = {
 };
 
 export function EmployeeDirectory() {
-  const liveEmployees = useApp((s) => s.employees);
-  const depts = useApp((s) => s.depts);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const deptsRaw = useApp((s) => s.depts);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
   const meta = useEmployeeFinanceMock((s) => s.meta);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const setStatus = useEmployeeFinanceMock((s) => s.setStatus);
@@ -60,6 +62,8 @@ export function EmployeeDirectory() {
   const [showDeactivateId, setShowDeactivateId] = useState<string | null>(null);
   const [bankErr, setBankErr] = useState("");
   const [instQuery, setInstQuery] = useState("");
+  const accountTitleRef = useRef<HTMLInputElement>(null);
+  const accountRefRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     institutionId: "hbl",
     otherLabel: "",
@@ -98,9 +102,11 @@ export function EmployeeDirectory() {
     const st = meta[r.id]?.status ?? "active";
     if (statusFilter !== "all" && st !== statusFilter) return false;
     if (bankFilter !== "all" && bankStatus(r.id) !== bankFilter) return false;
-    if (q.trim()) {
-      const hay = `${r.name} ${r.deptLabel} ${r.id} ${meta[r.id]?.designation ?? ""}`.toLowerCase();
-      if (!hay.includes(q.trim().toLowerCase())) return false;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const needle = asText(q).trim().toLowerCase();
+    if (needle) {
+      const hay = `${asText(r.name)} ${asText(r.deptLabel)} ${asText(r.id)} ${asText(meta[r.id]?.designation)}`.toLowerCase();
+      if (!hay.includes(needle)) return false;
     }
     return true;
   });
@@ -265,8 +271,10 @@ export function EmployeeDirectory() {
                   <span className="lbl">Designation (optional)</span>
                   <input
                     className="field"
+                    data-testid="admin-designation"
                     value={meta[selected.id]?.designation ?? ""}
                     onChange={(e) => setDesignation(selected.id, e.target.value)}
+                    onInput={(e) => setDesignation(selected.id, (e.target as HTMLInputElement).value)}
                     placeholder="e.g. Accounts Lead"
                   />
                 </label>
@@ -312,9 +320,13 @@ export function EmployeeDirectory() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     setBankErr("");
+                    const nextTitle = (form.accountTitle.trim() || accountTitleRef.current?.value || "").trim();
+                    const nextRef = (form.accountRef.trim() || accountRefRef.current?.value || "").trim();
                     const res = addBankingChange({
                       employeeId: selected.id,
                       ...form,
+                      accountTitle: nextTitle,
+                      accountRef: nextRef,
                     });
                     if (!res.ok) setBankErr(res.error ?? "Failed");
                     else {
@@ -324,7 +336,13 @@ export function EmployeeDirectory() {
                 >
                   <label>
                     <span className="lbl">Search institution</span>
-                    <input className="field" value={instQuery} onChange={(e) => setInstQuery(e.target.value)} placeholder="HBL, Meezan, JazzCash…" />
+                    <input
+                      className="field"
+                      value={instQuery}
+                      onChange={(e) => setInstQuery(e.target.value)}
+                      onInput={(e) => setInstQuery((e.target as HTMLInputElement).value)}
+                      placeholder="HBL, Meezan, JazzCash…"
+                    />
                   </label>
                   <label>
                     <span className="lbl">Institution</span>
@@ -345,7 +363,15 @@ export function EmployeeDirectory() {
                   {form.institutionId === PK_INSTITUTION_OTHER_ID && (
                     <label>
                       <span className="lbl">Other label</span>
-                      <input className="field" value={form.otherLabel} onChange={(e) => setForm((f) => ({ ...f, otherLabel: e.target.value }))} />
+                      <input
+                        className="field"
+                        data-testid="admin-bank-other-label"
+                        value={form.otherLabel}
+                        onChange={(e) => setForm((f) => ({ ...f, otherLabel: e.target.value }))}
+                        onInput={(e) =>
+                          setForm((f) => ({ ...f, otherLabel: (e.target as HTMLInputElement).value }))
+                        }
+                      />
                     </label>
                   )}
                   <label className="inline-flex items-center gap-2 text-sm">
@@ -359,11 +385,25 @@ export function EmployeeDirectory() {
                   </label>
                   <label>
                     <span className="lbl">Account title</span>
-                    <input className="field" value={form.accountTitle} onChange={(e) => setForm((f) => ({ ...f, accountTitle: e.target.value }))} />
+                    <input
+                      ref={accountTitleRef}
+                      data-testid="admin-bank-account-title"
+                      className="field"
+                      value={form.accountTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, accountTitle: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, accountTitle: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   <label>
                     <span className="lbl">{form.isIban ? "IBAN" : "Wallet / account ref"}</span>
-                    <input className="field font-mono" value={form.accountRef} onChange={(e) => setForm((f) => ({ ...f, accountRef: e.target.value }))} />
+                    <input
+                      ref={accountRefRef}
+                      data-testid="admin-bank-account-ref"
+                      className="field font-mono"
+                      value={form.accountRef}
+                      onChange={(e) => setForm((f) => ({ ...f, accountRef: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, accountRef: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   <label>
                     <span className="lbl">Effective from</span>
@@ -371,7 +411,13 @@ export function EmployeeDirectory() {
                   </label>
                   <label>
                     <span className="lbl">Note</span>
-                    <input className="field" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+                    <input
+                      className="field"
+                      data-testid="admin-bank-note"
+                      value={form.note}
+                      onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                      onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
+                    />
                   </label>
                   {bankErr && (
                     <p className="text-sm text-destructive" role="alert">

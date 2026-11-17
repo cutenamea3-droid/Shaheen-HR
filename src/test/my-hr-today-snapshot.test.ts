@@ -22,10 +22,13 @@ describe("MyHrToday stable zustand snapshots (React #185)", () => {
     expect(src).toMatch(/followUps\.filter/);
   });
 
-  it("root Error Go home uses probed homePath (not hardcoded /)", () => {
+  it("root Error and 404 Go home use probed homePath (not hardcoded /)", () => {
     const root = readFileSync(resolve(process.cwd(), "src/routes/__root.tsx"), "utf8");
     expect(root).toMatch(/useHomePathAfterProbe/);
-    expect(root).toMatch(/href=\{homePath\}/);
+    expect(root).toMatch(/function NotFoundComponent/);
+    // Both Error + NotFound must use probed home (Admin-/Dispatch-only safe).
+    expect(root.match(/href=\{homePath\}/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(root).not.toMatch(/NotFoundComponent[\s\S]*?<Link[\s\S]*?to="\/"/);
   });
 
   it("Admin module error home returns to /admin", () => {

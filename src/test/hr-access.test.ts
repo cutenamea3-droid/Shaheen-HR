@@ -27,4 +27,11 @@ describe("Admin-HR access resolution", () => {
       ]),
     ).toBe("standard");
   });
+
+  it("coerces non-string email / team before trim", () => {
+    expect(resolveAdminHrRoleFromEmail(null as unknown as string)).toBe("standard");
+    expect(() =>
+      resolveAdminHrRoleFromEmail("ops@example.com", null as unknown as []),
+    ).not.toThrow();
+  });
 });

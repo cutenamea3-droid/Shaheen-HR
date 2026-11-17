@@ -91,4 +91,14 @@ describe("compliance history timeline", () => {
     const events = buildComplianceHistory(data, { driverId: "lonely", portalActivity: [] });
     expect(events).toEqual([]);
   });
+
+  test("corrupt portalActivity / sensitiveAudit shapes do not throw", () => {
+    const data = buildSeed();
+    expect(() =>
+      buildComplianceHistory(data, {
+        portalActivity: { bad: true } as never,
+        sensitiveAudit: "nope" as never,
+      }),
+    ).not.toThrow();
+  });
 });

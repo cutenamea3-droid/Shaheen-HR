@@ -38,9 +38,38 @@ export function AppSwitcher() {
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
+  const [authEpoch, setAuthEpoch] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    let unsub = () => {};
+    void import("@/integrations/supabase/client")
+      .then(({ supabase, isSupabaseConfigured }) => {
+        if (!alive || !isSupabaseConfigured()) return;
+        const { data } = supabase.auth.onAuthStateChange(() => {
+          if (alive) setAuthEpoch((n) => n + 1);
+        });
+        unsub = () => data.subscription.unsubscribe();
+      })
+      .catch(() => {});
+    const bump = () => {
+      if (alive) setAuthEpoch((n) => n + 1);
+    };
+    window.addEventListener("shaheen-lock", bump);
+    window.addEventListener("shaheen-portal-ready", bump);
+    return () => {
+      alive = false;
+      unsub();
+      window.removeEventListener("shaheen-lock", bump);
+      window.removeEventListener("shaheen-portal-ready", bump);
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    // Drop ready while re-probing so stale Dispatch-only grants cannot hide
+    // Compliance/Admin LoginGate links during navigation / session changes.
+    setReady(false);
     void probeModuleGrants().then((g) => {
       if (!alive) return;
       setGrants(g);
@@ -49,7 +78,7 @@ export function AppSwitcher() {
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [pathname, authEpoch]);
 
   const hasAnySeat = Boolean(
     grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
@@ -150,7 +179,10 @@ export function AppSwitcher() {
           Management Portal
         </span>
       </div>
-      <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
+      <nav
+        aria-label="System switcher"
+        className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4"
+      >
         {show("compliance") && (
           <NavLink to="/" label="Driver Compliance" title="Driver Compliance" current={isDriver}>
             <FileCheck2 className="h-4 w-4 shrink-0" />
@@ -158,13 +190,23 @@ export function AppSwitcher() {
           </NavLink>
         )}
         {show("admin-hr") && (
-          <NavLink to="/admin" label="Admin & Attendance" title="Admin & Attendance" current={isAdmin}>
+          <NavLink
+            to="/admin"
+            label="Admin & Attendance"
+            title="Admin & Attendance"
+            current={isAdmin}
+          >
             <UsersRound className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Admin &amp; Attendance</span>
           </NavLink>
         )}
         {show("dispatch") && (
-          <NavLink to="/dispatch" label="Dispatch Operations" title="Dispatch Operations" current={isDispatch}>
+          <NavLink
+            to="/dispatch"
+            label="Dispatch Operations"
+            title="Dispatch Operations"
+            current={isDispatch}
+          >
             <Truck className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Dispatch</span>
           </NavLink>

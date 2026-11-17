@@ -50,7 +50,10 @@ export function QuickFind() {
     if (!open) setPicked(null);
   }, [open]);
 
-  const drivers = useMemo(() => buildFinderDrivers(data), [data]);
+  const drivers = useMemo(() => {
+    const list = buildFinderDrivers(data);
+    return Array.isArray(list) ? list : [];
+  }, [data]);
 
   function close() {
     setPicked(null);
@@ -143,7 +146,9 @@ export function QuickFind() {
                     className="items-start gap-3 py-2.5 aria-selected:bg-secondary data-[selected=true]:bg-secondary"
                   >
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-sm font-extrabold text-primary-foreground">
-                      {d.name.charAt(0).toUpperCase() || "?"}
+                      {(d.name == null ? "" : typeof d.name === "string" ? d.name : String(d.name))
+                        .charAt(0)
+                        .toUpperCase() || "?"}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[15px] font-bold text-foreground">{d.name || "—"}</div>
@@ -187,7 +192,14 @@ export function QuickFind() {
           <>
             <div className="flex items-center gap-3 border-b px-4 py-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand font-display text-base font-extrabold text-primary-foreground">
-                {picked.name.charAt(0).toUpperCase() || "?"}
+                {(picked.name == null
+                  ? ""
+                  : typeof picked.name === "string"
+                    ? picked.name
+                    : String(picked.name)
+                )
+                  .charAt(0)
+                  .toUpperCase() || "?"}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-extrabold">{picked.name || "—"}</div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES } from "@/admin/lib/employee-finance-mock";
@@ -35,12 +35,17 @@ const emptyForm = (): ExpenseUpsertInput => ({
 });
 
 export function ExpensesManagement() {
-  const liveEmployees = useApp((s) => s.employees);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const company = useApp((s) => s.settings.company);
-  const categories = useExpensesStore((s) => s.categories);
-  const expenses = useExpensesStore((s) => s.expenses);
-  const templates = useExpensesStore((s) => s.templates);
-  const budgets = useExpensesStore((s) => s.budgets);
+  const categoriesRaw = useExpensesStore((s) => s.categories);
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
+  const expensesRaw = useExpensesStore((s) => s.expenses);
+  const expenses = Array.isArray(expensesRaw) ? expensesRaw : [];
+  const templatesRaw = useExpensesStore((s) => s.templates);
+  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
+  const budgetsRaw = useExpensesStore((s) => s.budgets);
+  const budgets = Array.isArray(budgetsRaw) ? budgetsRaw : [];
   const upsertExpense = useExpensesStore((s) => s.upsertExpense);
   const softDeleteExpense = useExpensesStore((s) => s.softDeleteExpense);
   const restoreExpense = useExpensesStore((s) => s.restoreExpense);
@@ -59,6 +64,8 @@ export function ExpensesManagement() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [q, setQ] = useState("");
   const [form, setForm] = useState<ExpenseUpsertInput>(emptyForm);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(true);
   const [msg, setMsg] = useState("");
@@ -94,9 +101,11 @@ export function ExpensesManagement() {
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (scopeFilter !== "all" && e.scope !== scopeFilter) return false;
       if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
-      if (q.trim()) {
-        const hay = `${e.title} ${e.note} ${e.employeeIds.map((id) => nameById.get(id) ?? "").join(" ")}`.toLowerCase();
-        if (!hay.includes(q.trim().toLowerCase())) return false;
+      const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      const needle = asText(q).trim().toLowerCase();
+      if (needle) {
+        const hay = `${asText(e.title)} ${asText(e.note)} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => asText(nameById.get(id))).join(" ")}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
       }
       return true;
     });
@@ -104,14 +113,21 @@ export function ExpensesManagement() {
 
   const monthActive = expenses.filter((e) => !e.deletedAt && e.expenseDate.startsWith(month));
   const summary = summarizeExpenses(monthActive);
-  const chartMax = Math.max(1, ...Object.values(summary.byCategory));
+  const byCategory =
+    summary.byCategory && typeof summary.byCategory === "object" && !Array.isArray(summary.byCategory)
+      ? summary.byCategory
+      : {};
+  const chartMax = Math.max(1, ...Object.values(byCategory));
 
   const save = (andAnother: boolean) => {
     setErr("");
     setMsg("");
+    const nextTitle = (form.title.trim() || titleRef.current?.value || "").trim();
+    const amountRaw = form.amountPkr || Number(amountRef.current?.value || 0);
     const input: ExpenseUpsertInput = {
       ...form,
-      amountPkr: Number(form.amountPkr),
+      title: nextTitle,
+      amountPkr: Number(amountRaw),
       employeeIds: form.scope === "all" ? [] : empPick,
     };
     const res = upsertExpense(input, editId ? { id: editId } : undefined);
@@ -150,13 +166,13 @@ export function ExpensesManagement() {
       amountPkr: e.amountPkr,
       expenseDate: e.expenseDate,
       scope: e.scope,
-      employeeIds: e.employeeIds,
+      employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds : [],
       status: e.status,
       note: e.note,
       templateId: e.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...e.employeeIds]);
+    setEmpPick([...(Array.isArray(e.employeeIds) ? e.employeeIds : [])]);
     setFormOpen(true);
     setErr("");
     setMsg("");
@@ -172,13 +188,13 @@ export function ExpensesManagement() {
       amountPkr: draft.amountPkr,
       expenseDate: draft.expenseDate,
       scope: draft.scope,
-      employeeIds: draft.employeeIds,
+      employeeIds: Array.isArray(draft.employeeIds) ? draft.employeeIds : [],
       status: "draft",
       note: draft.note,
       templateId: draft.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...draft.employeeIds]);
+    setEmpPick([...(Array.isArray(draft.employeeIds) ? draft.employeeIds : [])]);
     setEditId(null);
     setFormOpen(true);
     setMsg(`Filled from template “${t.name}” — not auto-created. Review and Save.`);
@@ -273,11 +289,11 @@ export function ExpensesManagement() {
       {/* Optional category chart */}
       <div className="admin-emp-card space-y-2">
         <div className="font-bold">Category spend ({month})</div>
-        {Object.keys(summary.byCategory).length === 0 ? (
+        {Object.keys(byCategory).length === 0 ? (
           <p className="text-sm text-muted-foreground">No expenses this month yet.</p>
         ) : (
           <div className="space-y-1.5">
-            {Object.entries(summary.byCategory)
+            {Object.entries(byCategory)
               .sort((a, b) => b[1] - a[1])
               .map(([catId, amt]) => {
                 const name = activeCats.find((c) => c.id === catId)?.name ?? catId;
@@ -346,7 +362,15 @@ export function ExpensesManagement() {
           </div>
           <label>
             <span className="lbl">Title</span>
-            <input className="field" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+            <input
+              ref={titleRef}
+              data-testid="admin-expense-title"
+              className="field"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, title: (e.target as HTMLInputElement).value }))}
+              required
+            />
           </label>
           <label>
             <span className="lbl">Category</span>
@@ -362,12 +386,15 @@ export function ExpensesManagement() {
           <label>
             <span className="lbl">Amount (PKR whole)</span>
             <input
+              ref={amountRef}
+              data-testid="admin-expense-amount"
               type="number"
               min={1}
               step={1}
               className="field"
               value={form.amountPkr || ""}
               onChange={(e) => setForm((f) => ({ ...f, amountPkr: Number(e.target.value) }))}
+              onInput={(e) => setForm((f) => ({ ...f, amountPkr: Number((e.target as HTMLInputElement).value) }))}
               required
             />
           </label>
@@ -438,7 +465,13 @@ export function ExpensesManagement() {
           )}
           <label className="md:col-span-2 lg:col-span-3">
             <span className="lbl">Note</span>
-            <input className="field" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+            <input
+              className="field"
+              data-testid="admin-expense-note"
+              value={form.note}
+              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
+            />
           </label>
           {err && (
             <p className="md:col-span-2 lg:col-span-3 text-sm text-destructive" role="alert">
@@ -501,7 +534,9 @@ export function ExpensesManagement() {
                   <div className="text-xs font-normal text-muted-foreground">
                     {e.scope === "all"
                       ? "Company total (not split)"
-                      : e.employeeIds.map((id) => nameById.get(id) ?? id).join(", ")}
+                      : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
+                          .map((id) => nameById.get(id) ?? id)
+                          .join(", ")}
                   </div>
                 </td>
                 <td className="p-3">{activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId}</td>
@@ -581,15 +616,25 @@ export function ExpensesManagement() {
             className="admin-toolbar gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const r = addCategory(customCat);
+              const fd = new FormData(e.currentTarget);
+              const name = String(fd.get("admin-custom-category") ?? customCat).trim() || customCat.trim();
+              const r = addCategory(name);
               if (!r.ok) setErr(r.error ?? "Failed");
               else {
                 setCustomCat("");
-                setMsg(`Category “${customCat}” added.`);
+                setMsg(`Category “${name}” added.`);
               }
             }}
           >
-            <input className="field" placeholder="Custom category" value={customCat} onChange={(e) => setCustomCat(e.target.value)} />
+            <input
+              className="field"
+              name="admin-custom-category"
+              data-testid="admin-custom-category"
+              placeholder="Custom category"
+              value={customCat}
+              onChange={(e) => setCustomCat(e.target.value)}
+              onInput={(e) => setCustomCat((e.target as HTMLInputElement).value)}
+            />
             <button type="submit" className="btn-ghost">
               Add
             </button>
@@ -656,15 +701,20 @@ export function ExpensesManagement() {
               min={0}
               step={1}
               className="field w-28"
+              data-testid="admin-budget-limit"
               placeholder="Limit PKR"
               value={budgetLimit}
               onChange={(e) => setBudgetLimit(e.target.value)}
+              onInput={(e) => setBudgetLimit((e.target as HTMLInputElement).value)}
             />
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => {
-                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: Number(budgetLimit), note: "" });
+              onClick={(e) => {
+                const dom =
+                  (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
+                const limit = Number((budgetLimit.trim() || dom || "0"));
+                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: limit, note: "" });
                 setMsg(r.ok ? "Budget saved." : r.error ?? "Failed");
               }}
             >

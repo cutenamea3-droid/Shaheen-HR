@@ -21,8 +21,12 @@ function dayRollup(
   let inactive = 0;
   let missing = 0;
   let review = 0;
-  const day = records[date] ?? {};
-  for (const e of employees) {
+  const roster = Array.isArray(employees) ? employees : [];
+  const deptList = Array.isArray(depts) ? depts : [];
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  const day = days[date] ?? {};
+  for (const e of roster) {
     const rec = day[e.id];
     if (!rec) {
       missing++;
@@ -31,7 +35,7 @@ function dayRollup(
     if (rec.status === "leave") leave++;
     else if (rec.status === "absent") inactive++;
     else active++; // present | half
-    const dept = resolveDeptAsOf(e, depts, date);
+    const dept = resolveDeptAsOf(e, deptList, date);
     const c = calcDay(e, dept, date, rec, settings);
     const needsReview =
       c.missPunch ||
@@ -40,16 +44,27 @@ function dayRollup(
       (c.breakLevel === "over" && !rec.note);
     if (needsReview) review++;
   }
-  return { active, leave, inactive, missing, review, total: employees.length };
+  return { active, leave, inactive, missing, review, total: roster.length };
 }
 
 export function Overview() {
   const [date, setDate] = useState(todayStr());
-  const { employees, depts, records, settings, tasks } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+    tasks: tasksRaw,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const density = useDensity();
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
   const rows = employees.filter((e) => records[date]?.[e.id]).map((e) => calcDay(e, resolveDeptAsOf(e, depts, date), date, records[date]![e.id]!, settings));
-  const month = date.slice(0, 7);
+  const month = (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7);
   let ot = 0, extra = 0;
   employees.forEach((e) =>
     monthDays(month).forEach((d) => {

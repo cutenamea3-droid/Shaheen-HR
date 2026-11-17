@@ -265,8 +265,13 @@ function renderNotes(
   chrome: Parameters<typeof drawPageChrome>[1],
 ): number {
   if (mode === "management") {
+    const noteList = Array.isArray(notes) ? notes : [];
     const byEmp = new Map<string, number>();
-    for (const n of notes) byEmp.set(n.employee, (byEmp.get(n.employee) ?? 0) + 1);
+    const asEmp = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    for (const n of noteList) {
+      const key = asEmp(n.employee);
+      byEmp.set(key, (byEmp.get(key) ?? 0) + 1);
+    }
     const rows = [...byEmp.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([name, count], i) => [String(i + 1), name, String(count), "See Full HR Audit for note text"]);
@@ -274,7 +279,7 @@ function renderNotes(
     doc.setFont("helvetica", "normal").setFontSize(9);
     doc.setTextColor(...PDF_THEME.muted);
     const blurb = doc.splitTextToSize(
-      `${notes.length} note(s) on file across ${byEmp.size} employee(s). Management Summary omits sensitive note text.`,
+      `${noteList.length} note(s) on file across ${byEmp.size} employee(s). Management Summary omits sensitive note text.`,
       doc.internal.pageSize.getWidth() - MARGIN.left - MARGIN.right,
     );
     y = ensureSpace(doc, y, blurb.length * 11 + 8, chrome);
@@ -286,7 +291,8 @@ function renderNotes(
   }
 
   y = sectionTitle(doc, y, "D", "Reasons & Notes (full)", chrome);
-  const rows = notes.map((n, i) => [
+  const noteList = Array.isArray(notes) ? notes : [];
+  const rows = noteList.map((n, i) => [
     String(i + 1),
     n.employee,
     n.date,
@@ -306,7 +312,8 @@ function renderNotes(
 
 function attendanceBody(rows: EmpMonth[]) {
   // Numeric summary only — day lists live in Section C / D (avoids unreadable multi-line cells).
-  return rows.map((e) => [
+  const list = Array.isArray(rows) ? rows : [];
+  return list.map((e) => [
     String(e.index),
     e.employee.name,
     e.deptName,
@@ -360,6 +367,11 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
   );
   y = legend(doc, y, chromeBase);
 
+  const attendanceRows = Array.isArray(model.attendanceRows) ? model.attendanceRows : [];
+  const exceptions = Array.isArray(model.exceptions) ? model.exceptions : [];
+  const notes = Array.isArray(model.notes) ? model.notes : [];
+  const otRows = Array.isArray(model.otRows) ? model.otRows : [];
+
   y = sectionTitle(doc, y, "B", "Attendance Summary", chromeBase);
   y = table(
     doc,
@@ -380,7 +392,7 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       "Absent",
       "Sat miss",
     ],
-    attendanceBody(model.attendanceRows),
+    attendanceBody(attendanceRows),
     {
       widths: {
         0: { cellWidth: 24, halign: "center" },
@@ -402,9 +414,9 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
   y = sectionTitle(doc, y, "C", opts.mode === "management" ? "Exceptions (rollup)" : "Exceptions (detail)", chromeBase);
   if (opts.mode === "management") {
     const byKind = new Map<string, number>();
-    for (const ex of model.exceptions) byKind.set(ex.kind, (byKind.get(ex.kind) ?? 0) + 1);
+    for (const ex of exceptions) byKind.set(ex.kind, (byKind.get(ex.kind) ?? 0) + 1);
     const rows = [...byKind.entries()].map(([kind, count], i) => [String(i + 1), kind, String(count)]);
-    const flagged = model.attendanceRows.filter(
+    const flagged = attendanceRows.filter(
       (e) => e.lateCount || e.overBreakCount || e.missPunchCount || e.absent || e.unpaidLeave || e.satMissCount,
     );
     y = table(doc, y, ["#", "Exception type", "Count"], rows.length ? rows : [], {
@@ -436,7 +448,7 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       doc,
       y,
       ["#", "Employee", "Dept", "Date", "Exception", "Detail"],
-      model.exceptions.map((ex, i) => [String(i + 1), ex.employee, ex.dept, ex.date, ex.kind, ex.detail]),
+      exceptions.map((ex, i) => [String(i + 1), ex.employee, ex.dept, ex.date, ex.kind, ex.detail]),
       {
         widths: {
           0: { cellWidth: 28, halign: "center" },
@@ -448,10 +460,10 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
     );
   }
 
-  y = renderNotes(doc, y, model.notes, opts.mode, chromeBase);
+  y = renderNotes(doc, y, notes, opts.mode, chromeBase);
 
   y = sectionTitle(doc, y, "E", "Performance", chromeBase);
-  const perfRows = model.attendanceRows.map((e) => [
+  const perfRows = attendanceRows.map((e) => [
     String(e.index),
     e.employee.name,
     String(e.ratingCounts.excellent),
@@ -472,7 +484,7 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
   });
 
   if (opts.mode === "audit") {
-    const pnotes = model.notes.filter((n) => n.source === "performance");
+    const pnotes = notes.filter((n) => n.source === "performance");
     y = ensureSpace(doc, y, 18, chromeBase);
     doc.setFont("helvetica", "bold").setFontSize(10);
     doc.setTextColor(...PDF_THEME.charcoal);
@@ -504,16 +516,20 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       doc,
       y,
       ["#", "Employee", "Dept", "Type", "OT days", "OT hours", "Add. days", "Add. hours"],
-      model.otRows.map((r, i) => [
-        String(i + 1),
-        r.employee,
-        r.dept,
-        r.type,
-        String(r.otDays.length),
-        r.otHours,
-        String(r.extraDays.length),
-        r.extraHours,
-      ]),
+      otRows.map((r, i) => {
+        const otDays = Array.isArray(r.otDays) ? r.otDays : [];
+        const extraDays = Array.isArray(r.extraDays) ? r.extraDays : [];
+        return [
+          String(i + 1),
+          r.employee,
+          r.dept,
+          r.type,
+          String(otDays.length),
+          r.otHours,
+          String(extraDays.length),
+          r.extraHours,
+        ];
+      }),
       {
         widths: {
           0: { cellWidth: 28, halign: "center" },
@@ -529,16 +545,20 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       doc,
       y,
       ["#", "Employee", "Dept", "Type", "Over time days", "OT hours", "Additional days", "Add. hours"],
-      model.otRows.map((r, i) => [
-        String(i + 1),
-        r.employee,
-        r.dept,
-        r.type,
-        r.otDays.length ? r.otDays.join("\n") : "—",
-        r.otHours,
-        r.extraDays.length ? r.extraDays.join("\n") : "—",
-        r.extraHours,
-      ]),
+      otRows.map((r, i) => {
+        const otDays = Array.isArray(r.otDays) ? r.otDays : [];
+        const extraDays = Array.isArray(r.extraDays) ? r.extraDays : [];
+        return [
+          String(i + 1),
+          r.employee,
+          r.dept,
+          r.type,
+          otDays.length ? otDays.join("\n") : "—",
+          r.otHours,
+          extraDays.length ? extraDays.join("\n") : "—",
+          r.extraHours,
+        ];
+      }),
       {
         widths: {
           0: { cellWidth: 28, halign: "center" },

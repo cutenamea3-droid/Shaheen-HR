@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { calcDay, prettyDate } from "@/admin/lib/calc";
 import { autoNote, ratingTone } from "@/admin/lib/reports";
@@ -22,11 +22,25 @@ import { useWorkDate } from "@/admin/lib/workdate";
  */
 export function Performance() {
   const { date, setDate } = useWorkDate();
-  const { employees, depts, records, perf, settings, setPerf } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setPerf,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const closed = isDateInClosedMonth(date, isClosedFn);
-  const hrStatements = usePerfFollowUps((s) => s.hrStatements);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const hrStatementsRaw = usePerfFollowUps((s) => s.hrStatements);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const hrStatements = Array.isArray(hrStatementsRaw) ? hrStatementsRaw : [];
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
   const addFollowUp = usePerfFollowUps((s) => s.addFollowUp);
   const completeFollowUp = usePerfFollowUps((s) => s.completeFollowUp);
   const addHrStatement = usePerfFollowUps((s) => s.addHrStatement);
@@ -34,6 +48,7 @@ export function Performance() {
 
   const [fuEmp, setFuEmp] = useState("");
   const [fuTitle, setFuTitle] = useState("");
+  const fuTitleRef = useRef<HTMLInputElement>(null);
   const [fuDue, setFuDue] = useState(date);
   const [stmtText, setStmtText] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
@@ -43,11 +58,12 @@ export function Performance() {
 
   const onAddFollowUp = () => {
     const emp = employees.find((e) => e.id === fuEmp);
+    const nextTitle = (fuTitle.trim() || fuTitleRef.current?.value || "").trim();
     const r = addFollowUp({
       employeeId: fuEmp,
       employeeName: emp?.name ?? "",
       due: fuDue,
-      title: fuTitle,
+      title: nextTitle,
       linkedDate: date,
     });
     if ("error" in r) {
@@ -59,7 +75,7 @@ export function Performance() {
       kind: "perf_followup_add",
       detail: `Follow-up “${r.title}” for ${r.employeeName}`,
       employeeId: r.employeeId,
-      month: date.slice(0, 7),
+      month: (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7),
     });
     setFuTitle("");
     setMsg("Follow-up added.");
@@ -91,7 +107,15 @@ export function Performance() {
               </option>
             ))}
           </select>
-          <input className="field min-w-[180px] flex-1" placeholder="Follow-up title" value={fuTitle} onChange={(e) => setFuTitle(e.target.value)} />
+          <input
+            ref={fuTitleRef}
+            data-testid="admin-followup-title"
+            className="field min-w-[180px] flex-1"
+            placeholder="Follow-up title"
+            value={fuTitle}
+            onChange={(e) => setFuTitle(e.target.value)}
+            onInput={(e) => setFuTitle((e.target as HTMLInputElement).value)}
+          />
           <input type="date" className="field w-auto" value={fuDue} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
           <button type="button" className="btn-primary" onClick={onAddFollowUp}>
             Add follow-up
@@ -109,12 +133,14 @@ export function Performance() {
                 className="btn-ghost"
                 onClick={() => {
                   completeFollowUp(f.id);
+                  const due =
+                    f.due == null ? "" : typeof f.due === "string" ? f.due : String(f.due);
                   recordAudit({
                     who: "HR",
                     kind: "perf_followup_done",
                     detail: `Completed follow-up “${f.title}”`,
                     employeeId: f.employeeId,
-                    month: f.due.slice(0, 7),
+                    month: due.slice(0, 7),
                   });
                 }}
               >
@@ -205,6 +231,7 @@ export function Performance() {
                     disabled={closed}
                     value={stmtText[e.id] ?? ""}
                     onChange={(ev) => setStmtText((m) => ({ ...m, [e.id]: ev.target.value }))}
+                    onInput={(ev) => setStmtText((m) => ({ ...m, [e.id]: (ev.target as HTMLInputElement).value }))}
                   />
                   <button
                     type="button"
@@ -237,6 +264,7 @@ export function Performance() {
                 disabled={closed}
                 value={p.note}
                 onChange={(ev) => setPerf(date, e.id, { note: ev.target.value })}
+                onInput={(ev) => setPerf(date, e.id, { note: (ev.target as HTMLInputElement).value })}
               />
               {auto && !p.note && !closed && (
                 <button className="mt-1 text-xs font-semibold text-primary underline" onClick={() => setPerf(date, e.id, { note: auto })}>

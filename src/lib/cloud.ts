@@ -75,7 +75,11 @@ async function finishPortalLogin(userId: string): Promise<PortalAccount> {
  * with the same email+password (no invented secrets), then continue the session.
  */
 export async function signInPortalAccount(email: string, password: string): Promise<PortalSignInResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = (
+    email == null ? "" : typeof email === "string" ? email : String(email)
+  )
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail || !password) throw new Error("Email and password are required.");
 
   for (const authPassword of authPasswordCandidates(normalizedEmail, password)) {
@@ -191,7 +195,8 @@ export async function listPortalAccounts(): Promise<PortalAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
+  const rows = Array.isArray(data) ? data : [];
+  return rows.filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
 }
 
 export async function createPortalAccount(input: { email: string; displayName: string; password: string }): Promise<void> {
@@ -206,7 +211,7 @@ export async function listPortalActivity() {
     .order("occurred_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
 
 /** Best-effort cloud activity write (trigger also logs tracker_sections upserts). */
@@ -242,17 +247,29 @@ export async function cloudStamp() {
 export async function cloudLoad() {
   const { data: rows, error } = await db.from(T).select("id, data, updated_at");
   if (error) throw new Error(error.message);
-  const list = (rows as unknown as { id: string; data: unknown; updated_at: string }[]) ?? [];
+  const list = Array.isArray(rows)
+    ? (rows as { id: string; data: unknown; updated_at: string }[])
+    : [];
   const stamp = list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
   return { sections: Object.fromEntries(list.map((r) => [r.id, JSON.stringify(r.data)])) as Record<string, string>, stamp };
 }
 
 export async function cloudSave({ data }: { data: { sections: Record<string, string> } }) {
   const now = new Date().toISOString();
-  const rows = Object.entries(data.sections).map(([id, json]) => ({ id, data: JSON.parse(json), updated_at: now }));
+  const sections =
+    data?.sections && typeof data.sections === "object" && !Array.isArray(data.sections)
+      ? data.sections
+      : {};
+  const rows = Object.entries(sections).flatMap(([id, json]) => {
+    try {
+      return [{ id, data: JSON.parse(json), updated_at: now }];
+    } catch {
+      return [];
+    }
+  });
   if (!rows.length) return { stamp: "" };
   const { data: out, error } = await db.from(T).upsert(rows as never).select("updated_at");
   if (error) throw new Error(error.message);
-  const list = (out as unknown as { updated_at: string }[]) ?? [];
+  const list = Array.isArray(out) ? (out as { updated_at: string }[]) : [];
   return { stamp: list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "") };
 }

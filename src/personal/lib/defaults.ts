@@ -112,7 +112,7 @@ export function defaultSettings(): PersonalSettings {
 /** Merge older localStorage blobs without wiping progress / timetable. */
 export function migrateSettings(raw: Partial<PersonalSettings> | undefined): PersonalSettings {
   const base = defaultSettings();
-  if (!raw) return base;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
   const weekday =
     typeof raw.weekdayMinutes === "number"
       ? raw.weekdayMinutes
@@ -155,17 +155,42 @@ export function defaultDiscipline(): DisciplineCheck[] {
   ];
 }
 
+function asDayList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((d) => (d == null ? "" : typeof d === "string" ? d : String(d)))
+    .filter(Boolean);
+}
+
 /** Merge legacy discipline lists without wiping doneDates. */
 export function migrateDiscipline(raw: DisciplineCheck[] | undefined): DisciplineCheck[] {
   const base = defaultDiscipline();
-  if (!raw?.length) return base;
-  const byId = new Map(raw.map((d) => [d.id, d]));
-  return base.map((d) => {
-    const prev = byId.get(d.id);
-    return prev ? { ...d, doneDates: prev.doneDates ?? [] } : d;
-  }).concat(
-    raw.filter((d) => !base.some((b) => b.id === d.id)),
+  const src = Array.isArray(raw) ? raw : [];
+  if (!src.length) return base;
+  const byId = new Map(
+    src.map((d) => {
+      const id = d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id);
+      return [id, d] as const;
+    }),
   );
+  return base
+    .map((d) => {
+      const prev = byId.get(d.id);
+      const doneDates = asDayList(prev?.doneDates);
+      return prev ? { ...d, doneDates } : d;
+    })
+    .concat(
+      src
+        .filter((d) => {
+          const id = d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id);
+          return id && !base.some((b) => b.id === id);
+        })
+        .map((d) => ({
+          id: d?.id == null ? "" : typeof d.id === "string" ? d.id : String(d.id),
+          label: d?.label == null ? "" : typeof d.label === "string" ? d.label : String(d.label),
+          doneDates: asDayList(d.doneDates),
+        })),
+    );
 }
 
 export const PERSONAL_STORAGE_KEY = "hr-personal-v1";

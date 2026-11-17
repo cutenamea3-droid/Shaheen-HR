@@ -27,10 +27,12 @@ function presetToActivity(id: string): FocusActivityKind {
 }
 
 export function Focus() {
-  const courses = usePersonal((s) => s.courses);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
   const settings = usePersonal((s) => s.settings);
   const addSession = usePersonal((s) => s.addSession);
-  const sessions = usePersonal((s) => s.sessions);
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
 
   const [courseId, setCourseId] = useState<string>(courses[0]?.id ?? "cs101");
@@ -39,6 +41,9 @@ export function Focus() {
   const [presetId, setPresetId] = useState(VU_TIMER_PRESETS[0]?.id ?? "lecture");
   const [activityKind, setActivityKind] = useState<FocusActivityKind>("lecture");
   const [lessonLabel, setLessonLabel] = useState("");
+  const lessonLabelRef = useRef<HTMLInputElement>(null);
+  const readLessonLabel = () =>
+    (lessonLabel.trim() || lessonLabelRef.current?.value || "").trim();
   const [phase, setPhase] = useState<Phase>("idle");
   const [left, setLeft] = useState(settings.pomodoroFocus * 60);
   const [running, setRunning] = useState(false);
@@ -78,9 +83,9 @@ export function Focus() {
               endedAt: ended,
               minutes,
               mode,
-              label: lessonLabel.trim() || ACTIVITY_LABELS[activityKind],
+              label: readLessonLabel() || ACTIVITY_LABELS[activityKind],
               activityKind,
-              ...(lessonLabel.trim() ? { lessonLabel: lessonLabel.trim() } : {}),
+              ...(readLessonLabel() ? { lessonLabel: readLessonLabel() } : {}),
             });
             focusAccum.current = 0;
             startedAt.current = null;
@@ -140,9 +145,9 @@ export function Focus() {
           endedAt: end,
           minutes,
           mode,
-          label: lessonLabel.trim() || `${ACTIVITY_LABELS[activityKind]} (manual stop)`,
+          label: readLessonLabel() || `${ACTIVITY_LABELS[activityKind]} (manual stop)`,
           activityKind,
-          ...(lessonLabel.trim() ? { lessonLabel: lessonLabel.trim() } : {}),
+          ...(readLessonLabel() ? { lessonLabel: readLessonLabel() } : {}),
         });
         setShowRecall(activityKind !== "break");
       }
@@ -282,9 +287,12 @@ export function Focus() {
             </Field>
             <Field label="Lesson / topic (optional)">
               <input
+                ref={lessonLabelRef}
                 className="hp-field"
+                data-testid="personal-focus-lesson"
                 value={lessonLabel}
                 onChange={(e) => setLessonLabel(e.target.value)}
+                onInput={(e) => setLessonLabel((e.target as HTMLInputElement).value)}
                 placeholder="e.g. CS101 Lec 05 · owner label only"
               />
             </Field>

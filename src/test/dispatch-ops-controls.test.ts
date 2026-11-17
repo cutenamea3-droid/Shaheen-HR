@@ -49,11 +49,14 @@ describe("Batch 8 ops controls", () => {
   it("requires manual cancel reason and reschedule note", () => {
     expect(validateCancel("")).toMatch(/reason/i);
     expect(validateCancel("Shipper cancelled")).toBeNull();
+    expect(() => validateCancel(null as unknown as string)).not.toThrow();
+    expect(validateCancel(null as unknown as string)).toMatch(/reason/i);
     expect(canCancelLoad("in_transit")).toBe(true);
     expect(canCancelLoad("closed")).toBe(false);
     expect(validateReschedule("", "2026-11-13T12:00:00.000Z", null)).toMatch(/note/i);
     expect(validateReschedule("Moved pickup window", null, null)).toMatch(/planned/i);
     expect(validateReschedule("Moved pickup window", "2026-11-13T12:00:00.000Z", null)).toBeNull();
+    expect(() => validateReschedule(12 as unknown as string, "2026-11-13T12:00:00.000Z", null)).not.toThrow();
   });
 
   it("reorders and removes multi-stops with renumbered sequences", () => {

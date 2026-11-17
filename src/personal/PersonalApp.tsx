@@ -23,6 +23,8 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
   const [needsSetup, setNeedsSetup] = useState(() =>
     typeof window === "undefined" ? false : personalNeedsSetup(),
   );
+  /** Secure bootstrap only — never default ON (Prod showed Confirm on every login). */
+  const [wantSecureSignup, setWantSecureSignup] = useState(false);
   const loginRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
   const pass2Ref = useRef<HTMLInputElement>(null);
@@ -31,8 +33,19 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
     setNeedsSetup(personalNeedsSetup());
   }, []);
 
-  const showConfirm =
-    mode === "local" ? needsSetup : needsSetup && isPersonalSignupAllowed();
+  const showConfirm = mode === "local" ? needsSetup : wantSecureSignup && isPersonalSignupAllowed();
+
+  function enterSecureSignIn() {
+    setWantSecureSignup(false);
+    setErr("");
+    if (pass2Ref.current) pass2Ref.current.value = "";
+  }
+
+  function enterSecureSignup() {
+    if (!isPersonalSignupAllowed()) return;
+    setWantSecureSignup(true);
+    setErr("");
+  }
 
   return (
     <div className="hp-login-split grid min-h-[calc(100vh-44px)] lg:grid-cols-[1.05fr_0.95fr]">
@@ -50,7 +63,9 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-[#8B5CF6] text-[10px] font-bold text-white">
               HP
             </span>
-            <span className="hp-title text-sm font-bold tracking-tight text-[#F8FAFC]">HR Personal</span>
+            <span className="hp-title text-sm font-bold tracking-tight text-[#F8FAFC]">
+              HR Personal
+            </span>
           </div>
         </div>
         <div className="relative z-10 max-w-md py-16 lg:py-24">
@@ -66,89 +81,118 @@ function LoginGate({ onAuthed }: { onAuthed: () => void }) {
         <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
           <ThemeToggle />
         </div>
-        <form
-          className="hp-login-card w-full max-w-[360px] space-y-4 rounded-md p-5 sm:p-6"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (busy) return;
-            setBusy(true);
-            setErr("");
-            const fd = new FormData(e.currentTarget);
-            const login = String(fd.get("login") ?? loginRef.current?.value ?? "");
-            const password = String(fd.get("password") ?? passRef.current?.value ?? "");
-            const password2 = String(fd.get("password2") ?? pass2Ref.current?.value ?? "");
-            try {
-              const result = await personalSignIn(
-                login,
-                password,
-                showConfirm ? password2 : undefined,
-              );
-              if (!result.ok) throw new Error(result.message);
-              onAuthed();
-            } catch {
-              setErr("Invalid credentials.");
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-[var(--hp-violet)]">
-              <Lock className="h-4 w-4 shrink-0" />
-              <span className="text-[13px] font-bold tracking-wide">Sign in</span>
+        <div className="hp-login-card w-full max-w-[360px] space-y-4 rounded-md p-5 sm:p-6">
+          <form
+            key={showConfirm ? "personal-signup" : "personal-signin"}
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (busy) return;
+              setBusy(true);
+              setErr("");
+              const fd = new FormData(e.currentTarget);
+              const login = String(fd.get("login") ?? loginRef.current?.value ?? "");
+              const password = String(fd.get("password") ?? passRef.current?.value ?? "");
+              const password2 = String(fd.get("password2") ?? pass2Ref.current?.value ?? "");
+              try {
+                const result = await personalSignIn(
+                  login,
+                  password,
+                  showConfirm ? password2 : undefined,
+                );
+                if (!result.ok) throw new Error(result.message);
+                onAuthed();
+              } catch {
+                setErr("Invalid credentials.");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[var(--hp-violet)]">
+                <Lock className="h-4 w-4 shrink-0" />
+                <span className="text-[13px] font-bold tracking-wide">
+                  {showConfirm ? "Create account" : "Sign in"}
+                </span>
+              </div>
+              <p className="hp-login-muted text-[12px] leading-relaxed">
+                {showConfirm
+                  ? "Choose a password to create your Personal account"
+                  : "Sign in to continue"}
+              </p>
             </div>
-            <p className="hp-login-muted text-[12px] leading-relaxed">Sign in to continue</p>
-          </div>
-          <label className="block space-y-1.5">
-            <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
-              Username or email
-            </span>
-            <input
-              ref={loginRef}
-              className="hp-login-input"
-              name="login"
-              type="text"
-              autoComplete="username"
-              required
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
-              Password
-            </span>
-            <input
-              ref={passRef}
-              className="hp-login-input"
-              name="password"
-              type="password"
-              autoComplete={showConfirm ? "new-password" : "current-password"}
-              required
-            />
-          </label>
-          {showConfirm ? (
             <label className="block space-y-1.5">
               <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
-                Confirm password
+                Username or email
               </span>
               <input
-                ref={pass2Ref}
+                ref={loginRef}
                 className="hp-login-input"
-                name="password2"
-                type="password"
-                autoComplete="new-password"
+                name="login"
+                type="text"
+                autoComplete="username"
+                data-testid="personal-login"
                 required
               />
             </label>
+            <label className="block space-y-1.5">
+              <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
+                Password
+              </span>
+              <input
+                ref={passRef}
+                className="hp-login-input"
+                name="password"
+                type="password"
+                autoComplete={showConfirm ? "new-password" : "current-password"}
+                data-testid="personal-password"
+                required
+              />
+            </label>
+            {showConfirm ? (
+              <label className="block space-y-1.5" data-testid="personal-confirm-password">
+                <span className="hp-login-muted text-[10px] font-semibold uppercase tracking-[0.14em]">
+                  Confirm password
+                </span>
+                <input
+                  ref={pass2Ref}
+                  className="hp-login-input"
+                  name="password2"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                />
+              </label>
+            ) : null}
+            {err ? <p className="text-[12px] font-medium text-red-600">{err}</p> : null}
+            <button
+              type="submit"
+              disabled={busy}
+              data-testid="personal-sign-in"
+              className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--hp-violet)] px-4 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-55"
+            >
+              {busy ? "…" : showConfirm ? "Create account" : "Sign In"}
+            </button>
+          </form>
+          {mode === "secure" && isPersonalSignupAllowed() ? (
+            <button
+              type="button"
+              data-testid="personal-auth-mode-toggle"
+              className="w-full text-center text-[12px] font-medium text-[var(--hp-muted)] underline-offset-2 hover:underline"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (wantSecureSignup) enterSecureSignIn();
+                else enterSecureSignup();
+              }}
+            >
+              {wantSecureSignup
+                ? "Already have an account? Sign in"
+                : "Need an account? Create one"}
+            </button>
           ) : null}
-          {err ? <p className="text-[12px] font-medium text-red-600">{err}</p> : null}
-          <button
-            type="submit"
-            disabled={busy}
-            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-[var(--hp-violet)] px-4 text-[13px] font-bold text-white transition hover:brightness-110 disabled:opacity-55"
-          >
-            {busy ? "…" : "Sign In"}
-          </button>
-        </form>
+        </div>
       </section>
     </div>
   );
@@ -194,9 +238,9 @@ export function PersonalApp() {
         >
           <PersonalWorkspace
             onLock={async () => {
-              await personalSignOut();
-              usePersonal.setState({ authed: false });
               setAuthed(false);
+              usePersonal.setState({ authed: false });
+              await personalSignOut();
             }}
           />
         </Suspense>

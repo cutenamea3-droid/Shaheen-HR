@@ -21,6 +21,33 @@ export function ModuleRedirector() {
   const navigate = useNavigate();
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
+  /** Bumps when Driver Auth signs in/out so seats refresh without a path change. */
+  const [authEpoch, setAuthEpoch] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    let unsub = () => {};
+    void import("@/integrations/supabase/client")
+      .then(({ supabase, isSupabaseConfigured }) => {
+        if (!alive || !isSupabaseConfigured()) return;
+        const { data } = supabase.auth.onAuthStateChange(() => {
+          if (alive) setAuthEpoch((n) => n + 1);
+        });
+        unsub = () => data.subscription.unsubscribe();
+      })
+      .catch(() => {});
+    const bump = () => {
+      if (alive) setAuthEpoch((n) => n + 1);
+    };
+    window.addEventListener("shaheen-lock", bump);
+    window.addEventListener("shaheen-portal-ready", bump);
+    return () => {
+      alive = false;
+      unsub();
+      window.removeEventListener("shaheen-lock", bump);
+      window.removeEventListener("shaheen-portal-ready", bump);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -34,7 +61,7 @@ export function ModuleRedirector() {
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [pathname, authEpoch]);
 
   useEffect(() => {
     if (!ready) return;
@@ -49,13 +76,32 @@ export function ModuleRedirector() {
 
     // Compliance-only denial (Admin-only / Personal-only on Driver URLs).
     // Independent LoginGate modules are never hard-denied here.
-    if (shouldDenyModulePath(grants, pathname)) {
+    if (!shouldDenyModulePath(grants, pathname)) return;
+
+    let alive = true;
+    void (async () => {
+      // LockGate only mounts children after driver_portal_accounts succeeds.
+      // A lagging seat probe must not bounce an authenticated Compliance session
+      // to Access Denied (seen on /drug-tests while /records worked after nav).
+      if (mod === "compliance") {
+        try {
+          const { hasPortalSession } = await import("@/lib/cloud");
+          if (!alive) return;
+          if (await hasPortalSession()) return;
+        } catch {
+          /* fall through to deny */
+        }
+      }
+      if (!alive) return;
       void navigate({
         to: "/access-denied",
         search: { module: mod },
         replace: true,
       });
-    }
+    })();
+    return () => {
+      alive = false;
+    };
   }, [ready, grants, pathname, navigate]);
 
   return null;

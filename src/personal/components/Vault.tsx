@@ -7,10 +7,7 @@ import {
   readPersonalSessionLogin,
 } from "@/personal/lib/auth";
 import { PERSONAL_NAV_KEY } from "@/personal/lib/access";
-import {
-  FORBIDDEN_COMPANY_KEYS,
-  PERSONAL_STORAGE_KEY,
-} from "@/personal/lib/defaults";
+import { FORBIDDEN_COMPANY_KEYS, PERSONAL_STORAGE_KEY } from "@/personal/lib/defaults";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 import { ThemeToggle } from "@/personal/components/ThemeToggle";
 import {
@@ -19,10 +16,7 @@ import {
   parsePersonalBackup,
   PERSONAL_LOCAL_STORAGE_KEYS,
 } from "@/personal/lib/backup";
-import {
-  getPersonalCloudStatus,
-  subscribePersonalCloudStatus,
-} from "@/personal/lib/cloud-sync";
+import { getPersonalCloudStatus, subscribePersonalCloudStatus } from "@/personal/lib/cloud-sync";
 import {
   isPersonalSecureEnabled,
   personalAuthMode,
@@ -50,7 +44,8 @@ function AccessNavControls() {
 export function Vault() {
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
-  const discipline = usePersonal((s) => s.discipline);
+  const disciplineRaw = usePersonal((s) => s.discipline);
+  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
   const vaultNotes = usePersonal((s) => s.vaultNotes);
   const setVaultNotes = usePersonal((s) => s.setVaultNotes);
@@ -58,6 +53,8 @@ export function Vault() {
 
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const pwRef = useRef<HTMLInputElement>(null);
+  const pw2Ref = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState("");
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
   const [cloudStatus, setCloudStatus] = useState(getPersonalCloudStatus);
@@ -85,7 +82,8 @@ export function Vault() {
         />
         <ul className="space-y-2">
           {discipline.map((d) => {
-            const on = d.doneDates.includes(today);
+            const doneDates = Array.isArray(d.doneDates) ? d.doneDates : [];
+            const on = doneDates.includes(today);
             return (
               <li
                 key={d.id}
@@ -94,7 +92,7 @@ export function Vault() {
                 <div>
                   <div className="text-sm font-semibold">{d.label}</div>
                   <div className="text-xs text-[var(--hp-muted)]">
-                    {d.doneDates.length} day(s) logged
+                    {doneDates.length} day(s) logged
                   </div>
                 </div>
                 <Btn variant={on ? "teal" : "ghost"} onClick={() => toggleDiscipline(d.id, today)}>
@@ -118,9 +116,11 @@ export function Vault() {
               type="number"
               min={20}
               max={480}
+              data-testid="personal-weekday-minutes"
               value={settings.weekdayMinutes}
-              onChange={(e) =>
-                setSettings({ weekdayMinutes: Number(e.target.value) || 120 })
+              onChange={(e) => setSettings({ weekdayMinutes: Number(e.target.value) || 120 })}
+              onInput={(e) =>
+                setSettings({ weekdayMinutes: Number((e.target as HTMLInputElement).value) || 120 })
               }
             />
           </Field>
@@ -130,9 +130,11 @@ export function Vault() {
               type="number"
               min={20}
               max={600}
+              data-testid="personal-sunday-minutes"
               value={settings.sundayMinutes}
-              onChange={(e) =>
-                setSettings({ sundayMinutes: Number(e.target.value) || 270 })
+              onChange={(e) => setSettings({ sundayMinutes: Number(e.target.value) || 270 })}
+              onInput={(e) =>
+                setSettings({ sundayMinutes: Number((e.target as HTMLInputElement).value) || 270 })
               }
             />
           </Field>
@@ -143,8 +145,9 @@ export function Vault() {
               min={5}
               max={90}
               value={settings.pomodoroFocus}
-              onChange={(e) =>
-                setSettings({ pomodoroFocus: Number(e.target.value) || 25 })
+              onChange={(e) => setSettings({ pomodoroFocus: Number(e.target.value) || 25 })}
+              onInput={(e) =>
+                setSettings({ pomodoroFocus: Number((e.target as HTMLInputElement).value) || 25 })
               }
             />
           </Field>
@@ -155,8 +158,9 @@ export function Vault() {
               min={1}
               max={30}
               value={settings.pomodoroBreak}
-              onChange={(e) =>
-                setSettings({ pomodoroBreak: Number(e.target.value) || 5 })
+              onChange={(e) => setSettings({ pomodoroBreak: Number(e.target.value) || 5 })}
+              onInput={(e) =>
+                setSettings({ pomodoroBreak: Number((e.target as HTMLInputElement).value) || 5 })
               }
             />
           </Field>
@@ -167,8 +171,9 @@ export function Vault() {
               min={20}
               max={120}
               value={settings.deepFocus}
-              onChange={(e) =>
-                setSettings({ deepFocus: Number(e.target.value) || 50 })
+              onChange={(e) => setSettings({ deepFocus: Number(e.target.value) || 50 })}
+              onInput={(e) =>
+                setSettings({ deepFocus: Number((e.target as HTMLInputElement).value) || 50 })
               }
             />
           </Field>
@@ -179,8 +184,9 @@ export function Vault() {
               min={1}
               max={30}
               value={settings.deepBreak}
-              onChange={(e) =>
-                setSettings({ deepBreak: Number(e.target.value) || 10 })
+              onChange={(e) => setSettings({ deepBreak: Number(e.target.value) || 10 })}
+              onInput={(e) =>
+                setSettings({ deepBreak: Number((e.target as HTMLInputElement).value) || 10 })
               }
             />
           </Field>
@@ -254,8 +260,8 @@ export function Vault() {
                 </>
               ) : (
                 <>
-                  Feature flag off: device-local hash gate + <code>{PERSONAL_STORAGE_KEY}</code> only.
-                  Cross-browser sync is unavailable until Personal project SQL is applied and{" "}
+                  Feature flag off: device-local hash gate + <code>{PERSONAL_STORAGE_KEY}</code>{" "}
+                  only. Cross-browser sync is unavailable until Personal project SQL is applied and{" "}
                   <code>VITE_PERSONAL_AUTH_SECURE=1</code> is set (Preview first).
                 </>
               )}
@@ -264,7 +270,9 @@ export function Vault() {
           <div>
             <div className="font-semibold text-[var(--hp-violet)]">Isolation (hard)</div>
             <ul className="mt-1 list-inside list-disc text-xs text-[var(--hp-muted)]">
-              <li>Personal client uses only <code>VITE_PERSONAL_*</code> — never Driver/Admin URLs</li>
+              <li>
+                Personal client uses only <code>VITE_PERSONAL_*</code> — never Driver/Admin URLs
+              </li>
               <li>
                 Never writes company <code>app_state</code>, <code>tracker_sections</code>, payroll,
                 banking, drug tests, or rate cards
@@ -323,19 +331,25 @@ export function Vault() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label="Password">
             <input
+              ref={pwRef}
+              data-testid="personal-vault-password"
               className="hp-field"
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
+              onInput={(e) => setPw((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
             />
           </Field>
           <Field label="Confirm password">
             <input
+              ref={pw2Ref}
+              data-testid="personal-vault-password2"
               className="hp-field"
               type="password"
               value={pw2}
               onChange={(e) => setPw2(e.target.value)}
+              onInput={(e) => setPw2((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
             />
           </Field>
@@ -343,16 +357,18 @@ export function Vault() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={async () => {
-              if (pw.length < 4 || pw !== pw2) {
+              const nextPw = (pw || pwRef.current?.value || "").trim();
+              const nextPw2 = (pw2 || pw2Ref.current?.value || "").trim();
+              if (nextPw.length < 4 || nextPw !== nextPw2) {
                 setMsg("Invalid credentials.");
                 return;
               }
               if (secure) {
-                const r = await updatePersonalSecurePassword(pw);
+                const r = await updatePersonalSecurePassword(nextPw);
                 setMsg(r.ok ? "Password updated on Personal Auth." : r.message);
               } else {
                 const login = readPersonalSessionLogin() || "owner";
-                await setPersonalCredentials(login, pw);
+                await setPersonalCredentials(login, nextPw);
                 setMsg(hasPersonalCredentials() ? "Password updated locally (hashed)." : "Saved.");
               }
               setPw("");
@@ -364,7 +380,8 @@ export function Vault() {
           <Btn
             variant="danger"
             onClick={() => {
-              void personalSignOut().then(() => setAuthed(false));
+              setAuthed(false);
+              void personalSignOut();
             }}
           >
             Sign out
@@ -388,8 +405,8 @@ export function Vault() {
             Pomodoro · Deep; logged minutes only
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
-            <span className="font-semibold text-[var(--hp-ink)]">Grades · Review</span> — owner Grade
-            Book / CGPA estimator + Weekly Review (never invent marks)
+            <span className="font-semibold text-[var(--hp-ink)]">Grades · Review</span> — owner
+            Grade Book / CGPA estimator + Weekly Review (never invent marks)
           </li>
           <li className="rounded-md border border-dashed border-[var(--hp-border)] px-3 py-2">
             <span className="font-semibold text-[var(--hp-ink)]">Notes · Links</span> — revision /
@@ -399,8 +416,10 @@ export function Vault() {
         <Field label="Private vault scratchpad">
           <textarea
             className="hp-field min-h-[120px] py-2"
+            data-testid="personal-vault-notes"
             value={vaultNotes}
             onChange={(e) => setVaultNotes(e.target.value)}
+            onInput={(e) => setVaultNotes((e.target as HTMLTextAreaElement).value)}
             placeholder="Do not store real passwords here. Semester goals only."
           />
         </Field>

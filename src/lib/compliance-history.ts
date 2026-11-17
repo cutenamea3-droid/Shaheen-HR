@@ -10,7 +10,7 @@
  */
 import { fmtDate } from "./alerts";
 import { classHistoryOf, rosterKindOf, driverClassOf } from "./driver-meta";
-import { SECTIONS, type AppData, type RosterHistoryEntry } from "./sections";
+import { SECTIONS, cellsOf, rowsOf, type AppData, type RosterHistoryEntry } from "./sections";
 import type { LocalActivity } from "./portal-local";
 import type { SensitiveAuditEntry } from "./driver-hr/sensitive-audit";
 
@@ -43,8 +43,10 @@ export type PortalActivityLike = {
 
 function nameOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
-    const n = (r?.cells[0] ?? "").trim();
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
+    const n = (cellsOf(r)[0] ?? "").trim();
     if (n) return n;
   }
   return driverId;
@@ -52,8 +54,8 @@ function nameOf(data: AppData, driverId: string): string {
 
 function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
-    if (r?.rosterHistory?.length) return r.rosterHistory;
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
+    if (Array.isArray(r?.rosterHistory) && r!.rosterHistory.length) return r!.rosterHistory;
   }
   return [];
 }
@@ -61,16 +63,42 @@ function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] 
 function allDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const def of SECTIONS) {
-    for (const r of data.sections[def.id]?.rows ?? []) ids.add(r.driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) ids.add(r.driverId);
   }
   return [...ids];
 }
 
-function labelTime(at: number): string {
+/** Coerce history timestamps — corrupt cloud/local `at` may be non-numeric. */
+function asAtMs(at: unknown): number | null {
+  if (typeof at === "number" && Number.isFinite(at)) return at;
+  if (typeof at === "string" && at.trim()) {
+    const n = Date.parse(at);
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(at);
+  return Number.isFinite(n) ? n : null;
+}
+
+function labelTime(at: unknown): string {
+  const ms = asAtMs(at);
+  if (ms == null) return "—";
   try {
-    return new Date(at).toLocaleString();
+    return new Date(ms).toLocaleString();
   } catch {
-    return String(at);
+    return "—";
+  }
+}
+
+/** Safe ISO for `<time dateTime>` — `Invalid Date#toISOString` throws RangeError. */
+export function historyAtIso(at: unknown): string {
+  const ms = asAtMs(at);
+  if (ms == null) return "";
+  try {
+    return new Date(ms).toISOString();
+  } catch {
+    return "";
   }
 }
 
@@ -94,14 +122,15 @@ export function buildComplianceHistory(
     // addedAt — first seen on any row for this driver
     let addedAt: number | undefined;
     for (const def of SECTIONS) {
-      const r = data.sections[def.id]?.rows.find((x) => x.driverId === driverId);
+      const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
       if (r?.addedAt != null && (addedAt == null || r.addedAt < addedAt)) addedAt = r.addedAt;
     }
-    if (addedAt != null) {
+    const addedMs = asAtMs(addedAt);
+    if (addedMs != null) {
       events.push({
-        id: `added:${driverId}:${addedAt}`,
-        at: addedAt,
-        atLabel: labelTime(addedAt),
+        id: `added:${driverId}:${addedMs}`,
+        at: addedMs,
+        atLabel: labelTime(addedMs),
         source: "added_at",
         title: "Driver added",
         detail: `${name} was added via Add Driver (wizard timestamp).`,
@@ -112,10 +141,12 @@ export function buildComplianceHistory(
     }
 
     for (const h of classHistoryOf(data, driverId)) {
+      const at = asAtMs(h?.at);
+      if (at == null) continue;
       events.push({
-        id: `class:${driverId}:${h.at}:${h.from}:${h.to}`,
-        at: h.at,
-        atLabel: labelTime(h.at),
+        id: `class:${driverId}:${at}:${h.from}:${h.to}`,
+        at,
+        atLabel: labelTime(at),
         source: "class_history",
         title: "Driver class changed",
         detail: `${name}: ${h.from} → ${h.to} (current: ${driverClassOf(data, driverId)}).`,
@@ -126,10 +157,12 @@ export function buildComplianceHistory(
     }
 
     for (const h of rosterHistoryOf(data, driverId)) {
+      const at = asAtMs(h?.at);
+      if (at == null) continue;
       events.push({
-        id: `roster:${driverId}:${h.at}:${h.from}:${h.to}`,
-        at: h.at,
-        atLabel: labelTime(h.at),
+        id: `roster:${driverId}:${at}:${h.from}:${h.to}`,
+        at,
+        atLabel: labelTime(at),
         source: "roster_history",
         title: "Roster kind changed",
         detail: `${name}: ${h.from} → ${h.to} (current: ${rosterKindOf(data, driverId)}).`,
@@ -141,14 +174,21 @@ export function buildComplianceHistory(
   }
 
   // Portal activity — section-level; attribute to a driver only when action text contains the name.
-  for (const entry of opts?.portalActivity ?? []) {
+  const portalActivity = Array.isArray(opts?.portalActivity) ? opts!.portalActivity : [];
+  for (const entry of portalActivity) {
     const at = Date.parse(entry.occurred_at);
     if (!Number.isFinite(at)) continue;
 
     let matchedDriver: string | null = null;
+    const actionText =
+      entry.action == null
+        ? ""
+        : typeof entry.action === "string"
+          ? entry.action
+          : String(entry.action);
     for (const driverId of allDriverIds(data)) {
       const n = nameOf(data, driverId).toLowerCase();
-      if (n && n !== "(unnamed)" && entry.action.toLowerCase().includes(n)) {
+      if (n && n !== "(unnamed)" && actionText.toLowerCase().includes(n)) {
         matchedDriver = driverId;
         break;
       }
@@ -172,12 +212,15 @@ export function buildComplianceHistory(
     });
   }
 
-  for (const entry of opts?.sensitiveAudit ?? []) {
+  const sensitiveAudit = Array.isArray(opts?.sensitiveAudit) ? opts!.sensitiveAudit : [];
+  for (const entry of sensitiveAudit) {
     if (filterDriver && entry.driverId !== filterDriver) continue;
+    const at = asAtMs(entry?.at);
+    if (at == null) continue;
     events.push({
       id: `sensitive:${entry.id}`,
-      at: entry.at,
-      atLabel: labelTime(entry.at),
+      at,
+      atLabel: labelTime(at),
       source: "sensitive_audit",
       title: `Sensitive: ${entry.action}`,
       detail: entry.detail
@@ -189,7 +232,7 @@ export function buildComplianceHistory(
     });
   }
 
-  events.sort((a, b) => b.at - a.at);
+  events.sort((a, b) => (asAtMs(b.at) ?? 0) - (asAtMs(a.at) ?? 0));
   const limit = opts?.limit ?? 500;
   return events.slice(0, limit);
 }

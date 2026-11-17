@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { PORTAL_EMAIL, updatePortalPassword } from "@/lib/cloud";
 import {
@@ -14,9 +14,13 @@ import { usePortalAccount } from "./LockGate";
 export function AccountSettings() {
   const { account, updateDisplayName } = usePortalAccount();
   const [name, setName] = useState(account.display_name);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [displayMessage, setDisplayMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
+  const currentPasswordRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmPasswordRef = useRef<HTMLInputElement>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordOk, setPasswordOk] = useState(false);
@@ -36,15 +40,16 @@ export function AccountSettings() {
           setBusy(true);
           setDisplayMessage("");
           try {
+            const nextName = (name.trim() || nameRef.current?.value || "").trim();
             try {
-              await updateDisplayName(name);
+              await updateDisplayName(nextName);
             } catch {
               /* cloud profile RPC may be unavailable — keep local */
             }
             ensureLocalOwner(account);
-            upsertLocalAccount({ ...account, display_name: name.trim() });
+            upsertLocalAccount({ ...account, display_name: nextName });
             logLocalActivity({
-              actorName: name.trim() || account.email,
+              actorName: nextName || account.email,
               action: "Updated display name",
               sectionId: "account",
             });
@@ -76,8 +81,11 @@ export function AccountSettings() {
           required
           maxLength={80}
           className="mt-1 h-11 w-full rounded-xl border bg-card px-3"
+          ref={nameRef}
+          data-testid="compliance-display-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
+          onInput={(event) => setName((event.target as HTMLInputElement).value)}
         />
         {displayMessage && (
           <p role="status" className="mt-2 text-sm text-muted-foreground">
@@ -95,21 +103,24 @@ export function AccountSettings() {
           event.preventDefault();
           setPasswordMessage("");
           setPasswordOk(false);
-          if (!currentPassword) return setPasswordMessage("Enter your current password.");
-          if (password.length < 8) return setPasswordMessage("Password must be at least 8 characters.");
-          if (password !== confirmPassword) return setPasswordMessage("Passwords do not match.");
+          const nextCurrent = (currentPassword || currentPasswordRef.current?.value || "").trim();
+          const nextPassword = (password || passwordRef.current?.value || "").trim();
+          const nextConfirm = (confirmPassword || confirmPasswordRef.current?.value || "").trim();
+          if (!nextCurrent) return setPasswordMessage("Enter your current password.");
+          if (nextPassword.length < 8) return setPasswordMessage("Password must be at least 8 characters.");
+          if (nextPassword !== nextConfirm) return setPasswordMessage("Passwords do not match.");
           setBusy(true);
           try {
             ensureLocalOwner(account);
             const localExists = hasLocalPassword(account.user_id);
             if (localExists) {
-              const ok = await verifyLocalPassword(account.user_id, currentPassword);
+              const ok = await verifyLocalPassword(account.user_id, nextCurrent);
               if (!ok) throw new Error("Current password is incorrect.");
             }
             // Prefer Supabase when session supports it
             let cloudOk = false;
             try {
-              await updatePortalPassword(password, account.email.toLowerCase() === PORTAL_EMAIL);
+              await updatePortalPassword(nextPassword, account.email.toLowerCase() === PORTAL_EMAIL);
               cloudOk = true;
             } catch (e) {
               if (!localExists) {
@@ -120,7 +131,7 @@ export function AccountSettings() {
                 throw e instanceof Error ? e : new Error("Could not update the password.");
               }
             }
-            await setLocalPassword(account.user_id, password);
+            await setLocalPassword(account.user_id, nextPassword);
             logLocalActivity({
               actorName: account.display_name || account.email,
               action: cloudOk ? "Changed password (cloud + local)" : "Changed password (local)",
@@ -150,8 +161,11 @@ export function AccountSettings() {
           autoComplete="current-password"
           required
           className="h-11 w-full rounded-xl border bg-card px-3"
+          ref={currentPasswordRef}
+          data-testid="compliance-current-password"
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
+          onInput={(event) => setCurrentPassword((event.target as HTMLInputElement).value)}
         />
         <label className="block text-sm font-bold" htmlFor="new-password">
           New password
@@ -163,8 +177,11 @@ export function AccountSettings() {
           minLength={8}
           required
           className="h-11 w-full rounded-xl border bg-card px-3"
+          ref={passwordRef}
+          data-testid="compliance-new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          onInput={(event) => setPassword((event.target as HTMLInputElement).value)}
         />
         <label className="block text-sm font-bold" htmlFor="confirm-password">
           Confirm new password
@@ -176,8 +193,11 @@ export function AccountSettings() {
           minLength={8}
           required
           className="h-11 w-full rounded-xl border bg-card px-3"
+          ref={confirmPasswordRef}
+          data-testid="compliance-confirm-password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
+          onInput={(event) => setConfirmPassword((event.target as HTMLInputElement).value)}
         />
         {passwordMessage && (
           <p role="status" className={`text-sm font-semibold ${passwordOk ? "text-ok" : "text-danger"}`}>

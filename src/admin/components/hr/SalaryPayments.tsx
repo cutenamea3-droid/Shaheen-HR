@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import {
   SYNTHETIC_EMPLOYEES,
@@ -15,11 +15,14 @@ import { formatPkr, salaryPaymentsCsv, summarizePayments } from "@/admin/lib/sal
 import { SectionTitle, todayStr } from "./common";
 
 export function SalaryPayments() {
-  const liveEmployees = useApp((s) => s.employees);
-  const payments = useEmployeeFinanceMock((s) => s.payments);
-  const banking = useEmployeeFinanceMock((s) => s.banking);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
+  const paymentsRaw = useEmployeeFinanceMock((s) => s.payments);
+  const bankingRaw = useEmployeeFinanceMock((s) => s.banking);
   const meta = useEmployeeFinanceMock((s) => s.meta);
   const paymentEvents = useEmployeeFinanceMock((s) => s.paymentEvents);
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
+  const banking = Array.isArray(bankingRaw) ? bankingRaw : [];
   const upsertPaymentDue = useEmployeeFinanceMock((s) => s.upsertPaymentDue);
   const recordPayment = useEmployeeFinanceMock((s) => s.recordPayment);
   const setPaymentStatus = useEmployeeFinanceMock((s) => s.setPaymentStatus);
@@ -58,9 +61,11 @@ export function SalaryPayments() {
     const ids = [...liveEmployees.map((e) => e.id), ...SYNTHETIC_EMPLOYEES.map((e) => e.id)];
     for (const id of ids) {
       ensureMeta(id);
-      const draft = dueDraft[id];
+      const dom =
+        document.querySelector<HTMLInputElement>(`[data-testid="admin-due-${id}"]`)?.value ?? "";
+      const draft = (dueDraft[id] ?? "").trim() || dom.trim();
       const existing = payments.find((p) => p.employeeId === id && p.month === month);
-      if (draft != null && draft !== "") {
+      if (draft !== "") {
         const n = Number(draft);
         const r = upsertPaymentDue(id, month, n);
         if (!r.ok) {
@@ -160,9 +165,13 @@ export function SalaryPayments() {
                 <input
                   className="field"
                   inputMode="numeric"
+                  data-testid={`admin-due-${e.id}`}
                   value={dueDraft[e.id] ?? ""}
                   placeholder="e.g. 150000"
                   onChange={(ev) => setDueDraft((d) => ({ ...d, [e.id]: ev.target.value }))}
+                  onInput={(ev) =>
+                    setDueDraft((d) => ({ ...d, [e.id]: (ev.target as HTMLInputElement).value }))
+                  }
                 />
               </label>
             </div>
@@ -193,6 +202,8 @@ export function SalaryPayments() {
           <tbody>
             {monthRows.map((p) => {
               const bank = p.bankingAccountId ? bankById.get(p.bankingAccountId) : undefined;
+              const eventsRaw = paymentEvents(p.id);
+              const events = Array.isArray(eventsRaw) ? eventsRaw : [];
               return (
                 <tr key={p.id} className="border-b border-border/70 align-top">
                   <td className="py-3 pr-2">
@@ -231,18 +242,25 @@ export function SalaryPayments() {
                         className="field w-28"
                         inputMode="numeric"
                         placeholder="PKR"
+                        data-testid={`admin-pay-amount-${p.id}`}
+                        data-pay-id={p.id}
                         value={payAmount[p.id] ?? ""}
                         disabled={p.status === "on_hold" || p.status === "paid"}
                         onChange={(e) => setPayAmount((m) => ({ ...m, [p.id]: e.target.value }))}
+                        onInput={(e) =>
+                          setPayAmount((m) => ({ ...m, [p.id]: (e.target as HTMLInputElement).value }))
+                        }
                         aria-label="Partial payment amount"
                       />
                       <button
                         type="button"
                         className="btn-primary px-3"
                         disabled={p.status === "on_hold" || p.status === "paid"}
-                        onClick={() => {
+                        onClick={(e) => {
                           setErr("");
-                          const n = Number(payAmount[p.id] ?? "");
+                          const dom =
+                            (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
+                          const n = Number((payAmount[p.id] ?? "").trim() || dom || "");
                           const r = recordPayment(p.id, n, todayStr());
                           if (!r.ok) setErr(r.error ?? "Failed");
                           else setPayAmount((m) => ({ ...m, [p.id]: "" }));
@@ -256,15 +274,18 @@ export function SalaryPayments() {
                     </div>
                     {historyFor === p.id && (
                       <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                        {paymentEvents(p.id).map((ev) => (
+                        {events.map((ev) => (
                           <li key={ev.id}>
-                            {new Date(ev.createdAt).toISOString().slice(0, 10)} · {ev.eventType}
+                            {Number.isFinite(ev.createdAt)
+                              ? new Date(ev.createdAt).toISOString().slice(0, 10)
+                              : "—"}{" "}
+                            · {ev.eventType}
                             {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
                             {ev.statusAfter ? ` → ${ev.statusAfter}` : ""}
                             {ev.note ? ` · ${ev.note}` : ""}
                           </li>
                         ))}
-                        {paymentEvents(p.id).length === 0 && <li>No events yet.</li>}
+                        {events.length === 0 && <li>No events yet.</li>}
                       </ul>
                     )}
                   </td>

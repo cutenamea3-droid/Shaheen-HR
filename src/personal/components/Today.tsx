@@ -56,12 +56,17 @@ type TimerState = {
 const DONE_KEY = "hr-personal-vu-today-done-v1";
 const MODE_KEY = "hr-personal-vu-today-modes-v1";
 
+function asDoneMap(v: unknown): Record<string, boolean> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, boolean>) : {};
+}
+
 function loadDoneMap(date: string): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(DONE_KEY);
     if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Record<string, boolean>>;
-    return parsed[date] ?? {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return asDoneMap((parsed as Record<string, unknown>)[date]);
   } catch {
     return {};
   }
@@ -70,8 +75,14 @@ function loadDoneMap(date: string): Record<string, boolean> {
 function saveDoneMap(date: string, map: Record<string, boolean>) {
   try {
     const raw = localStorage.getItem(DONE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, boolean>>) : {};
-    parsed[date] = map;
+    let parsed: Record<string, Record<string, boolean>> = {};
+    if (raw) {
+      const j = JSON.parse(raw) as unknown;
+      if (j && typeof j === "object" && !Array.isArray(j)) {
+        parsed = j as Record<string, Record<string, boolean>>;
+      }
+    }
+    parsed[date] = asDoneMap(map);
     localStorage.setItem(DONE_KEY, JSON.stringify(parsed));
   } catch {
     /* ignore */
@@ -79,21 +90,35 @@ function saveDoneMap(date: string, map: Record<string, boolean>) {
 }
 
 function loadModes(): { handoutFirst: boolean; creditTriage: boolean } {
+  const fallback = { handoutFirst: true, creditTriage: false };
   try {
     const raw = localStorage.getItem(MODE_KEY);
-    if (!raw) return { handoutFirst: true, creditTriage: false };
-    return JSON.parse(raw) as { handoutFirst: boolean; creditTriage: boolean };
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
+    const o = parsed as { handoutFirst?: unknown; creditTriage?: unknown };
+    return {
+      handoutFirst: typeof o.handoutFirst === "boolean" ? o.handoutFirst : fallback.handoutFirst,
+      creditTriage: typeof o.creditTriage === "boolean" ? o.creditTriage : fallback.creditTriage,
+    };
   } catch {
-    return { handoutFirst: true, creditTriage: false };
+    return fallback;
   }
 }
 
 export function Today() {
   const settings = usePersonal((s) => s.settings);
-  const courses = usePersonal((s) => s.courses);
-  const sessions = usePersonal((s) => s.sessions);
-  const assessments = usePersonal((s) => s.assessments);
-  const dayPlans = usePersonal((s) => s.dayPlans);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
   const vuSeededAt = usePersonal((s) => s.vuSeededAt);
   const vuPlanAsOf = usePersonal((s) => s.vuPlanAsOf);
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
@@ -103,20 +128,18 @@ export function Today() {
   const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
-  const backlog = usePersonal((s) => s.backlog);
 
   const today = todayKey();
   const sunday = isSundayIso(today);
   const student = VU_STUDY_PLAN.student;
   const [modes, setModes] = useState(loadModes);
-  const rx = useMemo(
-    () =>
-      buildTodayPrescription(VU_STUDY_PLAN, today, {
-        handoutFirst: modes.handoutFirst,
-        creditHourTriage: modes.creditTriage,
-      }),
-    [today, modes.handoutFirst, modes.creditTriage],
-  );
+  const rx = useMemo(() => {
+    const raw = buildTodayPrescription(VU_STUDY_PLAN, today, {
+      handoutFirst: modes.handoutFirst,
+      creditHourTriage: modes.creditTriage,
+    });
+    return { ...raw, blocks: Array.isArray(raw.blocks) ? raw.blocks : [] };
+  }, [today, modes.handoutFirst, modes.creditTriage]);
 
   const [doneMap, setDoneMap] = useState<Record<string, boolean>>(() => loadDoneMap(today));
   const [presetId, setPresetId] = useState("lecture");
@@ -177,7 +200,8 @@ export function Today() {
   const minutes7d = studyMinutesInRange(sessions, Date.now() - 7 * 86400000, Date.now());
   const streak = streakDays(sessions);
   const active14 = consistencyDays(sessions, 14);
-  const doneCount = Object.values(doneMap).filter(Boolean).length;
+  const safeDone = asDoneMap(doneMap);
+  const doneCount = Object.values(safeDone).filter(Boolean).length;
   const progressPct = rx.blocks.length
     ? Math.round((doneCount / rx.blocks.length) * 100)
     : 0;
@@ -190,7 +214,7 @@ export function Today() {
   });
 
   const markDone = (block: TodayBlock, done: boolean) => {
-    const next = { ...doneMap, [block.id]: done };
+    const next = { ...safeDone, [block.id]: done };
     setDoneMap(next);
     saveDoneMap(today, next);
     if (block.todoTitle) {
@@ -203,7 +227,17 @@ export function Today() {
           setAssessmentSubmitted(a.id, done);
         }
       }
-      const b = backlog.find((x) => x.label.includes(block.todoTitle || ""));
+      const needle =
+        block.todoTitle == null
+          ? ""
+          : typeof block.todoTitle === "string"
+            ? block.todoTitle
+            : String(block.todoTitle);
+      const b = backlog.find((x) => {
+        const label =
+          x.label == null ? "" : typeof x.label === "string" ? x.label : String(x.label);
+        return needle ? label.includes(needle) : false;
+      });
       if (b && b.done !== done) toggleBacklog(b.id);
     }
   };
@@ -445,7 +479,7 @@ export function Today() {
 
           <ul className="space-y-2.5">
             {rx.blocks.map((b, i) => {
-              const done = !!doneMap[b.id];
+              const done = !!safeDone[b.id];
               const active = timer.blockId === b.id;
               return (
                 <li

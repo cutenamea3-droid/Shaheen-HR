@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useApp } from "@/admin/lib/store";
 import { getSyncStatus, subscribeSync } from "@/admin/lib/cloud-sync";
 import { prettyDate } from "@/admin/lib/calc";
@@ -40,10 +40,22 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const [date, setDate] = useState(todayStr());
   const [filter, setFilter] = useState<"all" | HrTodayIssueKind>("all");
   const [remTitle, setRemTitle] = useState("");
+  const remTitleRef = useRef<HTMLInputElement>(null);
   const [remDue, setRemDue] = useState(todayStr());
   const [remEmp, setRemEmp] = useState("");
   const [remMsg, setRemMsg] = useState("");
-  const { employees, depts, records, settings, tasks } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+    tasks: tasksRaw,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const currentBanking = useEmployeeFinanceMock((s) => s.currentBanking);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const requestTab = useAdminNav((s) => s.requestTab);
@@ -52,11 +64,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   // Select stable store slices — NEVER call dueOnOrBefore/openFollowUps inside the
   // zustand selector (they allocate a new array every getSnapshot → React #185
   // "Maximum update depth exceeded" after My HR Today first paint).
-  const reminders = useHrReminders((s) => s.reminders);
+  const remindersRaw = useHrReminders((s) => s.reminders);
+  const reminders = Array.isArray(remindersRaw) ? remindersRaw : [];
   const addReminder = useHrReminders((s) => s.add);
   const completeReminder = useHrReminders((s) => s.complete);
   const recordAudit = useHrAuditHistory((s) => s.record);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
 
   useEffect(() => {
     for (const e of employees) ensureMeta(e.id);
@@ -174,10 +188,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
         <p className="text-sm text-muted-foreground">Desk reminders for My HR Today — not push or email.</p>
         <div className="admin-toolbar flex-wrap">
           <input
+            ref={remTitleRef}
+            data-testid="admin-reminder-title"
             className="field min-w-[160px] flex-1"
             placeholder="Reminder title"
             value={remTitle}
             onChange={(e) => setRemTitle(e.target.value)}
+            onInput={(e) => setRemTitle((e.target as HTMLInputElement).value)}
             aria-label="Reminder title"
           />
           <input type="date" className="field w-auto" value={remDue} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
@@ -194,8 +211,9 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             className="btn-primary"
             onClick={() => {
               const emp = employees.find((e) => e.id === remEmp);
+              const nextTitle = (remTitle.trim() || remTitleRef.current?.value || "").trim();
               const r = addReminder({
-                title: remTitle,
+                title: nextTitle,
                 due: remDue,
                 ...(remEmp ? { employeeId: remEmp } : {}),
                 ...(emp?.name ? { employeeName: emp.name } : {}),
@@ -208,7 +226,10 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
                 who: "HR",
                 kind: "reminder_add",
                 detail: `Reminder “${r.title}” due ${r.due}`,
-                month: remDue.slice(0, 7),
+                month: (remDue == null ? "" : typeof remDue === "string" ? remDue : String(remDue)).slice(
+                  0,
+                  7,
+                ),
                 ...(r.employeeId ? { employeeId: r.employeeId } : {}),
               });
               setRemTitle("");
@@ -231,11 +252,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
                 className="btn-ghost"
                 onClick={() => {
                   completeReminder(r.id);
+                  const due =
+                    r.due == null ? "" : typeof r.due === "string" ? r.due : String(r.due);
                   recordAudit({
                     who: "HR",
                     kind: "reminder_done",
                     detail: `Completed reminder “${r.title}”`,
-                    month: r.due.slice(0, 7),
+                    month: due.slice(0, 7),
                     ...(r.employeeId ? { employeeId: r.employeeId } : {}),
                   });
                 }}

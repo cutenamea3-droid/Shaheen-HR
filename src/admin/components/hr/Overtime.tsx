@@ -17,8 +17,19 @@ export function Overtime() {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [dept, setDept] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OtApprovalStatus>("all");
-  const { employees, depts, records, settings } = useApp();
-  const rowsMap = useOtApprovalStore((s) => s.rows);
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const rowsMapRaw = useOtApprovalStore((s) => s.rows);
+  const rowsMap =
+    rowsMapRaw && typeof rowsMapRaw === "object" && !Array.isArray(rowsMapRaw) ? rowsMapRaw : {};
   const ensureCandidate = useOtApprovalStore((s) => s.ensureCandidate);
   const setStatus = useOtApprovalStore((s) => s.setStatus);
 

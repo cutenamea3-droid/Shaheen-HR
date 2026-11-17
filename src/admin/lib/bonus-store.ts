@@ -28,35 +28,41 @@ type BonusState = {
 export const useBonusStore = create<BonusState>()((set, get) => ({
   bonuses: [],
 
-  forMonth: (month) => get().bonuses.filter((b) => b.month === month),
+  forMonth: (month) => {
+    const list = Array.isArray(get().bonuses) ? get().bonuses : [];
+    return list.filter((b) => b.month === month);
+  },
 
   upsertBonus: (employeeId, month, amountPkr, note = "") => {
     try {
       const amount = assertWholePkr(amountPkr);
       if (amount < 0) return { ok: false, error: "Bonus must be non-negative whole PKR" };
-      const existing = get().bonuses.find((b) => b.employeeId === employeeId && b.month === month);
+      const noteText =
+        note == null ? "" : typeof note === "string" ? note.trim() : String(note).trim();
+      const list = Array.isArray(get().bonuses) ? get().bonuses : [];
+      const existing = list.find((b) => b.employeeId === employeeId && b.month === month);
       if (existing) {
-        set((s) => ({
-          bonuses: s.bonuses.map((b) =>
+        set({
+          bonuses: list.map((b) =>
             b.id === existing.id
-              ? { ...b, amountPkr: amount, note: note.trim(), updatedAt: Date.now() }
+              ? { ...b, amountPkr: amount, note: noteText, updatedAt: Date.now() }
               : b,
           ),
-        }));
+        });
       } else {
-        set((s) => ({
+        set({
           bonuses: [
-            ...s.bonuses,
+            ...list,
             {
               id: uid(),
               employeeId,
               month,
               amountPkr: amount,
-              note: note.trim(),
+              note: noteText,
               updatedAt: Date.now(),
             },
           ],
-        }));
+        });
       }
       return { ok: true };
     } catch (e) {
@@ -65,9 +71,12 @@ export const useBonusStore = create<BonusState>()((set, get) => ({
   },
 
   clearBonus: (employeeId, month) =>
-    set((s) => ({
-      bonuses: s.bonuses.filter((b) => !(b.employeeId === employeeId && b.month === month)),
-    })),
+    set((s) => {
+      const list = Array.isArray(s.bonuses) ? s.bonuses : [];
+      return {
+        bonuses: list.filter((b) => !(b.employeeId === employeeId && b.month === month)),
+      };
+    }),
 
   resetBonuses: () => set({ bonuses: [] }),
 }));

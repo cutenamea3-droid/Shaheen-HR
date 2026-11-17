@@ -51,15 +51,31 @@ export const useMonthClosing = create<State>()(
     (set, get) => ({
       months: {},
       closingMeansPaid: false,
-      statusOf: (month) => get().months[month]?.status ?? "open",
-      isClosed: (month) => (get().months[month]?.status ?? "open") === "closed",
+      statusOf: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return months[month]?.status ?? "open";
+      },
+      isClosed: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return (months[month]?.status ?? "open") === "closed";
+      },
       closeMonth: (month, who) => {
         if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
         if (get().isClosed(month)) return { ok: false, error: "Month already closed" };
-        const prev = get().months[month] ?? empty(month);
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[month] ?? empty(month);
         set({
           months: {
-            ...get().months,
+            ...months,
             [month]: {
               ...prev,
               month,
@@ -77,12 +93,16 @@ export const useMonthClosing = create<State>()(
       reopenMonth: (month, who, reason) => {
         if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
         if (!get().isClosed(month)) return { ok: false, error: "Month is not closed" };
-        const trimmed = reason.trim();
+        const trimmed = (reason == null ? "" : typeof reason === "string" ? reason : String(reason)).trim();
         if (!trimmed) return { ok: false, error: "Reopen requires a reason" };
-        const prev = get().months[month] ?? empty(month);
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[month] ?? empty(month);
         set({
           months: {
-            ...get().months,
+            ...months,
             [month]: {
               ...prev,
               status: "open",
@@ -95,20 +115,35 @@ export const useMonthClosing = create<State>()(
         return { ok: true };
       },
     }),
-    { name: MONTH_CLOSING_STORAGE_KEY },
+    {
+      name: MONTH_CLOSING_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const months =
+          raw.months && typeof raw.months === "object" && !Array.isArray(raw.months)
+            ? raw.months
+            : current.months;
+        return { ...current, ...raw, months, closingMeansPaid: false as const };
+      },
+    },
   ),
 );
 
 /** Pure helper for tests / guards. */
-export function monthOfDate(date: string): string {
-  return date.slice(0, 7);
+export function monthOfDate(date: unknown): string {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  return s.slice(0, 7);
 }
 
 /**
  * Whether attendance/performance edits for a calendar date should be blocked.
  * Closing ≠ Paid — this only gates month-period edits, never payment status.
  */
-export function isDateInClosedMonth(date: string, isClosed: (month: string) => boolean): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  return isClosed(monthOfDate(date));
+export function isDateInClosedMonth(date: unknown, isClosed: (month: string) => boolean): boolean {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return isClosed(monthOfDate(s));
 }

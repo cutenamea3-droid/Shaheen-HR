@@ -3,19 +3,21 @@ import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "@/admin/lib/store";
 import { fmtTime, parseTime } from "@/admin/lib/calc";
+import { normalizeTasks } from "@/admin/lib/normalize-tasks";
 import { SectionTitle, TimeInput, Toggle } from "./common";
 
 export function SettingsPanel() {
-  const { depts, upsertDept, removeDept, settings, setSettings } = useApp();
+  const { depts: deptsRaw, upsertDept, removeDept, settings, setSettings } = useApp();
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
   const num = (k: "grace" | "breakMin" | "breakLeeway" | "satTargetHours", label: string) => (
-    <label><span className="lbl">{label}</span><input type="number" min={0} className="field" value={settings[k]} onChange={(e) => setSettings({ [k]: +e.target.value })} /></label>
+    <label><span className="lbl">{label}</span><input type="number" min={0} className="field" value={settings[k]} onChange={(e) => setSettings({ [k]: +e.target.value })} onInput={(e) => setSettings({ [k]: +(e.target as HTMLInputElement).value })} /></label>
   );
   return (
     <div className="space-y-8">
       <section>
         <SectionTitle title="Rules" sub="All times are machine (USA) time. Values feed existing calc — UI layout only here." />
         <div className="admin-emp-card grid gap-3 md:grid-cols-3">
-          <label className="md:col-span-3"><span className="lbl">Company name (on PDFs)</span><input className="field" value={settings.company} onChange={(e) => setSettings({ company: e.target.value })} /></label>
+          <label className="md:col-span-3"><span className="lbl">Company name (on PDFs)</span><input className="field" data-testid="admin-company-name" value={settings.company} onChange={(e) => setSettings({ company: e.target.value })} onInput={(e) => setSettings({ company: (e.target as HTMLInputElement).value })} /></label>
           {num("grace", "Late grace (min)")}
           {num("breakMin", "Break allowed (min)")}
           {num("breakLeeway", "Break leeway (min)")}
@@ -31,7 +33,7 @@ export function SettingsPanel() {
         <div className="space-y-2">
           {depts.map((d) => (
             <div key={d.id} className="admin-emp-card grid gap-3 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
-              <label><span className="lbl">Name</span><input className="field" value={d.name} onChange={(e) => upsertDept({ ...d, name: e.target.value })} /></label>
+              <label><span className="lbl">Name</span><input className="field" data-testid={`admin-dept-name-${d.id}`} value={d.name} onChange={(e) => upsertDept({ ...d, name: e.target.value })} onInput={(e) => upsertDept({ ...d, name: (e.target as HTMLInputElement).value })} /></label>
               <TimeInput label="Shift start" value={d.start} onChange={(v) => v != null && upsertDept({ ...d, start: v })} />
               <TimeInput label="Shift end" value={d.end} onChange={(v) => v != null && upsertDept({ ...d, end: v })} />
               <button type="button" className="btn-danger" onClick={() => confirm(`Delete ${d.name}?`) && removeDept(d.id)}>Delete</button>
@@ -47,6 +49,34 @@ export function SettingsPanel() {
 
 const BACKUP_KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
 
+/** Coerce Attendance backup payload shapes so restore never installs corrupt arrays/maps. */
+export function healAttendanceBackupData(
+  data: Record<string, unknown>,
+  cur: {
+    depts: unknown;
+    employees: unknown;
+    team: unknown;
+    logs: unknown;
+    records: unknown;
+    perf: unknown;
+    settings: unknown;
+  },
+) {
+  const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+  const obj = <T extends object>(v: unknown, fallback: T): T =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+  return {
+    depts: arr(data.depts, arr(cur.depts, [])),
+    employees: arr(data.employees, arr(cur.employees, [])),
+    team: arr(data.team, arr(cur.team, [])),
+    logs: arr(data.logs, arr(cur.logs, [])),
+    tasks: normalizeTasks(data.tasks),
+    records: obj(data.records, obj(cur.records, {})),
+    perf: obj(data.perf, obj(cur.perf, {})),
+    settings: obj(data.settings, obj(cur.settings, {})),
+  };
+}
+
 export function downloadBackup() {
   const s = useApp.getState();
   const data = Object.fromEntries(BACKUP_KEYS.map((k) => [k, s[k]]));
@@ -60,15 +90,23 @@ export function downloadBackup() {
 
 export async function restoreBackup(file: File) {
   try {
-    const parsed = JSON.parse(await file.text());
-    const data = parsed?.app === "hr-attendance" ? parsed.data : null;
+    const parsed = JSON.parse(await file.text()) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      toast.error("That file is not an Attendance backup");
+      return;
+    }
+    const envelope = parsed as { app?: unknown; data?: unknown };
+    const data =
+      envelope.app === "hr-attendance" && envelope.data && typeof envelope.data === "object" && !Array.isArray(envelope.data)
+        ? (envelope.data as Record<string, unknown>)
+        : null;
     if (!data || !Array.isArray(data.employees) || !Array.isArray(data.depts)) {
       toast.error("That file is not an Attendance backup");
       return;
     }
     if (!confirm("Restore this backup? It will REPLACE all current attendance data on this dashboard. Download a backup of the current data first if you need it.")) return;
-    const next = Object.fromEntries(BACKUP_KEYS.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]));
-    useApp.setState(next as never);
+    const cur = useApp.getState();
+    useApp.setState(healAttendanceBackupData(data as Record<string, unknown>, cur) as never);
     toast.success("Backup restored — saving to cloud");
   } catch {
     toast.error("Could not read this file");

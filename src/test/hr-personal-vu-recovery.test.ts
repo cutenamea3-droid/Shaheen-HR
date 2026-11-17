@@ -111,4 +111,10 @@ describe("HR Personal VU import action", () => {
     expect(s.backlog.length).toBeGreaterThan(0);
     expect(s.assessments.some((a) => a.verifyOnVulms)).toBe(true);
   });
+
+  it("importVuStudyPlan tolerates non-string vaultNotes", () => {
+    usePersonal.setState({ vaultNotes: null as unknown as string });
+    expect(() => usePersonal.getState().importVuStudyPlan()).not.toThrow();
+    expect(typeof usePersonal.getState().vaultNotes).toBe("string");
+  });
 });

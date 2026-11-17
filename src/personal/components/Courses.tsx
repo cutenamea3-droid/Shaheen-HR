@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import { usePersonal } from "@/personal/lib/store";
 
@@ -11,7 +11,8 @@ function numOrNull(raw: string): number | null {
 }
 
 export function Courses() {
-  const courses = usePersonal((s) => s.courses);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
   const updateCourse = usePersonal((s) => s.updateCourse);
 
   return (
@@ -72,12 +73,19 @@ function CourseEditor({
   const [totalV, setTotalV] = useState(lecturesTotal == null ? "" : String(lecturesTotal));
   const [doneV, setDoneV] = useState(lecturesDone == null ? "" : String(lecturesDone));
   const [notesV, setNotesV] = useState(notes);
+  const codeRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const totalRef = useRef<HTMLInputElement>(null);
+  const doneRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="rounded bg-[var(--hp-violet)]/20 px-2 py-0.5 text-xs font-bold text-[var(--hp-violet)]">
-          {isTbd ? "Editable TBD" : id.toUpperCase()}
+          {isTbd
+            ? "Editable TBD"
+            : (id == null ? "" : typeof id === "string" ? id : String(id)).toUpperCase()}
         </span>
         {requirementType ? (
           <span
@@ -95,52 +103,72 @@ function CourseEditor({
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Code">
           <input
+            ref={codeRef}
             className="hp-field"
             value={codeV}
             onChange={(e) => setCodeV(e.target.value)}
+            onInput={(e) => setCodeV((e.target as HTMLInputElement).value)}
             disabled={!isTbd && code !== "TBD"}
           />
         </Field>
         <Field label="Title">
-          <input className="hp-field" value={titleV} onChange={(e) => setTitleV(e.target.value)} />
+          <input
+            ref={titleRef}
+            className="hp-field"
+            value={titleV}
+            onChange={(e) => setTitleV(e.target.value)}
+            onInput={(e) => setTitleV((e.target as HTMLInputElement).value)}
+          />
         </Field>
         <Field label="Lectures total (optional)">
           <input
+            ref={totalRef}
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank if unknown"
             value={totalV}
             onChange={(e) => setTotalV(e.target.value)}
+            onInput={(e) => setTotalV((e.target as HTMLInputElement).value)}
           />
         </Field>
         <Field label="Lectures done (optional)">
           <input
+            ref={doneRef}
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank — do not invent"
             value={doneV}
             onChange={(e) => setDoneV(e.target.value)}
+            onInput={(e) => setDoneV((e.target as HTMLInputElement).value)}
           />
         </Field>
       </div>
       <Field label="Private notes">
         <textarea
+          ref={notesRef}
           className="hp-field min-h-[72px] py-2"
           value={notesV}
           onChange={(e) => setNotesV(e.target.value)}
+          onInput={(e) => setNotesV((e.target as HTMLTextAreaElement).value)}
         />
       </Field>
       <div className="mt-3">
         <Btn
-          onClick={() =>
+          data-testid="personal-course-save"
+          onClick={() => {
+            const nextCode = (codeV.trim() || codeRef.current?.value || code).trim() || code;
+            const nextTitle = (titleV.trim() || titleRef.current?.value || title).trim() || title;
+            const nextTotal = totalV.trim() || totalRef.current?.value || "";
+            const nextDone = doneV.trim() || doneRef.current?.value || "";
+            const nextNotes = notesV.length ? notesV : notesRef.current?.value || "";
             onSave({
-              code: codeV.trim() || code,
-              title: titleV.trim() || title,
-              lecturesTotal: numOrNull(totalV),
-              lecturesDone: numOrNull(doneV),
-              notes: notesV,
-            })
-          }
+              code: nextCode,
+              title: nextTitle,
+              lecturesTotal: numOrNull(nextTotal),
+              lecturesDone: numOrNull(nextDone),
+              notes: nextNotes,
+            });
+          }}
         >
           Save course
         </Btn>

@@ -19,10 +19,16 @@ export function resolveAdminHrRoleFromEmail(
   email: string,
   team: TeamMember[] = [],
 ): AdminHrRole {
-  const mail = email.trim().toLowerCase();
+  const mail =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!mail) return "standard";
   if (mail === HR_OWNER_EMAIL) return "admin";
-  const member = team.find((m) => m.email.toLowerCase() === mail && m.active);
+  const list = Array.isArray(team) ? team : [];
+  const member = list.find(
+    (m) =>
+      (typeof m.email === "string" ? m.email : String(m.email ?? "")).toLowerCase() === mail &&
+      m.active,
+  );
   if (member) return member.role;
   return "standard";
 }

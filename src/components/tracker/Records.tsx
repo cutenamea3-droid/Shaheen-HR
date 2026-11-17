@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, FolderInput, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
-import type { Row } from "@/lib/sections";
+import { cellsOf, type Row } from "@/lib/sections";
 
 /** Manual record lists — kept separate from the driver sections (not counted in alerts or Driver Cards). */
 export const RECORD_TABS = [
@@ -39,19 +39,22 @@ type PersonGroup = {
 function groupByPerson(rows: Row[]): PersonGroup[] {
   const map = new Map<string, PersonGroup>();
   for (const r of rows) {
-    const name = (r.cells[0] ?? "").trim() || "Unnamed";
+    const name = (cellsOf(r)[0] ?? "").trim() || "Unnamed";
     const key = nameKey(name);
     const g = map.get(key);
     if (g) g.rows.push(r);
     else map.set(key, { key, name, rows: [r], active: true });
   }
   for (const g of map.values()) g.active = recordPersonIsActive(g.rows);
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return [...map.values()].sort((a, b) =>
+    asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
+  );
 }
 
 function personCount(rows: Row[] | undefined) {
   if (!rows?.length) return 0;
-  return new Set(rows.map((r) => nameKey(r.cells[0] ?? ""))).size;
+  return new Set(rows.map((r) => nameKey(cellsOf(r)[0] ?? ""))).size;
 }
 
 export function Records() {
@@ -61,6 +64,8 @@ export function Records() {
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [doc, setDoc] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const cur = RECORD_TABS.find((t) => t.id === tab)!;
@@ -71,21 +76,25 @@ export function Records() {
   }, [tab]);
 
   const people = useMemo(() => {
-    const rows = data.sections[tab]?.rows ?? [];
+    const rows = Array.isArray(data.sections[tab]?.rows) ? data.sections[tab]!.rows : [];
     const needle = q.trim().toLowerCase();
     const filtered = !needle
       ? rows
-      : rows.filter((r) => r.cells.some((c) => c.toLowerCase().includes(needle)));
+      : rows.filter((r) =>
+          cellsOf(r).some((c) => (c ?? "").toLowerCase().includes(needle)),
+        );
     const grouped = groupByPerson(filtered);
     if (!ownersTab || activeFilter === "all") return grouped;
     return grouped.filter((p) => (activeFilter === "active" ? p.active : !p.active));
   }, [data.sections, tab, q, ownersTab, activeFilter]);
 
   const add = () => {
-    if (!name.trim()) return;
-    addRecord(tab, [name.trim(), doc.trim(), "Valid", "", "", "Active"]);
+    const nextName = (name.trim() || nameRef.current?.value || "").trim();
+    const nextDoc = (doc.trim() || docRef.current?.value || "").trim();
+    if (!nextName) return;
+    addRecord(tab, [nextName, nextDoc, "Valid", "", "", "Active"]);
     setDoc("");
-    setOpen((o) => ({ ...o, [`${tab}:${nameKey(name)}`]: true }));
+    setOpen((o) => ({ ...o, [`${tab}:${nameKey(nextName)}`]: true }));
   };
 
   const cardId = (key: string) => `${tab}:${key}`;
@@ -113,7 +122,7 @@ export function Records() {
     <div className="flex h-full flex-col gap-3 overflow-hidden px-2 py-2 sm:p-3">
       <div className="tracker-toolbar gap-2">
         {RECORD_TABS.map((t) => {
-          const docs = data.sections[t.id]?.rows.length ?? 0;
+          const docs = data.sections[t.id]?.rows?.length ?? 0;
           const peopleN = personCount(data.sections[t.id]?.rows);
           return (
             <button
@@ -173,14 +182,20 @@ export function Records() {
             className="flex flex-wrap items-center gap-2"
           >
             <input
+              ref={nameRef}
+              data-testid="records-person-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onInput={(e) => setName((e.target as HTMLInputElement).value)}
               placeholder={`${cur.who} name`}
               className="h-10 w-52 rounded-xl border bg-card px-3"
             />
             <input
+              ref={docRef}
+              data-testid="records-doc-name"
               value={doc}
               onChange={(e) => setDoc(e.target.value)}
+              onInput={(e) => setDoc((e.target as HTMLInputElement).value)}
               placeholder="Document (e.g. TWIC card)"
               className="h-10 w-56 rounded-xl border bg-card px-3"
             />
@@ -306,6 +321,7 @@ export function Records() {
                       </thead>
                       <tbody>
                         {p.rows.map((r, ri) => {
+                          const cells = cellsOf(r);
                           const save = (ci: number) => (v: string) => setCell(tab, r.id, ci, v);
                           return (
                             <tr key={r.id} className="ui-row-hover">
@@ -313,17 +329,17 @@ export function Records() {
                                 {ri + 1}
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <EditableText value={r.cells[1] ?? ""} onSave={save(1)} />
+                                <EditableText value={cells[1] ?? ""} onSave={save(1)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <StatusToggle value={r.cells[2] ?? ""} options={STATUS} onSave={save(2)} />
+                                <StatusToggle value={cells[2] ?? ""} options={STATUS} onSave={save(2)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <DateCell value={r.cells[3] ?? ""} onSave={save(3)} />
+                                <DateCell value={cells[3] ?? ""} onSave={save(3)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
                                 <EditableText
-                                  value={r.cells[4] ?? ""}
+                                  value={cells[4] ?? ""}
                                   onSave={save(4)}
                                   placeholder="Add note"
                                   boxed
@@ -335,7 +351,7 @@ export function Records() {
                                     type="button"
                                     aria-label="Delete document"
                                     onClick={() =>
-                                      confirm(`Delete “${r.cells[1] || "document"}” for ${p.name}?`) &&
+                                      confirm(`Delete “${cells[1] || "document"}” for ${p.name}?`) &&
                                       deleteRecord(tab, r.id)
                                     }
                                     className="ui-press rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"

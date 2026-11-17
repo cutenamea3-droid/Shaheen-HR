@@ -14,6 +14,7 @@ import {
 import {
   isEventIncomplete,
   normalizeSpecimenId,
+  parseDrugDocKind,
   pairDrugTestEvents,
   type DrugTestEvent,
 } from "@/lib/driver-hr/drug-tests";
@@ -46,15 +47,40 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(normalizeRateInput("0.550")).toBe("0.550");
     expect(normalizeRateInput("")).toBe("");
     expect(normalizeRateInput("abc")).toBeNull();
+    expect(normalizeRateInput(0.55 as unknown as string)).toBe("0.55");
+    expect(normalizeRateInput(null as unknown as string)).toBe("");
     const card = useRateCardMock.getState().get("d_new");
     expect(card.rates).toEqual({});
     expect(rateCardHasContent(emptyRateCard("x"))).toBe(false);
+    expect(rateCardHasContent({ ...emptyRateCard("y"), rates: null as never, payMethodNote: null as never })).toBe(
+      false,
+    );
+    expect(() =>
+      rateCardHasContent({
+        ...emptyRateCard("z"),
+        rates: { loadedCpm: 0.55 as unknown as string, emptyCpm: null as never },
+      }),
+    ).not.toThrow();
+    expect(
+      rateCardHasContent({
+        ...emptyRateCard("z2"),
+        rates: { loadedCpm: 0.55 as unknown as string },
+      }),
+    ).toBe(true);
     const set = useRateCardMock.getState().setRate("d1", "percentage", "0.550");
     expect(set.ok && set.card.rates.percentage).toBe("0.550");
     const cleared = useRateCardMock.getState().setRate("d1", "percentage", "");
     expect(cleared.ok && cleared.card.rates.percentage).toBeUndefined();
     const zero = useRateCardMock.getState().setRate("d1", "loadedCpm", "0");
     expect(zero.ok && zero.card.rates.loadedCpm).toBe("0");
+    // Corrupt rates shape must not throw on setRate / spread.
+    useRateCardMock.setState({
+      byDriver: {
+        d_corrupt: { ...emptyRateCard("d_corrupt"), rates: null as never },
+      },
+    });
+    const healed = useRateCardMock.getState().setRate("d_corrupt", "percentage", "1.25");
+    expect(healed.ok && healed.card.rates.percentage).toBe("1.25");
   });
 
   it("2. Rate card allows empty/partial Pay Method save without inventing rates", () => {
@@ -72,7 +98,9 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(parseHireDateInput("2024-03-15")).toBe("2024-03-15");
     expect(parseHireDateInput("")).toBe("");
     expect(parseHireDateInput("nope")).toBeNull();
+    expect(parseHireDateInput(null as unknown as string)).toBe("");
     expect(formatHireDateDisplay("2024-03-15")).toBe("03/15/2024");
+    expect(formatHireDateDisplay(20240315 as unknown as string)).toBe("20240315");
     expect(lengthOfService("")).toBeNull();
   });
 
@@ -84,7 +112,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(dateOfHireOf(seed, id)).toBe("");
     const next = applyDateOfHire(seed, id, "2023-06-01");
     expect(dateOfHireOf(next, id)).toBe("2023-06-01");
-    const other = seed.sections.dmv?.rows.find((r) => r.driverId !== id);
+    const other = seed.sections.dmv?.rows?.find((r) => r.driverId !== id);
     if (other) expect(dateOfHireOf(next, other.driverId)).toBe("");
   });
 
@@ -148,6 +176,9 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
   it("8. Leading zeros preserved; 01234 ≠ 1234; multi Random/Follow-up 1:1", () => {
     expect(normalizeSpecimenId("01234")).toBe("01234");
     expect(normalizeSpecimenId("01234")).not.toBe(normalizeSpecimenId("1234"));
+    expect(normalizeSpecimenId(null as unknown as string)).toBe("");
+    expect(() => normalizeSpecimenId(1234 as unknown as string)).not.toThrow();
+    expect(parseDrugDocKind(null)).toBe("");
     const rows = pairDrugTestEvents([
       ev({ id: "f1", kind: "federal_drug", specimenId: "A1", reason: "Random", collectionContext: "C1" }),
       ev({ id: "f2", kind: "federal_drug", specimenId: "A2", reason: "Follow-up", collectionContext: "C2" }),

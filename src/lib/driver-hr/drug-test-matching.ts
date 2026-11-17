@@ -7,6 +7,7 @@
  */
 import {
   DRUG_DOC_KIND_SHORT,
+  asDrugText,
   normalizeCollectionContext,
   normalizeSpecimenId,
   type DrugDocKind,
@@ -74,8 +75,8 @@ export type PairingResolution =
       message: string;
     };
 
-function normReason(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
+function normReason(s: unknown): string {
+  return asDrugText(s).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /** Dates/details compatible when both set and equal, or either blank. */
@@ -83,8 +84,8 @@ export function datesDetailsCompatible(
   a: { eventDate: string; collectionContext: string },
   b: { eventDate: string; collectionContext: string },
 ): boolean {
-  const ad = a.eventDate.trim();
-  const bd = b.eventDate.trim();
+  const ad = asDrugText(a.eventDate).trim();
+  const bd = asDrugText(b.eventDate).trim();
   if (ad && bd && ad !== bd) return false;
   const ac = normalizeCollectionContext(a.collectionContext);
   const bc = normalizeCollectionContext(b.collectionContext);
@@ -109,10 +110,11 @@ type EventGroup = {
 };
 
 function groupActiveEvents(events: DrugTestEvent[]): EventGroup[] {
+  const list = Array.isArray(events) ? events : [];
   const map = new Map<string, EventGroup>();
-  for (const ev of events) {
+  for (const ev of list) {
     if (ev.deletedAt) continue;
-    const tid = (ev.testingEventId || ev.id || "").trim();
+    const tid = asDrugText(ev.testingEventId || ev.id || "").trim();
     if (!tid) continue;
     let g = map.get(tid);
     if (!g) {
@@ -261,7 +263,7 @@ export function validateManualAttach(
   testingEventId: string,
   existingEvents: DrugTestEvent[],
 ): PairingResolution {
-  const tid = testingEventId.trim();
+  const tid = asDrugText(testingEventId).trim();
   if (!tid) {
     return { status: "blocked", message: "Select an existing testing event to match." };
   }
@@ -369,7 +371,7 @@ export function resolvePairing(opts: {
   }
 
   if (candidates.length > 1) {
-    const selected = (opts.selectedTestingEventId ?? "").trim();
+    const selected = asDrugText(opts.selectedTestingEventId).trim();
     if (selected && candidates.some((c) => c.testingEventId === selected)) {
       const c = candidates.find((x) => x.testingEventId === selected)!;
       return {

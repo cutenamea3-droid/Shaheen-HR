@@ -30,20 +30,21 @@ export function statusLabel(status: LoadStatus): string {
 }
 
 export function homeActionBuckets(loads: DispatchLoad[]) {
-  const needsUpdate = loads.filter(
+  const list = Array.isArray(loads) ? loads : [];
+  const needsUpdate = list.filter(
     (l) => ACTIVE_LOAD_STATUSES.includes(l.status) && (isStaleUpdate(l) || !l.last_manual_location_at),
   );
-  const openExceptions = loads.filter((l) => l.exception_open && l.status !== "closed" && l.status !== "cancelled");
-  const awaitingDocs = loads.filter(
+  const openExceptions = list.filter((l) => l.exception_open && l.status !== "closed" && l.status !== "cancelled");
+  const awaitingDocs = list.filter(
     (l) =>
       (l.status === "delivered" || l.status === "at_delivery" || l.status === "closed") &&
       (l.bol_status === "missing" || l.bol_status === "pending" || l.pod_status === "missing" || l.pod_status === "pending"),
   );
-  const inMotion = loads.filter((l) =>
+  const inMotion = list.filter((l) =>
     ["assigned", "in_transit", "at_pickup", "loaded", "at_delivery"].includes(l.status),
   );
   /** Delivered but not yet closed — file work remaining. Paid is separate. */
-  const awaitingCloseout = loads.filter((l) => l.status === "delivered");
+  const awaitingCloseout = list.filter((l) => l.status === "delivered");
   return { needsUpdate, openExceptions, awaitingDocs, inMotion, awaitingCloseout };
 }
 
@@ -53,10 +54,11 @@ export function activeLoadsBoardColumns(loads: DispatchLoad[]): Array<{
   label: string;
   items: DispatchLoad[];
 }> {
+  const list = Array.isArray(loads) ? loads : [];
   return ACTIVE_BOARD_COLUMNS.map((status) => ({
     status,
     label: LOAD_STATUS_LABELS[status],
-    items: loads.filter((l) => l.status === status),
+    items: list.filter((l) => l.status === status),
   }));
 }
 
@@ -69,8 +71,12 @@ export function filterLoads(
     exceptionOnly?: boolean;
   },
 ): DispatchLoad[] {
-  const q = (query.q ?? "").trim().toLowerCase();
-  return loads.filter((load) => {
+  const q = (
+    query.q == null ? "" : typeof query.q === "string" ? query.q : String(query.q)
+  )
+    .trim()
+    .toLowerCase();
+  return (Array.isArray(loads) ? loads : []).filter((load) => {
     if (query.exceptionOnly && !load.exception_open) return false;
     if (query.status === "active" && !ACTIVE_LOAD_STATUSES.includes(load.status)) return false;
     if (query.status && query.status !== "all" && query.status !== "active" && load.status !== query.status) {
@@ -78,6 +84,7 @@ export function filterLoads(
     }
     if (query.driverId && query.driverId !== "all" && load.assigned_driver_id !== query.driverId) return false;
     if (!q) return true;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const hay = [
       load.load_number,
       load.customer_name,
@@ -86,6 +93,7 @@ export function filterLoads(
       load.last_manual_location,
       load.notes,
     ]
+      .map(asText)
       .filter(Boolean)
       .join(" ")
       .toLowerCase();

@@ -50,6 +50,10 @@ type State = {
   setSettings: (p: Partial<Settings>) => void;
 };
 
+const arrOf = <T,>(v: unknown, fallback: T[] = []): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+const objOf = <T extends object>(v: unknown, fallback: T): T =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+
 export const useApp = create<State>()(
   persist(
     (set) => ({
@@ -63,21 +67,36 @@ export const useApp = create<State>()(
       team: seedData.team,
       logs: seedData.logs,
       upsertMember: (m) =>
-        set((s) => ({ team: s.team.some((x) => x.id === m.id) ? s.team.map((x) => (x.id === m.id ? m : x)) : [...s.team, m] })),
-      removeMember: (id) => set((s) => ({ team: s.team.filter((m) => m.id !== id) })),
+        set((s) => {
+          const team = arrOf<TeamMember>(s.team);
+          return {
+            team: team.some((x) => x.id === m.id)
+              ? team.map((x) => (x.id === m.id ? m : x))
+              : [...team, m],
+          };
+        }),
+      removeMember: (id) => set((s) => ({ team: arrOf<TeamMember>(s.team).filter((m) => m.id !== id) })),
       addLog: (who, action) =>
         set((s) => {
+          const logs = arrOf<LogEntry>(s.logs);
           const now = Date.now();
-          const top = s.logs[0];
+          const top = logs[0];
           // merge repeated edits of the same kind within one minute
           if (top && top.who === who && top.action === action && now - top.at < 60_000)
-            return { logs: [{ ...top, at: now, count: (top.count ?? 1) + 1 }, ...s.logs.slice(1)] };
-          return { logs: [{ id: uid(), at: now, who, action }, ...s.logs].slice(0, 500) };
+            return { logs: [{ ...top, at: now, count: (top.count ?? 1) + 1 }, ...logs.slice(1)] };
+          return { logs: [{ id: uid(), at: now, who, action }, ...logs].slice(0, 500) };
         }),
       setAuthed: (authed) => set({ authed }),
       upsertDept: (d) =>
-        set((s) => ({ depts: s.depts.some((x) => x.id === d.id) ? s.depts.map((x) => (x.id === d.id ? d : x)) : [...s.depts, d] })),
-      removeDept: (id) => set((s) => ({ depts: s.depts.filter((d) => d.id !== id) })),
+        set((s) => {
+          const depts = arrOf<Dept>(s.depts);
+          return {
+            depts: depts.some((x) => x.id === d.id)
+              ? depts.map((x) => (x.id === d.id ? d : x))
+              : [...depts, d],
+          };
+        }),
+      removeDept: (id) => set((s) => ({ depts: arrOf<Dept>(s.depts).filter((d) => d.id !== id) })),
       addEmployee: (e) =>
         set((s) => {
           const id = uid();
@@ -85,15 +104,16 @@ export const useApp = create<State>()(
           const emp: Employee = {
             ...e,
             id,
-            deptAssignments: e.deptAssignments?.length
-              ? e.deptAssignments
-              : [{ deptId: e.deptId, effectiveFrom }],
+            deptAssignments:
+              Array.isArray(e.deptAssignments) && e.deptAssignments.length
+                ? e.deptAssignments
+                : [{ deptId: e.deptId, effectiveFrom }],
           };
-          return { employees: [...s.employees, emp] };
+          return { employees: [...arrOf<Employee>(s.employees), emp] };
         }),
       updateEmployee: (id, p) =>
         set((s) => ({
-          employees: s.employees.map((e) => {
+          employees: arrOf<Employee>(s.employees).map((e) => {
             if (e.id !== id) return e;
             const { deptEffectiveFrom, ...rest } = p;
             if (rest.deptId != null && rest.deptId !== e.deptId) {
@@ -107,10 +127,11 @@ export const useApp = create<State>()(
             return { ...e, ...rest };
           }),
         })),
-      removeEmployee: (id) => set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
+      removeEmployee: (id) =>
+        set((s) => ({ employees: arrOf<Employee>(s.employees).filter((e) => e.id !== id) })),
       moveEmployee: (id, to) =>
         set((s) => {
-          const list = [...s.employees];
+          const list = [...arrOf<Employee>(s.employees)];
           const from = list.findIndex((e) => e.id === id);
           if (from < 0) return s;
           const it = list.splice(from, 1)[0]!;
@@ -119,27 +140,33 @@ export const useApp = create<State>()(
         }),
       setRec: (date, empId, p) =>
         set((s) => {
-          const day = s.records[date] ?? {};
-          return { records: { ...s.records, [date]: { ...day, [empId]: { ...(day[empId] ?? emptyRec()), ...p } } } };
+          const records = objOf(s.records, {} as State["records"]);
+          const day = records[date] ?? {};
+          return { records: { ...records, [date]: { ...day, [empId]: { ...(day[empId] ?? emptyRec()), ...p } } } };
         }),
       resetRec: (date, empId) =>
         set((s) => {
-          const day = { ...(s.records[date] ?? {}) };
+          const records = objOf(s.records, {} as State["records"]);
+          const day = { ...(records[date] ?? {}) };
           delete day[empId];
-          return { records: { ...s.records, [date]: day } };
+          return { records: { ...records, [date]: day } };
         }),
       resetDay: (date) =>
         set((s) => {
-          const r = { ...s.records };
+          const r = { ...objOf(s.records, {} as State["records"]) };
           delete r[date];
           return { records: r };
         }),
       setPerf: (date, empId, p) =>
         set((s) => {
-          const day = s.perf[date] ?? {};
-          return { perf: { ...s.perf, [date]: { ...day, [empId]: { ...(day[empId] ?? { rating: "", note: "" }), ...p } } } };
+          const perf = objOf(s.perf, {} as State["perf"]);
+          const day = perf[date] ?? {};
+          return { perf: { ...perf, [date]: { ...day, [empId]: { ...(day[empId] ?? { rating: "", note: "" }), ...p } } } };
         }),
-      addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false, doneDays: [] }] })),
+      addTask: (t) =>
+        set((s) => ({
+          tasks: [...normalizeTasks(s.tasks), { ...t, id: uid(), done: false, doneDays: [] }],
+        })),
       toggleTask: (id, day) =>
         set((s) => ({
           tasks: normalizeTasks(s.tasks).map((t) => {
@@ -151,7 +178,10 @@ export const useApp = create<State>()(
           }),
         })),
       removeTask: (id) => set((s) => ({ tasks: normalizeTasks(s.tasks).filter((t) => t.id !== id) })),
-      setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
+      setSettings: (p) =>
+        set((s) => ({
+          settings: { ...objOf(s.settings, seedData.settings), ...p },
+        })),
     }),
     {
       name: "hr-attendance-v1",
@@ -161,10 +191,20 @@ export const useApp = create<State>()(
           persisted && typeof persisted === "object" && !Array.isArray(persisted)
             ? (persisted as Partial<State>)
             : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        const obj = <T extends object>(v: unknown, fallback: T): T =>
+          v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
         return {
           ...current,
           ...p,
-          tasks: normalizeTasks(p.tasks ?? current.tasks),
+          tasks: normalizeTasks(arr(p.tasks, current.tasks)),
+          employees: arr(p.employees, current.employees),
+          team: arr(p.team, current.team),
+          depts: arr(p.depts, current.depts),
+          logs: arr(p.logs, current.logs),
+          records: obj(p.records, current.records),
+          perf: obj(p.perf, current.perf),
+          settings: obj(p.settings, current.settings),
         };
       },
     },

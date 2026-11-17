@@ -74,7 +74,7 @@ test("New / OO badges come from real meta — not invented on seed", () => {
 test("missing docs counted from Other Docs status cells only", () => {
   let data = clone(buildSeed());
   const docs = data.sections.docs;
-  expect(docs?.rows.length).toBeGreaterThan(0);
+  expect(docs?.rows?.length).toBeGreaterThan(0);
   const row = docs.rows[0];
   const def = SECTIONS.find((s) => s.id === "docs")!;
   const statusIdx = def.types

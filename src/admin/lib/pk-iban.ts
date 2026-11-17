@@ -7,8 +7,10 @@
 const PK_IBAN_LEN = 24;
 
 /** Strip spaces/dashes; uppercase. */
-export function normalizePkIban(raw: string): string {
-  return raw.replace(/[\s-]/g, "").toUpperCase();
+export function normalizePkIban(raw: unknown): string {
+  if (raw == null) return "";
+  const s = typeof raw === "string" ? raw : String(raw);
+  return s.replace(/[\s-]/g, "").toUpperCase();
 }
 
 /** Format as PK00 AAAA #### #### #### #### for display (caller should mask first). */

@@ -49,7 +49,8 @@ export async function hashSecret(value: string): Promise<string> {
 }
 
 export function listLocalAccounts(): PortalAccount[] {
-  return readJson<PortalAccount[]>(ACCOUNTS_KEY, []);
+  const raw = readJson<unknown>(ACCOUNTS_KEY, []);
+  return Array.isArray(raw) ? (raw as PortalAccount[]) : [];
 }
 
 export function saveLocalAccounts(accounts: PortalAccount[]) {
@@ -70,21 +71,26 @@ export function upsertLocalAccount(account: PortalAccount) {
   saveLocalAccounts(list);
 }
 
+function readSecretsMap(): SecretsMap {
+  const raw = readJson<unknown>(SECRETS_KEY, {});
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as SecretsMap) : {};
+}
+
 export function removeLocalAccount(userId: string) {
   saveLocalAccounts(listLocalAccounts().filter((a) => a.user_id !== userId));
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   delete secrets[userId];
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function setLocalPassword(userId: string, password: string) {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   secrets[userId] = await hashSecret(password);
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function verifyLocalPassword(userId: string, password: string): Promise<boolean> {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   const stored = secrets[userId];
   if (!stored) return false;
   return stored === (await hashSecret(password));
@@ -92,12 +98,14 @@ export async function verifyLocalPassword(userId: string, password: string): Pro
 
 /** True when this user has a locally stored password hash. */
 export function hasLocalPassword(userId: string): boolean {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   return Boolean(secrets[userId]);
 }
 
 export function listLocalActivity(limit = 500): LocalActivity[] {
-  return readJson<LocalActivity[]>(ACTIVITY_KEY, []).slice(0, limit);
+  const raw = readJson<unknown>(ACTIVITY_KEY, []);
+  const list = Array.isArray(raw) ? (raw as LocalActivity[]) : [];
+  return list.slice(0, limit);
 }
 
 export function logLocalActivity(input: {
@@ -117,13 +125,18 @@ export function logLocalActivity(input: {
   return entry;
 }
 
+function asPortalText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
 export function createLocalAccount(input: {
   email: string;
   displayName: string;
   password: string;
   role?: PortalRole;
 }): Promise<PortalAccount> {
-  const email = input.email.trim().toLowerCase();
+  const email = asPortalText(input.email).trim().toLowerCase();
   const list = listLocalAccounts();
   if (list.some((a) => a.email.toLowerCase() === email)) {
     return Promise.reject(new Error("An account with that email already exists."));
@@ -131,7 +144,7 @@ export function createLocalAccount(input: {
   const account: PortalAccount = {
     user_id: uid(),
     email,
-    display_name: input.displayName.trim(),
+    display_name: asPortalText(input.displayName).trim(),
     role: input.role ?? "standard",
     active: true,
   };
@@ -142,7 +155,7 @@ export function createLocalAccount(input: {
 }
 
 export function findLocalAccountByEmail(email: string): PortalAccount | null {
-  const normalized = email.trim().toLowerCase();
+  const normalized = asPortalText(email).trim().toLowerCase();
   return listLocalAccounts().find((a) => a.email.toLowerCase() === normalized) ?? null;
 }
 
@@ -157,7 +170,11 @@ export function clearLocalSession() {
 }
 
 export function readLocalSessionAccount(): PortalAccount | null {
-  const session = readJson<{ user_id?: string; email?: string } | null>(SESSION_KEY, null);
+  const raw = readJson<unknown>(SESSION_KEY, null);
+  const session =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { user_id?: string; email?: string })
+      : null;
   if (!session?.user_id) return null;
   const list = listLocalAccounts();
   const match = list.find((a) => a.user_id === session.user_id) ?? (session.email ? findLocalAccountByEmail(session.email) : null);

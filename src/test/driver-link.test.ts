@@ -1,10 +1,19 @@
 import { expect, test } from "vitest";
-import { buildSeed, driverKey } from "@/lib/sections";
+import { buildSeed, cdlDigits, driverKey, similarNames } from "@/lib/sections";
 
 test("ID numbers in names don't split a driver", () => {
   expect(driverKey("Carlos 498250 Valencia")).toBe(driverKey("Carlos Valencia"));
   expect(driverKey("Mohammad Aimal,s232 Akbary")).toBe(driverKey("Mohammad Aimal Akbary"));
   expect(driverKey("Filip lacob")).toBe(driverKey("Filip S327 Iacob"));
+});
+
+test("driverKey / cdlDigits / similarNames coerce non-string corrupt scalars", () => {
+  expect(() => driverKey(42 as unknown as string)).not.toThrow();
+  expect(driverKey(null as unknown as string)).toBe("");
+  expect(cdlDigits(123456789 as unknown as string)).toBe("123456789");
+  expect(cdlDigits(null as unknown as string)).toBe("");
+  expect(() => similarNames(1 as unknown as string, 2 as unknown as string)).not.toThrow();
+  expect(similarNames(null as unknown as string, "a")).toBe(false);
 });
 
 test("each driver gets one card", () => {

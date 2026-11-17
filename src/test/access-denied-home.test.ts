@@ -57,6 +57,44 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).not.toMatch(/canAccessPath\(grants, pathname\)/);
   });
 
+  it("ModuleRedirector re-probes when Driver Auth state changes", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/ModuleRedirector.tsx"), "utf8");
+    expect(src).toMatch(/onAuthStateChange/);
+    expect(src).toMatch(/authEpoch/);
+    expect(src).toMatch(/shaheen-lock/);
+    expect(src).toMatch(/shaheen-portal-ready/);
+    expect(src).toMatch(/hasPortalSession/);
+  });
+
+  it("LockGate announces portal-ready after ACL sign-in", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/tracker/LockGate.tsx"), "utf8");
+    expect(src).toMatch(/shaheen-portal-ready/);
+  });
+
+  it("probeModuleGrants retries Compliance ACL after session", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/module-access/resolve.ts"), "utf8");
+    expect(src).toMatch(/getUser\(\)/);
+    expect(src).toMatch(/for \(let i = 0; i < 4; i\+\+\)/);
+  });
+
+  it("AccessDenied page leaves after Compliance seat arrives", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/routes/access-denied.tsx"), "utf8");
+    expect(src).toMatch(/onAuthStateChange/);
+    expect(src).toMatch(/canAccessPath\(grants, "\/"\)/);
+    expect(src).toMatch(/navigate\(\{ to: home, replace: true \}\)/);
+  });
+
+  it("AdminOnly privilege deny uses need=admin (not module-missing copy)", () => {
+    const adminOnly = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/AdminOnly.tsx"),
+      "utf8",
+    );
+    expect(adminOnly).toMatch(/need:\s*"admin"/);
+    const denied = readFileSync(resolve(process.cwd(), "src/routes/access-denied.tsx"), "utf8");
+    expect(denied).toMatch(/needAdmin/);
+    expect(denied).toMatch(/requires a Driver Compliance admin account/);
+  });
+
   it("compliance seat still reaches independent LoginGate URLs", () => {
     const grants = {
       compliance: "admin" as const,

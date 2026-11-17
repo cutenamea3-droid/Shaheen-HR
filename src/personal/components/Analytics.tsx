@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead, Stat } from "./common";
 import {
+  blocksOf,
   consistencyDays,
   studyMinutesInRange,
   todayKey,
@@ -20,15 +21,29 @@ import {
 } from "@/personal/lib/weekly-review";
 
 export function Analytics() {
-  const sessions = usePersonal((s) => s.sessions);
-  const backlog = usePersonal((s) => s.backlog);
-  const courses = usePersonal((s) => s.courses);
-  const dayPlans = usePersonal((s) => s.dayPlans);
-  const assessments = usePersonal((s) => s.assessments);
-  const discipline = usePersonal((s) => s.discipline);
-  const gradeEntries = usePersonal((s) => s.gradeEntries);
-  const courseGrades = usePersonal((s) => s.courseGrades);
-  const weeklyReviews = usePersonal((s) => s.weeklyReviews);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const disciplineRaw = usePersonal((s) => s.discipline);
+  const gradeEntriesRaw = usePersonal((s) => s.gradeEntries);
+  const courseGradesRaw = usePersonal((s) => s.courseGrades);
+  const weeklyReviewsRaw = usePersonal((s) => s.weeklyReviews);
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
+  const gradeEntries = Array.isArray(gradeEntriesRaw) ? gradeEntriesRaw : [];
+  const courseGrades = Array.isArray(courseGradesRaw) ? courseGradesRaw : [];
+  const weeklyReviews =
+    weeklyReviewsRaw && typeof weeklyReviewsRaw === "object" && !Array.isArray(weeklyReviewsRaw)
+      ? weeklyReviewsRaw
+      : {};
+
   const upsertGradeEntry = usePersonal((s) => s.upsertGradeEntry);
   const removeGradeEntry = usePersonal((s) => s.removeGradeEntry);
   const upsertCourseGrade = usePersonal((s) => s.upsertCourseGrade);
@@ -52,8 +67,9 @@ export function Analytics() {
 
   const plansDone = Object.values(dayPlans).reduce(
     (acc, p) => {
-      acc.total += p.blocks.length;
-      acc.done += p.blocks.filter((b) => b.done).length;
+      const blocks = blocksOf(p);
+      acc.total += blocks.length;
+      acc.done += blocks.filter((b) => b.done).length;
       return acc;
     },
     { total: 0, done: 0 },
@@ -63,6 +79,7 @@ export function Analytics() {
 
   const [gCourseId, setGCourseId] = useState(courses[0]?.id ?? "cs101");
   const [gLabel, setGLabel] = useState("");
+  const gLabelRef = useRef<HTMLInputElement>(null);
   const [gScore, setGScore] = useState("");
   const [gMax, setGMax] = useState("");
   const [gProv, setGProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
@@ -71,10 +88,18 @@ export function Analytics() {
   const [letterProv, setLetterProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
   const [swPct, setSwPct] = useState("");
   const [fePct, setFePct] = useState("");
+  const swPctRef = useRef<HTMLInputElement>(null);
+  const fePctRef = useRef<HTMLInputElement>(null);
 
   const whatIf = estimateCourseAggregate({
-    semesterWorkPct: swPct === "" ? null : Number(swPct),
-    finalExamPct: fePct === "" ? null : Number(fePct),
+    semesterWorkPct: (() => {
+      const raw = (swPct === "" ? swPctRef.current?.value ?? "" : swPct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
+    finalExamPct: (() => {
+      const raw = (fePct === "" ? fePctRef.current?.value ?? "" : fePct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
   });
 
   const weekStart = weekStartMonday(todayKey());
@@ -83,6 +108,11 @@ export function Analytics() {
   const [wins, setWins] = useState(review.wins);
   const [blockers, setBlockers] = useState(review.blockers);
   const [nextFocus, setNextFocus] = useState(review.nextFocus);
+  const winsRef = useRef<HTMLTextAreaElement>(null);
+  const blockersRef = useRef<HTMLTextAreaElement>(null);
+  const nextFocusRef = useRef<HTMLTextAreaElement>(null);
+  const gScoreRef = useRef<HTMLInputElement>(null);
+  const gMaxRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-4">
@@ -262,9 +292,12 @@ export function Analytics() {
         <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-[var(--hp-border)] p-3 md:grid-cols-2">
           <Field label="Component label">
             <input
+              ref={gLabelRef}
               className="hp-field"
+              data-testid="personal-grade-label"
               value={gLabel}
               onChange={(e) => setGLabel(e.target.value)}
+              onInput={(e) => setGLabel((e.target as HTMLInputElement).value)}
               placeholder="e.g. Quiz 1 (from Grade Book)"
             />
           </Field>
@@ -279,18 +312,24 @@ export function Analytics() {
           </Field>
           <Field label="Score">
             <input
+              ref={gScoreRef}
+              data-testid="personal-grade-score"
               className="hp-field"
               type="number"
               value={gScore}
               onChange={(e) => setGScore(e.target.value)}
+              onInput={(e) => setGScore((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Max">
             <input
+              ref={gMaxRef}
+              data-testid="personal-grade-max"
               className="hp-field"
               type="number"
               value={gMax}
               onChange={(e) => setGMax(e.target.value)}
+              onInput={(e) => setGMax((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Provenance">
@@ -306,9 +345,12 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                if (!gLabel.trim()) return;
-                const score = gScore === "" ? null : Number(gScore);
-                const maxScore = gMax === "" ? null : Number(gMax);
+                const nextGLabel = (gLabel.trim() || gLabelRef.current?.value || "").trim();
+                if (!nextGLabel) return;
+                const scoreRaw = (gScore === "" ? gScoreRef.current?.value ?? "" : gScore).trim();
+                const maxRaw = (gMax === "" ? gMaxRef.current?.value ?? "" : gMax).trim();
+                const score = scoreRaw === "" ? null : Number(scoreRaw);
+                const maxScore = maxRaw === "" ? null : Number(maxRaw);
                 if (looksLikeProjectedDefault(score, "D") && gProv === "owner_whatif") {
                   /* still allow explicit what-if; warn via notes */
                 }
@@ -318,7 +360,7 @@ export function Analytics() {
                 upsertGradeEntry({
                   id: Math.random().toString(36).slice(2, 10),
                   courseId: gCourseId,
-                  label: gLabel.trim(),
+                  label: nextGLabel,
                   score,
                   maxScore,
                   provenance: gProv,
@@ -361,8 +403,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
+              ref={swPctRef}
+              data-testid="personal-sw-pct"
               value={swPct}
               onChange={(e) => setSwPct(e.target.value)}
+              onInput={(e) => setSwPct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
@@ -372,8 +417,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
+              ref={fePctRef}
+              data-testid="personal-fe-pct"
               value={fePct}
               onChange={(e) => setFePct(e.target.value)}
+              onInput={(e) => setFePct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
@@ -407,25 +455,34 @@ export function Analytics() {
         <div className="grid gap-3">
           <Field label="Wins this week">
             <textarea
+              ref={winsRef}
+              data-testid="personal-weekly-wins"
               className="hp-field min-h-[72px] py-2"
               value={wins}
               onChange={(e) => setWins(e.target.value)}
+              onInput={(e) => setWins((e.target as HTMLTextAreaElement).value)}
               placeholder="Verified submits, handout coverage…"
             />
           </Field>
           <Field label="Blockers">
             <textarea
+              ref={blockersRef}
+              data-testid="personal-weekly-blockers"
               className="hp-field min-h-[72px] py-2"
               value={blockers}
               onChange={(e) => setBlockers(e.target.value)}
+              onInput={(e) => setBlockers((e.target as HTMLTextAreaElement).value)}
               placeholder="What slipped — no invented excuses needed"
             />
           </Field>
           <Field label="Next week focus">
             <textarea
+              ref={nextFocusRef}
+              data-testid="personal-weekly-next"
               className="hp-field min-h-[72px] py-2"
               value={nextFocus}
               onChange={(e) => setNextFocus(e.target.value)}
+              onInput={(e) => setNextFocus((e.target as HTMLTextAreaElement).value)}
               placeholder="1–3 finishable targets"
             />
           </Field>
@@ -434,9 +491,9 @@ export function Analytics() {
               onClick={() => {
                 upsertWeeklyReview({
                   weekStart,
-                  wins,
-                  blockers,
-                  nextFocus,
+                  wins: wins || winsRef.current?.value || "",
+                  blockers: blockers || blockersRef.current?.value || "",
+                  nextFocus: nextFocus || nextFocusRef.current?.value || "",
                   updatedAt: Date.now(),
                 });
                 toggleDiscipline("weekly-review");

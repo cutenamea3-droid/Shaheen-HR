@@ -33,8 +33,9 @@ export const VU_WEIGHT_BANDS = {
     "https://handbook.vu.edu.pk/HandBook_Pages/Academic%20Rules%20and%20Regulations.htm",
 } as const;
 
-export function normalizeLetter(raw: string): string {
-  return raw.trim().toUpperCase();
+export function normalizeLetter(raw: unknown): string {
+  if (raw == null) return "";
+  return (typeof raw === "string" ? raw : String(raw)).trim().toUpperCase();
 }
 
 export function pointsForLetter(letter: string): number | null {
@@ -56,14 +57,16 @@ export function estimateCgpa(
   courseGrades: CourseGrade[],
   courses: Course[],
 ): CgpaEstimate {
+  const gradeList = Array.isArray(courseGrades) ? courseGrades : [];
+  const courseList = Array.isArray(courses) ? courses : [];
   let pointsSum = 0;
   let hoursSum = 0;
   let graded = 0;
   let missing = 0;
 
-  for (const g of courseGrades) {
+  for (const g of gradeList) {
     const pts = pointsForLetter(g.letter);
-    const course = courses.find((c) => c.id === g.courseId);
+    const course = courseList.find((c) => c.id === g.courseId);
     const hours =
       typeof g.creditHours === "number" && g.creditHours > 0
         ? g.creditHours
@@ -71,7 +74,7 @@ export function estimateCgpa(
           ? course.creditHours
           : null;
     if (pts == null || hours == null) {
-      if (g.letter.trim() || hours == null) missing += 1;
+      if (normalizeLetter(g.letter) || hours == null) missing += 1;
       continue;
     }
     pointsSum += pts * hours;
@@ -106,7 +109,8 @@ export type ComponentPct = {
 };
 
 export function componentPercents(entries: GradeEntry[]): ComponentPct[] {
-  return entries.map((e) => {
+  const list = Array.isArray(entries) ? entries : [];
+  return list.map((e) => {
     const pct =
       e.score != null && e.maxScore != null && e.maxScore > 0
         ? Math.round((e.score / e.maxScore) * 1000) / 10

@@ -1,5 +1,27 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Banknote, BarChart3, CalendarClock, CalendarDays, ChevronsLeft, ChevronsRight, ClipboardList, FileText, FolderKanban, History, ListChecks, LogOut, ScrollText, Settings, ShieldCheck, Star, Timer, UserCog, Users, Wallet, Scale } from "lucide-react";
+import {
+  Banknote,
+  BarChart3,
+  CalendarClock,
+  CalendarDays,
+  ChevronsLeft,
+  ChevronsRight,
+  ClipboardList,
+  FileText,
+  FolderKanban,
+  History,
+  ListChecks,
+  LogOut,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  Star,
+  Timer,
+  UserCog,
+  Users,
+  Wallet,
+  Scale,
+} from "lucide-react";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
@@ -25,6 +47,7 @@ import {
   stopSync,
   subscribeSync,
 } from "@/admin/lib/cloud-sync";
+import { isHrPayloadEmpty, isHrMeaningful } from "@/admin/lib/hr-sync-protect";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
@@ -49,7 +72,8 @@ function SyncBadge() {
             onClick={() => void saveNow()}
             className="inline-flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-1.5 text-sm font-bold text-destructive"
           >
-            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> {label} — Try again
+            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> {label} — Try
+            again
           </button>
         ) : (
           <span
@@ -61,16 +85,21 @@ function SyncBadge() {
                   : "bg-primary/10 text-primary"
             }`}
           >
-            <span className={`h-2 w-2 rounded-full bg-current ${s !== "synced" ? "animate-pulse" : ""}`} />
+            <span
+              className={`h-2 w-2 rounded-full bg-current ${s !== "synced" ? "animate-pulse" : ""}`}
+            />
             {label}
           </span>
         )}
       </div>
       {conflict && (
-        <div className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="alertdialog">
+        <div
+          className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm"
+          role="alertdialog"
+        >
           <p className="font-semibold text-warn">
-            Not Synced — this browser and the cloud both have attendance changes. Nothing is overwritten until
-            you choose.
+            Not Synced — this browser and the cloud both have attendance changes. Nothing is
+            overwritten until you choose.
           </p>
           <ol className="list-decimal space-y-1 pl-5 text-warn">
             <li>
@@ -81,21 +110,39 @@ function SyncBadge() {
               <strong>Use cloud</strong>.
             </li>
             <li>
-              Only choose <strong>Keep this browser</strong> if you are sure the browser copy is the correct
-              one — uploading empty local data can replace cloud.
+              Only choose <strong>Keep this browser</strong> if you are sure the browser copy is the
+              correct one — uploading empty local data can replace cloud.
             </li>
           </ol>
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn" onClick={() => downloadBackup()}>
               Download backup
             </button>
-            <button type="button" className="btn-danger" onClick={() => void resolveHrConflict("use_cloud")}>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => void resolveHrConflict("use_cloud")}
+            >
               Use cloud (replace this browser)
             </button>
             <button
               type="button"
               className="btn"
-              onClick={() => void resolveHrConflict("keep_local")}
+              onClick={() => {
+                const local = useApp.getState();
+                const blob = {
+                  employees: local.employees,
+                  records: local.records,
+                };
+                // Extra confirm when browser looks empty — never silent upload of empty over cloud.
+                if (isHrPayloadEmpty(blob) || !isHrMeaningful(blob)) {
+                  const ok = window.confirm(
+                    "This browser looks empty or incomplete. Uploading it can replace cloud attendance with empty data.\n\nOnly continue if you are sure. Prefer Use cloud instead.",
+                  );
+                  if (!ok) return;
+                }
+                void resolveHrConflict("keep_local");
+              }}
             >
               Keep this browser (upload)
             </button>
@@ -119,13 +166,17 @@ function CloudReconnectBanner({
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const busyRef = useRef(false);
+  const reconnectPassRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="mb-3 space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm" role="status">
+    <div
+      className="mb-3 space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm"
+      role="status"
+    >
       <p className="font-semibold text-warn">
-        Sign In Required — local session; cloud sync paused. Sign in with Supabase to sync this browser’s
-        attendance. Pending local edits are kept; if cloud also changed, you will choose which copy to keep
-        (nothing is overwritten silently).
+        Sign In Required — local session; cloud sync paused. Sign in with Supabase to sync this
+        browser’s attendance. Pending local edits are kept; if cloud also changed, you will choose
+        which copy to keep (nothing is overwritten silently).
       </p>
       <form
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
@@ -144,7 +195,8 @@ function CloudReconnectBanner({
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
 
-            const result = await attemptHrLogin(email, pass, {
+            const nextPass = (pass || reconnectPassRef.current?.value || "").trim();
+            const result = await attemptHrLogin(email, nextPass, {
               signInWithPassword: async (creds) => {
                 const { error } = await supabase.auth.signInWithPassword(creds);
                 return {
@@ -166,11 +218,15 @@ function CloudReconnectBanner({
             });
 
             if (!result.ok) {
-              setErr(result.kind === "stale" ? "" : result.message || "Could not connect to cloud.");
+              setErr(
+                result.kind === "stale" ? "" : result.message || "Could not connect to cloud.",
+              );
               return;
             }
             if (result.mode !== "cloud") {
-              setErr("Cloud sign-in failed — check network and password. Local data is still on this browser.");
+              setErr(
+                "Cloud sign-in failed — check network and password. Local data is still on this browser.",
+              );
               return;
             }
             const { data } = await supabase.auth.getSession();
@@ -192,11 +248,17 @@ function CloudReconnectBanner({
         <label className="block min-w-0 flex-1">
           <span className="lbl">Supabase password for {email}</span>
           <input
+            ref={reconnectPassRef}
+            data-testid="admin-cloud-reconnect-password"
             type="password"
             className="field"
             value={pass}
             onChange={(e) => {
               setPass(e.target.value);
+              if (err) setErr("");
+            }}
+            onInput={(e) => {
+              setPass((e.target as HTMLInputElement).value);
               if (err) setErr("");
             }}
             autoComplete="current-password"
@@ -226,7 +288,6 @@ import { TaskGate, Tasks } from "@/admin/components/hr/Tasks";
 import { AboutPanel } from "@/admin/components/hr/AboutPanel";
 import { useAdminNav } from "@/admin/lib/admin-nav";
 import { useDensity } from "@/lib/density";
-
 
 import { HR_OWNER_EMAIL, isAdminHrAdmin } from "@/admin/lib/hr-access";
 
@@ -288,11 +349,7 @@ function adminCrumbs(tab: string): { label: string; current?: boolean }[] {
   else if (tab === "team-mgmt") group = "Team Management";
   else if (tab === "logs") group = "System";
   else if (!OPS_IDS.has(tab)) group = "Admin & Attendance";
-  return [
-    { label: "Admin & Attendance" },
-    { label: group },
-    { label: title, current: true },
-  ];
+  return [{ label: "Admin & Attendance" }, { label: group }, { label: title, current: true }];
 }
 
 function Login({
@@ -318,137 +375,159 @@ function Login({
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
-     <div className="grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
-      <div className="order-2 lg:order-1"><AboutPanel /></div>
-      <form
-        className="panel ui-glow order-1 mx-auto w-full max-w-sm space-y-4 lg:order-2"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (busyRef.current) return;
-          busyRef.current = true;
-          const attempt = ++attemptRef.current;
-          const isStale = () => attempt !== attemptRef.current;
-          setBusy(true);
-          setErr("");
+      <div className="grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
+        <div className="order-2 lg:order-1">
+          <AboutPanel />
+        </div>
+        <form
+          className="panel ui-glow order-1 mx-auto w-full max-w-sm space-y-4 lg:order-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busyRef.current) return;
+            busyRef.current = true;
+            const attempt = ++attemptRef.current;
+            const isStale = () => attempt !== attemptRef.current;
+            setBusy(true);
+            setErr("");
 
-          // Prefer live DOM values so browser autofill that skipped onChange still signs in.
-          const form = e.currentTarget;
-          const fd = new FormData(form);
-          const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
-          const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
-          if (mailRaw !== email) setEmail(mailRaw);
-          if (passRaw !== pass) setPass(passRaw);
+            // Prefer live DOM values so browser autofill that skipped onChange still signs in.
+            const form = e.currentTarget;
+            const fd = new FormData(form);
+            const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
+            const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
+            if (mailRaw !== email) setEmail(mailRaw);
+            if (passRaw !== pass) setPass(passRaw);
 
-          try {
-            const {
-              hasHrLocalPassword,
-              verifyHrLocalPassword,
-              writeHrLocalSession,
-              clearHrLocalSession,
-            } = await import("@/admin/lib/hr-auth-local");
+            try {
+              const {
+                hasHrLocalPassword,
+                verifyHrLocalPassword,
+                writeHrLocalSession,
+                clearHrLocalSession,
+              } = await import("@/admin/lib/hr-auth-local");
 
-            const result = await attemptHrLogin(mailRaw, passRaw, {
-              signInWithPassword: async (creds) => {
-                const { error } = await supabase.auth.signInWithPassword(creds);
-                return {
-                  error: error
-                    ? {
-                        message: error.message,
-                        status: error.status,
-                        name: error.name,
-                        code: typeof error.code === "string" ? error.code : undefined,
-                      }
-                    : null,
-                };
-              },
-              signOut: () => supabase.auth.signOut(),
-              hasHrLocalPassword,
-              verifyHrLocalPassword,
-              writeHrLocalSession,
-              clearHrLocalSession,
-              isStale,
-            });
+              const result = await attemptHrLogin(mailRaw, passRaw, {
+                signInWithPassword: async (creds) => {
+                  const { error } = await supabase.auth.signInWithPassword(creds);
+                  return {
+                    error: error
+                      ? {
+                          message: error.message,
+                          status: error.status,
+                          name: error.name,
+                          code: typeof error.code === "string" ? error.code : undefined,
+                        }
+                      : null,
+                  };
+                },
+                signOut: () => supabase.auth.signOut(),
+                hasHrLocalPassword,
+                verifyHrLocalPassword,
+                writeHrLocalSession,
+                clearHrLocalSession,
+                isStale,
+              });
 
-            if (isStale()) return;
-
-            if (result.ok) {
-              setErr("");
-              const normalized = mailRaw.trim().toLowerCase();
-              if (result.mode === "local") {
-                onLocalAuth(normalized);
-                // Keep busy until parent swaps to the dashboard (local path).
-                return;
-              }
-              // Open dashboard from the session now — do not wait solely on onAuthStateChange
-              // (that race left the form briefly interactive and sometimes showed a stale error).
-              const { data } = await supabase.auth.getSession();
               if (isStale()) return;
-              const uid = data.session?.user.id;
-              if (uid) {
-                onCloudAuth(data.session?.user.email?.toLowerCase() || normalized, uid);
+
+              if (result.ok) {
+                setErr("");
+                const normalized = mailRaw.trim().toLowerCase();
+                if (result.mode === "local") {
+                  onLocalAuth(normalized);
+                  // Keep busy until parent swaps to the dashboard (local path).
+                  return;
+                }
+                // Open dashboard from the session now — do not wait solely on onAuthStateChange
+                // (that race left the form briefly interactive and sometimes showed a stale error).
+                const { data } = await supabase.auth.getSession();
+                if (isStale()) return;
+                const uid = data.session?.user.id;
+                if (uid) {
+                  onCloudAuth(data.session?.user.email?.toLowerCase() || normalized, uid);
+                  return;
+                }
+                // Session should exist after a successful cloud sign-in; treat as network-ish failure.
+                setErr("Couldn't reach the server. Try again.");
+                busyRef.current = false;
+                setBusy(false);
                 return;
               }
-              // Session should exist after a successful cloud sign-in; treat as network-ish failure.
+
+              if (result.kind === "stale") return;
+              setErr(result.message);
+              busyRef.current = false;
+              setBusy(false);
+            } catch {
+              if (isStale()) return;
               setErr("Couldn't reach the server. Try again.");
               busyRef.current = false;
               setBusy(false);
-              return;
             }
-
-            if (result.kind === "stale") return;
-            setErr(result.message);
-            busyRef.current = false;
-            setBusy(false);
-          } catch {
-            if (isStale()) return;
-            setErr("Couldn't reach the server. Try again.");
-            busyRef.current = false;
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="text-center">
-          <img src="/logo.jpg" alt="Shaheen Transport LLC" className="mx-auto mb-2 h-24 w-auto" />
-          <h1 className="text-2xl font-bold">HR Attendance</h1>
-          <p className="text-sm text-muted-foreground">Sign in to continue</p>
-        </div>
-        <label className="block">
-          <span className="lbl">Email</span>
-          <input
-            ref={emailRef}
-            name="email"
-            type="email"
-            className="field"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              clearErrOnEdit();
-            }}
-            autoComplete="username"
-          />
-        </label>
-        <label className="block">
-          <span className="lbl">Password</span>
-          <input
-            ref={passRef}
-            name="password"
-            type="password"
-            className="field"
-            value={pass}
-            onChange={(e) => {
-              setPass(e.target.value);
-              clearErrOnEdit();
-            }}
-            autoFocus
-            autoComplete="current-password"
-          />
-        </label>
-        {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
-        <button type="submit" className="btn-primary w-full" disabled={busy} aria-busy={busy}>
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-     </div>
+          }}
+        >
+          <div className="text-center">
+            <img src="/logo.jpg" alt="Shaheen Transport LLC" className="mx-auto mb-2 h-24 w-auto" />
+            <h1 className="text-2xl font-bold">HR Attendance</h1>
+            <p className="text-sm text-muted-foreground">Sign in to continue</p>
+          </div>
+          <label className="block">
+            <span className="lbl">Email</span>
+            <input
+              ref={emailRef}
+              name="email"
+              type="email"
+              className="field"
+              data-testid="admin-email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearErrOnEdit();
+              }}
+              onInput={(e) => {
+                setEmail((e.target as HTMLInputElement).value);
+                clearErrOnEdit();
+              }}
+              autoComplete="username"
+            />
+          </label>
+          <label className="block">
+            <span className="lbl">Password</span>
+            <input
+              ref={passRef}
+              name="password"
+              type="password"
+              className="field"
+              data-testid="admin-password"
+              value={pass}
+              onChange={(e) => {
+                setPass(e.target.value);
+                clearErrOnEdit();
+              }}
+              onInput={(e) => {
+                setPass((e.target as HTMLInputElement).value);
+                clearErrOnEdit();
+              }}
+              autoFocus
+              autoComplete="current-password"
+            />
+          </label>
+          {err && (
+            <p role="alert" className="text-sm text-destructive">
+              {err}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="btn-primary w-full"
+            data-testid="admin-sign-in"
+            disabled={busy}
+            aria-busy={busy}
+          >
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -469,7 +548,9 @@ export function AdminApp() {
       }
       stopSync();
       stopLocalOnlyGuard();
-      void import("@/admin/lib/hr-auth-local").then((m) => m.clearHrLocalSession()).catch(() => undefined);
+      void import("@/admin/lib/hr-auth-local")
+        .then((m) => m.clearHrLocalSession())
+        .catch(() => undefined);
       setLocalOnly(false);
       setAuthedState(false);
       setEmail("");
@@ -528,9 +609,12 @@ export function AdminApp() {
       }
       setReady(true);
     };
-    void supabase.auth.getSession().then(({ data }) => apply(data.session?.user.id ?? null, data.session?.user.email ?? ""));
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => apply(data.session?.user.id ?? null, data.session?.user.email ?? ""));
     const { data: sub } = supabase.auth.onAuthStateChange((ev, session) => {
-      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") void apply(session?.user.id ?? null, session?.user.email ?? "");
+      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT")
+        void apply(session?.user.id ?? null, session?.user.email ?? "");
     });
     return () => {
       sub.subscription.unsubscribe();
@@ -563,7 +647,10 @@ export function AdminApp() {
   }
   const opsTabs = isAdmin ? TABS : TABS.filter((t) => t[0] === "hr-today" || t[0] === "overview");
   const current: TabId =
-    !isAdmin && (tab === "team-mgmt" || tab === "logs" || (tab !== "account" && tab !== "overview" && tab !== "hr-today"))
+    !isAdmin &&
+    (tab === "team-mgmt" ||
+      tab === "logs" ||
+      (tab !== "account" && tab !== "overview" && tab !== "hr-today"))
       ? "hr-today"
       : tab;
   const Active = TABS.find((t) => t[0] === current)?.[2];
@@ -595,7 +682,8 @@ export function AdminApp() {
           role="status"
           className="tracker-no-print fixed top-[44px] right-0 left-0 z-[60] border-b border-warn/40 bg-warn-soft px-3 py-1.5 text-center text-xs font-bold text-warn md:left-0"
         >
-          Isolated preview — Admin mock session + local seed only. Cloud sync disabled; Supabase URL is non-routable.
+          Isolated preview — Admin mock session + local seed only. Cloud sync disabled; Supabase URL
+          is non-routable.
         </div>
       )}
       <aside
@@ -603,8 +691,18 @@ export function AdminApp() {
         aria-label="Admin & Attendance sidebar"
       >
         <div className="mb-3 flex items-center gap-2 px-1 py-2">
-          <img src="/logo.jpg" alt="Shaheen Transport LLC" className="h-10 w-10 shrink-0 rounded-lg object-contain" />
-          {!small && <span className="hidden font-display text-sm font-bold leading-tight md:block"><span className="text-primary">SHAHEEN</span><br />HR Dashboard</span>}
+          <img
+            src="/logo.jpg"
+            alt="Shaheen Transport LLC"
+            className="h-10 w-10 shrink-0 rounded-lg object-contain"
+          />
+          {!small && (
+            <span className="hidden font-display text-sm font-bold leading-tight md:block">
+              <span className="text-primary">SHAHEEN</span>
+              <br />
+              HR Dashboard
+            </span>
+          )}
         </div>
         <nav className="flex flex-1 flex-col gap-0.5" aria-label="Admin & Attendance">
           {groupLbl("Operations")}
@@ -624,12 +722,28 @@ export function AdminApp() {
           {isAdmin && groupLbl("System")}
           {isAdmin && navBtn("logs", "Activity Logs", ScrollText)}
         </nav>
-        <button type="button" className="btn mt-3 h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent" title="Sign out" onClick={() => setAuthed(false)}>
+        <button
+          type="button"
+          className="btn mt-3 h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent"
+          title="Sign out"
+          onClick={() => setAuthed(false)}
+        >
           <LogOut className="h-4 w-4 shrink-0" />
           {!small && <span className="hidden md:inline">Sign out</span>}
         </button>
-        <button type="button" className="btn mt-1 hidden h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent md:inline-flex" title={small ? "Expand" : "Collapse"} onClick={() => setSmall(!small)}>
-          {small ? <ChevronsRight className="h-4 w-4" /> : <><ChevronsLeft className="h-4 w-4" /> Collapse</>}
+        <button
+          type="button"
+          className="btn mt-1 hidden h-10 justify-start px-3 text-sidebar-foreground hover:bg-sidebar-accent md:inline-flex"
+          title={small ? "Expand" : "Collapse"}
+          onClick={() => setSmall(!small)}
+        >
+          {small ? (
+            <ChevronsRight className="h-4 w-4" />
+          ) : (
+            <>
+              <ChevronsLeft className="h-4 w-4" /> Collapse
+            </>
+          )}
         </button>
       </aside>
       <main
@@ -637,12 +751,22 @@ export function AdminApp() {
         tabIndex={-1}
         className={`ui-enter admin-main shell-main-pad min-w-0 flex-1 overflow-x-visible outline-none md:px-6 md:pt-5 ${isPreviewIsolated() ? "pt-10" : ""}`}
       >
-        <header className="shell-page-header tracker-no-print border-b border-border/70 pb-2.5" role="banner">
+        <header
+          className="shell-page-header tracker-no-print border-b border-border/70 pb-2.5"
+          role="banner"
+        >
           <nav aria-label="Breadcrumb" className="shell-crumb">
             {crumbs.map((c, i) => (
               <span key={`${c.label}-${i}`} className="inline-flex items-center gap-1.5">
-                {i > 0 && <span className="shell-crumb-sep" aria-hidden>/</span>}
-                <span className={c.current ? "shell-crumb-current" : undefined} aria-current={c.current ? "page" : undefined}>
+                {i > 0 && (
+                  <span className="shell-crumb-sep" aria-hidden>
+                    /
+                  </span>
+                )}
+                <span
+                  className={c.current ? "shell-crumb-current" : undefined}
+                  aria-current={c.current ? "page" : undefined}
+                >
                   {c.label}
                 </span>
               </span>
@@ -650,7 +774,10 @@ export function AdminApp() {
           </nav>
         </header>
         {isPreviewIsolated() ? (
-          <div className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground" role="status">
+          <div
+            className="mb-3 rounded-lg bg-muted px-3 py-1.5 text-sm font-semibold text-muted-foreground"
+            role="status"
+          >
             Isolated preview — local seed/Zustand only; Save stays on this browser.
           </div>
         ) : localOnly ? (
@@ -668,11 +795,17 @@ export function AdminApp() {
           <SyncBadge />
         )}
         <div className="admin-page">
-          {current === "account" ? <MyAccount email={email} isAdmin={isAdmin} />
-            : current === "team-mgmt" ? <TeamManagement adminEmail={HR_EMAIL} />
-            : current === "logs" ? <SystemLogs />
-            : current === "hr-today" ? <MyHrToday localOnly={localOnly} />
-            : Active ? <Active /> : null}
+          {current === "account" ? (
+            <MyAccount email={email} isAdmin={isAdmin} />
+          ) : current === "team-mgmt" ? (
+            <TeamManagement adminEmail={HR_EMAIL} />
+          ) : current === "logs" ? (
+            <SystemLogs />
+          ) : current === "hr-today" ? (
+            <MyHrToday localOnly={localOnly} />
+          ) : Active ? (
+            <Active />
+          ) : null}
         </div>
       </main>
     </div>
@@ -682,8 +815,13 @@ export function AdminApp() {
 type TabId = (typeof TABS)[number][0] | "account" | "team-mgmt" | "logs";
 
 const LOG_LABEL: Record<string, string> = {
-  depts: "Updated departments", employees: "Updated team members", records: "Updated attendance",
-  perf: "Updated performance", tasks: "Updated tasks", settings: "Updated settings", team: "Updated user accounts / roles",
+  depts: "Updated departments",
+  employees: "Updated team members",
+  records: "Updated attendance",
+  perf: "Updated performance",
+  tasks: "Updated tasks",
+  settings: "Updated settings",
+  team: "Updated user accounts / roles",
 };
 
 /** Adds an activity-log entry whenever existing dashboard data changes. Read-only towards that data. */

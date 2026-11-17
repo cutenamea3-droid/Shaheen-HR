@@ -5,7 +5,11 @@ import { useApp } from "@/admin/lib/store";
 export function SystemLogs() {
   const logs = useApp((s) => s.logs);
   const [q, setQ] = useState("");
-  const shown = logs.filter((l) => `${l.who} ${l.action}`.toLowerCase().includes(q.toLowerCase()));
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const needle = asText(q).toLowerCase();
+  const shown = (Array.isArray(logs) ? logs : []).filter((l) =>
+    `${asText(l.who)} ${asText(l.action)}`.toLowerCase().includes(needle),
+  );
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">

@@ -40,11 +40,25 @@ const FOCUS_CHIPS: { id: AttFocus; label: string }[] = [
 export function Attendance() {
   const { date, setDate } = useWorkDate();
   const [saveMsg, setSaveMsg] = useState("");
-  const month = date.slice(0, 7);
+  const month = (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7);
   const monthSpan = useMemo(() => monthDays(month), [month]);
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);
-  const { employees, depts, records, perf, settings, setRec, resetRec, resetDay } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setRec,
+    resetRec,
+    resetDay,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const monthClosed = isDateInClosedMonth(date, isClosedFn);
   const day = records[date] ?? {};
@@ -71,7 +85,9 @@ export function Attendance() {
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
-      const next = { ...prev, [id]: !isExpanded(id, prev) };
+      const safe =
+        prev && typeof prev === "object" && !Array.isArray(prev) ? prev : ({} as Record<string, boolean>);
+      const next = { ...safe, [id]: !isExpanded(id, safe) };
       saveAttendancePrefs({ expanded: next });
       return next;
     });
@@ -79,7 +95,9 @@ export function Attendance() {
 
   /** Compact: collapsed unless explicitly opened. Comfortable: open unless explicitly closed. */
   const isExpanded = (id: string, map = expanded) => {
-    if (map[id] != null) return map[id]!;
+    const safe =
+      map && typeof map === "object" && !Array.isArray(map) ? map : ({} as Record<string, boolean>);
+    if (safe[id] != null) return safe[id]!;
     return density !== "compact";
   };
 
@@ -201,7 +219,19 @@ export function Attendance() {
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => downloadPayrollCsv(data, rangeFrom, rangeTo, rangeFrom.slice(0, 7))}
+              onClick={() =>
+                downloadPayrollCsv(
+                  data,
+                  rangeFrom,
+                  rangeTo,
+                  (rangeFrom == null
+                    ? ""
+                    : typeof rangeFrom === "string"
+                      ? rangeFrom
+                      : String(rangeFrom)
+                  ).slice(0, 7),
+                )
+              }
             >
               Export Payroll CSV
             </button>
@@ -303,7 +333,10 @@ export function Attendance() {
                       <span className="ml-2 text-sm text-muted-foreground">
                         {r.status}
                         {c.worked != null ? ` · ${fmtHours(c.worked)} h` : ""}
-                        {c.flags.length ? ` · ${c.flags[0]}` : ""}
+                        {(() => {
+                          const flags = Array.isArray(c.flags) ? c.flags : [];
+                          return flags.length ? ` · ${flags[0]}` : "";
+                        })()}
                       </span>
                     )}
                   </span>
@@ -358,7 +391,15 @@ export function Attendance() {
                               <option value="custom">Custom hours</option>
                             </select>
                             {r.otMode === "custom" && (
-                              <input type="number" step="0.25" min="0" className="field h-9 w-24" value={r.otHours} onChange={(ev) => set({ otHours: +ev.target.value })} />
+                              <input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                className="field h-9 w-24"
+                                value={r.otHours}
+                                onChange={(ev) => set({ otHours: +ev.target.value })}
+                                onInput={(ev) => set({ otHours: +(ev.target as HTMLInputElement).value })}
+                              />
                             )}
                           </span>
                         )}
@@ -373,12 +414,22 @@ export function Attendance() {
                               className="field h-9 w-24"
                               value={r.extraHours ?? ""}
                               onChange={(ev) => set({ extraHours: ev.target.value === "" ? null : +ev.target.value })}
+                              onInput={(ev) => {
+                                const v = (ev.target as HTMLInputElement).value;
+                                set({ extraHours: v === "" ? null : +v });
+                              }}
                             />
                           </span>
                         )}
                       </div>
                       {r.status === "half" && (
-                        <input className="field mt-3" placeholder="Half day reason" value={r.halfReason} onChange={(ev) => set({ halfReason: ev.target.value })} />
+                        <input
+                          className="field mt-3"
+                          placeholder="Half day reason"
+                          value={r.halfReason}
+                          onChange={(ev) => set({ halfReason: ev.target.value })}
+                          onInput={(ev) => set({ halfReason: (ev.target as HTMLInputElement).value })}
+                        />
                       )}
                     </>
                   )}
@@ -388,11 +439,13 @@ export function Attendance() {
                     placeholder="Note / reason (e.g. informed HR about late arrival)"
                     value={r.note}
                     onChange={(ev) => set({ note: ev.target.value })}
+                    onInput={(ev) => set({ note: (ev.target as HTMLTextAreaElement).value })}
                   />
 
                   {rec && (() => {
                     const tips: string[] = [];
-                    if (c.missPunch) tips.push(`Missing ${c.missing.length} punch(es) — paste them from the machine or add a note.`);
+                    const missing = Array.isArray(c.missing) ? c.missing : [];
+                    if (c.missPunch) tips.push(`Missing ${missing.length} punch(es) — paste them from the machine or add a note.`);
                     if (r.in != null && r.out == null) tips.push("Missing clock-out — paste punch out from the machine or add a note.");
                     if (e.afterHours && !r.doubleShift && !c.extraDay && c.worked != null && c.worked >= c.shiftLen + 120)
                       tips.push(`Worked ${fmtHours(c.worked)} h — more than a normal shift. Tick "Double shift" if he stayed for an extra shift.`);
@@ -413,15 +466,19 @@ export function Attendance() {
                         Worked: <b>{c.worked != null ? `${fmtHours(c.worked)} h` : "—"}</b>
                       </span>
                       {c.breakTaken != null && <span>Break: <b>{c.breakTaken}m</b></span>}
-                      {c.flags.length ? (
-                        c.flags.map((f) => (
-                          <Tone key={f} tone={c.violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
-                            {f}
-                          </Tone>
-                        ))
-                      ) : (
-                        <Tone tone="green">On time</Tone>
-                      )}
+                      {(() => {
+                        const flags = Array.isArray(c.flags) ? c.flags : [];
+                        const violations = Array.isArray(c.violations) ? c.violations : [];
+                        return flags.length ? (
+                          flags.map((f) => (
+                            <Tone key={f} tone={violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
+                              {f}
+                            </Tone>
+                          ))
+                        ) : (
+                          <Tone tone="green">On time</Tone>
+                        );
+                      })()}
                     </div>
                   )}
                 </>
