@@ -2101,6 +2101,10 @@ function HandoverBoard({
   const [priorities, setPriorities] = useState("");
   const [toDispatcher, setToDispatcher] = useState("");
   const [hintsReady, setHintsReady] = useState(false);
+  const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const watchRef = useRef<HTMLTextAreaElement>(null);
+  const prioritiesRef = useRef<HTMLTextAreaElement>(null);
+  const toDispatcherRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void listHandovers().then(setRows);
@@ -2132,33 +2136,45 @@ function HandoverBoard({
       <label className="grid gap-1 text-sm">
         Summary
         <textarea
+          ref={summaryRef}
+          data-testid="dispatch-handover-summary"
           className="dispatch-field min-h-24"
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
+          onInput={(e) => setSummary((e.target as HTMLTextAreaElement).value)}
         />
       </label>
       <label className="grid gap-1 text-sm">
         Watch items
         <textarea
+          ref={watchRef}
+          data-testid="dispatch-handover-watch"
           className="dispatch-field min-h-20"
           value={watch}
           onChange={(e) => setWatch(e.target.value)}
+          onInput={(e) => setWatch((e.target as HTMLTextAreaElement).value)}
         />
       </label>
       <label className="grid gap-1 text-sm">
         Next-day priorities
         <textarea
+          ref={prioritiesRef}
+          data-testid="dispatch-handover-priorities"
           className="dispatch-field min-h-20"
           value={priorities}
           onChange={(e) => setPriorities(e.target.value)}
+          onInput={(e) => setPriorities((e.target as HTMLTextAreaElement).value)}
         />
       </label>
       <label className="grid gap-1 text-sm">
         To dispatcher
         <input
+          ref={toDispatcherRef}
+          data-testid="dispatch-handover-to"
           className="dispatch-field"
           value={toDispatcher}
           onChange={(e) => setToDispatcher(e.target.value)}
+          onInput={(e) => setToDispatcher((e.target as HTMLInputElement).value)}
         />
       </label>
       <p className="text-xs text-[color:var(--dispatch-muted)]">
@@ -2169,13 +2185,17 @@ function HandoverBoard({
           type="button"
           className="dispatch-btn-primary"
           onClick={async () => {
+            const nextSummary = summary || summaryRef.current?.value || "";
+            const nextWatch = watch || watchRef.current?.value || "";
+            const nextPriorities = priorities || prioritiesRef.current?.value || "";
+            const nextTo = (toDispatcher.trim() || toDispatcherRef.current?.value || "").trim();
             const saved = await saveHandover({
               shift_date: new Date().toISOString().slice(0, 10),
               from_dispatcher: account.display_name,
-              to_dispatcher: toDispatcher || null,
-              summary,
-              watch_items: watch,
-              next_day_priorities: priorities,
+              to_dispatcher: nextTo || null,
+              summary: nextSummary,
+              watch_items: nextWatch,
+              next_day_priorities: nextPriorities,
               open_load_ids: openLoads.map((l) => l.id),
             });
             setRows(await listHandovers());

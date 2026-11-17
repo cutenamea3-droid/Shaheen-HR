@@ -484,6 +484,10 @@ function Login({
                 setEmail(e.target.value);
                 clearErrOnEdit();
               }}
+              onInput={(e) => {
+                setEmail((e.target as HTMLInputElement).value);
+                clearErrOnEdit();
+              }}
               autoComplete="username"
             />
           </label>
@@ -498,6 +502,10 @@ function Login({
               value={pass}
               onChange={(e) => {
                 setPass(e.target.value);
+                clearErrOnEdit();
+              }}
+              onInput={(e) => {
+                setPass((e.target as HTMLInputElement).value);
                 clearErrOnEdit();
               }}
               autoFocus

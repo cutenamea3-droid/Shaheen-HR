@@ -491,7 +491,7 @@ export function findWorkCenterRow(
   if (!sec || !Array.isArray(sec.rows)) return null;
   const row = sec.rows.find((r) => r.id === rowId);
   if (!row) return null;
-  return { row, headers: sec.headers };
+  return { row, headers: Array.isArray(sec.headers) ? sec.headers : [] };
 }
 
 export function sectionStatusOptions(sectionId: string): string[] {
