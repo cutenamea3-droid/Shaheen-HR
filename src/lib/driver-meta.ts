@@ -50,7 +50,9 @@ export function parseRosterKind(value?: string | null): RosterKind {
 /** Resolve class from any compliance row for this driverId (missing → company). */
 export function driverClassOf(data: AppData, driverId: string): DriverClass {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (r?.driverClass) return parseDriverClass(r.driverClass);
   }
   return "company";
@@ -59,7 +61,9 @@ export function driverClassOf(data: AppData, driverId: string): DriverClass {
 /** Resolve onboarding kind (missing → roster — never invent "new" for seed drivers). */
 export function rosterKindOf(data: AppData, driverId: string): RosterKind {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (r?.rosterKind) return parseRosterKind(r.rosterKind);
   }
   return "roster";
@@ -128,7 +132,8 @@ export function collectTempNotes(data: AppData, driverId: string): TempNoteSecti
     if (!row) continue;
     const idx = def.types.indexOf("tempnote");
     if (idx < 0) continue;
-    const text = (row.cells[idx] ?? "").trim();
+    const cells = Array.isArray(row.cells) ? row.cells : [];
+    const text = (cells[idx] ?? "").trim();
     if (!text) continue;
     out.push({ sectionId: def.id, sectionTitle: def.title, short: def.short, text });
   }

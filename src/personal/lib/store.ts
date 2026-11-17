@@ -374,27 +374,31 @@ export const usePersonal = create<PersonalStore>()(
         vuPlanAsOf: s.vuPlanAsOf,
       }),
       merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<PersonalState>;
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<PersonalState>)
+            : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        const obj = <T extends object>(v: unknown, fallback: T): T =>
+          v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
         return {
           ...current,
-          ...p,
-          settings: migrateSettings(p.settings),
-          courses: p.courses ?? current.courses,
-          backlog: p.backlog ?? current.backlog,
-          assessments: (p.assessments ?? current.assessments).map((a) =>
-            normalizeAssessment(a),
-          ),
-          notes: p.notes ?? current.notes,
-          sessions: p.sessions ?? current.sessions,
-          dayPlans: p.dayPlans ?? current.dayPlans,
-          discipline: migrateDiscipline(p.discipline ?? current.discipline),
-          vaultNotes: p.vaultNotes ?? current.vaultNotes,
-          gradeEntries: p.gradeEntries ?? [],
-          courseGrades: p.courseGrades ?? [],
-          examPrepTasks: p.examPrepTasks ?? [],
-          weeklyReviews: p.weeklyReviews ?? {},
-          vuSeededAt: p.vuSeededAt ?? null,
-          vuPlanAsOf: p.vuPlanAsOf ?? null,
+          ...raw,
+          settings: migrateSettings(raw.settings),
+          courses: arr(raw.courses, current.courses),
+          backlog: arr(raw.backlog, current.backlog),
+          assessments: arr(raw.assessments, current.assessments).map((a) => normalizeAssessment(a)),
+          notes: arr(raw.notes, current.notes),
+          sessions: arr(raw.sessions, current.sessions),
+          dayPlans: obj(raw.dayPlans, current.dayPlans),
+          discipline: migrateDiscipline(arr(raw.discipline, current.discipline)),
+          vaultNotes: typeof raw.vaultNotes === "string" ? raw.vaultNotes : current.vaultNotes,
+          gradeEntries: arr(raw.gradeEntries, []),
+          courseGrades: arr(raw.courseGrades, []),
+          examPrepTasks: arr(raw.examPrepTasks, []),
+          weeklyReviews: obj(raw.weeklyReviews, current.weeklyReviews ?? {}),
+          vuSeededAt: raw.vuSeededAt ?? null,
+          vuPlanAsOf: raw.vuPlanAsOf ?? null,
           authed: false,
         };
       },

@@ -26,11 +26,12 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (activeOnly && !rowIsActive(def, r, data)) continue;
+      const cells = Array.isArray(r.cells) ? r.cells : [];
       let row = map.get(r.driverId);
       if (!row) {
         row = {
           driverId: r.driverId,
-          name: (r.cells[0] ?? "").trim(),
+          name: (cells[0] ?? "").trim(),
           cdl: "",
           dmvStatus: "",
           medicalExpiry: "",
@@ -39,14 +40,14 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
         };
         map.set(r.driverId, row);
       }
-      if (!row.name.trim()) row.name = (r.cells[0] ?? "").trim();
+      if (!row.name.trim()) row.name = (cells[0] ?? "").trim();
       if (def.id === "dmv") {
-        row.dmvStatus = normStatus(r.cells[2] ?? "") || (r.cells[2] ?? "").trim() || "—";
-        if (!row.cdl) row.cdl = (r.cells[1] ?? "").trim();
+        row.dmvStatus = normStatus(cells[2] ?? "") || (cells[2] ?? "").trim() || "—";
+        if (!row.cdl) row.cdl = (cells[1] ?? "").trim();
       }
-      if (def.id === "ssccdl" && (r.cells[1] ?? "").trim()) row.cdl = (r.cells[1] ?? "").trim();
-      if (def.id === "medical") row.medicalExpiry = fmtCell(r.cells[2] ?? "") || "—";
-      if (def.id === "queries") row.clearinghouseAnnual = fmtCell(r.cells[2] ?? "") || "—";
+      if (def.id === "ssccdl" && (cells[1] ?? "").trim()) row.cdl = (cells[1] ?? "").trim();
+      if (def.id === "medical") row.medicalExpiry = fmtCell(cells[2] ?? "") || "—";
+      if (def.id === "queries") row.clearinghouseAnnual = fmtCell(cells[2] ?? "") || "—";
     }
   }
 
