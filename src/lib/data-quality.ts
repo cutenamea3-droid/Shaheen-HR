@@ -11,7 +11,7 @@ import {
   parseISO,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, headersOf, normName, rowsOf, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, normName, rowsOf, type AppData, type Row } from "./sections";
 
 export type DataQualitySeverity = "high" | "medium" | "low" | "info";
 
@@ -47,8 +47,7 @@ export const DATA_QUALITY_POLICY =
 const WIZARD_SECTIONS = SECTIONS.filter((s) => s.inWizard).map((s) => s.id);
 
 function cell(row: Row | undefined, i: number) {
-  const cells = Array.isArray(row?.cells) ? row!.cells : [];
-  return (cells[i] ?? "").trim();
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function nameOf(data: AppData, driverId: string): string {

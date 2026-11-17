@@ -20,7 +20,7 @@ import {
   listScopeOf,
   type ListScope,
 } from "@/lib/driver-meta";
-import { SECTIONS, type AppData } from "@/lib/sections";
+import { SECTIONS, cellsOf, type AppData } from "@/lib/sections";
 
 export type FinderEmploymentLabel = "Active" | "Leave" | "Inactive" | "New";
 
@@ -76,7 +76,7 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
     const sec = data.sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
-      const cells = Array.isArray(r.cells) ? r.cells : [];
+      const cells = cellsOf(r);
       let d = map.get(r.driverId);
       if (!d) {
         const status = rowDriverStatus(def, r, data);

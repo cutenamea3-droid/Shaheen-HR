@@ -1,6 +1,6 @@
 import logo from "@/assets/logo.jpg.asset.json";
 import { fmtCell, fmtDate, matchesExpFilter, normStatus, overallExpStatus, rowIsActive, today, type ExpFilter } from "./alerts";
-import { SECTIONS, type AppData } from "./sections";
+import { SECTIONS, cellsOf, type AppData } from "./sections";
 
 export interface DotAuditRow {
   driverId: string;
@@ -26,7 +26,7 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (activeOnly && !rowIsActive(def, r, data)) continue;
-      const cells = Array.isArray(r.cells) ? r.cells : [];
+      const cells = cellsOf(r);
       let row = map.get(r.driverId);
       if (!row) {
         row = {

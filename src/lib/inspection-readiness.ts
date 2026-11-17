@@ -13,7 +13,7 @@ import {
   rowIsActive,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, headersOf, rowsOf, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, rowsOf, type AppData, type Row } from "./sections";
 import { isOwnerOperator } from "./driver-meta";
 
 /** Honest inspection status — only these values. */
@@ -85,8 +85,7 @@ function emptyCounts(): Record<InspectionStatus, number> {
 }
 
 function cell(row: Row | undefined, i: number) {
-  const cells = Array.isArray(row?.cells) ? row!.cells : [];
-  return (cells[i] ?? "").trim();
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
@@ -114,8 +113,10 @@ export function statusFromCell(opts: {
   /** When true, no expiry is required for "verified" (e.g. SSC, Other Docs). */
   noExpiryRequired?: boolean;
 }): { status: InspectionStatus; evidence: string; expiryDisplay: string } {
-  const status = normStatus(opts.statusRaw);
-  const expiryRaw = (opts.expiryRaw ?? "").trim();
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const statusRaw = asText(opts.statusRaw);
+  const status = normStatus(statusRaw);
+  const expiryRaw = asText(opts.expiryRaw).trim();
   const expiryDisplay = expiryRaw ? (isOldExpiry(expiryRaw) ? expiryRaw : fmtCell(expiryRaw) || expiryRaw) : "—";
 
   if (!status && !expiryRaw) {
@@ -170,10 +171,10 @@ export function statusFromCell(opts: {
   }
 
   // Unknown / custom status text
-  if (opts.statusRaw.trim()) {
+  if (statusRaw.trim()) {
     return {
       status: "present",
-      evidence: `Non-standard status “${opts.statusRaw.trim()}” — recorded but not verified`,
+      evidence: `Non-standard status “${statusRaw.trim()}” — recorded but not verified`,
       expiryDisplay,
     };
   }

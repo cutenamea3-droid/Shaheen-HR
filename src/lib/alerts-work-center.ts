@@ -22,7 +22,7 @@ import {
   suggestionMatchesToday,
   type FuturePlanSuggestion,
 } from "./plan-dates";
-import { SECTIONS, cellsOf, sectionById, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, sectionById, type AppData, type Row } from "./sections";
 import {
   collectTempNotes,
   isNewDriver,
@@ -374,7 +374,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
           sectionId: def.id,
           sectionTitle: def.title,
           rowId: row.id,
-          docType: ((Array.isArray(sec.headers) ? sec.headers[issue.col] : undefined) ?? def.short).trim() || def.short,
+          docType: (headersOf(sec)[issue.col] ?? def.short).trim() || def.short,
           statusLabel,
           expiryRaw,
           expiryDisplay: expiryD ? fmtDate(expiryD) : fmtCell(expiryRaw) || "—",
@@ -449,13 +449,16 @@ export function filterWorkCenterItems(
   filter: WorkCenterFilter,
   search: string,
 ): WorkCenterItem[] {
-  const q = search.trim().toLowerCase();
+  const q = (search == null ? "" : typeof search === "string" ? search : String(search))
+    .trim()
+    .toLowerCase();
   const list = Array.isArray(items) ? items : [];
   return list.filter((item) => {
     const filters = Array.isArray(item.filters) ? item.filters : [];
     if (filter !== "all" && !filters.includes(filter)) return false;
     if (!q) return true;
-    const hay = `${item.driver} ${item.docType} ${item.sectionTitle} ${item.details} ${item.statusLabel}`.toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const hay = `${asText(item.driver)} ${asText(item.docType)} ${asText(item.sectionTitle)} ${asText(item.details)} ${asText(item.statusLabel)}`.toLowerCase();
     return hay.includes(q);
   });
 }

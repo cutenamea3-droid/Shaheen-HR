@@ -57,9 +57,10 @@ export function parsePlanDate(text: string | null | undefined): Date | null {
   return new Date(+yy[1], MONTHS.indexOf(mm[1]), nums[0]);
 }
 
-export function normStatus(v: string | null | undefined): string {
-  if (v == null || typeof v !== "string") return "";
-  const k = v.toLowerCase().replace(/[^a-z]/g, "");
+export function normStatus(v: unknown): string {
+  if (v == null) return "";
+  const raw = typeof v === "string" ? v : String(v);
+  const k = raw.toLowerCase().replace(/[^a-z]/g, "");
   if (!k) return "";
   if (k === "valid") return "Valid";
   if (k.startsWith("applied")) return "Applied";
@@ -67,7 +68,7 @@ export function normStatus(v: string | null | undefined): string {
   if (k.startsWith("missing")) return "Missing";
   if (k.includes("sign")) return "Sign Missing";
   if (k.startsWith("expired")) return "Expired";
-  return v.trim();
+  return raw.trim();
 }
 export function statusTone(v: string): Tone {
   switch (normStatus(v)) {
@@ -87,8 +88,9 @@ const filled = (v: unknown) => {
 };
 
 /** Case-insensitive "old" in an expiration cell — skip amber/red for that column. */
-export function isOldExpiry(v: string) {
-  return (v ?? "").toLowerCase().includes("old");
+export function isOldExpiry(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  return s.toLowerCase().includes("old");
 }
 
 /**
@@ -246,7 +248,7 @@ export const dmvDays = (state: string | null | undefined) =>
 
 /** Returns row issues and the per-cell highlight tone map. */
 export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
-  const c = Array.isArray(row.cells) ? row.cells : [];
+  const c = cellsOf(row);
   const hdrs = Array.isArray(headers) ? headers : [];
   const headerAt = (i: number) => (hdrs[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`;
   const issues: Issue[] = [];
@@ -327,7 +329,7 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
 }
 
 export function complianceScore(row: Row) {
-  const cells = Array.isArray(row.cells) ? row.cells : [];
+  const cells = cellsOf(row);
   let valid = 0;
   for (let i = 2; i <= 13; i++) if (normStatus(cells[i]) === "Valid") valid++;
   let score = (valid / 12) * 100;
@@ -339,7 +341,7 @@ export function complianceScore(row: Row) {
 export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): DriverStatus {
   if (row.status) return row.status;
   const idx = def.types.indexOf("active");
-  if (idx >= 0) return parseDriverStatus((Array.isArray(row.cells) ? row.cells : [])[idx]);
+  if (idx >= 0) return parseDriverStatus((cellsOf(row))[idx]);
   // sections without a status column follow the driver's DMV / other status
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
@@ -348,7 +350,7 @@ export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): Drive
     if (!Array.isArray(rows)) continue;
     const r = rows.find((x) => x.driverId === row.driverId);
     if (r) {
-      const cells = Array.isArray(r.cells) ? r.cells : [];
+      const cells = cellsOf(r);
       return r.status ?? parseDriverStatus(cells[i]);
     }
   }
@@ -422,7 +424,7 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
-      const cells = Array.isArray(row.cells) ? row.cells : [];
+      const cells = cellsOf(row);
       for (const { col, label } of horizonDateCols(def)) {
         const raw = cells[col] ?? "";
         if (isOldExpiry(raw)) continue;
@@ -464,7 +466,7 @@ export function collectPlans(data: AppData): PlanItem[] {
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
-      const cells = Array.isArray(row.cells) ? row.cells : [];
+      const cells = cellsOf(row);
       def.types.forEach((t, i) => {
         if (t !== "plan") return;
         const txt = cells[i] ?? "";
@@ -527,7 +529,7 @@ export function driverExpiryDays(data: AppData, driverId: string): number[] {
     if (!Array.isArray(rows)) continue;
     const row = rows.find((r) => r.driverId === driverId);
     if (!row) continue;
-    const cells = Array.isArray(row.cells) ? row.cells : [];
+    const cells = cellsOf(row);
     for (const i of cols) {
       const v = cells[i] ?? "";
       if (isOldExpiry(v)) continue;
@@ -608,7 +610,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
-      const cells = Array.isArray(row.cells) ? row.cells : [];
+      const cells = cellsOf(row);
       const driver = (cells[0] ?? "").trim() || "—";
       const base = {
         driver,
