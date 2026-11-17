@@ -412,8 +412,13 @@ const PAYROLL_HEAD = [
   "Total Days Absent",
 ];
 
-export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel = from.slice(0, 7)) {
-  const rows = payrollSummary(data, from, to);
+export function downloadPayrollCsv(data: Data, from: string, to: string, monthLabel?: string) {
+  const f = from == null ? "" : typeof from === "string" ? from : String(from);
+  const t = to == null ? "" : typeof to === "string" ? to : String(to);
+  const labelRaw =
+    monthLabel == null ? f : typeof monthLabel === "string" ? monthLabel : String(monthLabel);
+  const label = labelRaw.slice(0, 7);
+  const rows = payrollSummary(data, f, t);
   // CSV cells are string | number (hours already .toFixed strings; day counts are numbers).
   // esc already coerces via String(s) — widen the param for exact typing only (no output change).
   const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
@@ -436,7 +441,7 @@ export function downloadPayrollCsv(data: Data, from: string, to: string, monthLa
   const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `Shaheen_Payroll_Summary_${monthLabel}.csv`;
+  a.download = `Shaheen_Payroll_Summary_${label}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
 }

@@ -102,8 +102,9 @@ export type MonthlyReportModel = {
   otRows: OtItem[];
 };
 
-export function monthLabel(month: string) {
-  const [y = 2026, m = 1] = month.split("-").map(Number);
+export function monthLabel(month: unknown) {
+  const s = month == null ? "" : typeof month === "string" ? month : String(month);
+  const [y = 2026, m = 1] = s.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 

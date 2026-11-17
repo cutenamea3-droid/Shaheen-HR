@@ -226,7 +226,10 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
                 who: "HR",
                 kind: "reminder_add",
                 detail: `Reminder “${r.title}” due ${r.due}`,
-                month: remDue.slice(0, 7),
+                month: (remDue == null ? "" : typeof remDue === "string" ? remDue : String(remDue)).slice(
+                  0,
+                  7,
+                ),
                 ...(r.employeeId ? { employeeId: r.employeeId } : {}),
               });
               setRemTitle("");
@@ -249,11 +252,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
                 className="btn-ghost"
                 onClick={() => {
                   completeReminder(r.id);
+                  const due =
+                    r.due == null ? "" : typeof r.due === "string" ? r.due : String(r.due);
                   recordAudit({
                     who: "HR",
                     kind: "reminder_done",
                     detail: `Completed reminder “${r.title}”`,
-                    month: r.due.slice(0, 7),
+                    month: due.slice(0, 7),
                     ...(r.employeeId ? { employeeId: r.employeeId } : {}),
                   });
                 }}

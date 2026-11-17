@@ -75,7 +75,7 @@ export function Performance() {
       kind: "perf_followup_add",
       detail: `Follow-up “${r.title}” for ${r.employeeName}`,
       employeeId: r.employeeId,
-      month: date.slice(0, 7),
+      month: (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7),
     });
     setFuTitle("");
     setMsg("Follow-up added.");
@@ -133,12 +133,14 @@ export function Performance() {
                 className="btn-ghost"
                 onClick={() => {
                   completeFollowUp(f.id);
+                  const due =
+                    f.due == null ? "" : typeof f.due === "string" ? f.due : String(f.due);
                   recordAudit({
                     who: "HR",
                     kind: "perf_followup_done",
                     detail: `Completed follow-up “${f.title}”`,
                     employeeId: f.employeeId,
-                    month: f.due.slice(0, 7),
+                    month: due.slice(0, 7),
                   });
                 }}
               >

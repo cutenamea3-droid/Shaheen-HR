@@ -171,7 +171,14 @@ export function Reports() {
               <button
                 type="button"
                 className="btn-primary"
-                onClick={() => downloadPayrollCsv(data, from, to, from.slice(0, 7))}
+                onClick={() =>
+                  downloadPayrollCsv(
+                    data,
+                    from,
+                    to,
+                    (from == null ? "" : typeof from === "string" ? from : String(from)).slice(0, 7),
+                  )
+                }
               >
                 Export Payroll CSV
               </button>

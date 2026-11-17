@@ -219,7 +219,19 @@ export function Attendance() {
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => downloadPayrollCsv(data, rangeFrom, rangeTo, rangeFrom.slice(0, 7))}
+              onClick={() =>
+                downloadPayrollCsv(
+                  data,
+                  rangeFrom,
+                  rangeTo,
+                  (rangeFrom == null
+                    ? ""
+                    : typeof rangeFrom === "string"
+                      ? rangeFrom
+                      : String(rangeFrom)
+                  ).slice(0, 7),
+                )
+              }
             >
               Export Payroll CSV
             </button>
