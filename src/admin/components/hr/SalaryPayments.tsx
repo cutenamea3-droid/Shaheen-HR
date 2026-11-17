@@ -276,7 +276,10 @@ export function SalaryPayments() {
                       <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                         {events.map((ev) => (
                           <li key={ev.id}>
-                            {new Date(ev.createdAt).toISOString().slice(0, 10)} · {ev.eventType}
+                            {Number.isFinite(ev.createdAt)
+                              ? new Date(ev.createdAt).toISOString().slice(0, 10)
+                              : "—"}{" "}
+                            · {ev.eventType}
                             {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
                             {ev.statusAfter ? ` → ${ev.statusAfter}` : ""}
                             {ev.note ? ` · ${ev.note}` : ""}

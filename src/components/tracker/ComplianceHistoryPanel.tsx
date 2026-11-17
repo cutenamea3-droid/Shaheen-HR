@@ -8,6 +8,7 @@ import { listSensitiveAudit } from "@/lib/driver-hr/sensitive-audit";
 import {
   buildComplianceHistory,
   complianceHistoryEmptyMessage,
+  historyAtIso,
   historySourceLabel,
   type ComplianceHistoryEvent,
 } from "@/lib/compliance-history";
@@ -148,7 +149,7 @@ function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
           <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-extrabold">
             {historySourceLabel(event.source)}
           </span>
-          <time className="text-xs font-semibold text-muted-foreground" dateTime={new Date(event.at).toISOString()}>
+          <time className="text-xs font-semibold text-muted-foreground" dateTime={historyAtIso(event.at)}>
             {event.atLabel}
           </time>
         </div>
