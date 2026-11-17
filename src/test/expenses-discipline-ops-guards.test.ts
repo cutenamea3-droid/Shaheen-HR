@@ -42,6 +42,11 @@ describe("expenses / discipline / ops corrupt guards", () => {
     expect(usePersonal.getState().discipline[0]!.doneDates).toContain("2026-11-17");
   });
 
+  it("summarizeExpenses tolerates non-array rows", () => {
+    expect(() => summarizeExpenses(null as unknown as ExpenseRecord[])).not.toThrow();
+    expect(summarizeExpenses(null as unknown as ExpenseRecord[]).count).toBe(0);
+  });
+
   it("expense employeeIds coerce in summarize/duplicate/template", () => {
     const row = {
       id: "1",

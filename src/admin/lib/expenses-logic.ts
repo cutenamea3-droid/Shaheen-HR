@@ -82,7 +82,8 @@ export function summarizeExpenses(
   let count = 0;
   let deletedCount = 0;
 
-  for (const r of rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  for (const r of list) {
     if (r.deletedAt) {
       deletedCount++;
       if (!opts?.includeDeleted) continue;

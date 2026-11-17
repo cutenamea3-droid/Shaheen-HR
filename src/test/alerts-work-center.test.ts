@@ -177,6 +177,33 @@ describe("search", () => {
   });
 });
 
+describe("corrupt items coerce", () => {
+  test("filter/group/counts tolerate non-array items and filters", () => {
+    expect(filterWorkCenterItems(null as never, "all", "")).toEqual([]);
+    expect(groupWorkCenterByDriver(undefined as never)).toEqual([]);
+    expect(workCenterCounts(null as never).all).toBe(0);
+    const bad = [
+      {
+        key: "k",
+        driverId: "d1",
+        driver: "X",
+        sectionId: "dmv",
+        sectionTitle: "DMV",
+        rowId: "r1",
+        docType: "DMV",
+        statusLabel: "Expired",
+        details: "",
+        neededAction: "",
+        tone: "danger" as const,
+        filters: null as never,
+        isNew: false,
+      },
+    ];
+    expect(() => filterWorkCenterItems(bad as never, "expired", "")).not.toThrow();
+    expect(() => workCenterCounts(bad as never)).not.toThrow();
+  });
+});
+
 // Keep setCell import referenced for authorized-path documentation in this suite.
 test("setCell export is the authorized write path", () => {
   expect(typeof setCell).toBe("function");

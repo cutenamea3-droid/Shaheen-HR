@@ -418,7 +418,8 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
 
 export function groupWorkCenterByDriver(items: WorkCenterItem[]): WorkCenterDriverGroup[] {
   const map = new Map<string, WorkCenterDriverGroup>();
-  for (const item of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const item of list) {
     let g = map.get(item.driverId);
     if (!g) {
       g = {
@@ -449,8 +450,10 @@ export function filterWorkCenterItems(
   search: string,
 ): WorkCenterItem[] {
   const q = search.trim().toLowerCase();
-  return items.filter((item) => {
-    if (filter !== "all" && !item.filters.includes(filter)) return false;
+  const list = Array.isArray(items) ? items : [];
+  return list.filter((item) => {
+    const filters = Array.isArray(item.filters) ? item.filters : [];
+    if (filter !== "all" && !filters.includes(filter)) return false;
     if (!q) return true;
     const hay = `${item.driver} ${item.docType} ${item.sectionTitle} ${item.details} ${item.statusLabel}`.toLowerCase();
     return hay.includes(q);
@@ -466,10 +469,12 @@ export function workCenterCounts(items: WorkCenterItem[]): WorkCenterCounts {
   const byFilter = new Map<WorkCenterFilter, Set<string>>();
   for (const f of WORK_CENTER_FILTERS) byFilter.set(f.id, new Set());
 
-  for (const item of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const item of list) {
     driversAll.add(item.driverId);
     byFilter.get("all")!.add(item.driverId);
-    for (const f of item.filters) {
+    const filters = Array.isArray(item.filters) ? item.filters : [];
+    for (const f of filters) {
       if (f === "all") continue;
       byFilter.get(f)?.add(item.driverId);
     }
@@ -477,7 +482,7 @@ export function workCenterCounts(items: WorkCenterItem[]): WorkCenterCounts {
 
   counts.drivers = driversAll.size;
   for (const f of WORK_CENTER_FILTERS) {
-    counts[f.id] = f.id === "all" ? items.length : byFilter.get(f.id)!.size;
+    counts[f.id] = f.id === "all" ? list.length : byFilter.get(f.id)!.size;
   }
   return counts;
 }
@@ -496,7 +501,8 @@ export function findWorkCenterRow(
 }
 
 export function sectionStatusOptions(sectionId: string): string[] {
-  return sectionById(sectionId)?.statusOptions ?? [];
+  const opts = sectionById(sectionId)?.statusOptions;
+  return Array.isArray(opts) ? opts : [];
 }
 
 /** Temp notes for a driver (display helper). */
