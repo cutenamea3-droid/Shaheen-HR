@@ -111,6 +111,46 @@ export function emptyWeeklyReview(weekStart: unknown): WeeklyReview {
   };
 }
 
+/** Coerce weekly review journal scalars from corrupt cloud/local persist. */
+export function normalizeWeeklyReview(raw: unknown, weekKey?: unknown): WeeklyReview {
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return emptyWeeklyReview(weekKey);
+  }
+  const r = raw as Partial<WeeklyReview>;
+  const updated =
+    typeof r.updatedAt === "number" && Number.isFinite(r.updatedAt)
+      ? r.updatedAt
+      : Number.isFinite(Number(r.updatedAt))
+        ? Number(r.updatedAt)
+        : Date.now();
+  return {
+    weekStart: asIsoDate(r.weekStart ?? weekKey),
+    wins: asText(r.wins),
+    blockers: asText(r.blockers),
+    nextFocus: asText(r.nextFocus),
+    updatedAt: updated,
+  };
+}
+
+/** Normalize a weeklyReviews map — keys and values coerced. */
+export function normalizeWeeklyReviews(
+  raw: unknown,
+  fallback: Record<string, WeeklyReview> = {},
+): Record<string, WeeklyReview> {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : fallback;
+  const out: Record<string, WeeklyReview> = {};
+  for (const [k, v] of Object.entries(src)) {
+    const key = k == null ? "" : typeof k === "string" ? k : String(k);
+    if (!key) continue;
+    out[key] = normalizeWeeklyReview(v, key);
+  }
+  return out;
+}
+
 function todayLocal(): string {
   return toIso(new Date());
 }

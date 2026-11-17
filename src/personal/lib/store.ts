@@ -40,6 +40,7 @@ import {
 import { modeBudgetMinutes } from "./schedule";
 import { buildVuSeed } from "./vu-import";
 import { VU_STUDY_PLAN, courseIdFromCode, type VuStudyPlan } from "./vu-plan";
+import { normalizeWeeklyReviews } from "./weekly-review";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -94,7 +95,23 @@ function emptyPlan(date: string, mode: StudyMode): DayPlan {
 
 /** Safe blocks array for a day plan — corrupt persist/cloud never crashes .map/.reduce. */
 export function blocksOf(plan: { blocks?: unknown } | null | undefined): DayPlan["blocks"] {
-  return Array.isArray(plan?.blocks) ? (plan!.blocks as DayPlan["blocks"]) : [];
+  if (!Array.isArray(plan?.blocks)) return [];
+  const asText = (v: unknown, fb = "") =>
+    v == null ? fb : typeof v === "string" ? v : String(v);
+  const out: DayPlan["blocks"] = [];
+  for (const raw of plan!.blocks) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const b = raw as Record<string, unknown>;
+    const mins = Number(b.minutes);
+    out.push({
+      id: asText(b.id) || uid(),
+      courseId: asText(b.courseId, "general") || "general",
+      minutes: Number.isFinite(mins) && mins >= 0 ? mins : 0,
+      label: asText(b.label),
+      done: Boolean(b.done),
+    });
+  }
+  return out;
 }
 
 function healDayPlans(raw: unknown, fallback: PersonalState["dayPlans"]): PersonalState["dayPlans"] {
@@ -103,10 +120,16 @@ function healDayPlans(raw: unknown, fallback: PersonalState["dayPlans"]): Person
       ? (raw as Record<string, DayPlan>)
       : fallback;
   const out: PersonalState["dayPlans"] = {};
-  for (const [date, plan] of Object.entries(src)) {
+  for (const [dateKey, plan] of Object.entries(src)) {
     if (!plan || typeof plan !== "object" || Array.isArray(plan)) continue;
+    const date =
+      plan.date == null
+        ? String(dateKey)
+        : typeof plan.date === "string"
+          ? plan.date
+          : String(plan.date || dateKey);
     out[date] = {
-      date: typeof plan.date === "string" ? plan.date : date,
+      date,
       mode: plan.mode === "busy" || plan.mode === "rescue" ? plan.mode : "normal",
       blocks: blocksOf(plan),
     };
@@ -517,7 +540,10 @@ export const usePersonal = create<PersonalStore>()(
           examPrepTasks: arr(raw.examPrepTasks, []).map((t) =>
             normalizeExamPrepTask(t as Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">),
           ),
-          weeklyReviews: obj(raw.weeklyReviews, current.weeklyReviews ?? {}),
+          weeklyReviews: normalizeWeeklyReviews(
+            raw.weeklyReviews,
+            current.weeklyReviews ?? {},
+          ),
           vuSeededAt: raw.vuSeededAt ?? null,
           vuPlanAsOf: raw.vuPlanAsOf ?? null,
           authed: false,
