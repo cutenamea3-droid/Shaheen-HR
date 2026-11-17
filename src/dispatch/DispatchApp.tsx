@@ -1411,6 +1411,7 @@ function LoadEditor({
                   className="dispatch-field"
                   value={stop.name}
                   onChange={(e) => setStop(i, { name: e.target.value })}
+                  onInput={(e) => setStop(i, { name: (e.target as HTMLInputElement).value })}
                 />
               </label>
               <label className="grid gap-1 text-xs sm:col-span-2">
@@ -1419,6 +1420,7 @@ function LoadEditor({
                   className="dispatch-field"
                   value={stop.address}
                   onChange={(e) => setStop(i, { address: e.target.value })}
+                  onInput={(e) => setStop(i, { address: (e.target as HTMLInputElement).value })}
                 />
               </label>
               <label className="grid gap-1 text-xs">
@@ -1428,18 +1430,21 @@ function LoadEditor({
                     className="dispatch-field"
                     value={stop.city}
                     onChange={(e) => setStop(i, { city: e.target.value })}
+                  onInput={(e) => setStop(i, { city: (e.target as HTMLInputElement).value })}
                     placeholder="City"
                   />
                   <input
                     className="dispatch-field w-14"
                     value={stop.state}
                     onChange={(e) => setStop(i, { state: e.target.value })}
+                  onInput={(e) => setStop(i, { state: (e.target as HTMLInputElement).value })}
                     placeholder="ST"
                   />
                   <input
                     className="dispatch-field w-20"
                     value={stop.postal_code}
                     onChange={(e) => setStop(i, { postal_code: e.target.value })}
+                  onInput={(e) => setStop(i, { postal_code: (e.target as HTMLInputElement).value })}
                     placeholder="ZIP"
                   />
                 </div>

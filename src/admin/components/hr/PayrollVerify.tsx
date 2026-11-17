@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES, useEmployeeFinanceMock } from "@/admin/lib/employee-finance-mock";
 import { useOtApprovalStore } from "@/admin/lib/ot-approval";
@@ -27,6 +27,9 @@ export function PayrollVerify() {
   const [dayRateDraft, setDayRateDraft] = useState(String(policy.additionalDayRatePkr));
   const [otRateDraft, setOtRateDraft] = useState(policy.overtimeHourlyRatePkr != null ? String(policy.overtimeHourlyRatePkr) : "");
   const [divisorDraft, setDivisorDraft] = useState(policy.workingDaysDivisor != null ? String(policy.workingDaysDivisor) : "");
+  const dayRateRef = useRef<HTMLInputElement>(null);
+  const otRateRef = useRef<HTMLInputElement>(null);
+  const divisorRef = useRef<HTMLInputElement>(null);
   const [bonusDraft, setBonusDraft] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
 
@@ -65,25 +68,28 @@ export function PayrollVerify() {
 
   const applyPolicy = () => {
     setErr("");
-    const day = Number(dayRateDraft);
+    const nextDay = (dayRateDraft.trim() || dayRateRef.current?.value || "").trim();
+    const nextOt = (otRateDraft.trim() || otRateRef.current?.value || "").trim();
+    const nextDiv = (divisorDraft.trim() || divisorRef.current?.value || "").trim();
+    const day = Number(nextDay);
     const r1 = setAdditionalDayRate(day);
     if (!r1.ok) {
       setErr(r1.error ?? "Day rate failed");
       return;
     }
-    if (otRateDraft.trim() === "") {
+    if (nextOt === "") {
       setOvertimeHourlyRate(null);
     } else {
-      const r2 = setOvertimeHourlyRate(Number(otRateDraft));
+      const r2 = setOvertimeHourlyRate(Number(nextOt));
       if (!r2.ok) {
         setErr(r2.error ?? "OT rate failed");
         return;
       }
     }
-    if (divisorDraft.trim() === "") {
+    if (nextDiv === "") {
       setWorkingDaysDivisor(null);
     } else {
-      const r3 = setWorkingDaysDivisor(Number(divisorDraft));
+      const r3 = setWorkingDaysDivisor(Number(nextDiv));
       if (!r3.ok) {
         setErr(r3.error ?? "Divisor failed");
         return;
@@ -122,15 +128,15 @@ export function PayrollVerify() {
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             Additional day rate (PKR)
-            <input className="field mt-1" value={dayRateDraft} onChange={(e) => setDayRateDraft(e.target.value)} />
+            <input ref={dayRateRef} data-testid="admin-day-rate" className="field mt-1" value={dayRateDraft} onChange={(e) => setDayRateDraft(e.target.value)} onInput={(e) => setDayRateDraft((e.target as HTMLInputElement).value)} />
           </label>
           <label className="text-sm">
             OT hourly rate (PKR) — blank = Needs Policy
-            <input className="field mt-1" value={otRateDraft} onChange={(e) => setOtRateDraft(e.target.value)} placeholder="unset" />
+            <input ref={otRateRef} data-testid="admin-ot-rate" className="field mt-1" value={otRateDraft} onChange={(e) => setOtRateDraft(e.target.value)} onInput={(e) => setOtRateDraft((e.target as HTMLInputElement).value)} placeholder="unset" />
           </label>
           <label className="text-sm">
             Working-days divisor — blank = Needs Policy
-            <input className="field mt-1" value={divisorDraft} onChange={(e) => setDivisorDraft(e.target.value)} placeholder="do not invent 26/27" />
+            <input ref={divisorRef} data-testid="admin-divisor" className="field mt-1" value={divisorDraft} onChange={(e) => setDivisorDraft(e.target.value)} onInput={(e) => setDivisorDraft((e.target as HTMLInputElement).value)} placeholder="do not invent 26/27" />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">

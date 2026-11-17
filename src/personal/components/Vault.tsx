@@ -52,6 +52,8 @@ export function Vault() {
 
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const pwRef = useRef<HTMLInputElement>(null);
+  const pw2Ref = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState("");
   const [sessionLabel, setSessionLabel] = useState<string | null>(null);
   const [cloudStatus, setCloudStatus] = useState(getPersonalCloudStatus);
@@ -307,19 +309,25 @@ export function Vault() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Field label="Password">
             <input
+              ref={pwRef}
+              data-testid="personal-vault-password"
               className="hp-field"
               type="password"
               value={pw}
               onChange={(e) => setPw(e.target.value)}
+              onInput={(e) => setPw((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
             />
           </Field>
           <Field label="Confirm password">
             <input
+              ref={pw2Ref}
+              data-testid="personal-vault-password2"
               className="hp-field"
               type="password"
               value={pw2}
               onChange={(e) => setPw2(e.target.value)}
+              onInput={(e) => setPw2((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
             />
           </Field>
@@ -327,16 +335,18 @@ export function Vault() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={async () => {
-              if (pw.length < 4 || pw !== pw2) {
+              const nextPw = (pw || pwRef.current?.value || "").trim();
+              const nextPw2 = (pw2 || pw2Ref.current?.value || "").trim();
+              if (nextPw.length < 4 || nextPw !== nextPw2) {
                 setMsg("Invalid credentials.");
                 return;
               }
               if (secure) {
-                const r = await updatePersonalSecurePassword(pw);
+                const r = await updatePersonalSecurePassword(nextPw);
                 setMsg(r.ok ? "Password updated on Personal Auth." : r.message);
               } else {
                 const login = readPersonalSessionLogin() || "owner";
-                await setPersonalCredentials(login, pw);
+                await setPersonalCredentials(login, nextPw);
                 setMsg(hasPersonalCredentials() ? "Password updated locally (hashed)." : "Saved.");
               }
               setPw("");

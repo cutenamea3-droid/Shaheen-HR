@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CalendarDays, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -19,10 +19,14 @@ export function HireDateField({ driverId }: { driverId: string }) {
   const value = dateOfHireOf(data, driverId);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const typedRef = useRef<HTMLInputElement>(null);
   const los = lengthOfService(value);
 
   const commit = (raw: string) => {
-    const parsed = parseHireDateInput(raw);
+    const fromDom = (typedRef.current?.value || pickerRef.current?.value || "").trim();
+    const next = (raw.trim() || fromDom).trim();
+    const parsed = parseHireDateInput(next);
     if (parsed === null) {
       toast.error("Use MM/DD/YYYY or pick a date");
       return;
@@ -42,15 +46,21 @@ export function HireDateField({ driverId }: { driverId: string }) {
       <div className="tracker-profile-section space-y-2 p-4">
         <div className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Date of Hire</div>
         <input
+          ref={pickerRef}
+          data-testid="hire-date-picker"
           type="date"
           value={parseISO(draft) ? draft : ""}
           onChange={(e) => setDraft(e.target.value)}
+          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1.5 text-base"
           aria-label="Date of hire picker"
         />
         <input
+          ref={typedRef}
+          data-testid="hire-date-typed"
           value={draft.includes("-") && parseISO(draft) ? formatHireDateDisplay(draft) : draft}
           onChange={(e) => setDraft(e.target.value)}
+          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           placeholder="MM/DD/YYYY"
           className="w-full rounded-lg border bg-card px-2.5 py-1.5 text-sm"
           aria-label="Date of hire typed"
