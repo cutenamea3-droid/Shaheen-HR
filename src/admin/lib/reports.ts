@@ -20,14 +20,16 @@ export const ratingTone = (r: Rating | ""): Tone | undefined =>
 const shiftText = (d?: Dept) => (d ? `${fmtTime(d.start)} – ${fmtTime(d.end)}` : "—");
 
 export function autoNote(c: DayCalc) {
-  return c.violations.join(" · ");
+  const violations = Array.isArray(c.violations) ? c.violations : [];
+  return violations.join(" · ");
 }
 
 function punchCell(rec: DayRec, c: DayCalc, k: "in" | "bin" | "bout" | "out"): Cell {
   if (rec.status === "leave") return C("Leave");
   if (rec.status === "absent") return C("Absent", "red");
   if ((k === "bin" || k === "bout") && (c.isSat || rec.noBreak)) return C("No break");
-  if (c.missing.includes(k)) return C("Miss punch", "red");
+  const missing = Array.isArray(c.missing) ? c.missing : [];
+  if (missing.includes(k)) return C("Miss punch", "red");
   const v = rec[k];
   const tone = (k === "in" && c.lateLevel === "late") || ((k === "bin" || k === "bout") && c.breakLevel === "over") ? "red" : undefined;
   return C(fmtTime(v), tone);
@@ -55,7 +57,9 @@ function dayRows(data: Data, date: string) {
 
 function attendanceCells(x: ReturnType<typeof dayRows>[number]): Cell[] {
   const { rec, c } = x as { rec: DayRec; c: DayCalc };
-  const remarks = c.flags.join(" · ") || "On time";
+  const flags = Array.isArray(c.flags) ? c.flags : [];
+  const violations = Array.isArray(c.violations) ? c.violations : [];
+  const remarks = flags.join(" · ") || "On time";
   return [
     C(x.i + 1),
     C(x.e.name),
@@ -68,7 +72,7 @@ function attendanceCells(x: ReturnType<typeof dayRows>[number]): Cell[] {
     C(c.breakTaken != null ? `${c.breakTaken}m` : "—", c.breakLevel === "over" ? "red" : undefined),
     C(c.worked != null ? fmtHours(c.worked) : "—", c.satTargetMiss ? "red" : undefined),
     C(c.overtimeMin ? fmtHours(c.overtimeMin) : "—"),
-    C(remarks, c.violations.length ? "red" : undefined),
+    C(remarks, violations.length ? "red" : undefined),
     C(rec.note),
   ];
 }
@@ -87,7 +91,7 @@ export function dailyPerformance(data: Data, date: string): Table {
       C(x.e.name),
       C(x.dept?.name ?? "—"),
       C(x.p?.rating ? RATING_LABEL[x.p.rating] : "Not rated", tone),
-      C(autoNote(x.c) || "None", x.c.violations.length ? "red" : undefined),
+      C(autoNote(x.c) || "None", (Array.isArray(x.c.violations) ? x.c.violations : []).length ? "red" : undefined),
       C(x.p?.note ?? "", tone),
     ];
   });
@@ -175,7 +179,9 @@ export function monthlyPerformance(data: Data, month: string): Table[] {
     const m = monthCalcs(data, month, e);
     const cnt = (r: Rating) => m.filter((x) => x.p?.rating === r).length;
     const bad = m.filter((x) => x.p?.rating === "needs" || x.p?.rating === "poor").map((x) => `${shortDate(x.d)}: ${RATING_LABEL[x.p!.rating as Rating]}`);
-    const viol = m.filter((x) => x.c.violations.length).map((x) => `${shortDate(x.d)}: ${x.c.violations.join(", ")}`);
+    const viol = m
+      .filter((x) => (Array.isArray(x.c.violations) ? x.c.violations : []).length)
+      .map((x) => `${shortDate(x.d)}: ${(Array.isArray(x.c.violations) ? x.c.violations : []).join(", ")}`);
     rows.push([
       C(i + 1),
       C(e.name),

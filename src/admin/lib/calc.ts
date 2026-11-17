@@ -240,8 +240,11 @@ export function leaveBalance(
   const [y, m] = month.split("-").map(Number) as [number, number, number];
   const accrued = Math.max(0, (y - jy) * 12 + (m - jm) + 1);
   let used = 0;
-  for (const [d, day] of Object.entries(records)) {
+  const days =
+    records && typeof records === "object" && !Array.isArray(records) ? records : {};
+  for (const [d, day] of Object.entries(days)) {
     if (d === date || d.slice(0, 7) > month) continue;
+    if (!day || typeof day !== "object" || Array.isArray(day)) continue;
     const r = day[emp.id];
     if (r?.status === "leave" && r.leavePaid) used++;
   }
