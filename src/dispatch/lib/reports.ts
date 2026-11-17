@@ -34,7 +34,8 @@ export function loadsToCsv(loads: DispatchLoad[]): string {
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-  const rows = loads.map((l) =>
+  const list = Array.isArray(loads) ? loads : [];
+  const rows = list.map((l) =>
     [
       l.load_number,
       l.status,
@@ -78,7 +79,8 @@ export function accessorialsToCsv(items: DispatchAccessorial[]): string {
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-  const rows = items.map((a) =>
+  const list = Array.isArray(items) ? items : [];
+  const rows = list.map((a) =>
     [
       a.load_id,
       a.kind,
@@ -128,10 +130,11 @@ export function exportLoadsPdf(loads: DispatchLoad[], title = "Dispatch Operatio
     14,
     22,
   );
+  const list = Array.isArray(loads) ? loads : [];
   autoTable(doc, {
     startY: 28,
     head: [["Load", "Status", "Payment", "Customer", "Driver", "BOL", "POD", "Manual location", "Updated"]],
-    body: loads.map((l) => [
+    body: list.map((l) => [
       l.load_number,
       statusLabel(l.status),
       paymentStatusLabel(l.payment_status),
@@ -148,7 +151,9 @@ export function exportLoadsPdf(loads: DispatchLoad[], title = "Dispatch Operatio
 }
 
 export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: DispatchLoad[]) {
-  const byId = new Map(loads.map((l) => [l.id, l.load_number]));
+  const loadList = Array.isArray(loads) ? loads : [];
+  const itemList = Array.isArray(items) ? items : [];
+  const byId = new Map(loadList.map((l) => [l.id, l.load_number]));
   const doc = new jsPDF({ orientation: "landscape" });
   doc.setFontSize(14);
   doc.text("Dispatch Operations — Detention & Accessorials", 14, 16);
@@ -161,7 +166,7 @@ export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: Dispa
   autoTable(doc, {
     startY: 28,
     head: [["Load", "Kind", "Status", "Description", "Amount (manual)", "Hours (manual)", "Free-time note"]],
-    body: items.map((a) => [
+    body: itemList.map((a) => [
       byId.get(a.load_id) ?? a.load_id.slice(0, 8),
       accessorialKindLabel(a.kind),
       a.status,
@@ -186,10 +191,11 @@ export function exportLoadHistoryPdf(load: DispatchLoad, events: LoadHistoryEven
     22,
   );
   doc.text(`Generated ${new Date().toLocaleString()} · Desk records only`, 14, 28);
+  const eventList = Array.isArray(events) ? events : [];
   autoTable(doc, {
     startY: 34,
     head: [["When", "Source", "Event", "Detail"]],
-    body: events.map((e) => [
+    body: eventList.map((e) => [
       new Date(e.at).toLocaleString(),
       e.source,
       e.title,
