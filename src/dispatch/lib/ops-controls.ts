@@ -150,44 +150,47 @@ export function buildHandoverWatchHints(input: {
   issues: DispatchIssue[];
   followUps: DispatchFollowUp[];
 }): string {
-  const buckets = homeActionBuckets(input.loads);
+  const loads = Array.isArray(input.loads) ? input.loads : [];
+  const issues = Array.isArray(input.issues) ? input.issues : [];
+  const followUps = Array.isArray(input.followUps) ? input.followUps : [];
+  const buckets = homeActionBuckets(loads);
   const lines: string[] = [];
   if (buckets.awaitingDocs.length) {
     lines.push(
       `BOL/POD awaiting: ${buckets.awaitingDocs.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const openIss = openEscalations(input.issues);
+  const openIss = openEscalations(issues);
   if (openIss.length) {
     lines.push(
       `Open issues: ${openIss.map((i) => i.title).slice(0, 6).join("; ")}`,
     );
   }
-  const needSenior = issuesMissingSeniorInformed(input.issues);
+  const needSenior = issuesMissingSeniorInformed(issues);
   if (needSenior.length) {
     lines.push(
       `Senior Informed still manual/unchecked: ${needSenior.map((i) => i.title).slice(0, 4).join("; ")}`,
     );
   }
-  const due = dueFollowUps(input.followUps);
+  const due = dueFollowUps(followUps);
   if (due.length) {
     lines.push(
       `Follow-ups due: ${due.map((f) => f.title).slice(0, 6).join("; ")}`,
     );
   }
-  const cancelled = input.loads.filter((l) => l.status === "cancelled").slice(0, 5);
+  const cancelled = loads.filter((l) => l.status === "cancelled").slice(0, 5);
   if (cancelled.length) {
     lines.push(
       `Cancelled (manual reason on file): ${cancelled.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const awaitingClose = input.loads.filter((l) => l.status === "delivered").slice(0, 8);
+  const awaitingClose = loads.filter((l) => l.status === "delivered").slice(0, 8);
   if (awaitingClose.length) {
     lines.push(
       `Awaiting closeout (Delivered ≠ Closed ≠ Paid): ${awaitingClose.map((l) => l.load_number).join(", ")}`,
     );
   }
-  const unpaidClosed = input.loads
+  const unpaidClosed = loads
     .filter((l) => l.status === "closed" && (l.payment_status === "unpaid" || l.payment_status === "partial"))
     .slice(0, 6);
   if (unpaidClosed.length) {

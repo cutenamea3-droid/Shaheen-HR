@@ -39,6 +39,6 @@ describe("missing section rows UI guards", () => {
       "utf8",
     );
     expect(src).toMatch(/if \(!sec \|\| !Array\.isArray\(sec\.rows\)\) return \[\]/);
-    expect(src).toMatch(/const headers = sec\.headers \?\? \[\]/);
+    expect(src).toMatch(/const headers = headersOf\(sec\)/);
   });
 });

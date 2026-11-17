@@ -5,6 +5,7 @@ import {
   buildSeed,
   cellsOf,
   formatDriverStatus,
+  headersOf,
   migrateData,
   parseDriverStatus,
   SECTIONS,
@@ -119,9 +120,9 @@ function emptyRecordSection(): SectionData {
 
 /** Pad/migrate record tabs so Active Status column exists on every row. */
 function normalizeRecordSection(sec: SectionData): SectionData {
-  let headers = [...(sec.headers ?? [])];
-  let widths = [...(sec.widths ?? [])];
-  let hidden = [...(sec.hidden ?? [])];
+  let headers = [...headersOf(sec)];
+  let widths = Array.isArray(sec.widths) ? [...sec.widths] : [];
+  let hidden = Array.isArray(sec.hidden) ? [...sec.hidden] : [];
   const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
   let rows = srcRows.map((r) => ({
     ...r,
@@ -627,7 +628,7 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
     if (!sec) return d;
     const existing = Array.isArray(sec.rows) ? sec.rows : [];
     if (existing.some((r) => r.driverId === driverId)) return d;
-    const cells = (sec.headers ?? []).map((_, i) => (i === 0 ? name : ""));
+    const cells = headersOf(sec).map((_, i) => (i === 0 ? name : ""));
     return {
       ...d,
       sections: {

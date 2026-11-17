@@ -634,7 +634,7 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
-    for (const r of input.sections[s.id]?.rows ?? []) {
+    for (const r of rowsOf(input.sections[s.id])) {
       if (cellsOf(r)[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
     }
   }
@@ -684,10 +684,10 @@ export function migrateData(input: AppData): { data: AppData; changed: string[] 
     sections[sp.id] = {
       ...sec,
       headers,
-      widths: ins(sec.widths ?? [], defaultWidth("plan")),
-      hidden: ins(sec.hidden ?? [], false),
+      widths: ins(Array.isArray(sec.widths) ? sec.widths : [], defaultWidth("plan")),
+      hidden: ins(Array.isArray(sec.hidden) ? sec.hidden : [], false),
       rows: sec.rows.map((r) => {
-        const cells = ins(r.cells, "");
+        const cells = ins(cellsOf(r), "");
         if (sp.moveNote) {
           cells[sp.at] = cells[sp.at - 1];
           cells[sp.at - 1] = "";

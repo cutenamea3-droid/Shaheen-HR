@@ -5,8 +5,11 @@ import { buildDriverDossier } from "@/lib/driver-dossier";
 import { classHistoryOf } from "@/lib/driver-meta";
 import { dateOfHireOf } from "@/lib/driver-hr/hire-date";
 import { buildComplianceHistory } from "@/lib/compliance-history";
+import { buildInspectionSummaries } from "@/lib/inspection-readiness";
+import { buildHandoverWatchHints } from "@/dispatch/lib/ops-controls";
 import { applyPersonalBackup, parsePersonalBackup, PERSONAL_BACKUP_APP, PERSONAL_BACKUP_VERSION } from "@/personal/lib/backup";
 import { usePersonal } from "@/personal/lib/store";
+import { __applyPersonalCloudForTest } from "@/personal/lib/cloud-sync";
 
 describe("rowsOf / headersOf", () => {
   it("coerces corrupt section shapes", () => {
@@ -37,6 +40,17 @@ describe("rowsOf / headersOf", () => {
     expect(() => buildComplianceHistory(broken, { limit: 10 })).not.toThrow();
     expect(() => classHistoryOf(broken, driverId)).not.toThrow();
     expect(() => dateOfHireOf(broken, driverId)).not.toThrow();
+    expect(() => buildInspectionSummaries(broken)).not.toThrow();
+  });
+
+  it("Dispatch handover hints tolerate missing desk arrays", () => {
+    expect(() =>
+      buildHandoverWatchHints({
+        loads: null as unknown as [],
+        issues: undefined as unknown as [],
+        followUps: { bad: true } as unknown as [],
+      }),
+    ).not.toThrow();
   });
 });
 
@@ -65,5 +79,25 @@ describe("Personal backup apply coerces corrupt arrays", () => {
     expect(Array.isArray(s.backlog)).toBe(true);
     expect(s.dayPlans && !Array.isArray(s.dayPlans)).toBe(true);
     expect(s.vaultNotes).toBe("ok");
+  });
+
+  it("Personal cloud apply skips corrupt non-array slices", () => {
+    usePersonal.setState({
+      notes: [{ id: "keep", courseId: "g", title: "Keep", body: "x", updatedAt: 1, tags: [] }],
+      backlog: [{ id: "b1", label: "todo", estimatedMinutes: 10, done: false, courseId: "g", createdAt: 1 }],
+      vaultNotes: "local",
+    });
+    expect(() =>
+      __applyPersonalCloudForTest({
+        notes: { corrupt: true } as unknown as [],
+        backlog: "nope" as unknown as [],
+        dayPlans: [] as unknown as Record<string, never>,
+        vaultNotes: "from-cloud",
+      }),
+    ).not.toThrow();
+    const s = usePersonal.getState();
+    expect(s.notes[0]?.title).toBe("Keep");
+    expect(s.backlog[0]?.label).toBe("todo");
+    expect(s.vaultNotes).toBe("from-cloud");
   });
 });

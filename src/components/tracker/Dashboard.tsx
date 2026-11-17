@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { SECTIONS, cellsOf, type SectionDef } from "@/lib/sections";
+import { SECTIONS, cellsOf, headersOf, rowsOf, type SectionDef } from "@/lib/sections";
 import {
   analyzeRow,
   buildSafetyDigest,
@@ -86,7 +86,7 @@ export function Dashboard() {
 
   const stats = useMemo(() => {
     // Missing/corrupt sections after a skipped cloud parse must not crash the home stats.
-    const dmv = data.sections.dmv?.rows ?? [];
+    const dmv = rowsOf(data.sections.dmv);
     const def = SECTIONS[0];
     // Ordinary company roster — New Drivers and Owner Operators excluded from these counts.
     const roster = dmv.filter(
@@ -99,7 +99,7 @@ export function Dashboard() {
       (r) => rowIsActive(def, r, data) && rowAlertsMuted(def, r, data),
     ).length;
     const inactive = roster.filter((r) => !rowIsActive(def, r, data)).length;
-    const docs = (data.sections.docs?.rows ?? []).filter(
+    const docs = rowsOf(data.sections.docs).filter(
       (r) => !rowOrdinaryComplianceMuted(SECTIONS[4], r, data),
     );
     const avg = docs.length
@@ -298,7 +298,7 @@ function SectionAlerts({
 
   const items = useMemo(() => {
     if (!sec || !Array.isArray(sec.rows)) return [];
-    const headers = sec.headers ?? [];
+    const headers = headersOf(sec);
     return sec.rows
       .filter((r) => {
         // Ordinary company alerts — New Drivers excluded from Show all; OO has dedicated scope on Cards/DMV.

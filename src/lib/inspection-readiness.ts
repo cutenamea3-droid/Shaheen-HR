@@ -13,7 +13,7 @@ import {
   rowIsActive,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, type AppData, type Row } from "./sections";
+import { SECTIONS, headersOf, rowsOf, type AppData, type Row } from "./sections";
 import { isOwnerOperator } from "./driver-meta";
 
 /** Honest inspection status — only these values. */
@@ -218,7 +218,7 @@ const DEFAULT_DOC_HEADERS = [
 ];
 
 function docsChecklist(data: AppData): ChecklistDef[] {
-  const headers = data.sections.docs?.headers ?? [];
+  const headers = headersOf(data.sections.docs);
   const items: ChecklistDef[] = [];
   for (let i = 2; i <= 13; i++) {
     const label = (headers[i] ?? DEFAULT_DOC_HEADERS[i - 2] ?? `Document ${i - 1}`).trim();
@@ -239,7 +239,7 @@ function activeDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
-    for (const r of data.sections[def.id]?.rows ?? []) {
+    for (const r of rowsOf(data.sections[def.id])) {
       if (rowIsActive(def, r, data)) ids.add(r.driverId);
     }
   }

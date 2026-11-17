@@ -41,7 +41,7 @@ describe("Personal note sync race guards", () => {
     const src = readFileSync(resolve(process.cwd(), "src/personal/lib/cloud-sync.ts"), "utf8");
     expect(src).toMatch(/editEpoch/);
     expect(src).toMatch(/epochAtStart === editEpoch/);
-    expect(src).toMatch(/blob\.notes\.length === 0 && localNotes\.length > 0 && readUnsynced\(\)/);
+    expect(src).toMatch(/notes\.length === 0 && localNotes\.length > 0 && readUnsynced\(\)/);
     expect(src).toMatch(/flushPush/);
     expect(src).toMatch(/In-flight push/);
     expect(src).toMatch(/initialPullDone/);

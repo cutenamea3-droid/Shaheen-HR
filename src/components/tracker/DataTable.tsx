@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol } from "@/lib/alerts";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
-import { cellsOf, sectionById } from "@/lib/sections";
+import { cellsOf, rowsOf, sectionById } from "@/lib/sections";
 import {
   addRowForDriver,
   deleteDriver,
@@ -181,7 +181,7 @@ export function DataTable({
     const here = new Set([...safeRows.map((r) => r.driverId), ...(sec.dismissed ?? [])]);
     const out = new Map<string, string>();
     for (const id of CORE)
-      for (const r of data.sections[id]?.rows ?? []) {
+      for (const r of rowsOf(data.sections[id])) {
         if (here.has(r.driverId) || out.has(r.driverId)) continue;
         if (!matchesListScope(data, r.driverId, listScope)) continue;
         out.set(r.driverId, nameOf.get(r.driverId) ?? cellsOf(r)[0]);

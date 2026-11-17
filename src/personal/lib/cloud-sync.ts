@@ -104,25 +104,39 @@ function snapshot(): PersonalSyncBlob {
 
 function applyCloud(blob: Partial<PersonalSyncBlob>) {
   const patch: Partial<PersonalStore> = {};
-  if (blob.courses) patch.courses = blob.courses;
-  if (blob.backlog) patch.backlog = blob.backlog;
-  if (blob.assessments) patch.assessments = blob.assessments;
+  const arr = <T,>(v: unknown): T[] | undefined => (Array.isArray(v) ? (v as T[]) : undefined);
+  const obj = <T extends object>(v: unknown): T | undefined =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as T) : undefined;
+  const courses = arr<PersonalStore["courses"][number]>(blob.courses);
+  if (courses) patch.courses = courses;
+  const backlog = arr<PersonalStore["backlog"][number]>(blob.backlog);
+  if (backlog) patch.backlog = backlog;
+  const assessments = arr<PersonalStore["assessments"][number]>(blob.assessments);
+  if (assessments) patch.assessments = assessments;
   // [] is truthy — never let an empty cloud notes array wipe local notes while unsynced.
-  if (Array.isArray(blob.notes)) {
+  const notes = arr<PersonalStore["notes"][number]>(blob.notes);
+  if (notes) {
     const localNotes = usePersonal.getState().notes;
-    if (!(blob.notes.length === 0 && localNotes.length > 0 && readUnsynced())) {
-      patch.notes = blob.notes;
+    if (!(notes.length === 0 && localNotes.length > 0 && readUnsynced())) {
+      patch.notes = notes;
     }
   }
-  if (blob.sessions) patch.sessions = blob.sessions;
-  if (blob.dayPlans) patch.dayPlans = blob.dayPlans;
-  if (blob.discipline) patch.discipline = blob.discipline;
+  const sessions = arr<PersonalStore["sessions"][number]>(blob.sessions);
+  if (sessions) patch.sessions = sessions;
+  const dayPlans = obj<PersonalStore["dayPlans"]>(blob.dayPlans);
+  if (dayPlans) patch.dayPlans = dayPlans;
+  const discipline = arr<PersonalStore["discipline"][number]>(blob.discipline);
+  if (discipline) patch.discipline = discipline;
   if (blob.settings) patch.settings = migrateSettings(blob.settings);
   if (typeof blob.vaultNotes === "string") patch.vaultNotes = blob.vaultNotes;
-  if (blob.gradeEntries) patch.gradeEntries = blob.gradeEntries;
-  if (blob.courseGrades) patch.courseGrades = blob.courseGrades;
-  if (blob.examPrepTasks) patch.examPrepTasks = blob.examPrepTasks;
-  if (blob.weeklyReviews) patch.weeklyReviews = blob.weeklyReviews;
+  const gradeEntries = arr<PersonalStore["gradeEntries"][number]>(blob.gradeEntries);
+  if (gradeEntries) patch.gradeEntries = gradeEntries;
+  const courseGrades = arr<PersonalStore["courseGrades"][number]>(blob.courseGrades);
+  if (courseGrades) patch.courseGrades = courseGrades;
+  const examPrepTasks = arr<PersonalStore["examPrepTasks"][number]>(blob.examPrepTasks);
+  if (examPrepTasks) patch.examPrepTasks = examPrepTasks;
+  const weeklyReviews = obj<PersonalStore["weeklyReviews"]>(blob.weeklyReviews);
+  if (weeklyReviews) patch.weeklyReviews = weeklyReviews;
   usePersonal.setState(patch);
 }
 
@@ -317,6 +331,11 @@ export function stopPersonalCloudSync() {
   stopUnsub?.();
   stopUnsub = null;
   setStatus(isPersonalSecureEnabled() ? "connecting" : "off");
+}
+
+/** Test helper: apply a cloud blob through the same coerce path as live pull. */
+export function __applyPersonalCloudForTest(blob: Partial<PersonalSyncBlob>): void {
+  applyCloud(blob);
 }
 
 /** Test helper: in-memory A→B round-trip without live Supabase. */

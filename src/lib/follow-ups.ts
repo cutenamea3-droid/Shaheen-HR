@@ -15,7 +15,7 @@ import {
   today,
   type Tone,
 } from "./alerts";
-import { SECTIONS, cellsOf, type AppData, type Row, type SectionData } from "./sections";
+import { SECTIONS, cellsOf, headersOf, type AppData, type Row, type SectionData } from "./sections";
 
 export const FOLLOW_UP_SECTION_ID = "compliance_follow_ups";
 
@@ -73,9 +73,9 @@ export function ensureFollowUpSection(data: AppData): AppData {
 }
 
 function normalizeFollowUpSection(sec: SectionData): SectionData {
-  let headers = [...(sec.headers ?? [])];
-  let widths = [...(sec.widths ?? [])];
-  let hidden = [...(sec.hidden ?? [])];
+  let headers = [...headersOf(sec)];
+  let widths = Array.isArray(sec.widths) ? [...sec.widths] : [];
+  let hidden = Array.isArray(sec.hidden) ? [...sec.hidden] : [];
   let touched = !Array.isArray(sec.rows);
   if (headers.length < FOLLOW_UP_HEADERS.length) {
     headers = [...FOLLOW_UP_HEADERS];

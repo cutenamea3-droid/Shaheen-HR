@@ -3,7 +3,7 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { SECTIONS, type SectionDef } from "@/lib/sections";
+import { SECTIONS, headersOf, type SectionDef } from "@/lib/sections";
 import { statusTone } from "@/lib/alerts";
 import { addDriver, useData } from "@/lib/store";
 import { TONE_BOX } from "./cells";
@@ -55,7 +55,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
     for (const def of WIZ) {
       const sec = data.sections[def.id];
       if (!sec) continue;
-      const headers = sec.headers ?? [];
+      const headers = headersOf(sec);
       out[def.id] = cellsFor(def).map((c, i) => {
         const t = def.types[i];
         if (t === "name") return b.name;
@@ -152,7 +152,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
             def.types.map((t, i) => {
               const sec = data.sections[def.id];
               if (!sec) return null;
-              const headers = sec.headers ?? [];
+              const headers = headersOf(sec);
               if (autoCol(def, i, headers)) return null;
               const v = cellsFor(def)[i];
               return (

@@ -11,7 +11,7 @@ import {
   historySourceLabel,
   type ComplianceHistoryEvent,
 } from "@/lib/compliance-history";
-import { SECTIONS, cellsOf } from "@/lib/sections";
+import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 
 export function ComplianceHistoryPanel() {
   const data = useData();
@@ -43,7 +43,7 @@ export function ComplianceHistoryPanel() {
   const drivers = useMemo(() => {
     const map = new Map<string, string>();
     for (const def of SECTIONS) {
-      for (const r of data.sections[def.id]?.rows ?? []) {
+      for (const r of rowsOf(data.sections[def.id])) {
         const n = (cellsOf(r)[0] ?? "").trim();
         if (n && !map.has(r.driverId)) map.set(r.driverId, n);
       }
