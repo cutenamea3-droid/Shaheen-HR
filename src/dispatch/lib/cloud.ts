@@ -57,7 +57,7 @@ function newId(): string {
 }
 
 export async function listRosterDrivers(): Promise<RosterDriver[]> {
-  if (isDispatchPreviewMode()) return mem().drivers.filter((d) => d.active);
+  if (isDispatchPreviewMode()) return asRows<RosterDriver>(mem().drivers).filter((d) => d.active);
   const { data, error } = await dispatchSupabase
     .from("dispatch_roster_drivers")
     .select("*")
@@ -108,7 +108,7 @@ export async function upsertRosterDriver(
 
 export async function listLoads(): Promise<DispatchLoad[]> {
   if (isDispatchPreviewMode()) {
-    return [...mem().loads].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return [...asRows<DispatchLoad>(mem().loads)].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_loads")
@@ -429,7 +429,7 @@ export async function saveException(
 }
 
 export async function listIssues(): Promise<DispatchIssue[]> {
-  if (isDispatchPreviewMode()) return mem().issues;
+  if (isDispatchPreviewMode()) return asRows<DispatchIssue>(mem().issues);
   const { data, error } = await dispatchSupabase
     .from("dispatch_issues")
     .select("*")
@@ -497,7 +497,7 @@ export async function saveIssue(
 
 export async function listFollowUps(): Promise<DispatchFollowUp[]> {
   if (isDispatchPreviewMode()) {
-    return [...mem().followUps].sort((a, b) => a.due_at.localeCompare(b.due_at));
+    return [...asRows<DispatchFollowUp>(mem().followUps)].sort((a, b) => a.due_at.localeCompare(b.due_at));
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_follow_ups")
@@ -639,7 +639,7 @@ export async function rescheduleLoad(
 }
 
 export async function listHandovers(): Promise<ShiftHandover[]> {
-  if (isDispatchPreviewMode()) return mem().handovers;
+  if (isDispatchPreviewMode()) return asRows<ShiftHandover>(mem().handovers);
   const { data, error } = await dispatchSupabase
     .from("dispatch_shift_handovers")
     .select("*")
@@ -693,7 +693,7 @@ export async function saveHandover(
 }
 
 export function driverLoadHistory(loads: DispatchLoad[], driverId: string): DispatchLoad[] {
-  return loads
+  return asRows<DispatchLoad>(loads)
     .filter((l) => l.assigned_driver_id === driverId)
     .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
@@ -826,7 +826,7 @@ export async function setLoadPaymentStatus(
 
 export async function listAccessorials(loadId?: string): Promise<DispatchAccessorial[]> {
   if (isDispatchPreviewMode()) {
-    const rows = mem().accessorials;
+    const rows = asRows<DispatchAccessorial>(mem().accessorials);
     return (loadId ? rows.filter((a) => a.load_id === loadId) : [...rows]).sort((a, b) =>
       b.updated_at.localeCompare(a.updated_at),
     );
