@@ -166,8 +166,8 @@ export function DispatchApp() {
 
   async function refresh() {
     const [nextLoads, nextDrivers] = await Promise.all([listLoads(), listRosterDrivers()]);
-    setLoads(nextLoads);
-    setDrivers(nextDrivers);
+    setLoads(Array.isArray(nextLoads) ? nextLoads : []);
+    setDrivers(Array.isArray(nextDrivers) ? nextDrivers : []);
   }
 
   useEffect(() => {
@@ -189,9 +189,11 @@ export function DispatchApp() {
     };
   }, []);
 
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const selected = useMemo(
-    () => loads.find((l) => l.id === selectedId) ?? null,
-    [loads, selectedId],
+    () => safeLoads.find((l) => l.id === selectedId) ?? null,
+    [safeLoads, selectedId],
   );
 
   if (booting) {
@@ -330,7 +332,7 @@ export function DispatchApp() {
 
           {view === "home" && (
             <HomeBoard
-              loads={loads}
+              loads={safeLoads}
               onOpen={(id) => {
                 setSelectedId(id);
                 setView("load");
@@ -342,8 +344,8 @@ export function DispatchApp() {
           )}
           {view === "loads" && (
             <LoadsBoard
-              loads={loads}
-              drivers={drivers}
+              loads={safeLoads}
+              drivers={safeDrivers}
               onAddLoad={() => {
                 setSelectedId(null);
                 setView("load");
@@ -356,7 +358,7 @@ export function DispatchApp() {
           )}
           {view === "updates" && (
             <DriverUpdatesBoard
-              loads={loads}
+              loads={safeLoads}
               onOpen={(id) => {
                 setSelectedId(id);
                 setView("load");
@@ -366,7 +368,7 @@ export function DispatchApp() {
           )}
           {view === "docs" && (
             <DocsBoard
-              loads={loads}
+              loads={safeLoads}
               onRefresh={refresh}
               onOpen={(id) => {
                 setSelectedId(id);
@@ -376,7 +378,7 @@ export function DispatchApp() {
           )}
           {view === "followups" && (
             <FollowUpsBoard
-              loads={loads}
+              loads={safeLoads}
               onOpenLoad={(id) => {
                 setSelectedId(id);
                 setView("load");
@@ -385,8 +387,8 @@ export function DispatchApp() {
           )}
           {view === "equipment" && (
             <EquipmentBoard
-              drivers={drivers}
-              loads={loads}
+              drivers={safeDrivers}
+              loads={safeLoads}
               onOpen={(id) => {
                 setSelectedId(id);
                 setView("load");
@@ -395,7 +397,7 @@ export function DispatchApp() {
           )}
           {view === "accessorials" && (
             <AccessorialsBoard
-              loads={loads}
+              loads={safeLoads}
               onOpen={(id) => {
                 setSelectedId(id);
                 setView("load");
@@ -406,7 +408,7 @@ export function DispatchApp() {
             <LoadEditor
               key={selected?.id ?? "new"}
               load={selected}
-              drivers={drivers}
+              drivers={safeDrivers}
               busy={busy}
               onCancel={() => setView("loads")}
               onSaved={async (saved) => {
@@ -431,7 +433,7 @@ export function DispatchApp() {
           )}
           {view === "roster" && (
             <RosterBoard
-              drivers={drivers}
+              drivers={safeDrivers}
               onSave={async (row) => {
                 await upsertRosterDriver(row);
                 await refresh();
@@ -439,20 +441,20 @@ export function DispatchApp() {
             />
           )}
           {view === "handover" && (
-            <HandoverBoard loads={loads} account={account} onSaved={async () => refresh()} />
+            <HandoverBoard loads={safeLoads} account={account} onSaved={async () => refresh()} />
           )}
-          {view === "issues" && <IssuesBoard loads={loads} />}
+          {view === "issues" && <IssuesBoard loads={safeLoads} />}
           {view === "history" && (
             <HistoryBoard
-              loads={loads}
-              drivers={drivers}
+              loads={safeLoads}
+              drivers={safeDrivers}
               onOpen={(id) => {
                 setSelectedId(id);
                 setView("load");
               }}
             />
           )}
-          {view === "reports" && <ReportsBoard loads={loads} drivers={drivers} />}
+          {view === "reports" && <ReportsBoard loads={safeLoads} drivers={safeDrivers} />}
           {view === "team" && account.role === "admin" && <TeamBoard account={account} />}
         </main>
       </div>
@@ -473,14 +475,15 @@ function HomeBoard({
   onOpenIssues: () => void;
   onOpenDocs: () => void;
 }) {
-  const buckets = homeActionBuckets(loads);
+  const safeHomeLoads = Array.isArray(loads) ? loads : [];
+  const buckets = homeActionBuckets(safeHomeLoads);
   const [followUps, setFollowUps] = useState<DispatchFollowUp[]>([]);
   const [issues, setIssues] = useState<DispatchIssue[]>([]);
 
   useEffect(() => {
     void Promise.all([listFollowUps(), listIssues()]).then(([fu, iss]) => {
-      setFollowUps(fu);
-      setIssues(iss);
+      setFollowUps(Array.isArray(fu) ? fu : []);
+      setIssues(Array.isArray(iss) ? iss : []);
     });
   }, [loads]);
 
@@ -691,9 +694,11 @@ function LoadsBoard({
   const [driverId, setDriverId] = useState<string | "all">("all");
   const [exceptionOnly, setExceptionOnly] = useState(false);
   const [layout, setLayout] = useState<"table" | "board">("table");
-  const filtered = filterLoads(loads, { q, status, driverId, exceptionOnly });
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
+  const filtered = filterLoads(safeLoads, { q, status, driverId, exceptionOnly });
   const boardColumns = activeLoadsBoardColumns(
-    filterLoads(loads, { q, status: "active", driverId, exceptionOnly }),
+    filterLoads(safeLoads, { q, status: "active", driverId, exceptionOnly }),
   );
 
   return (
@@ -759,7 +764,7 @@ function LoadsBoard({
           onChange={(e) => setDriverId(e.target.value as typeof driverId)}
         >
           <option value="all">All drivers</option>
-          {drivers.map((d) => (
+          {safeDrivers.map((d) => (
             <option key={d.id} value={d.id}>
               {d.display_name}
             </option>
@@ -892,7 +897,8 @@ function DriverUpdatesBoard({
   onOpen: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
-  const active = loads.filter(
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const active = safeLoads.filter(
     (l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered",
   );
   const [drafts, setDrafts] = useState<Record<string, { location: string; notes: string }>>({});
@@ -1107,6 +1113,7 @@ function LoadEditor({
     stops: Array.isArray(load?.stops) ? structuredClone(stopsOf(load.stops)) : blankStops(),
   }));
   const editorStops = stopsOf(form.stops);
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const [checkNotes, setCheckNotes] = useState("");
   const [checkLocation, setCheckLocation] = useState("");
   const checkNotesRef = useRef<HTMLInputElement>(null);
@@ -1223,7 +1230,7 @@ function LoadEditor({
             onChange={(e) => setForm({ ...form, assigned_driver_id: e.target.value })}
           >
             <option value="">Unassigned</option>
-            {drivers.map((d) => (
+            {safeDrivers.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.display_name}
                 {d.unit_number ? ` · #${d.unit_number}` : ""}
@@ -2058,7 +2065,7 @@ function LoadEditor({
             const customer =
               form.customer_name || customerRef.current?.value || "";
             const notes = form.notes || notesRef.current?.value || "";
-            const driver = drivers.find((d) => d.id === form.assigned_driver_id);
+            const driver = safeDrivers.find((d) => d.id === form.assigned_driver_id);
             const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
             await onSaved({
               ...(form.id ? { id: form.id } : {}),
@@ -2113,6 +2120,7 @@ function RosterBoard({
   const [unit, setUnit] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   const unitRef = useRef<HTMLInputElement>(null);
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
   return (
     <section className="dispatch-panel">
       <SectionHelp>
@@ -2154,11 +2162,11 @@ function RosterBoard({
           Add roster driver
         </button>
       </div>
-      {!drivers.length ? (
+      {!safeDrivers.length ? (
         <EmptyHint>No roster drivers yet.</EmptyHint>
       ) : (
         <ul className="divide-y divide-[color:var(--dispatch-border)]">
-          {drivers.map((d) => (
+          {safeDrivers.map((d) => (
             <li key={d.id} className="flex justify-between py-2 text-sm">
               <span className="font-medium">
                 {d.display_name}
@@ -2182,7 +2190,8 @@ function HandoverBoard({
   account: DispatchAccount;
   onSaved: () => Promise<void>;
 }) {
-  const openLoads = loads.filter(
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const openLoads = safeLoads.filter(
     (l) => ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered",
   );
   const [rows, setRows] = useState<ShiftHandover[]>([]);
@@ -2197,7 +2206,7 @@ function HandoverBoard({
   const toDispatcherRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void listHandovers().then(setRows);
+    void listHandovers().then((next) => setRows(Array.isArray(next) ? next : []));
   }, []);
 
   useEffect(() => {
@@ -2311,6 +2320,7 @@ function HandoverBoard({
 }
 
 function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
+  const safeLoads = Array.isArray(loads) ? loads : [];
   const [issues, setIssues] = useState<Awaited<ReturnType<typeof listIssues>>>([]);
   const [exceptions, setExceptions] = useState<Awaited<ReturnType<typeof listExceptions>>>([]);
   const [title, setTitle] = useState("");
@@ -2323,8 +2333,9 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
   const seniorNoteRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
-    setIssues(await listIssues());
-    setExceptions(await listExceptions());
+    const [iss, exc] = await Promise.all([listIssues(), listExceptions()]);
+    setIssues(Array.isArray(iss) ? iss : []);
+    setExceptions(Array.isArray(exc) ? exc : []);
   }
 
   useEffect(() => {
@@ -2356,7 +2367,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             onChange={(e) => setLoadId(e.target.value)}
           >
             <option value="">No load link</option>
-            {loads.map((l) => (
+            {safeLoads.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.load_number}
               </option>
@@ -2523,13 +2534,15 @@ function HistoryBoard({
   drivers: RosterDriver[];
   onOpen: (id: string) => void;
 }) {
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const [mode, setMode] = useState<"driver" | "complete">("complete");
-  const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
-  const [loadId, setLoadId] = useState(loads[0]?.id ?? "");
+  const [driverId, setDriverId] = useState(safeDrivers[0]?.id ?? "");
+  const [loadId, setLoadId] = useState(safeLoads[0]?.id ?? "");
   const [events, setEvents] = useState<ReturnType<typeof buildCompleteLoadHistory>>([]);
   const [error, setError] = useState<string | null>(null);
-  const driverHistory = driverId ? driverLoadHistory(loads, driverId) : [];
-  const selectedLoad = loads.find((l) => l.id === loadId) ?? null;
+  const driverHistory = driverId ? driverLoadHistory(safeLoads, driverId) : [];
+  const selectedLoad = safeLoads.find((l) => l.id === loadId) ?? null;
 
   useEffect(() => {
     if (mode !== "complete" || !selectedLoad) {
@@ -2547,14 +2560,16 @@ function HistoryBoard({
           listAccessorials(selectedLoad.id),
         ]);
         if (cancelled) return;
+        const issueList = Array.isArray(issues) ? issues : [];
+        const fuList = Array.isArray(followUps) ? followUps : [];
         setEvents(
           buildCompleteLoadHistory({
             load: selectedLoad,
-            checkCalls,
-            issues: issues.filter((i) => i.load_id === selectedLoad.id),
-            followUps: followUps.filter((f) => f.load_id === selectedLoad.id),
-            communications,
-            accessorials,
+            checkCalls: Array.isArray(checkCalls) ? checkCalls : [],
+            issues: issueList.filter((i) => i.load_id === selectedLoad.id),
+            followUps: fuList.filter((f) => f.load_id === selectedLoad.id),
+            communications: Array.isArray(communications) ? communications : [],
+            accessorials: Array.isArray(accessorials) ? accessorials : [],
           }),
         );
         setError(null);
@@ -2602,7 +2617,7 @@ function HistoryBoard({
             value={driverId}
             onChange={(e) => setDriverId(e.target.value)}
           >
-            {drivers.map((d) => (
+            {safeDrivers.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.display_name}
               </option>
@@ -2640,7 +2655,7 @@ function HistoryBoard({
                 value={loadId}
                 onChange={(e) => setLoadId(e.target.value)}
               >
-                {loads.map((l) => (
+                {safeLoads.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.load_number} · {statusLabel(l.status)}
                   </option>
@@ -2692,15 +2707,18 @@ function HistoryBoard({
 }
 
 function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: RosterDriver[] }) {
+  const safeLoads = Array.isArray(loads) ? loads : [];
+  const safeDrivers = Array.isArray(drivers) ? drivers : [];
   const [statusFilter, setStatusFilter] = useState<"all" | LoadStatus>("all");
   const [accessorials, setAccessorials] = useState<Awaited<ReturnType<typeof listAccessorials>>>(
     [],
   );
-  const filtered = statusFilter === "all" ? loads : loads.filter((l) => l.status === statusFilter);
+  const filtered =
+    statusFilter === "all" ? safeLoads : safeLoads.filter((l) => l.status === statusFilter);
 
   useEffect(() => {
     void listAccessorials()
-      .then(setAccessorials)
+      .then((rows) => setAccessorials(Array.isArray(rows) ? rows : []))
       .catch(() => setAccessorials([]));
   }, [loads]);
 
@@ -2757,7 +2775,7 @@ function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: Rost
         </button>
       </div>
       <p className="text-sm text-[color:var(--dispatch-muted)]">
-        {filtered.length} loads · {accessorials.length} accessorials · {drivers.length} roster
+        {filtered.length} loads · {accessorials.length} accessorials · {safeDrivers.length} roster
         drivers · Delivered ≠ Closed ≠ Paid
       </p>
     </section>

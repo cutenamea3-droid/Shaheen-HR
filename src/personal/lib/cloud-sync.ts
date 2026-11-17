@@ -33,8 +33,10 @@ const listeners = new Set<() => void>();
 
 function mergeById<T extends { id: string; updatedAt?: number }>(local: T[], cloud: T[]): T[] {
   const map = new Map<string, T>();
-  for (const row of cloud) map.set(row.id, row);
-  for (const row of local) {
+  const cloudList = Array.isArray(cloud) ? cloud : [];
+  const localList = Array.isArray(local) ? local : [];
+  for (const row of cloudList) map.set(row.id, row);
+  for (const row of localList) {
     const prev = map.get(row.id);
     if (!prev || (row.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) map.set(row.id, row);
   }

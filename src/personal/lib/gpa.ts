@@ -56,14 +56,16 @@ export function estimateCgpa(
   courseGrades: CourseGrade[],
   courses: Course[],
 ): CgpaEstimate {
+  const gradeList = Array.isArray(courseGrades) ? courseGrades : [];
+  const courseList = Array.isArray(courses) ? courses : [];
   let pointsSum = 0;
   let hoursSum = 0;
   let graded = 0;
   let missing = 0;
 
-  for (const g of courseGrades) {
+  for (const g of gradeList) {
     const pts = pointsForLetter(g.letter);
-    const course = courses.find((c) => c.id === g.courseId);
+    const course = courseList.find((c) => c.id === g.courseId);
     const hours =
       typeof g.creditHours === "number" && g.creditHours > 0
         ? g.creditHours
@@ -106,7 +108,8 @@ export type ComponentPct = {
 };
 
 export function componentPercents(entries: GradeEntry[]): ComponentPct[] {
-  return entries.map((e) => {
+  const list = Array.isArray(entries) ? entries : [];
+  return list.map((e) => {
     const pct =
       e.score != null && e.maxScore != null && e.maxScore > 0
         ? Math.round((e.score / e.maxScore) * 1000) / 10
