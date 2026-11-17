@@ -215,6 +215,7 @@ export function Performance() {
                     disabled={closed}
                     value={stmtText[e.id] ?? ""}
                     onChange={(ev) => setStmtText((m) => ({ ...m, [e.id]: ev.target.value }))}
+                    onInput={(ev) => setStmtText((m) => ({ ...m, [e.id]: (ev.target as HTMLInputElement).value }))}
                   />
                   <button
                     type="button"
@@ -247,6 +248,7 @@ export function Performance() {
                 disabled={closed}
                 value={p.note}
                 onChange={(ev) => setPerf(date, e.id, { note: ev.target.value })}
+                onInput={(ev) => setPerf(date, e.id, { note: (ev.target as HTMLInputElement).value })}
               />
               {auto && !p.note && !closed && (
                 <button className="mt-1 text-xs font-semibold text-primary underline" onClick={() => setPerf(date, e.id, { note: auto })}>

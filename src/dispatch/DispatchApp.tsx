@@ -1098,6 +1098,10 @@ function LoadEditor({
   const loadNumberRef = useRef<HTMLInputElement>(null);
   const customerRef = useRef<HTMLInputElement>(null);
   const notesRef = useRef<HTMLTextAreaElement>(null);
+  const cancelReasonRef = useRef<HTMLInputElement>(null);
+  const rescheduleNoteRef = useRef<HTMLInputElement>(null);
+  const closeoutNoteRef = useRef<HTMLInputElement>(null);
+  const reopenReasonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!load?.id) return;
@@ -1496,18 +1500,24 @@ function LoadEditor({
             <label className="grid gap-1 text-xs sm:col-span-2">
               Cancel reason
               <input
+                ref={cancelReasonRef}
+                data-testid="dispatch-cancel-reason"
                 className="dispatch-field"
                 value={form.cancel_reason}
                 onChange={(e) => setForm({ ...form, cancel_reason: e.target.value })}
+                onInput={(e) => setForm((f) => ({ ...f, cancel_reason: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to cancel"
               />
             </label>
             <label className="grid gap-1 text-xs sm:col-span-2">
               Reschedule note
               <input
+                ref={rescheduleNoteRef}
+                data-testid="dispatch-reschedule-note"
                 className="dispatch-field"
                 value={form.reschedule_note}
                 onChange={(e) => setForm({ ...form, reschedule_note: e.target.value })}
+                onInput={(e) => setForm((f) => ({ ...f, reschedule_note: (e.target as HTMLInputElement).value }))}
                 placeholder="Why planned times changed"
               />
             </label>
@@ -1518,7 +1528,12 @@ function LoadEditor({
               className="dispatch-btn-ghost"
               disabled={opsBusy || load.status === "cancelled" || load.status === "closed"}
               onClick={async () => {
-                const err = validateCancel(form.cancel_reason);
+                const nextCancel = (
+                  form.cancel_reason.trim() ||
+                  cancelReasonRef.current?.value ||
+                  ""
+                ).trim();
+                const err = validateCancel(nextCancel);
                 if (err) {
                   setOpsError(err);
                   return;
@@ -1526,7 +1541,7 @@ function LoadEditor({
                 setOpsBusy(true);
                 setOpsError(null);
                 try {
-                  const next = await cancelLoad(load, form.cancel_reason);
+                  const next = await cancelLoad(load, nextCancel);
                   setForm((f) => ({
                     ...f,
                     status: "cancelled",
@@ -1550,7 +1565,12 @@ function LoadEditor({
                 const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
                 const pickup = toIso(form.planned_pickup_at);
                 const delivery = toIso(form.planned_delivery_at);
-                const err = validateReschedule(form.reschedule_note, pickup, delivery);
+                const nextReschedule = (
+                  form.reschedule_note.trim() ||
+                  rescheduleNoteRef.current?.value ||
+                  ""
+                ).trim();
+                const err = validateReschedule(nextReschedule, pickup, delivery);
                 if (err) {
                   setOpsError(err);
                   return;
@@ -1559,7 +1579,7 @@ function LoadEditor({
                 setOpsError(null);
                 try {
                   const next = await rescheduleLoad(load, {
-                    note: form.reschedule_note,
+                    note: nextReschedule,
                     planned_pickup_at: pickup,
                     planned_delivery_at: delivery,
                     stops: form.stops.map((s, idx) => ({ ...s, sequence: idx + 1 })),
@@ -1599,18 +1619,24 @@ function LoadEditor({
             <label className="grid gap-1 text-xs sm:col-span-2">
               Closeout note
               <input
+                ref={closeoutNoteRef}
+                data-testid="dispatch-closeout-note"
                 className="dispatch-field"
                 value={form.closeout_note}
                 onChange={(e) => setForm({ ...form, closeout_note: e.target.value })}
+                onInput={(e) => setForm((f) => ({ ...f, closeout_note: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to close"
               />
             </label>
             <label className="grid gap-1 text-xs sm:col-span-2">
               Reopen reason
               <input
+                ref={reopenReasonRef}
+                data-testid="dispatch-reopen-reason"
                 className="dispatch-field"
                 value={form.reopen_reason}
                 onChange={(e) => setForm({ ...form, reopen_reason: e.target.value })}
+                onInput={(e) => setForm((f) => ({ ...f, reopen_reason: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to reopen closed → delivered"
               />
             </label>
@@ -1637,7 +1663,12 @@ function LoadEditor({
               className="dispatch-btn-primary"
               disabled={opsBusy || load.status !== "delivered"}
               onClick={async () => {
-                const err = validateCloseout(form.closeout_note);
+                const nextClose = (
+                  form.closeout_note.trim() ||
+                  closeoutNoteRef.current?.value ||
+                  ""
+                ).trim();
+                const err = validateCloseout(nextClose);
                 if (err) {
                   setOpsError(err);
                   return;
@@ -1645,7 +1676,7 @@ function LoadEditor({
                 setOpsBusy(true);
                 setOpsError(null);
                 try {
-                  const next = await closeLoad(load, form.closeout_note);
+                  const next = await closeLoad(load, nextClose);
                   setForm((f) => ({
                     ...f,
                     status: "closed",
@@ -1667,7 +1698,12 @@ function LoadEditor({
               className="dispatch-btn-ghost"
               disabled={opsBusy || load.status !== "closed"}
               onClick={async () => {
-                const err = validateReopen(form.reopen_reason);
+                const nextReopen = (
+                  form.reopen_reason.trim() ||
+                  reopenReasonRef.current?.value ||
+                  ""
+                ).trim();
+                const err = validateReopen(nextReopen);
                 if (err) {
                   setOpsError(err);
                   return;
@@ -1675,7 +1711,7 @@ function LoadEditor({
                 setOpsBusy(true);
                 setOpsError(null);
                 try {
-                  const next = await reopenLoad(load, form.reopen_reason);
+                  const next = await reopenLoad(load, nextReopen);
                   setForm((f) => ({
                     ...f,
                     status: "delivered",
@@ -1993,10 +2029,10 @@ function LoadEditor({
               last_manual_location_at: form.last_manual_location
                 ? (load?.last_manual_location_at ?? new Date().toISOString())
                 : null,
-              cancel_reason: form.cancel_reason || null,
-              reschedule_note: form.reschedule_note || null,
-              closeout_note: form.closeout_note || null,
-              reopen_reason: form.reopen_reason || null,
+              cancel_reason: (form.cancel_reason || cancelReasonRef.current?.value || "") || null,
+              reschedule_note: (form.reschedule_note || rescheduleNoteRef.current?.value || "") || null,
+              closeout_note: (form.closeout_note || closeoutNoteRef.current?.value || "") || null,
+              reopen_reason: (form.reopen_reason || reopenReasonRef.current?.value || "") || null,
               payment_status: form.payment_status,
               closed_at: load?.closed_at ?? null,
               reopened_at: load?.reopened_at ?? null,

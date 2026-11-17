@@ -72,10 +72,18 @@ export function Analytics() {
   const [letterProv, setLetterProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
   const [swPct, setSwPct] = useState("");
   const [fePct, setFePct] = useState("");
+  const swPctRef = useRef<HTMLInputElement>(null);
+  const fePctRef = useRef<HTMLInputElement>(null);
 
   const whatIf = estimateCourseAggregate({
-    semesterWorkPct: swPct === "" ? null : Number(swPct),
-    finalExamPct: fePct === "" ? null : Number(fePct),
+    semesterWorkPct: (() => {
+      const raw = (swPct === "" ? swPctRef.current?.value ?? "" : swPct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
+    finalExamPct: (() => {
+      const raw = (fePct === "" ? fePctRef.current?.value ?? "" : fePct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
   });
 
   const weekStart = weekStartMonday(todayKey());
@@ -379,8 +387,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
+              ref={swPctRef}
+              data-testid="personal-sw-pct"
               value={swPct}
               onChange={(e) => setSwPct(e.target.value)}
+              onInput={(e) => setSwPct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
@@ -390,8 +401,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
+              ref={fePctRef}
+              data-testid="personal-fe-pct"
               value={fePct}
               onChange={(e) => setFePct(e.target.value)}
+              onInput={(e) => setFePct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
