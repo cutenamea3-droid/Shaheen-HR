@@ -133,14 +133,13 @@ export function Today() {
   const sunday = isSundayIso(today);
   const student = VU_STUDY_PLAN.student;
   const [modes, setModes] = useState(loadModes);
-  const rx = useMemo(
-    () =>
-      buildTodayPrescription(VU_STUDY_PLAN, today, {
-        handoutFirst: modes.handoutFirst,
-        creditHourTriage: modes.creditTriage,
-      }),
-    [today, modes.handoutFirst, modes.creditTriage],
-  );
+  const rx = useMemo(() => {
+    const raw = buildTodayPrescription(VU_STUDY_PLAN, today, {
+      handoutFirst: modes.handoutFirst,
+      creditHourTriage: modes.creditTriage,
+    });
+    return { ...raw, blocks: Array.isArray(raw.blocks) ? raw.blocks : [] };
+  }, [today, modes.handoutFirst, modes.creditTriage]);
 
   const [doneMap, setDoneMap] = useState<Record<string, boolean>>(() => loadDoneMap(today));
   const [presetId, setPresetId] = useState("lecture");

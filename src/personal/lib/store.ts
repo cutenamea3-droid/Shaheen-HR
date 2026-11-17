@@ -257,10 +257,11 @@ export const usePersonal = create<PersonalStore>()(
       upsertNote: (n) =>
         set((s) => {
           const notes = Array.isArray(s.notes) ? s.notes : [];
+          const next = { ...n, tags: Array.isArray(n.tags) ? n.tags : [] };
           return {
-            notes: notes.some((x) => x.id === n.id)
-              ? notes.map((x) => (x.id === n.id ? n : x))
-              : [...notes, n],
+            notes: notes.some((x) => x.id === next.id)
+              ? notes.map((x) => (x.id === next.id ? next : x))
+              : [...notes, next],
           };
         }),
       removeNote: (id) =>

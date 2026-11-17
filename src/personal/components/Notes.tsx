@@ -236,7 +236,9 @@ export function Notes() {
           </Empty>
         ) : (
           <ul className="space-y-2">
-            {sorted.map((n) => (
+            {sorted.map((n) => {
+              const tags = Array.isArray(n.tags) ? n.tags : [];
+              return (
               <li
                 key={n.id}
                 className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3"
@@ -246,7 +248,7 @@ export function Notes() {
                     <div className="font-semibold">{n.title}</div>
                     <div className="text-xs text-[var(--hp-muted)]">
                       {courseLabel(courses, n.courseId)} ·{" "}
-                      {n.tags.length ? n.tags.join(", ") + " · " : ""}
+                      {tags.length ? tags.join(", ") + " · " : ""}
                       {new Date(n.updatedAt).toLocaleString()}
                     </div>
                   </div>
@@ -258,7 +260,7 @@ export function Notes() {
                         setTitle(n.title);
                         setBody(n.body);
                         setCourseId(n.courseId);
-                        setTagDraft(n.tags[0] ?? "revision");
+                        setTagDraft(tags[0] ?? "revision");
                       }}
                     >
                       Edit
@@ -274,7 +276,8 @@ export function Notes() {
                   </pre>
                 ) : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </Panel>

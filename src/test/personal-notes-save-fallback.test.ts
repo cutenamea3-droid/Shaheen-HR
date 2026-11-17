@@ -26,4 +26,19 @@ describe("Personal Notes save", () => {
     expect(src).toMatch(/onInput/);
     expect(src).toMatch(/titleRef\.current\?\.value/);
   });
+
+  it("upsertNote and Notes UI coerce corrupt tags arrays", () => {
+    usePersonal.setState({ notes: [] });
+    usePersonal.getState().upsertNote({
+      id: "tags-corrupt",
+      courseId: "general",
+      title: "t",
+      body: "b",
+      updatedAt: 1,
+      tags: null as never,
+    });
+    expect(usePersonal.getState().notes[0]?.tags).toEqual([]);
+    const src = readFileSync(resolve(process.cwd(), "src/personal/components/Notes.tsx"), "utf8");
+    expect(src).toMatch(/const tags = Array\.isArray\(n\.tags\) \? n\.tags : \[\]/);
+  });
 });
