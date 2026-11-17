@@ -24,15 +24,20 @@ export function canReopenLoad(status: DispatchLoad["status"]): boolean {
   return status === "closed";
 }
 
-export function validateCloseout(note: string): string | null {
-  const trimmed = note.trim();
+function asTrimmedText(v: unknown): string {
+  if (v == null) return "";
+  return (typeof v === "string" ? v : String(v)).trim();
+}
+
+export function validateCloseout(note: unknown): string | null {
+  const trimmed = asTrimmedText(note);
   if (!trimmed) return "Closeout requires a manual desk note.";
   if (trimmed.length < 3) return "Closeout note is too short.";
   return null;
 }
 
-export function validateReopen(reason: string): string | null {
-  const trimmed = reason.trim();
+export function validateReopen(reason: unknown): string | null {
+  const trimmed = asTrimmedText(reason);
   if (!trimmed) return "Reopen requires a manual reason.";
   if (trimmed.length < 3) return "Reopen reason is too short.";
   return null;
@@ -75,7 +80,7 @@ export function validateAccessorialInput(input: {
   amount_manual?: number | null;
   hours_manual?: number | null;
 }): string | null {
-  if (!input.description.trim()) return "Accessorial requires a manual description.";
+  if (!asTrimmedText(input.description)) return "Accessorial requires a manual description.";
   const amountErr = validateAccessorialAmount(input.amount_manual);
   if (amountErr) return amountErr;
   const hoursErr = validateAccessorialHours(input.hours_manual);
@@ -88,8 +93,8 @@ export function validateCommunication(input: {
   summary: string;
   decided_action?: string | null;
 }): string | null {
-  if (!input.summary.trim()) return "Communication/decision requires a summary.";
-  if (input.kind === "decision" && !(input.decided_action ?? "").trim()) {
+  if (!asTrimmedText(input.summary)) return "Communication/decision requires a summary.";
+  if (input.kind === "decision" && !asTrimmedText(input.decided_action)) {
     return "Decisions require a decided action (desk record only — no external notify).";
   }
   return null;

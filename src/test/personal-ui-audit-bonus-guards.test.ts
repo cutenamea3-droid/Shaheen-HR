@@ -44,6 +44,9 @@ describe("Personal UI / audit / bonus / session helper guards", () => {
     expect(useBonusStore.getState().forMonth("2026-11")).toEqual([]);
     expect(useBonusStore.getState().upsertBonus("e1", "2026-11", 100).ok).toBe(true);
     expect(Array.isArray(useBonusStore.getState().bonuses)).toBe(true);
+    expect(() =>
+      useBonusStore.getState().upsertBonus("e2", "2026-11", 50, null as unknown as string),
+    ).not.toThrow();
   });
 
   it("session analytics helpers coerce non-array sessions", () => {

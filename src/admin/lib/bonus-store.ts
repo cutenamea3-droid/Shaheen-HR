@@ -37,13 +37,15 @@ export const useBonusStore = create<BonusState>()((set, get) => ({
     try {
       const amount = assertWholePkr(amountPkr);
       if (amount < 0) return { ok: false, error: "Bonus must be non-negative whole PKR" };
+      const noteText =
+        note == null ? "" : typeof note === "string" ? note.trim() : String(note).trim();
       const list = Array.isArray(get().bonuses) ? get().bonuses : [];
       const existing = list.find((b) => b.employeeId === employeeId && b.month === month);
       if (existing) {
         set({
           bonuses: list.map((b) =>
             b.id === existing.id
-              ? { ...b, amountPkr: amount, note: note.trim(), updatedAt: Date.now() }
+              ? { ...b, amountPkr: amount, note: noteText, updatedAt: Date.now() }
               : b,
           ),
         });
@@ -56,7 +58,7 @@ export const useBonusStore = create<BonusState>()((set, get) => ({
               employeeId,
               month,
               amountPkr: amount,
-              note: note.trim(),
+              note: noteText,
               updatedAt: Date.now(),
             },
           ],

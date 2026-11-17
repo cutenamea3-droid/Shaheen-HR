@@ -80,7 +80,11 @@ export function statusTone(v: string): Tone {
   }
 }
 
-const filled = (v: string | undefined) => !!v && v.trim() !== "";
+const filled = (v: unknown) => {
+  if (v == null) return false;
+  const s = typeof v === "string" ? v : String(v);
+  return s.trim() !== "";
+};
 
 /** Case-insensitive "old" in an expiration cell — skip amber/red for that column. */
 export function isOldExpiry(v: string) {

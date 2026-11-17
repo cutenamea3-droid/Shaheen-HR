@@ -118,15 +118,21 @@ export function canCancelLoad(status: DispatchLoad["status"]): boolean {
   return status !== "closed" && status !== "cancelled";
 }
 
-export function validateCancel(reason: string): string | null {
-  const trimmed = reason.trim();
+export function validateCancel(reason: unknown): string | null {
+  const trimmed =
+    reason == null ? "" : (typeof reason === "string" ? reason : String(reason)).trim();
   if (!trimmed) return "Cancel requires a manual reason.";
   if (trimmed.length < 3) return "Cancel reason is too short.";
   return null;
 }
 
-export function validateReschedule(note: string, plannedPickup: string | null, plannedDelivery: string | null): string | null {
-  const trimmed = note.trim();
+export function validateReschedule(
+  note: unknown,
+  plannedPickup: string | null,
+  plannedDelivery: string | null,
+): string | null {
+  const trimmed =
+    note == null ? "" : (typeof note === "string" ? note : String(note)).trim();
   if (!trimmed) return "Reschedule requires a manual note (no invented ETAs).";
   if (!plannedPickup && !plannedDelivery) {
     return "Set at least one planned pickup or delivery time when rescheduling.";

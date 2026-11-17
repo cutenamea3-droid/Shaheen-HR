@@ -117,10 +117,16 @@ export function searchPkInstitutions(query: string): PkPaymentInstitution[] {
   });
 }
 
-export function institutionDisplayLabel(id: string, otherLabel?: string): string {
-  if (id === PK_INSTITUTION_OTHER_ID) return otherLabel?.trim() || "Other";
+export function institutionDisplayLabel(id: string, otherLabel?: unknown): string {
+  const other =
+    otherLabel == null
+      ? ""
+      : typeof otherLabel === "string"
+        ? otherLabel.trim()
+        : String(otherLabel).trim();
+  if (id === PK_INSTITUTION_OTHER_ID) return other || "Other";
   const inst = findPkInstitution(id);
-  if (!inst) return otherLabel?.trim() || "Unknown institution";
+  if (!inst) return other || "Unknown institution";
   const kind = pkInstitutionKindLabel(inst.kind);
   return inst.isBank ? `${inst.name}` : `${inst.name} (${kind})`;
 }

@@ -122,7 +122,11 @@ function monthCalcs(data: Data, month: string, e: Employee) {
 }
 
 /** Long names use just the first name so the notes column never wraps. */
-export const shortName = (n: string) => (n.trim().length > 14 ? n.trim().split(/\s+/)[0]! : n.trim());
+export const shortName = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  const t = s.trim();
+  return t.length > 14 ? t.split(/\s+/)[0]! : t;
+};
 
 const list = (items: string[]) => (items.length ? `${items.length}\n${items.join("\n")}` : "0");
 

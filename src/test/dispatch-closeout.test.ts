@@ -39,8 +39,11 @@ describe("Batch 9 closeout helpers", () => {
   it("requires closeout note and reopen reason", () => {
     expect(validateCloseout("")).toMatch(/note/i);
     expect(validateCloseout("POD verified — file complete")).toBeNull();
+    expect(() => validateCloseout(null as unknown as string)).not.toThrow();
+    expect(validateCloseout(null as unknown as string)).toMatch(/note/i);
     expect(validateReopen("")).toMatch(/reason/i);
     expect(validateReopen("POD corrected — reopen")).toBeNull();
+    expect(() => validateReopen(1 as unknown as string)).not.toThrow();
   });
 
   it("rejects invented accessorial amounts and requires description", () => {
