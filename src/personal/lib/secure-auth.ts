@@ -37,7 +37,8 @@ export async function signInPersonalSecure(
   password: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (!isPersonalSecureEnabled()) return { ok: false, message: "Invalid credentials." };
-  const login = email.trim().toLowerCase();
+  const login =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!login || password.length < 4) return { ok: false, message: "Invalid credentials." };
   try {
     const sb = clientOrThrow();
@@ -54,7 +55,8 @@ export async function signUpPersonalSecure(
   password: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   if (!isPersonalSignupAllowed()) return { ok: false, message: "Invalid credentials." };
-  const login = email.trim().toLowerCase();
+  const login =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!login || password.length < 4) return { ok: false, message: "Invalid credentials." };
   try {
     const sb = clientOrThrow();

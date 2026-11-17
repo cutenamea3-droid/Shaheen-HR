@@ -53,13 +53,19 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
   return row as DispatchAccount;
 }
 
+function asLoginEmail(email: unknown): string {
+  if (email == null) return "";
+  return (typeof email === "string" ? email : String(email)).trim().toLowerCase();
+}
+
 export async function signInDispatch(email: string, password: string): Promise<DispatchAccount> {
+  const login = asLoginEmail(email);
   if (isDispatchPreviewMode()) {
-    if (!email.trim() || !password) throw new Error("Enter email and password.");
+    if (!login || !password) throw new Error("Enter email and password.");
     return PREVIEW_ACCOUNT;
   }
   const { error } = await dispatchSupabase.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
+    email: login,
     password,
   });
   if (error) throw new Error("Invalid credentials.");
@@ -105,10 +111,16 @@ export async function inviteDispatchUser(input: {
   if (isDispatchPreviewMode()) {
     throw new Error("Invite is disabled in preview/fixture mode. Apply Dispatch SQL and use cloud auth.");
   }
+  const displayName =
+    input.displayName == null
+      ? ""
+      : typeof input.displayName === "string"
+        ? input.displayName.trim()
+        : String(input.displayName).trim();
   const { data, error } = await dispatchSupabase.functions.invoke("create-dispatch-user", {
     body: {
-      email: input.email.trim().toLowerCase(),
-      displayName: input.displayName.trim(),
+      email: asLoginEmail(input.email),
+      displayName,
       password: input.password,
       role: input.role,
     },

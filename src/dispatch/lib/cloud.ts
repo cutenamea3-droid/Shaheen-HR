@@ -42,6 +42,12 @@ function asRows<T>(data: unknown): T[] {
   return Array.isArray(data) ? (data as T[]) : [];
 }
 
+/** Desk text fields may arrive as corrupt non-strings — never assume `.trim()`. */
+function asText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
 /** Only real stop arrays may round-trip — never truthy string `.length`. */
 function arrayStops(stops: unknown): LoadStop[] | undefined {
   return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
@@ -172,7 +178,7 @@ export type LoadWriteInput = {
 
 export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   const now = new Date().toISOString();
-  if (!input.load_number?.trim()) {
+  if (!asText(input.load_number).trim()) {
     throw new Error("Load number is required.");
   }
   if (input.status === "cancelled") {
@@ -244,7 +250,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
 
   const row = {
     id: input.id,
-    load_number: input.load_number.trim(),
+    load_number: asText(input.load_number).trim(),
     customer_name: input.customer_name ?? null,
     commodity: input.commodity ?? null,
     equipment: input.equipment ?? null,
@@ -561,7 +567,7 @@ export async function cancelLoad(
     id: load.id,
     load_number: load.load_number,
     status: "cancelled",
-    cancel_reason: reason.trim(),
+    cancel_reason: asText(reason).trim(),
     customer_name: load.customer_name,
     commodity: load.commodity,
     equipment: load.equipment,
@@ -610,7 +616,7 @@ export async function rescheduleLoad(
     load_number: load.load_number,
     status: load.status === "cancelled" ? "planned" : load.status,
     cancel_reason: load.cancel_reason,
-    reschedule_note: input.note.trim(),
+    reschedule_note: asText(input.note).trim(),
     planned_pickup_at: pickup,
     planned_delivery_at: delivery,
     customer_name: load.customer_name,
@@ -713,7 +719,7 @@ export async function closeLoad(
     id: load.id,
     load_number: load.load_number,
     status: "closed",
-    closeout_note: note.trim(),
+    closeout_note: asText(note).trim(),
     closed_at: now,
     payment_status: load.payment_status,
     reopen_reason: load.reopen_reason,
@@ -757,7 +763,7 @@ export async function reopenLoad(
     id: load.id,
     load_number: load.load_number,
     status: "delivered",
-    reopen_reason: reason.trim(),
+    reopen_reason: asText(reason).trim(),
     reopened_at: now,
     closeout_note: load.closeout_note,
     closed_at: load.closed_at,
@@ -857,7 +863,7 @@ export async function saveAccessorial(
     const existing = mem().accessorials.find((a) => a.id === input.id);
     if (existing) {
       Object.assign(existing, input, {
-        description: input.description.trim(),
+        description: asText(input.description).trim(),
         updated_at: now,
       });
       return existing;
@@ -867,7 +873,7 @@ export async function saveAccessorial(
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: input.description.trim(),
+      description: asText(input.description).trim(),
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
       free_time_note: input.free_time_note ?? null,
@@ -886,7 +892,7 @@ export async function saveAccessorial(
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: input.description.trim(),
+      description: asText(input.description).trim(),
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
       free_time_note: input.free_time_note ?? null,
@@ -932,14 +938,14 @@ export async function saveCommunication(
   if (isDispatchPreviewMode()) {
     const existing = mem().communications.find((c) => c.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { summary: input.summary.trim() });
+      Object.assign(existing, input, { summary: asText(input.summary).trim() });
       return existing;
     }
     const row: DispatchCommunication = {
       id: newId(),
       load_id: input.load_id,
       kind: input.kind,
-      summary: input.summary.trim(),
+      summary: asText(input.summary).trim(),
       detail: input.detail ?? null,
       decided_action: input.decided_action ?? null,
       created_by: input.created_by ?? null,
@@ -954,7 +960,7 @@ export async function saveCommunication(
       id: input.id,
       load_id: input.load_id,
       kind: input.kind,
-      summary: input.summary.trim(),
+      summary: asText(input.summary).trim(),
       detail: input.detail ?? null,
       decided_action: input.decided_action ?? null,
     })

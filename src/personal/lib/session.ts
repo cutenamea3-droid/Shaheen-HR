@@ -53,21 +53,23 @@ export async function personalSignIn(
   password: string,
   password2?: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
+  const handle =
+    login == null ? "" : (typeof login === "string" ? login : String(login)).trim();
   if (isPersonalSecureEnabled()) {
     const needsSignup = isPersonalSignupAllowed() && Boolean(password2);
     if (needsSignup) {
       if (password !== password2) return { ok: false, message: "Invalid credentials." };
-      const created = await signUpPersonalSecure(login, password);
+      const created = await signUpPersonalSecure(handle, password);
       if (!created.ok) return created;
       // Prefer immediate session; if email confirm required, try sign-in anyway.
-      const signed = await signInPersonalSecure(login, password);
+      const signed = await signInPersonalSecure(handle, password);
       if (signed.ok) {
         const s = await readPersonalSecureSession();
         if (s) startPersonalCloudSync(s.userId);
       }
       return signed.ok ? signed : created;
     }
-    const result = await signInPersonalSecure(login, password);
+    const result = await signInPersonalSecure(handle, password);
     if (result.ok) {
       const s = await readPersonalSecureSession();
       if (s) startPersonalCloudSync(s.userId);
@@ -79,16 +81,16 @@ export async function personalSignIn(
   const setup = !hasPersonalCredentials();
   try {
     if (setup) {
-      if (!login.trim() || password.length < 4 || password !== password2) {
+      if (!handle || password.length < 4 || password !== password2) {
         return { ok: false, message: "Invalid credentials." };
       }
-      await setPersonalCredentials(login, password);
-      writeLocalSession(login);
+      await setPersonalCredentials(handle, password);
+      writeLocalSession(handle);
       return { ok: true };
     }
-    const ok = await verifyPersonalCredentials(login, password);
+    const ok = await verifyPersonalCredentials(handle, password);
     if (!ok) return { ok: false, message: "Invalid credentials." };
-    writeLocalSession(login);
+    writeLocalSession(handle);
     return { ok: true };
   } catch {
     return { ok: false, message: "Invalid credentials." };

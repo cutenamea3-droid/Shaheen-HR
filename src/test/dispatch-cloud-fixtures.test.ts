@@ -16,6 +16,18 @@ describe("Dispatch fixture cloud (not production fake)", () => {
     );
   });
 
+  it("coerces non-string desk text before trim", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(process.cwd(), "src/dispatch/lib/cloud.ts"), "utf8");
+    expect(src).toMatch(/function asText\(v: unknown\)/);
+    expect(src).toMatch(/asText\(input\.load_number\)\.trim\(\)/);
+    const cloud = await import("@/dispatch/lib/cloud");
+    await expect(
+      cloud.saveLoad({ load_number: null as unknown as string, status: "planned" }),
+    ).rejects.toThrow(/Load number is required/);
+  });
+
   it("saves loads with multi-stop and unlimited assign, keeps Delivered ≠ Closed", async () => {
     const cloud = await import("@/dispatch/lib/cloud");
     const drivers = await cloud.listRosterDrivers();

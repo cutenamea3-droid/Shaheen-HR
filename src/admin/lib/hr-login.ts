@@ -100,7 +100,8 @@ export async function attemptHrLogin(
   password: string,
   deps: HrLoginDeps,
 ): Promise<HrLoginResult> {
-  const mail = email.trim().toLowerCase();
+  const mail =
+    email == null ? "" : (typeof email === "string" ? email : String(email)).trim().toLowerCase();
   if (!mail || !password) {
     return { ok: false, kind: "credentials", message: HR_LOGIN_CREDENTIALS_MSG };
   }

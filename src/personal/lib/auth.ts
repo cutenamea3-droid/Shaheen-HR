@@ -11,8 +11,9 @@ type SecretsMap = Record<string, string>;
 /** Legacy single-gate key from earlier PIN prototype. */
 const LEGACY_HANDLE = "hr.personal";
 
-function normalizeLogin(login: string): string {
-  return login.trim().toLowerCase();
+function normalizeLogin(login: unknown): string {
+  if (login == null) return "";
+  return (typeof login === "string" ? login : String(login)).trim().toLowerCase();
 }
 
 function read(): SecretsMap {
