@@ -25,4 +25,14 @@ describe("salary + portal list Array.isArray guards", () => {
     expect(src).toMatch(/const paymentEvents = useEmployeeFinanceMock\(\(s\) => s\.paymentEvents\)/);
     expect(src).not.toMatch(/Array\.isArray\(paymentEventsRaw\)/);
   });
+
+  it("PayrollVerify coerces payments/bonuses arrays and approvals object", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/PayrollVerify.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/const payments = Array\.isArray\(paymentsRaw\)/);
+    expect(src).toMatch(/const bonuses = Array\.isArray\(bonusesRaw\)/);
+    expect(src).toMatch(/approvalsRaw && typeof approvalsRaw === "object" && !Array\.isArray\(approvalsRaw\)/);
+  });
 });

@@ -14,14 +14,20 @@ import { SectionTitle, todayStr } from "./common";
 export function PayrollVerify() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
-  const payments = useEmployeeFinanceMock((s) => s.payments);
-  const approvals = useOtApprovalStore((s) => s.rows);
+  const paymentsRaw = useEmployeeFinanceMock((s) => s.payments);
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
+  const approvalsRaw = useOtApprovalStore((s) => s.rows);
+  const approvals =
+    approvalsRaw && typeof approvalsRaw === "object" && !Array.isArray(approvalsRaw)
+      ? approvalsRaw
+      : {};
   const policy = usePayrollPolicyStore((s) => s.policy);
   const setAdditionalDayRate = usePayrollPolicyStore((s) => s.setAdditionalDayRate);
   const setOvertimeHourlyRate = usePayrollPolicyStore((s) => s.setOvertimeHourlyRate);
   const setWorkingDaysDivisor = usePayrollPolicyStore((s) => s.setWorkingDaysDivisor);
   const confirmDivisorPolicy = usePayrollPolicyStore((s) => s.confirmDivisorPolicy);
-  const bonuses = useBonusStore((s) => s.bonuses);
+  const bonusesRaw = useBonusStore((s) => s.bonuses);
+  const bonuses = Array.isArray(bonusesRaw) ? bonusesRaw : [];
   const upsertBonus = useBonusStore((s) => s.upsertBonus);
 
   const [month, setMonth] = useState(todayStr().slice(0, 7));
