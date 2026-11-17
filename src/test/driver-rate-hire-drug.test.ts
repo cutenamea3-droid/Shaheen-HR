@@ -49,6 +49,9 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     const card = useRateCardMock.getState().get("d_new");
     expect(card.rates).toEqual({});
     expect(rateCardHasContent(emptyRateCard("x"))).toBe(false);
+    expect(rateCardHasContent({ ...emptyRateCard("y"), rates: null as never, payMethodNote: null as never })).toBe(
+      false,
+    );
     const set = useRateCardMock.getState().setRate("d1", "percentage", "0.550");
     expect(set.ok && set.card.rates.percentage).toBe("0.550");
     const cleared = useRateCardMock.getState().setRate("d1", "percentage", "");

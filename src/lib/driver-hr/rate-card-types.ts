@@ -105,6 +105,9 @@ export function rateDisplay(value: string | undefined | null): string {
 export function rateCardHasContent(card: DriverRateCard | null | undefined): boolean {
   if (!card) return false;
   if (card.payMethod) return true;
-  if (card.payMethodNote.trim()) return true;
-  return Object.values(card.rates).some((v) => (v ?? "").trim() !== "");
+  const note = typeof card.payMethodNote === "string" ? card.payMethodNote : "";
+  if (note.trim()) return true;
+  const rates =
+    card.rates && typeof card.rates === "object" && !Array.isArray(card.rates) ? card.rates : {};
+  return Object.values(rates).some((v) => (v ?? "").trim() !== "");
 }

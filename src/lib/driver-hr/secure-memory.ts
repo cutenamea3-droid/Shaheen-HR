@@ -15,8 +15,9 @@ import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 
 function scrubRates(rates: Record<string, string>): Record<string, string> {
+  const src = rates && typeof rates === "object" && !Array.isArray(rates) ? rates : {};
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(rates)) {
+  for (const [k, v] of Object.entries(src)) {
     const t = (v ?? "").trim();
     if (t) out[k] = t;
   }
