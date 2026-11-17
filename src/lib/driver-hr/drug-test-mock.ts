@@ -51,7 +51,10 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
       notes: input.notes ?? "",
       createdAt: input.createdAt ?? Date.now(),
     };
-    set((s) => ({ events: [ev, ...s.events] }));
+    set((s) => {
+      const cur = Array.isArray(s.events) ? s.events : [];
+      return { events: [ev, ...cur] };
+    });
     recordSensitiveAudit({
       actor,
       action: "drug_test_add",
@@ -61,7 +64,9 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
     return ev;
   },
   update: (id, patch, actor) => {
-    const prev = get().events.find((e) => e.id === id && !e.deletedAt);
+    const prev = (Array.isArray(get().events) ? get().events : []).find(
+      (e) => e.id === id && !e.deletedAt,
+    );
     if (!prev) return null;
     const next: DrugTestEvent = {
       ...prev,
@@ -77,7 +82,10 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
           ? patch.testingEventId.trim()
           : prev.testingEventId,
     };
-    set((s) => ({ events: s.events.map((e) => (e.id === id ? next : e)) }));
+    set((s) => {
+      const cur = Array.isArray(s.events) ? s.events : [];
+      return { events: cur.map((e) => (e.id === id ? next : e)) };
+    });
     recordSensitiveAudit({
       actor,
       action: "drug_test_update",
@@ -87,10 +95,15 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
     return next;
   },
   remove: (id, actor) => {
-    const prev = get().events.find((e) => e.id === id && !e.deletedAt);
+    const prev = (Array.isArray(get().events) ? get().events : []).find(
+      (e) => e.id === id && !e.deletedAt,
+    );
     if (!prev) return false;
     const next = { ...prev, deletedAt: Date.now() };
-    set((s) => ({ events: s.events.map((e) => (e.id === id ? next : e)) }));
+    set((s) => {
+      const cur = Array.isArray(s.events) ? s.events : [];
+      return { events: cur.map((e) => (e.id === id ? next : e)) };
+    });
     recordSensitiveAudit({
       actor,
       action: "drug_test_soft_delete",
@@ -100,12 +113,17 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
     return true;
   },
   restore: (id, actor) => {
-    const prev = get().events.find((e) => e.id === id && e.deletedAt);
+    const prev = (Array.isArray(get().events) ? get().events : []).find(
+      (e) => e.id === id && e.deletedAt,
+    );
     if (!prev) return null;
     const { deletedAt: _removed, ...rest } = prev;
     void _removed;
     const next: DrugTestEvent = { ...rest };
-    set((s) => ({ events: s.events.map((e) => (e.id === id ? next : e)) }));
+    set((s) => {
+      const cur = Array.isArray(s.events) ? s.events : [];
+      return { events: cur.map((e) => (e.id === id ? next : e)) };
+    });
     recordSensitiveAudit({
       actor,
       action: "drug_test_restore",

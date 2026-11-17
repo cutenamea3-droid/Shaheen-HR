@@ -82,7 +82,8 @@ export function Vault() {
         />
         <ul className="space-y-2">
           {discipline.map((d) => {
-            const on = d.doneDates.includes(today);
+            const doneDates = Array.isArray(d.doneDates) ? d.doneDates : [];
+            const on = doneDates.includes(today);
             return (
               <li
                 key={d.id}
@@ -91,7 +92,7 @@ export function Vault() {
                 <div>
                   <div className="text-sm font-semibold">{d.label}</div>
                   <div className="text-xs text-[var(--hp-muted)]">
-                    {d.doneDates.length} day(s) logged
+                    {doneDates.length} day(s) logged
                   </div>
                 </div>
                 <Btn variant={on ? "teal" : "ghost"} onClick={() => toggleDiscipline(d.id, today)}>

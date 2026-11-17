@@ -48,13 +48,14 @@ export function validateExpenseInput(input: {
   }
   if (input.amountPkr <= 0) return { ok: false, error: "Amount must be a positive whole PKR amount" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) return { ok: false, error: "Expense date must be YYYY-MM-DD" };
-  if (input.scope === "one" && input.employeeIds.length !== 1) {
+  const employeeIds = Array.isArray(input.employeeIds) ? input.employeeIds : [];
+  if (input.scope === "one" && employeeIds.length !== 1) {
     return { ok: false, error: "One-employee scope requires exactly one employee" };
   }
-  if (input.scope === "multiple" && input.employeeIds.length < 2) {
+  if (input.scope === "multiple" && employeeIds.length < 2) {
     return { ok: false, error: "Multiple scope requires at least two employees" };
   }
-  if (input.scope === "all" && input.employeeIds.length > 0) {
+  if (input.scope === "all" && employeeIds.length > 0) {
     return { ok: false, error: "Company / all scope must not list individual employees (avoids double-count)" };
   }
   return { ok: true };

@@ -109,8 +109,9 @@ type EventGroup = {
 };
 
 function groupActiveEvents(events: DrugTestEvent[]): EventGroup[] {
+  const list = Array.isArray(events) ? events : [];
   const map = new Map<string, EventGroup>();
-  for (const ev of events) {
+  for (const ev of list) {
     if (ev.deletedAt) continue;
     const tid = (ev.testingEventId || ev.id || "").trim();
     if (!tid) continue;
