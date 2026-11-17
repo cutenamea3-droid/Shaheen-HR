@@ -186,13 +186,13 @@ export function ExpensesManagement() {
       amountPkr: draft.amountPkr,
       expenseDate: draft.expenseDate,
       scope: draft.scope,
-      employeeIds: draft.employeeIds,
+      employeeIds: Array.isArray(draft.employeeIds) ? draft.employeeIds : [],
       status: "draft",
       note: draft.note,
       templateId: draft.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...draft.employeeIds]);
+    setEmpPick([...(Array.isArray(draft.employeeIds) ? draft.employeeIds : [])]);
     setEditId(null);
     setFormOpen(true);
     setMsg(`Filled from template “${t.name}” — not auto-created. Review and Save.`);

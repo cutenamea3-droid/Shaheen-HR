@@ -46,4 +46,52 @@ describe("Dispatch ops list / VU plan / expenses mutation guards", () => {
     expect(Array.isArray(useExpensesStore.getState().categories)).toBe(true);
     expect(useExpensesStore.getState().auditFor("missing")).toEqual([]);
   });
+
+  it("upsertExpense/upsertTemplate coerce non-array employeeIds before spread", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/admin/lib/expenses-store.ts"), "utf8");
+    expect(src).toMatch(/\[\.\.\.asArr<string>\(input\.employeeIds\)\]/);
+    expect(src).toMatch(/\[\.\.\.asArr<string>\(t\.employeeIds\)\]/);
+    const ui = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/ExpensesManagement.tsx"),
+      "utf8",
+    );
+    expect(ui).toMatch(/Array\.isArray\(draft\.employeeIds\)\s*\?\s*draft\.employeeIds\s*:\s*\[\]/);
+    useExpensesStore.setState({
+      categories: [{ id: "office", name: "Office", custom: false }],
+      expenses: [],
+      templates: [],
+      budgets: [],
+      audit: [],
+    });
+    expect(() =>
+      useExpensesStore.getState().upsertExpense({
+        title: "Office supplies",
+        categoryId: "office",
+        amountPkr: 500,
+        expenseDate: "2026-11-17",
+        scope: "all",
+        employeeIds: null as unknown as string[],
+        status: "draft",
+        note: "",
+        allowDuplicate: true,
+      }),
+    ).not.toThrow();
+    const row = useExpensesStore.getState().expenses[0];
+    expect(Array.isArray(row?.employeeIds)).toBe(true);
+    expect(row?.employeeIds).toEqual([]);
+    expect(() =>
+      useExpensesStore.getState().upsertTemplate({
+        name: "Monthly office",
+        title: "Office supplies",
+        categoryId: "office",
+        amountPkr: 500,
+        scope: "all",
+        employeeIds: null as unknown as string[],
+        note: "",
+        cadence: "monthly",
+        active: true,
+      }),
+    ).not.toThrow();
+    expect(Array.isArray(useExpensesStore.getState().templates[0]?.employeeIds)).toBe(true);
+  });
 });
