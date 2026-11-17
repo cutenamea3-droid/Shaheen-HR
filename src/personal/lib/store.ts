@@ -339,39 +339,64 @@ export const usePersonal = create<PersonalStore>()(
         })),
       setVaultNotes: (vaultNotes) => set({ vaultNotes }),
       upsertGradeEntry: (g) =>
-        set((s) => ({
-          gradeEntries: s.gradeEntries.some((x) => x.id === g.id)
-            ? s.gradeEntries.map((x) => (x.id === g.id ? g : x))
-            : [...s.gradeEntries, g],
-        })),
+        set((s) => {
+          const gradeEntries = Array.isArray(s.gradeEntries) ? s.gradeEntries : [];
+          return {
+            gradeEntries: gradeEntries.some((x) => x.id === g.id)
+              ? gradeEntries.map((x) => (x.id === g.id ? g : x))
+              : [...gradeEntries, g],
+          };
+        }),
       removeGradeEntry: (id) =>
-        set((s) => ({ gradeEntries: s.gradeEntries.filter((g) => g.id !== id) })),
+        set((s) => {
+          const gradeEntries = Array.isArray(s.gradeEntries) ? s.gradeEntries : [];
+          return { gradeEntries: gradeEntries.filter((g) => g.id !== id) };
+        }),
       upsertCourseGrade: (g) =>
-        set((s) => ({
-          courseGrades: s.courseGrades.some((x) => x.id === g.id)
-            ? s.courseGrades.map((x) => (x.id === g.id ? g : x))
-            : [...s.courseGrades, g],
-        })),
+        set((s) => {
+          const courseGrades = Array.isArray(s.courseGrades) ? s.courseGrades : [];
+          return {
+            courseGrades: courseGrades.some((x) => x.id === g.id)
+              ? courseGrades.map((x) => (x.id === g.id ? g : x))
+              : [...courseGrades, g],
+          };
+        }),
       removeCourseGrade: (id) =>
-        set((s) => ({ courseGrades: s.courseGrades.filter((g) => g.id !== id) })),
+        set((s) => {
+          const courseGrades = Array.isArray(s.courseGrades) ? s.courseGrades : [];
+          return { courseGrades: courseGrades.filter((g) => g.id !== id) };
+        }),
       upsertExamPrepTask: (t) =>
-        set((s) => ({
-          examPrepTasks: s.examPrepTasks.some((x) => x.id === t.id)
-            ? s.examPrepTasks.map((x) => (x.id === t.id ? t : x))
-            : [...s.examPrepTasks, t],
-        })),
+        set((s) => {
+          const examPrepTasks = Array.isArray(s.examPrepTasks) ? s.examPrepTasks : [];
+          return {
+            examPrepTasks: examPrepTasks.some((x) => x.id === t.id)
+              ? examPrepTasks.map((x) => (x.id === t.id ? t : x))
+              : [...examPrepTasks, t],
+          };
+        }),
       toggleExamPrepTask: (id) =>
-        set((s) => ({
-          examPrepTasks: s.examPrepTasks.map((t) =>
-            t.id === id ? { ...t, done: !t.done } : t,
-          ),
-        })),
+        set((s) => {
+          const examPrepTasks = Array.isArray(s.examPrepTasks) ? s.examPrepTasks : [];
+          return {
+            examPrepTasks: examPrepTasks.map((t) =>
+              t.id === id ? { ...t, done: !t.done } : t,
+            ),
+          };
+        }),
       removeExamPrepTask: (id) =>
-        set((s) => ({ examPrepTasks: s.examPrepTasks.filter((t) => t.id !== id) })),
+        set((s) => {
+          const examPrepTasks = Array.isArray(s.examPrepTasks) ? s.examPrepTasks : [];
+          return { examPrepTasks: examPrepTasks.filter((t) => t.id !== id) };
+        }),
       upsertWeeklyReview: (r) =>
-        set((s) => ({
-          weeklyReviews: { ...s.weeklyReviews, [r.weekStart]: r },
-        })),
+        set((s) => {
+          const weeklyReviews =
+            s.weeklyReviews && typeof s.weeklyReviews === "object" && !Array.isArray(s.weeklyReviews)
+              ? s.weeklyReviews
+              : {};
+          return { weeklyReviews: { ...weeklyReviews, [r.weekStart]: r } };
+        }),
       importVuStudyPlan: (plan = VU_STUDY_PLAN) => {
         const seed = buildVuSeed(plan);
         const s = get();
@@ -476,16 +501,18 @@ export function todayKey(): string {
 
 /** Analytics helpers — only real logged sessions; never invent. */
 export function studyMinutesInRange(sessions: FocusSession[], fromMs: number, toMs: number) {
-  return sessions
+  const list = Array.isArray(sessions) ? sessions : [];
+  return list
     .filter((s) => s.endedAt >= fromMs && s.startedAt <= toMs)
     .reduce((sum, s) => sum + s.minutes, 0);
 }
 
 export function consistencyDays(sessions: FocusSession[], lookbackDays: number): number {
+  const list = Array.isArray(sessions) ? sessions : [];
   const set = new Set<string>();
   const now = Date.now();
   const cut = now - lookbackDays * 86400000;
-  for (const s of sessions) {
+  for (const s of list) {
     if (s.endedAt < cut) continue;
     const d = new Date(s.endedAt);
     set.add(
@@ -496,9 +523,10 @@ export function consistencyDays(sessions: FocusSession[], lookbackDays: number):
 }
 
 export function streakDays(sessions: FocusSession[]): number {
-  if (!sessions.length) return 0;
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (!list.length) return 0;
   const days = new Set<string>();
-  for (const s of sessions) {
+  for (const s of list) {
     const d = new Date(s.endedAt);
     days.add(
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,

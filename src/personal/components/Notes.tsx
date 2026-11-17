@@ -11,9 +11,12 @@ import {
 import { vuQuickLinks } from "@/personal/lib/vu-rhythm";
 
 export function Notes() {
-  const courses = usePersonal((s) => s.courses);
-  const notes = usePersonal((s) => s.notes);
-  const assessments = usePersonal((s) => s.assessments);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const notesRaw = usePersonal((s) => s.notes);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const notes = Array.isArray(notesRaw) ? notesRaw : [];
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
   const upsertNote = usePersonal((s) => s.upsertNote);
   const removeNote = usePersonal((s) => s.removeNote);
 

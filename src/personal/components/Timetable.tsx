@@ -11,8 +11,11 @@ import {
 import type { StudyMode } from "@/personal/lib/types";
 
 export function Timetable() {
-  const courses = usePersonal((s) => s.courses);
-  const dayPlans = usePersonal((s) => s.dayPlans);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
   const setDayMode = usePersonal((s) => s.setDayMode);
   const setDayBlockDone = usePersonal((s) => s.setDayBlockDone);

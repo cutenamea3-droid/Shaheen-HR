@@ -3,8 +3,10 @@ import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { todayKey, usePersonal } from "@/personal/lib/store";
 
 export function Backlog() {
-  const courses = usePersonal((s) => s.courses);
-  const backlog = usePersonal((s) => s.backlog);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
   const addBacklog = usePersonal((s) => s.addBacklog);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
   const removeBacklog = usePersonal((s) => s.removeBacklog);

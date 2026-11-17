@@ -64,12 +64,32 @@ export const useHrAuditHistory = create<State>()(
           ...(input.month ? { month: input.month } : {}),
           ...(input.employeeId ? { employeeId: input.employeeId } : {}),
         };
-        set({ events: [ev, ...get().events].slice(0, 1000) });
+        const prev = Array.isArray(get().events) ? get().events : [];
+        set({ events: [ev, ...prev].slice(0, 1000) });
         return ev;
       },
-      forMonth: (month) => get().events.filter((e) => e.month === month),
-      recent: (limit = 50) => get().events.slice(0, limit),
+      forMonth: (month) => {
+        const list = Array.isArray(get().events) ? get().events : [];
+        return list.filter((e) => e.month === month);
+      },
+      recent: (limit = 50) => {
+        const list = Array.isArray(get().events) ? get().events : [];
+        return list.slice(0, limit);
+      },
     }),
-    { name: HR_AUDIT_STORAGE_KEY },
+    {
+      name: HR_AUDIT_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        return {
+          ...current,
+          ...raw,
+          events: Array.isArray(raw.events) ? raw.events : current.events,
+        };
+      },
+    },
   ),
 );

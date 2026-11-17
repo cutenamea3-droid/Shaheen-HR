@@ -16,7 +16,8 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
   const [busy, setBusy] = useState(false);
 
   const refresh = async () => {
-    setAccounts(await listDispatchAccounts());
+    const next = await listDispatchAccounts();
+    setAccounts(Array.isArray(next) ? next : []);
   };
 
   useEffect(() => {

@@ -27,10 +27,12 @@ function presetToActivity(id: string): FocusActivityKind {
 }
 
 export function Focus() {
-  const courses = usePersonal((s) => s.courses);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
   const settings = usePersonal((s) => s.settings);
   const addSession = usePersonal((s) => s.addSession);
-  const sessions = usePersonal((s) => s.sessions);
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
 
   const [courseId, setCourseId] = useState<string>(courses[0]?.id ?? "cs101");

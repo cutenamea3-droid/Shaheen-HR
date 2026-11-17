@@ -21,15 +21,29 @@ import {
 } from "@/personal/lib/weekly-review";
 
 export function Analytics() {
-  const sessions = usePersonal((s) => s.sessions);
-  const backlog = usePersonal((s) => s.backlog);
-  const courses = usePersonal((s) => s.courses);
-  const dayPlans = usePersonal((s) => s.dayPlans);
-  const assessments = usePersonal((s) => s.assessments);
-  const discipline = usePersonal((s) => s.discipline);
-  const gradeEntries = usePersonal((s) => s.gradeEntries);
-  const courseGrades = usePersonal((s) => s.courseGrades);
-  const weeklyReviews = usePersonal((s) => s.weeklyReviews);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const disciplineRaw = usePersonal((s) => s.discipline);
+  const gradeEntriesRaw = usePersonal((s) => s.gradeEntries);
+  const courseGradesRaw = usePersonal((s) => s.courseGrades);
+  const weeklyReviewsRaw = usePersonal((s) => s.weeklyReviews);
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
+  const gradeEntries = Array.isArray(gradeEntriesRaw) ? gradeEntriesRaw : [];
+  const courseGrades = Array.isArray(courseGradesRaw) ? courseGradesRaw : [];
+  const weeklyReviews =
+    weeklyReviewsRaw && typeof weeklyReviewsRaw === "object" && !Array.isArray(weeklyReviewsRaw)
+      ? weeklyReviewsRaw
+      : {};
+
   const upsertGradeEntry = usePersonal((s) => s.upsertGradeEntry);
   const removeGradeEntry = usePersonal((s) => s.removeGradeEntry);
   const upsertCourseGrade = usePersonal((s) => s.upsertCourseGrade);

@@ -44,7 +44,8 @@ function AccessNavControls() {
 export function Vault() {
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
-  const discipline = usePersonal((s) => s.discipline);
+  const disciplineRaw = usePersonal((s) => s.discipline);
+  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
   const vaultNotes = usePersonal((s) => s.vaultNotes);
   const setVaultNotes = usePersonal((s) => s.setVaultNotes);

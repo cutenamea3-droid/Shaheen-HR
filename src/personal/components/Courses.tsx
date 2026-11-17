@@ -11,7 +11,8 @@ function numOrNull(raw: string): number | null {
 }
 
 export function Courses() {
-  const courses = usePersonal((s) => s.courses);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
   const updateCourse = usePersonal((s) => s.updateCourse);
 
   return (

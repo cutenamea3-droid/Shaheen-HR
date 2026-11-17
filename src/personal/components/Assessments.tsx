@@ -31,15 +31,18 @@ function DeadlineChip({ source }: { source: DeadlineSource | undefined }) {
 }
 
 export function Assessments() {
-  const courses = usePersonal((s) => s.courses);
-  const assessments = usePersonal((s) => s.assessments);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
   const upsertAssessment = usePersonal((s) => s.upsertAssessment);
   const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const removeAssessment = usePersonal((s) => s.removeAssessment);
-  const examPrepTasks = usePersonal((s) => s.examPrepTasks);
+  const examPrepTasksRaw = usePersonal((s) => s.examPrepTasks);
+  const examPrepTasks = Array.isArray(examPrepTasksRaw) ? examPrepTasksRaw : [];
   const upsertExamPrepTask = usePersonal((s) => s.upsertExamPrepTask);
   const toggleExamPrepTask = usePersonal((s) => s.toggleExamPrepTask);
   const removeExamPrepTask = usePersonal((s) => s.removeExamPrepTask);
