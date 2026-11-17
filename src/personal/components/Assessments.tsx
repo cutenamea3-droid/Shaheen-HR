@@ -73,7 +73,13 @@ export function Assessments() {
       assessments
         .filter((a) => !a.submitted && !a.done)
         .slice()
-        .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999")),
+        .sort((a, b) => {
+          const asDue = (v: unknown, fb = "") => {
+            const s = v == null ? "" : typeof v === "string" ? v : String(v);
+            return s || fb;
+          };
+          return asDue(a.dueDate, "9999").localeCompare(asDue(b.dueDate, "9999"));
+        }),
     [assessments],
   );
 

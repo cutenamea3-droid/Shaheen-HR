@@ -185,8 +185,10 @@ export function DriverCards({
         if (def.id === "ssccdl") d.cdl = (r.cells[1] ?? "").trim();
       }
     }
+    const asName = (v: unknown) =>
+      (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
     return [...map.values()].sort((a, b) =>
-      a.name.trim().localeCompare(b.name.trim(), undefined, { sensitivity: "base" }),
+      asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
     );
   }, [data]);
 

@@ -147,10 +147,12 @@ export function DrugTestRecordsPage() {
       }
     }
     rows.sort((a, b) => {
-      const da = a.eventDate || a.collectionContext || "";
-      const db = b.eventDate || b.collectionContext || "";
+      const da = asDrugText(a.eventDate || a.collectionContext || "");
+      const db = asDrugText(b.eventDate || b.collectionContext || "");
       if (da !== db) return db.localeCompare(da);
-      return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+      return asDrugText(a.driverName).localeCompare(asDrugText(b.driverName), undefined, {
+        sensitivity: "base",
+      });
     });
     return rows;
   }, [safeEvents, nameById]);
@@ -210,8 +212,8 @@ export function DrugTestRecordsPage() {
       map.set(r.driverId, list);
     }
     return [...map.entries()].sort((a, b) => {
-      const na = nameById.get(a[0]) ?? a[0];
-      const nb = nameById.get(b[0]) ?? b[0];
+      const na = asDrugText(nameById.get(a[0]) ?? a[0]);
+      const nb = asDrugText(nameById.get(b[0]) ?? b[0]);
       return na.localeCompare(nb, undefined, { sensitivity: "base" });
     });
   }, [filtered, groupByDriver, nameById]);

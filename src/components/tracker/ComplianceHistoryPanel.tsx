@@ -49,9 +49,10 @@ export function ComplianceHistoryPanel() {
         if (n && !map.has(r.driverId)) map.set(r.driverId, n);
       }
     }
+    const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      .sort((a, b) => asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }));
   }, [data]);
 
   const events = useMemo(() => {

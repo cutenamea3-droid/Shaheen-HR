@@ -36,7 +36,8 @@ export function TeamManagement() {
     for (const a of [...cloud, ...local]) byId.set(a.user_id, a);
     // Prefer local email matches for edits done offline
     for (const a of local) byId.set(a.user_id, a);
-    const merged = [...byId.values()].sort((a, b) => a.email.localeCompare(b.email));
+    const asEmail = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const merged = [...byId.values()].sort((a, b) => asEmail(a.email).localeCompare(asEmail(b.email)));
     setAccounts(merged);
   };
 

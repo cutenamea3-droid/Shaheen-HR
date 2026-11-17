@@ -46,7 +46,10 @@ function groupByPerson(rows: Row[]): PersonGroup[] {
     else map.set(key, { key, name, rows: [r], active: true });
   }
   for (const g of map.values()) g.active = recordPersonIsActive(g.rows);
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return [...map.values()].sort((a, b) =>
+    asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
+  );
 }
 
 function personCount(rows: Row[] | undefined) {
