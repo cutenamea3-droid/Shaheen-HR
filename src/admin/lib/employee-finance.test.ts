@@ -117,6 +117,7 @@ describe("employee-finance-mock security", () => {
         isIban: false,
         otherLabel: null as unknown as string,
         note: 9 as unknown as string,
+        effectiveFrom: "2026-11-17",
       }),
     ).not.toThrow();
     expect(
@@ -127,6 +128,7 @@ describe("employee-finance-mock security", () => {
         accountRef: null as unknown as string,
         isIban: false,
         otherLabel: null as unknown as string,
+        effectiveFrom: "2026-11-17",
       }).ok,
     ).toBe(false);
   });
