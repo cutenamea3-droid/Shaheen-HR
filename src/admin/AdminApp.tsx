@@ -166,6 +166,7 @@ function CloudReconnectBanner({
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const busyRef = useRef(false);
+  const reconnectPassRef = useRef<HTMLInputElement>(null);
 
   return (
     <div
@@ -194,7 +195,8 @@ function CloudReconnectBanner({
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
 
-            const result = await attemptHrLogin(email, pass, {
+            const nextPass = (pass || reconnectPassRef.current?.value || "").trim();
+            const result = await attemptHrLogin(email, nextPass, {
               signInWithPassword: async (creds) => {
                 const { error } = await supabase.auth.signInWithPassword(creds);
                 return {
@@ -246,11 +248,17 @@ function CloudReconnectBanner({
         <label className="block min-w-0 flex-1">
           <span className="lbl">Supabase password for {email}</span>
           <input
+            ref={reconnectPassRef}
+            data-testid="admin-cloud-reconnect-password"
             type="password"
             className="field"
             value={pass}
             onChange={(e) => {
               setPass(e.target.value);
+              if (err) setErr("");
+            }}
+            onInput={(e) => {
+              setPass((e.target as HTMLInputElement).value);
               if (err) setErr("");
             }}
             autoComplete="current-password"

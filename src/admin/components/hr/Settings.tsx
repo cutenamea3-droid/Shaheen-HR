@@ -8,14 +8,14 @@ import { SectionTitle, TimeInput, Toggle } from "./common";
 export function SettingsPanel() {
   const { depts, upsertDept, removeDept, settings, setSettings } = useApp();
   const num = (k: "grace" | "breakMin" | "breakLeeway" | "satTargetHours", label: string) => (
-    <label><span className="lbl">{label}</span><input type="number" min={0} className="field" value={settings[k]} onChange={(e) => setSettings({ [k]: +e.target.value })} /></label>
+    <label><span className="lbl">{label}</span><input type="number" min={0} className="field" value={settings[k]} onChange={(e) => setSettings({ [k]: +e.target.value })} onInput={(e) => setSettings({ [k]: +(e.target as HTMLInputElement).value })} /></label>
   );
   return (
     <div className="space-y-8">
       <section>
         <SectionTitle title="Rules" sub="All times are machine (USA) time. Values feed existing calc — UI layout only here." />
         <div className="admin-emp-card grid gap-3 md:grid-cols-3">
-          <label className="md:col-span-3"><span className="lbl">Company name (on PDFs)</span><input className="field" value={settings.company} onChange={(e) => setSettings({ company: e.target.value })} /></label>
+          <label className="md:col-span-3"><span className="lbl">Company name (on PDFs)</span><input className="field" data-testid="admin-company-name" value={settings.company} onChange={(e) => setSettings({ company: e.target.value })} onInput={(e) => setSettings({ company: (e.target as HTMLInputElement).value })} /></label>
           {num("grace", "Late grace (min)")}
           {num("breakMin", "Break allowed (min)")}
           {num("breakLeeway", "Break leeway (min)")}
@@ -31,7 +31,7 @@ export function SettingsPanel() {
         <div className="space-y-2">
           {depts.map((d) => (
             <div key={d.id} className="admin-emp-card grid gap-3 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
-              <label><span className="lbl">Name</span><input className="field" value={d.name} onChange={(e) => upsertDept({ ...d, name: e.target.value })} /></label>
+              <label><span className="lbl">Name</span><input className="field" data-testid={`admin-dept-name-${d.id}`} value={d.name} onChange={(e) => upsertDept({ ...d, name: e.target.value })} onInput={(e) => upsertDept({ ...d, name: (e.target as HTMLInputElement).value })} /></label>
               <TimeInput label="Shift start" value={d.start} onChange={(v) => v != null && upsertDept({ ...d, start: v })} />
               <TimeInput label="Shift end" value={d.end} onChange={(v) => v != null && upsertDept({ ...d, end: v })} />
               <button type="button" className="btn-danger" onClick={() => confirm(`Delete ${d.name}?`) && removeDept(d.id)}>Delete</button>

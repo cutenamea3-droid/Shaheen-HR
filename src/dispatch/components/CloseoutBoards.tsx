@@ -2,7 +2,7 @@
  * Batch 9 surfaces: Detention & Accessorials board + helpers used from Load editor.
  * Additive — does not rewrite Batch 7/8 cores. No rates/free-time invention; no HR payroll bleed.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   listAccessorials,
   saveAccessorial,
@@ -41,6 +41,10 @@ export function AccessorialsBoard({
   const [amount, setAmount] = useState("");
   const [hours, setHours] = useState("");
   const [freeTimeNote, setFreeTimeNote] = useState("Free-time / rate Needs Policy Confirmation — do not invent");
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const hoursRef = useRef<HTMLInputElement>(null);
+  const freeTimeNoteRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
     setRows(await listAccessorials());
@@ -91,38 +95,50 @@ export function AccessorialsBoard({
           <label className="grid gap-1 text-xs sm:col-span-2">
             Description
             <input
+              ref={descriptionRef}
+              data-testid="dispatch-accessorial-description"
               className="dispatch-field"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onInput={(e) => setDescription((e.target as HTMLInputElement).value)}
               placeholder="What happened (manual)"
             />
           </label>
           <label className="grid gap-1 text-xs">
             Amount (manual — blank = Needs Policy)
             <input
+              ref={amountRef}
+              data-testid="dispatch-accessorial-amount"
               className="dispatch-field"
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onInput={(e) => setAmount((e.target as HTMLInputElement).value)}
               placeholder="Leave blank — never invent rate"
             />
           </label>
           <label className="grid gap-1 text-xs">
             Hours claimed (manual)
             <input
+              ref={hoursRef}
+              data-testid="dispatch-accessorial-hours"
               className="dispatch-field"
               inputMode="decimal"
               value={hours}
               onChange={(e) => setHours(e.target.value)}
+              onInput={(e) => setHours((e.target as HTMLInputElement).value)}
               placeholder="Optional — not free-time calc"
             />
           </label>
           <label className="grid gap-1 text-xs sm:col-span-2">
             Free-time / rate note
             <input
+              ref={freeTimeNoteRef}
+              data-testid="dispatch-accessorial-freetime"
               className="dispatch-field"
               value={freeTimeNote}
               onChange={(e) => setFreeTimeNote(e.target.value)}
+              onInput={(e) => setFreeTimeNote((e.target as HTMLInputElement).value)}
             />
           </label>
         </div>
@@ -134,15 +150,19 @@ export function AccessorialsBoard({
             setBusy(true);
             setError(null);
             try {
-              const amount_manual = amount.trim() === "" ? null : Number(amount);
-              const hours_manual = hours.trim() === "" ? null : Number(hours);
+              const nextDesc = (description.trim() || descriptionRef.current?.value || "").trim();
+              const nextAmount = (amount.trim() || amountRef.current?.value || "").trim();
+              const nextHours = (hours.trim() || hoursRef.current?.value || "").trim();
+              const nextFree = (freeTimeNote.trim() || freeTimeNoteRef.current?.value || "").trim();
+              const amount_manual = nextAmount === "" ? null : Number(nextAmount);
+              const hours_manual = nextHours === "" ? null : Number(nextHours);
               await saveAccessorial({
                 load_id: loadId,
                 kind,
-                description,
+                description: nextDesc,
                 amount_manual,
                 hours_manual,
-                free_time_note: freeTimeNote.trim() || null,
+                free_time_note: nextFree || null,
                 status: "draft",
               });
               setDescription("");

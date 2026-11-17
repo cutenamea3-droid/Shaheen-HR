@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -56,6 +56,8 @@ export function LockGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -204,7 +206,9 @@ export function LockGate({ children }: { children: ReactNode }) {
             setBusy(true);
             setError("");
             try {
-              const { account: next, created } = await signInPortalAccount(email, password);
+              const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
+              const nextPassword = (password || passwordRef.current?.value || "").trim();
+              const { account: next, created } = await signInPortalAccount(nextEmail, nextPassword);
               setAccount(next);
               setPassword("");
               // Seat probes must refresh after ACL is ready — auth events can race ahead.
@@ -255,8 +259,10 @@ export function LockGate({ children }: { children: ReactNode }) {
             type="email"
             autoComplete="username"
             required
+            ref={emailRef}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
             className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground"
           />
           <label className="mt-4 block text-sm font-bold text-foreground" htmlFor="portal-password">
@@ -268,8 +274,10 @@ export function LockGate({ children }: { children: ReactNode }) {
             type="password"
             autoComplete="current-password"
             required
+            ref={passwordRef}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            onInput={(event) => setPassword((event.target as HTMLInputElement).value)}
             className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <button
