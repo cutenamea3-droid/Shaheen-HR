@@ -65,9 +65,18 @@ export function buildHrToday(opts: {
   bankMissingIds?: Set<string> | string[];
   lowLeaveThreshold?: number;
 }): HrTodaySummary {
-  const { date, employees, depts, records, settings } = opts;
+  const date = opts.date;
+  const employees = Array.isArray(opts.employees) ? opts.employees : [];
+  const depts = Array.isArray(opts.depts) ? opts.depts : [];
+  const records =
+    opts.records && typeof opts.records === "object" && !Array.isArray(opts.records) ? opts.records : {};
+  const settings = opts.settings;
   const bankMissing = new Set(
-    Array.isArray(opts.bankMissingIds) ? opts.bankMissingIds : [...(opts.bankMissingIds ?? [])],
+    Array.isArray(opts.bankMissingIds)
+      ? opts.bankMissingIds
+      : opts.bankMissingIds instanceof Set
+        ? [...opts.bankMissingIds]
+        : [],
   );
   const threshold = opts.lowLeaveThreshold ?? 1;
   const day = records[date] ?? {};

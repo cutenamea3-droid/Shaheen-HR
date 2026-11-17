@@ -50,7 +50,7 @@ export function leaveRoster(
   asOf: string,
 ): LeaveRosterRow[] {
   const month = asOf.slice(0, 7);
-  return employees.map((e) => {
+  return (Array.isArray(employees) ? employees : []).map((e) => {
     let paidThisMonth = 0;
     let unpaidThisMonth = 0;
     for (const d of monthDays(month)) {

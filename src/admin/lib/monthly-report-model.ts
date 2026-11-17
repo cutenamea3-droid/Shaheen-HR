@@ -111,13 +111,25 @@ function emptyRatings(): Record<Rating, number> {
   return { excellent: 0, good: 0, average: 0, needs: 0, poor: 0 };
 }
 
+function rosterEmployees(data: Data): Employee[] {
+  return Array.isArray(data.employees) ? data.employees : [];
+}
+
+function rosterDepts(data: Data) {
+  return Array.isArray(data.depts) ? data.depts : [];
+}
+
 function monthCalcs(data: Data, month: string, e: Employee): MonthDayRow[] {
-  const dept = data.depts.find((d) => d.id === e.deptId);
+  const dept = rosterDepts(data).find((d) => d.id === e.deptId);
+  const records =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records) ? data.records : {};
+  const perf =
+    data.perf && typeof data.perf === "object" && !Array.isArray(data.perf) ? data.perf : {};
   return monthDays(month)
-    .filter((d) => data.records[d]?.[e.id])
+    .filter((d) => records[d]?.[e.id])
     .map((d) => {
-      const rec = data.records[d]![e.id]!;
-      return { date: d, rec, c: calcDay(e, dept, d, rec, data.settings), p: data.perf[d]?.[e.id] };
+      const rec = records[d]![e.id]!;
+      return { date: d, rec, c: calcDay(e, dept, d, rec, data.settings), p: perf[d]?.[e.id] };
     });
 }
 
@@ -134,7 +146,7 @@ function buildEmpMonth(data: Data, month: string, e: Employee, index: number): E
   return {
     index,
     employee: e,
-    deptName: data.depts.find((d) => d.id === e.deptId)?.name ?? "—",
+    deptName: rosterDepts(data).find((d) => d.id === e.deptId)?.name ?? "—",
     days,
     workingDays: worked.length,
     hoursMin: worked.reduce((a, x) => a + (x.c.worked ?? 0), 0),
@@ -200,7 +212,8 @@ function collectNotes(emp: EmpMonth): NoteItem[] {
 }
 
 export function buildMonthlyReportModel(data: Data, month: string): MonthlyReportModel {
-  const employees = data.employees.map((e, i) => buildEmpMonth(data, month, e, i + 1));
+  const roster = rosterEmployees(data);
+  const employees = roster.map((e, i) => buildEmpMonth(data, month, e, i + 1));
   const withRecords = employees.filter((e) => e.days.length > 0);
   const exceptions = withRecords.flatMap(collectExceptions);
   const notes = withRecords.flatMap(collectNotes);
@@ -214,7 +227,7 @@ export function buildMonthlyReportModel(data: Data, month: string): MonthlyRepor
   const overview: MonthlyOverview = {
     month,
     monthLabel: monthLabel(month),
-    rosterCount: data.employees.length,
+    rosterCount: roster.length,
     employeesWithRecords: withRecords.length,
     totalWorkingDays: withRecords.reduce((a, e) => a + e.workingDays, 0),
     totalHours: fmtHours(withRecords.reduce((a, e) => a + e.hoursMin, 0)),
@@ -270,10 +283,12 @@ export function verifyMonthlyTotals(data: Data, month: string, model: MonthlyRep
   let otMin = 0;
   let extraMin = 0;
   let absent = 0;
-  for (const e of data.employees) {
-    const dept = data.depts.find((d) => d.id === e.deptId);
+  const records =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records) ? data.records : {};
+  for (const e of rosterEmployees(data)) {
+    const dept = rosterDepts(data).find((d) => d.id === e.deptId);
     for (const d of monthDays(month)) {
-      const rec = data.records[d]?.[e.id];
+      const rec = records[d]?.[e.id];
       if (!rec) continue;
       const c = calcDay(e, dept, d, rec, data.settings);
       if (rec.status === "present" || rec.status === "half") hoursMin += c.worked ?? 0;

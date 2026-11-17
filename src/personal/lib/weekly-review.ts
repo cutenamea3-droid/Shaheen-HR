@@ -57,16 +57,20 @@ export function buildWeeklyStats(
   const weekEnd = weekEndSunday(weekStart);
   const datesInWeek = enumerateDates(weekStart, weekEnd);
 
-  const inRange = sessions.filter((s) => s.endedAt >= fromMs && s.startedAt <= toMs);
+  const sess = Array.isArray(sessions) ? sessions : [];
+  const disc = Array.isArray(discipline) ? discipline : [];
+  const asses = Array.isArray(assessments) ? assessments : [];
+  const inRange = sess.filter((s) => s.endedAt >= fromMs && s.startedAt <= toMs);
   const focusMinutes = inRange.reduce((sum, s) => sum + s.minutes, 0);
   const sessionCount = inRange.length;
 
   let disciplineDoneThisWeek = 0;
-  for (const d of discipline) {
-    if (d.doneDates.some((x) => datesInWeek.includes(x))) disciplineDoneThisWeek += 1;
+  for (const d of disc) {
+    const doneDates = Array.isArray(d.doneDates) ? d.doneDates : [];
+    if (doneDates.some((x) => datesInWeek.includes(x))) disciplineDoneThisWeek += 1;
   }
 
-  const graded = assessments.filter((a) =>
+  const graded = asses.filter((a) =>
     a.kind === "assignment" || a.kind === "quiz" || a.kind === "gdb",
   );
 
@@ -76,7 +80,7 @@ export function buildWeeklyStats(
     focusMinutes,
     sessionCount,
     disciplineDoneThisWeek,
-    disciplineTotal: discipline.length,
+    disciplineTotal: disc.length,
     prepDoneCount: graded.filter((a) => a.prepDone).length,
     submittedCount: graded.filter((a) => a.submitted || a.done).length,
     openGradedCount: graded.filter((a) => !a.submitted && !a.done).length,

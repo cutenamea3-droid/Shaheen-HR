@@ -33,12 +33,24 @@ function punchCell(rec: DayRec, c: DayCalc, k: "in" | "bin" | "bout" | "out"): C
   return C(fmtTime(v), tone);
 }
 
+function rosterEmployees(data: Data): Employee[] {
+  return Array.isArray(data.employees) ? data.employees : [];
+}
+
+function rosterDepts(data: Data): Dept[] {
+  return Array.isArray(data.depts) ? data.depts : [];
+}
+
 function dayRows(data: Data, date: string) {
-  const day = data.records[date] ?? {};
-  return data.employees
-    .map((e, i) => ({ e, i, rec: day[e.id], dept: data.depts.find((d) => d.id === e.deptId) }))
+  const day =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records)
+      ? data.records[date] ?? {}
+      : {};
+  const depts = rosterDepts(data);
+  return rosterEmployees(data)
+    .map((e, i) => ({ e, i, rec: day[e.id], dept: depts.find((d) => d.id === e.deptId) }))
     .filter((x) => x.rec)
-    .map((x) => ({ ...x, c: calcDay(x.e, x.dept, date, x.rec!, data.settings), p: data.perf[date]?.[x.e.id] }));
+    .map((x) => ({ ...x, c: calcDay(x.e, x.dept, date, x.rec!, data.settings), p: data.perf?.[date]?.[x.e.id] }));
 }
 
 function attendanceCells(x: ReturnType<typeof dayRows>[number]): Cell[] {
@@ -96,7 +108,7 @@ export function dailyCombined(data: Data, date: string): Table {
 }
 
 function monthCalcs(data: Data, month: string, e: Employee) {
-  const dept = data.depts.find((d) => d.id === e.deptId);
+  const dept = rosterDepts(data).find((d) => d.id === e.deptId);
   return monthDays(month)
     .filter((d) => data.records[d]?.[e.id])
     .map((d) => {
@@ -113,7 +125,7 @@ const list = (items: string[]) => (items.length ? `${items.length}\n${items.join
 export function monthlyAttendance(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
   const notes: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const worked = m.filter((x) => x.rec.status === "present" || x.rec.status === "half");
     const grace = m.filter((x) => x.c.lateLevel === "grace").map((x) => `${shortDate(x.d)}: ${x.c.lateMin}m`);
@@ -129,7 +141,7 @@ export function monthlyAttendance(data: Data, month: string): Table[] {
     rows.push([
       C(i + 1),
       C(e.name),
-      C(data.depts.find((d) => d.id === e.deptId)?.name ?? "—"),
+      C(rosterDepts(data).find((d) => d.id === e.deptId)?.name ?? "—"),
       C(worked.length),
       C(fmtHours(hours)),
       C(list(grace)),
@@ -159,7 +171,7 @@ export function monthlyAttendance(data: Data, month: string): Table[] {
 export function monthlyPerformance(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
   const notes: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const cnt = (r: Rating) => m.filter((x) => x.p?.rating === r).length;
     const bad = m.filter((x) => x.p?.rating === "needs" || x.p?.rating === "poor").map((x) => `${shortDate(x.d)}: ${RATING_LABEL[x.p!.rating as Rating]}`);
@@ -183,7 +195,7 @@ export function monthlyPerformance(data: Data, month: string): Table[] {
 
 export function monthlyOvertime(data: Data, month: string): Table[] {
   const rows: Cell[][] = [];
-  data.employees.forEach((e, i) => {
+  rosterEmployees(data).forEach((e, i) => {
     const m = monthCalcs(data, month, e);
     const ot = m.filter((x) => x.c.overtimeMin > 0);
     const ex = m.filter((x) => x.c.extraDay);
@@ -322,15 +334,17 @@ export type PayrollRow = {
  */
 export function payrollSummary(data: Data, from: string, to: string): PayrollRow[] {
   const days = datesInRange(from, to);
-  return data.employees.map((e) => {
-    const dept = data.depts.find((d) => d.id === e.deptId);
+  const records =
+    data.records && typeof data.records === "object" && !Array.isArray(data.records) ? data.records : {};
+  return rosterEmployees(data).map((e) => {
+    const dept = rosterDepts(data).find((d) => d.id === e.deptId);
     let regularMin = 0;
     let overtimeMin = 0;
     let additionalMin = 0;
     let daysPresent = 0;
     let daysAbsent = 0;
     for (const d of days) {
-      const rec = data.records[d]?.[e.id];
+      const rec = records[d]?.[e.id];
       if (!rec) continue;
       if (rec.status === "absent") {
         daysAbsent++;

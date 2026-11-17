@@ -60,11 +60,17 @@ export function collectOtCandidates(input: {
     minutes: number;
     note: string;
   }> = [];
-  for (const e of input.employees) {
+  const employees = Array.isArray(input.employees) ? input.employees : [];
+  const depts = Array.isArray(input.depts) ? input.depts : [];
+  const records =
+    input.records && typeof input.records === "object" && !Array.isArray(input.records)
+      ? input.records
+      : {};
+  for (const e of employees) {
     if (input.deptId && e.deptId !== input.deptId) continue;
-    const dept = input.depts.find((d) => d.id === e.deptId);
+    const dept = depts.find((d) => d.id === e.deptId);
     for (const d of monthDays(input.month)) {
-      const r = input.records[d]?.[e.id];
+      const r = records[d]?.[e.id];
       if (!r) continue;
       const c = calcDay(e, dept, d, r, input.settings);
       if (c.overtimeMin > 0) {
