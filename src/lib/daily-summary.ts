@@ -32,7 +32,7 @@ export function buildDriverDailyCounts(data: AppData): DriverDailyCounts {
       if (countTempNotes(data, r.driverId) > 0) tempDrivers.add(r.driverId);
       if (def.id === "inactive") continue;
       if (rowOrdinaryComplianceMuted(def, r, data)) continue;
-      for (const i of analyzeRow(def, sec.headers, r).issues) {
+      for (const i of analyzeRow(def, Array.isArray(sec.headers) ? sec.headers : [], r).issues) {
         if (matchExpired(i)) expired++;
         else if (matchSoon(i)) soon++;
         else if (matchApplied(i)) applied++;

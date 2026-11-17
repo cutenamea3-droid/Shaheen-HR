@@ -267,8 +267,10 @@ export function EmployeeDirectory() {
                   <span className="lbl">Designation (optional)</span>
                   <input
                     className="field"
+                    data-testid="admin-designation"
                     value={meta[selected.id]?.designation ?? ""}
                     onChange={(e) => setDesignation(selected.id, e.target.value)}
+                    onInput={(e) => setDesignation(selected.id, (e.target as HTMLInputElement).value)}
                     placeholder="e.g. Accounts Lead"
                   />
                 </label>

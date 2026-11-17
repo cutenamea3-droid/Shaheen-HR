@@ -84,6 +84,11 @@ export function Analytics() {
   const [wins, setWins] = useState(review.wins);
   const [blockers, setBlockers] = useState(review.blockers);
   const [nextFocus, setNextFocus] = useState(review.nextFocus);
+  const winsRef = useRef<HTMLTextAreaElement>(null);
+  const blockersRef = useRef<HTMLTextAreaElement>(null);
+  const nextFocusRef = useRef<HTMLTextAreaElement>(null);
+  const gScoreRef = useRef<HTMLInputElement>(null);
+  const gMaxRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-4">
@@ -283,18 +288,24 @@ export function Analytics() {
           </Field>
           <Field label="Score">
             <input
+              ref={gScoreRef}
+              data-testid="personal-grade-score"
               className="hp-field"
               type="number"
               value={gScore}
               onChange={(e) => setGScore(e.target.value)}
+              onInput={(e) => setGScore((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Max">
             <input
+              ref={gMaxRef}
+              data-testid="personal-grade-max"
               className="hp-field"
               type="number"
               value={gMax}
               onChange={(e) => setGMax(e.target.value)}
+              onInput={(e) => setGMax((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Provenance">
@@ -312,8 +323,10 @@ export function Analytics() {
               onClick={() => {
                 const nextGLabel = (gLabel.trim() || gLabelRef.current?.value || "").trim();
                 if (!nextGLabel) return;
-                const score = gScore === "" ? null : Number(gScore);
-                const maxScore = gMax === "" ? null : Number(gMax);
+                const scoreRaw = (gScore === "" ? gScoreRef.current?.value ?? "" : gScore).trim();
+                const maxRaw = (gMax === "" ? gMaxRef.current?.value ?? "" : gMax).trim();
+                const score = scoreRaw === "" ? null : Number(scoreRaw);
+                const maxScore = maxRaw === "" ? null : Number(maxRaw);
                 if (looksLikeProjectedDefault(score, "D") && gProv === "owner_whatif") {
                   /* still allow explicit what-if; warn via notes */
                 }
@@ -412,25 +425,34 @@ export function Analytics() {
         <div className="grid gap-3">
           <Field label="Wins this week">
             <textarea
+              ref={winsRef}
+              data-testid="personal-weekly-wins"
               className="hp-field min-h-[72px] py-2"
               value={wins}
               onChange={(e) => setWins(e.target.value)}
+              onInput={(e) => setWins((e.target as HTMLTextAreaElement).value)}
               placeholder="Verified submits, handout coverage…"
             />
           </Field>
           <Field label="Blockers">
             <textarea
+              ref={blockersRef}
+              data-testid="personal-weekly-blockers"
               className="hp-field min-h-[72px] py-2"
               value={blockers}
               onChange={(e) => setBlockers(e.target.value)}
+              onInput={(e) => setBlockers((e.target as HTMLTextAreaElement).value)}
               placeholder="What slipped — no invented excuses needed"
             />
           </Field>
           <Field label="Next week focus">
             <textarea
+              ref={nextFocusRef}
+              data-testid="personal-weekly-next"
               className="hp-field min-h-[72px] py-2"
               value={nextFocus}
               onChange={(e) => setNextFocus(e.target.value)}
+              onInput={(e) => setNextFocus((e.target as HTMLTextAreaElement).value)}
               placeholder="1–3 finishable targets"
             />
           </Field>
@@ -439,9 +461,9 @@ export function Analytics() {
               onClick={() => {
                 upsertWeeklyReview({
                   weekStart,
-                  wins,
-                  blockers,
-                  nextFocus,
+                  wins: wins || winsRef.current?.value || "",
+                  blockers: blockers || blockersRef.current?.value || "",
+                  nextFocus: nextFocus || nextFocusRef.current?.value || "",
                   updatedAt: Date.now(),
                 });
                 toggleDiscipline("weekly-review");

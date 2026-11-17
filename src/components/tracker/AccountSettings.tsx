@@ -14,6 +14,7 @@ import { usePortalAccount } from "./LockGate";
 export function AccountSettings() {
   const { account, updateDisplayName } = usePortalAccount();
   const [name, setName] = useState(account.display_name);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [displayMessage, setDisplayMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -39,15 +40,16 @@ export function AccountSettings() {
           setBusy(true);
           setDisplayMessage("");
           try {
+            const nextName = (name.trim() || nameRef.current?.value || "").trim();
             try {
-              await updateDisplayName(name);
+              await updateDisplayName(nextName);
             } catch {
               /* cloud profile RPC may be unavailable — keep local */
             }
             ensureLocalOwner(account);
-            upsertLocalAccount({ ...account, display_name: name.trim() });
+            upsertLocalAccount({ ...account, display_name: nextName });
             logLocalActivity({
-              actorName: name.trim() || account.email,
+              actorName: nextName || account.email,
               action: "Updated display name",
               sectionId: "account",
             });
@@ -79,8 +81,11 @@ export function AccountSettings() {
           required
           maxLength={80}
           className="mt-1 h-11 w-full rounded-xl border bg-card px-3"
+          ref={nameRef}
+          data-testid="compliance-display-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
+          onInput={(event) => setName((event.target as HTMLInputElement).value)}
         />
         {displayMessage && (
           <p role="status" className="mt-2 text-sm text-muted-foreground">
