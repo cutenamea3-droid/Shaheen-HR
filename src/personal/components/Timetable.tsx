@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Btn, Empty, Panel, SectionHead, courseLabel } from "./common";
-import { todayKey, usePersonal } from "@/personal/lib/store";
+import { blocksOf, todayKey, usePersonal } from "@/personal/lib/store";
 import {
   BUSY_MINUTES,
   RESCUE_MINUTES,
@@ -26,7 +26,8 @@ export function Timetable() {
   }, [ensureDayPlan, today]);
 
   const plan = dayPlans[today];
-  const used = plan?.blocks.reduce((s, b) => s + b.minutes, 0) ?? 0;
+  const planBlocks = blocksOf(plan);
+  const used = planBlocks.reduce((s, b) => s + b.minutes, 0);
   const budget = plan
     ? modeBudgetMinutes(plan.mode, today, settings)
     : sunday
@@ -111,11 +112,11 @@ export function Timetable() {
 
       <Panel>
         <SectionHead title="Today’s blocks" subtitle={`${today} · mark only what you actually finish`} />
-        {!plan?.blocks.length ? (
+        {!planBlocks.length ? (
           <Empty>Empty plan. Add backlog recovery items, then rebuild.</Empty>
         ) : (
           <ol className="space-y-2">
-            {plan.blocks.map((b, i) => (
+            {planBlocks.map((b, i) => (
               <li
                 key={b.id}
                 className={`flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--hp-border)] px-3 py-3 ${

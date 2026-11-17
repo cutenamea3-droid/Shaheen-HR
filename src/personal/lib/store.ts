@@ -81,6 +81,28 @@ function emptyPlan(date: string, mode: StudyMode): DayPlan {
   return { date, mode, blocks: [] };
 }
 
+/** Safe blocks array for a day plan — corrupt persist/cloud never crashes .map/.reduce. */
+export function blocksOf(plan: { blocks?: unknown } | null | undefined): DayPlan["blocks"] {
+  return Array.isArray(plan?.blocks) ? (plan!.blocks as DayPlan["blocks"]) : [];
+}
+
+function healDayPlans(raw: unknown, fallback: PersonalState["dayPlans"]): PersonalState["dayPlans"] {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, DayPlan>)
+      : fallback;
+  const out: PersonalState["dayPlans"] = {};
+  for (const [date, plan] of Object.entries(src)) {
+    if (!plan || typeof plan !== "object" || Array.isArray(plan)) continue;
+    out[date] = {
+      date: typeof plan.date === "string" ? plan.date : date,
+      mode: plan.mode === "busy" || plan.mode === "rescue" ? plan.mode : "normal",
+      blocks: blocksOf(plan),
+    };
+  }
+  return out;
+}
+
 /** Split daily budget across open backlog + courses needing attention — no fake lecture math. */
 function buildBlocks(
   mode: StudyMode,
@@ -253,7 +275,7 @@ export const usePersonal = create<PersonalStore>()(
               ...s.dayPlans,
               [date]: {
                 ...plan,
-                blocks: plan.blocks.map((b) => (b.id === blockId ? { ...b, done } : b)),
+                blocks: blocksOf(plan).map((b) => (b.id === blockId ? { ...b, done } : b)),
               },
             },
           };
@@ -389,7 +411,7 @@ export const usePersonal = create<PersonalStore>()(
           assessments: arr(raw.assessments, current.assessments).map((a) => normalizeAssessment(a)),
           notes: arr(raw.notes, current.notes),
           sessions: arr(raw.sessions, current.sessions),
-          dayPlans: obj(raw.dayPlans, current.dayPlans),
+          dayPlans: healDayPlans(raw.dayPlans, current.dayPlans),
           discipline: migrateDiscipline(arr(raw.discipline, current.discipline)),
           vaultNotes: typeof raw.vaultNotes === "string" ? raw.vaultNotes : current.vaultNotes,
           gradeEntries: arr(raw.gradeEntries, []),

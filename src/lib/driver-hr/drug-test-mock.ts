@@ -35,7 +35,9 @@ type DrugTestState = {
 export const useDrugTestMock = create<DrugTestState>((set, get) => ({
   events: [],
   listForDriver: (driverId) =>
-    get().events.filter((e) => e.driverId === driverId && !e.deletedAt),
+    (Array.isArray(get().events) ? get().events : []).filter(
+      (e) => e.driverId === driverId && !e.deletedAt,
+    ),
   add: (input, actor) => {
     const ev: DrugTestEvent = {
       id: input.id ?? uid(),

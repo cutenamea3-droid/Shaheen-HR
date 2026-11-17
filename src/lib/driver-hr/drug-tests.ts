@@ -152,7 +152,7 @@ type Side = { ev: DrugTestEvent; used: boolean };
  * Soft-deleted rows should be filtered out before calling.
  */
 export function pairDrugTestEvents(events: DrugTestEvent[]): DrugPairRow[] {
-  const active = events.filter((e) => !e.deletedAt);
+  const active = (Array.isArray(events) ? events : []).filter((e) => !e.deletedAt);
   const incomplete: DrugPairRow[] = [];
   const fds: Side[] = [];
   const mrs: Side[] = [];
@@ -304,7 +304,7 @@ export function filterDrugPairs(
 ): DrugPairRow[] {
   const status = opts.status ?? "all";
   const q = (opts.q ?? "").trim().toLowerCase();
-  return rows.filter((r) => {
+  return (Array.isArray(rows) ? rows : []).filter((r) => {
     if (status !== "all" && r.status !== status) return false;
     if (!q) return true;
     const hay = [

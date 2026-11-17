@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead, Stat } from "./common";
 import {
+  blocksOf,
   consistencyDays,
   studyMinutesInRange,
   todayKey,
@@ -50,10 +51,11 @@ export function Analytics() {
       .reduce((sum, s) => sum + s.minutes, 0),
   }));
 
-  const plansDone = Object.values(dayPlans).reduce(
+  const plansDone = Object.values(dayPlans ?? {}).reduce(
     (acc, p) => {
-      acc.total += p.blocks.length;
-      acc.done += p.blocks.filter((b) => b.done).length;
+      const blocks = blocksOf(p);
+      acc.total += blocks.length;
+      acc.done += blocks.filter((b) => b.done).length;
       return acc;
     },
     { total: 0, done: 0 },
