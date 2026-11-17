@@ -211,15 +211,16 @@ export async function pushPersonalCloud(userId: string): Promise<boolean> {
     return false;
   }
   // Merge id-keyed slices so a partial local cache cannot drop cloud notes/sessions.
+  const asArr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   const merged: PersonalSyncBlob = {
     ...local,
-    notes: mergeById(local.notes ?? [], cloud?.notes ?? []),
-    sessions: mergeById(local.sessions ?? [], cloud?.sessions ?? []),
-    backlog: mergeById(local.backlog ?? [], cloud?.backlog ?? []),
-    assessments: mergeById(local.assessments ?? [], cloud?.assessments ?? []),
-    gradeEntries: mergeById(local.gradeEntries ?? [], cloud?.gradeEntries ?? []),
-    courseGrades: mergeById(local.courseGrades ?? [], cloud?.courseGrades ?? []),
-    examPrepTasks: mergeById(local.examPrepTasks ?? [], cloud?.examPrepTasks ?? []),
+    notes: mergeById(asArr(local.notes), asArr(cloud?.notes)),
+    sessions: mergeById(asArr(local.sessions), asArr(cloud?.sessions)),
+    backlog: mergeById(asArr(local.backlog), asArr(cloud?.backlog)),
+    assessments: mergeById(asArr(local.assessments), asArr(cloud?.assessments)),
+    gradeEntries: mergeById(asArr(local.gradeEntries), asArr(cloud?.gradeEntries)),
+    courseGrades: mergeById(asArr(local.courseGrades), asArr(cloud?.courseGrades)),
+    examPrepTasks: mergeById(asArr(local.examPrepTasks), asArr(cloud?.examPrepTasks)),
   };
   const data = merged as unknown as Json;
   const { error } = await sb.from("personal_study_state").upsert(

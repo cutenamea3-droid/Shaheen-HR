@@ -178,7 +178,8 @@ export function DataTable({
   // drivers who are in other main sections but missing here — shown in place so every section lines up
   const missing = useMemo(() => {
     if (!CORE.includes(sectionId)) return [];
-    const here = new Set([...safeRows.map((r) => r.driverId), ...(sec.dismissed ?? [])]);
+    const dismissed = Array.isArray(sec.dismissed) ? sec.dismissed : [];
+    const here = new Set([...safeRows.map((r) => r.driverId), ...dismissed]);
     const out = new Map<string, string>();
     for (const id of CORE)
       for (const r of rowsOf(data.sections[id])) {
@@ -631,7 +632,10 @@ export function DataTable({
                               type="button"
                               onClick={() =>
                                 patchSection(sectionId, {
-                                  dismissed: [...(sec.dismissed ?? []), it.driverId],
+                                  dismissed: [
+                                    ...(Array.isArray(sec.dismissed) ? sec.dismissed : []),
+                                    it.driverId,
+                                  ],
                                 })
                               }
                               className="inline-flex items-center gap-1 rounded-lg border bg-card px-3 py-1 text-sm font-bold text-foreground hover:bg-muted"

@@ -96,15 +96,17 @@ export function validateCommunication(input: {
 }
 
 export function awaitingCloseoutLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter((l) => l.status === "delivered");
+  return (Array.isArray(loads) ? loads : []).filter((l) => l.status === "delivered");
 }
 
 export function openAccessorials(items: DispatchAccessorial[]): DispatchAccessorial[] {
-  return items.filter((a) => a.status === "draft" || a.status === "submitted" || a.status === "approved");
+  return (Array.isArray(items) ? items : []).filter(
+    (a) => a.status === "draft" || a.status === "submitted" || a.status === "approved",
+  );
 }
 
 export function unpaidClosedLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       l.status === "closed" &&
       (l.payment_status === "unpaid" || l.payment_status === "partial"),
@@ -189,7 +191,12 @@ export function buildCompleteLoadHistory(input: {
     });
   }
 
-  for (const c of input.checkCalls ?? []) {
+  const checkCalls = Array.isArray(input.checkCalls) ? input.checkCalls : [];
+  const issues = Array.isArray(input.issues) ? input.issues : [];
+  const followUps = Array.isArray(input.followUps) ? input.followUps : [];
+  const communications = Array.isArray(input.communications) ? input.communications : [];
+  const accessorials = Array.isArray(input.accessorials) ? input.accessorials : [];
+  for (const c of checkCalls) {
     events.push({
       at: c.called_at,
       source: "check_call",
@@ -197,7 +204,7 @@ export function buildCompleteLoadHistory(input: {
       detail: [c.manual_location, c.notes].filter(Boolean).join(" · ") || "Manual check-call",
     });
   }
-  for (const i of input.issues ?? []) {
+  for (const i of issues) {
     events.push({
       at: i.updated_at || i.created_at,
       source: "issue",
@@ -205,7 +212,7 @@ export function buildCompleteLoadHistory(input: {
       detail: `${i.status} · ${i.escalation_level}${i.senior_informed ? " · Senior Informed (manual)" : ""}`,
     });
   }
-  for (const f of input.followUps ?? []) {
+  for (const f of followUps) {
     events.push({
       at: f.updated_at || f.created_at,
       source: "follow_up",
@@ -213,7 +220,7 @@ export function buildCompleteLoadHistory(input: {
       detail: `${f.status} · due ${new Date(f.due_at).toLocaleString()}`,
     });
   }
-  for (const c of input.communications ?? []) {
+  for (const c of communications) {
     events.push({
       at: c.created_at,
       source: "communication",
@@ -221,7 +228,7 @@ export function buildCompleteLoadHistory(input: {
       detail: [c.decided_action, c.detail].filter(Boolean).join(" · ") || "Desk log only — no external notify",
     });
   }
-  for (const a of input.accessorials ?? []) {
+  for (const a of accessorials) {
     const amt =
       a.amount_manual == null ? "amount: Needs Policy / blank" : `${a.currency} ${a.amount_manual}`;
     events.push({

@@ -3,6 +3,7 @@ import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useApp } from "@/admin/lib/store";
 import { fmtTime, parseTime } from "@/admin/lib/calc";
+import { normalizeTasks } from "@/admin/lib/normalize-tasks";
 import { SectionTitle, TimeInput, Toggle } from "./common";
 
 export function SettingsPanel() {
@@ -47,6 +48,34 @@ export function SettingsPanel() {
 
 const BACKUP_KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
 
+/** Coerce Attendance backup payload shapes so restore never installs corrupt arrays/maps. */
+export function healAttendanceBackupData(
+  data: Record<string, unknown>,
+  cur: {
+    depts: unknown;
+    employees: unknown;
+    team: unknown;
+    logs: unknown;
+    records: unknown;
+    perf: unknown;
+    settings: unknown;
+  },
+) {
+  const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+  const obj = <T extends object>(v: unknown, fallback: T): T =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+  return {
+    depts: arr(data.depts, arr(cur.depts, [])),
+    employees: arr(data.employees, arr(cur.employees, [])),
+    team: arr(data.team, arr(cur.team, [])),
+    logs: arr(data.logs, arr(cur.logs, [])),
+    tasks: normalizeTasks(data.tasks),
+    records: obj(data.records, obj(cur.records, {})),
+    perf: obj(data.perf, obj(cur.perf, {})),
+    settings: obj(data.settings, obj(cur.settings, {})),
+  };
+}
+
 export function downloadBackup() {
   const s = useApp.getState();
   const data = Object.fromEntries(BACKUP_KEYS.map((k) => [k, s[k]]));
@@ -67,8 +96,8 @@ export async function restoreBackup(file: File) {
       return;
     }
     if (!confirm("Restore this backup? It will REPLACE all current attendance data on this dashboard. Download a backup of the current data first if you need it.")) return;
-    const next = Object.fromEntries(BACKUP_KEYS.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]));
-    useApp.setState(next as never);
+    const cur = useApp.getState();
+    useApp.setState(healAttendanceBackupData(data as Record<string, unknown>, cur) as never);
     toast.success("Backup restored — saving to cloud");
   } catch {
     toast.error("Could not read this file");

@@ -23,22 +23,28 @@ export type PersonalSyncBlob = Pick<
   | "weeklyReviews"
 >;
 
+function arrLen(v: unknown): number {
+  return Array.isArray(v) ? v.length : 0;
+}
+
 /** True when blob has user-authored study activity (not just defaults). */
 export function isPersonalMeaningful(blob: Partial<PersonalSyncBlob> | null | undefined): boolean {
   if (!blob) return false;
-  if ((blob.sessions?.length ?? 0) > 0) return true;
-  if ((blob.notes?.length ?? 0) > 0) return true;
-  if ((blob.backlog?.length ?? 0) > 0) return true;
-  if ((blob.gradeEntries?.length ?? 0) > 0) return true;
-  if ((blob.courseGrades?.length ?? 0) > 0) return true;
-  if ((blob.examPrepTasks?.length ?? 0) > 0) return true;
-  if (blob.weeklyReviews && Object.keys(blob.weeklyReviews).length > 0) return true;
+  if (arrLen(blob.sessions) > 0) return true;
+  if (arrLen(blob.notes) > 0) return true;
+  if (arrLen(blob.backlog) > 0) return true;
+  if (arrLen(blob.gradeEntries) > 0) return true;
+  if (arrLen(blob.courseGrades) > 0) return true;
+  if (arrLen(blob.examPrepTasks) > 0) return true;
+  if (blob.weeklyReviews && typeof blob.weeklyReviews === "object" && !Array.isArray(blob.weeklyReviews) && Object.keys(blob.weeklyReviews).length > 0)
+    return true;
   if (blob.vaultNotes && blob.vaultNotes.trim().length > 0) return true;
-  if (blob.dayPlans && Object.keys(blob.dayPlans).length > 0) {
+  if (blob.dayPlans && typeof blob.dayPlans === "object" && !Array.isArray(blob.dayPlans) && Object.keys(blob.dayPlans).length > 0) {
     const plans = Object.values(blob.dayPlans);
-    if (plans.some((p) => (p.blocks?.length ?? 0) > 0 || p.mode !== "normal")) return true;
+    if (plans.some((p) => (Array.isArray(p?.blocks) ? p.blocks.length : 0) > 0 || p?.mode !== "normal")) return true;
   }
-  if ((blob.discipline ?? []).some((d) => (d.doneDates?.length ?? 0) > 0)) return true;
+  if (Array.isArray(blob.discipline) && blob.discipline.some((d) => (Array.isArray(d.doneDates) ? d.doneDates.length : 0) > 0))
+    return true;
   return false;
 }
 

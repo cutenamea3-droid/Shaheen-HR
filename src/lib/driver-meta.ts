@@ -172,7 +172,7 @@ export function applyDriverClass(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: ClassHistoryEntry = { at, from: prev, to: next };
-    const classHistory = [...(r.classHistory ?? []), entry];
+    const classHistory = [...(Array.isArray(r.classHistory) ? r.classHistory : []), entry];
     return { ...r, driverClass: next, classHistory };
   });
 }
@@ -187,7 +187,7 @@ export function applyRosterKind(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: RosterHistoryEntry = { at, from: prev, to: next };
-    const rosterHistory = [...(r.rosterHistory ?? []), entry];
+    const rosterHistory = [...(Array.isArray(r.rosterHistory) ? r.rosterHistory : []), entry];
     return { ...r, rosterKind: next, rosterHistory };
   });
 }
@@ -198,7 +198,7 @@ export function applyRosterKind(
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {
     const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
-    if (r?.classHistory?.length) return r.classHistory;
+    if (Array.isArray(r?.classHistory) && r!.classHistory.length) return r!.classHistory;
   }
   return [];
 }
