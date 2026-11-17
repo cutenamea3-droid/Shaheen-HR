@@ -83,8 +83,9 @@ export function expensesPrintHtml(opts: {
 </body></html>`;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(s: unknown): string {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export function downloadText(filename: string, content: string, mime: string) {

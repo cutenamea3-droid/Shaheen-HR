@@ -133,9 +133,10 @@ export function driverFileCompletenessPercent(data: AppData, driverId: string): 
   return applicable === 0 ? 100 : Math.round((complete / applicable) * 100);
 }
 
-function csvEscape(v: string) {
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-  return v;
+function csvEscape(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 export function fileCompletenessCsv(report: FileCompletenessReport): string {
@@ -215,8 +216,9 @@ export function downloadFileCompletenessPdf(report: FileCompletenessReport) {
   );
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 /** Printable HTML with formula explanation (complements PDF). */

@@ -167,7 +167,13 @@ export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: Dispa
     startY: 28,
     head: [["Load", "Kind", "Status", "Description", "Amount (manual)", "Hours (manual)", "Free-time note"]],
     body: itemList.map((a) => [
-      byId.get(a.load_id) ?? a.load_id.slice(0, 8),
+      byId.get(a.load_id) ??
+        (a.load_id == null
+          ? ""
+          : typeof a.load_id === "string"
+            ? a.load_id
+            : String(a.load_id)
+        ).slice(0, 8),
       accessorialKindLabel(a.kind),
       a.status,
       a.description,

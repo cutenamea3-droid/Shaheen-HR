@@ -64,9 +64,10 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
-function csvEscape(v: string) {
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-  return v;
+function csvEscape(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 export function downloadDotAuditCsv(rows: DotAuditRow[]) {
@@ -162,8 +163,9 @@ export function printDotAuditSummary(rows: DotAuditRow[]) {
   return true;
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function statusClass(overall: string) {
   if (overall === "Expired") return "st-expired";

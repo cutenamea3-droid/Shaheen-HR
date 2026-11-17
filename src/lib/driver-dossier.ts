@@ -228,8 +228,9 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
   };
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function logoAbsoluteUrl(): string {
