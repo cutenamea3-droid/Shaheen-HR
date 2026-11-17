@@ -87,6 +87,11 @@ describe("follow-up tracker", () => {
     expect(counts.today).toBeGreaterThanOrEqual(1);
   });
 
+  test("filterFollowUps / followUpCounts tolerate non-array items", () => {
+    expect(filterFollowUps(null as never, "all", "")).toEqual([]);
+    expect(followUpCounts(undefined as never).all).toBe(0);
+  });
+
   test("Applied DMV suggests follow-up without inventing Valid", () => {
     const data = buildSeed();
     for (const id of ["medical", "queries", "ssccdl", "docs", "info"] as const) {

@@ -250,7 +250,8 @@ export function filterFollowUps(
 ): FollowUp[] {
   const q = search.trim().toLowerCase();
   const t = today();
-  return items.filter((fu) => {
+  const list = Array.isArray(items) ? items : [];
+  return list.filter((fu) => {
     if (filter === "open" && fu.status !== "open") return false;
     if (filter === "done" && fu.status !== "done") return false;
     if (filter === "snoozed" && fu.status !== "snoozed") return false;
@@ -285,7 +286,8 @@ export function followUpCounts(items: FollowUp[]) {
   let overdue = 0;
   let done = 0;
   let snoozed = 0;
-  for (const fu of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const fu of list) {
     if (fu.status === "done") {
       done++;
       continue;
@@ -299,5 +301,5 @@ export function followUpCounts(items: FollowUp[]) {
       if (n === 0) todayN++;
     }
   }
-  return { all: items.length, open, today: todayN, overdue, done, snoozed };
+  return { all: list.length, open, today: todayN, overdue, done, snoozed };
 }
