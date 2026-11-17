@@ -4,7 +4,7 @@
  * Never invents historical tests — starts empty. Soft-delete only.
  */
 import { create } from "zustand";
-import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
+import { asDrugText, newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 
 const uid = () => "dt_" + Math.random().toString(36).slice(2, 10);
@@ -42,13 +42,13 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
     const ev: DrugTestEvent = {
       id: input.id ?? uid(),
       driverId: input.driverId,
-      testingEventId: input.testingEventId?.trim() || newTestingEventId(),
+      testingEventId: asDrugText(input.testingEventId).trim() || newTestingEventId(),
       kind: input.kind,
-      specimenId: input.specimenId ?? "",
-      reason: input.reason ?? "",
-      collectionContext: input.collectionContext ?? "",
-      eventDate: input.eventDate ?? "",
-      notes: input.notes ?? "",
+      specimenId: asDrugText(input.specimenId),
+      reason: asDrugText(input.reason),
+      collectionContext: asDrugText(input.collectionContext),
+      eventDate: asDrugText(input.eventDate),
+      notes: asDrugText(input.notes),
       createdAt: input.createdAt ?? Date.now(),
     };
     set((s) => {
@@ -68,19 +68,20 @@ export const useDrugTestMock = create<DrugTestState>((set, get) => ({
       (e) => e.id === id && !e.deletedAt,
     );
     if (!prev) return null;
+    const nextTid =
+      patch.testingEventId !== undefined ? asDrugText(patch.testingEventId).trim() : "";
     const next: DrugTestEvent = {
       ...prev,
       kind: patch.kind !== undefined ? patch.kind : prev.kind,
-      specimenId: patch.specimenId !== undefined ? patch.specimenId : prev.specimenId,
-      reason: patch.reason !== undefined ? patch.reason : prev.reason,
+      specimenId: patch.specimenId !== undefined ? asDrugText(patch.specimenId) : prev.specimenId,
+      reason: patch.reason !== undefined ? asDrugText(patch.reason) : prev.reason,
       collectionContext:
-        patch.collectionContext !== undefined ? patch.collectionContext : prev.collectionContext,
-      eventDate: patch.eventDate !== undefined ? patch.eventDate : prev.eventDate,
-      notes: patch.notes !== undefined ? patch.notes : prev.notes,
-      testingEventId:
-        patch.testingEventId !== undefined && patch.testingEventId.trim()
-          ? patch.testingEventId.trim()
-          : prev.testingEventId,
+        patch.collectionContext !== undefined
+          ? asDrugText(patch.collectionContext)
+          : prev.collectionContext,
+      eventDate: patch.eventDate !== undefined ? asDrugText(patch.eventDate) : prev.eventDate,
+      notes: patch.notes !== undefined ? asDrugText(patch.notes) : prev.notes,
+      testingEventId: nextTid || prev.testingEventId,
     };
     set((s) => {
       const cur = Array.isArray(s.events) ? s.events : [];

@@ -125,13 +125,18 @@ export function logLocalActivity(input: {
   return entry;
 }
 
+function asPortalText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
 export function createLocalAccount(input: {
   email: string;
   displayName: string;
   password: string;
   role?: PortalRole;
 }): Promise<PortalAccount> {
-  const email = input.email.trim().toLowerCase();
+  const email = asPortalText(input.email).trim().toLowerCase();
   const list = listLocalAccounts();
   if (list.some((a) => a.email.toLowerCase() === email)) {
     return Promise.reject(new Error("An account with that email already exists."));
@@ -139,7 +144,7 @@ export function createLocalAccount(input: {
   const account: PortalAccount = {
     user_id: uid(),
     email,
-    display_name: input.displayName.trim(),
+    display_name: asPortalText(input.displayName).trim(),
     role: input.role ?? "standard",
     active: true,
   };
@@ -150,7 +155,7 @@ export function createLocalAccount(input: {
 }
 
 export function findLocalAccountByEmail(email: string): PortalAccount | null {
-  const normalized = email.trim().toLowerCase();
+  const normalized = asPortalText(email).trim().toLowerCase();
   return listLocalAccounts().find((a) => a.email.toLowerCase() === normalized) ?? null;
 }
 

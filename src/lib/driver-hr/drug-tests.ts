@@ -93,7 +93,8 @@ export function newTestingEventId(): string {
   return crypto.randomUUID?.() ?? `te_${Math.random().toString(36).slice(2)}_${Date.now()}`;
 }
 
-function asDrugText(v: unknown): string {
+/** Corrupt cloud/local may store numbers/null — never assume `.trim()` on raw fields. */
+export function asDrugText(v: unknown): string {
   if (v == null) return "";
   return typeof v === "string" ? v : String(v);
 }

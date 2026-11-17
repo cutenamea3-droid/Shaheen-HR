@@ -29,6 +29,7 @@ import type {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const asArr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export type ExpenseUpsertInput = {
   title: string;
@@ -99,7 +100,7 @@ export const useExpensesStore = create<ExpensesState>()(
       audit: [],
 
       addCategory: (name) => {
-        const n = name.trim();
+        const n = asText(name).trim();
         if (!n) return { ok: false, error: "Category name required" };
         const categories = asArr<ExpenseCategory>(get().categories);
         const exists = categories.some((c) => c.name.toLowerCase() === n.toLowerCase() && !c.archived);
@@ -141,6 +142,8 @@ export const useExpensesStore = create<ExpensesState>()(
         }
 
         const now = Date.now();
+        const title = asText(input.title).trim();
+        const note = asText(input.note).trim();
         if (opts?.id) {
           const existing = expenses.find((e) => e.id === opts.id);
           if (!existing) return { ok: false, error: "Expense not found" };
@@ -152,20 +155,20 @@ export const useExpensesStore = create<ExpensesState>()(
                 e.id === opts.id
                   ? {
                       ...e,
-                      title: input.title.trim(),
+                      title,
                       categoryId: input.categoryId,
                       amountPkr: amount,
                       expenseDate: input.expenseDate,
                       scope: input.scope,
                       employeeIds: input.scope === "all" ? [] : [...asArr<string>(input.employeeIds)],
                       status: input.status,
-                      note: input.note.trim(),
+                      note,
                       templateId: input.templateId ?? e.templateId,
                       updatedAt: now,
                     }
                   : e,
               ),
-              audit: appendAudit(asArr(s.audit), opts.id!, "edit", `Updated “${input.title.trim()}” · Rs ${amount}`),
+              audit: appendAudit(asArr(s.audit), opts.id!, "edit", `Updated “${title}” · Rs ${amount}`),
             };
           });
           return { ok: true, id: opts.id };
@@ -174,14 +177,14 @@ export const useExpensesStore = create<ExpensesState>()(
         const id = uid();
         const row: ExpenseRecord = {
           id,
-          title: input.title.trim(),
+          title,
           categoryId: input.categoryId,
           amountPkr: amount,
           expenseDate: input.expenseDate,
           scope: input.scope,
           employeeIds: input.scope === "all" ? [] : [...asArr<string>(input.employeeIds)],
           status: input.status,
-          note: input.note.trim(),
+          note,
           deletedAt: null,
           createdAt: now,
           updatedAt: now,
@@ -243,9 +246,11 @@ export const useExpensesStore = create<ExpensesState>()(
         } catch (e) {
           return { ok: false, error: e instanceof Error ? e.message : "Invalid amount" };
         }
-        if (!t.name.trim() || !t.title.trim()) return { ok: false, error: "Name and title required" };
+        const tName = asText(t.name).trim();
+        const tTitle = asText(t.title).trim();
+        if (!tName || !tTitle) return { ok: false, error: "Name and title required" };
         const check = validateExpenseInput({
-          title: t.title,
+          title: tTitle,
           categoryId: t.categoryId,
           amountPkr: t.amountPkr,
           expenseDate: "2000-01-01",
@@ -261,8 +266,9 @@ export const useExpensesStore = create<ExpensesState>()(
                 ? {
                     ...x,
                     ...t,
-                    name: t.name.trim(),
-                    title: t.title.trim(),
+                    name: tName,
+                    title: tTitle,
+                    note: asText(t.note),
                     employeeIds: t.scope === "all" ? [] : [...asArr<string>(t.employeeIds)],
                     updatedAt: now,
                   }
@@ -276,13 +282,13 @@ export const useExpensesStore = create<ExpensesState>()(
           templates: [
             {
               id,
-              name: t.name.trim(),
-              title: t.title.trim(),
+              name: tName,
+              title: tTitle,
               categoryId: t.categoryId,
               amountPkr: t.amountPkr,
               scope: t.scope,
               employeeIds: t.scope === "all" ? [] : [...asArr<string>(t.employeeIds)],
-              note: t.note,
+              note: asText(t.note),
               cadence: t.cadence,
               active: t.active,
               updatedAt: now,

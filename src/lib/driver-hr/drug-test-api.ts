@@ -12,7 +12,7 @@ import {
   secureRestoreDrugTest,
   secureUpdateDrugTest,
 } from "./drug-test-secure";
-import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
+import { asDrugText, newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 import { notifyDriverHrRefresh, subscribeDriverHrRefresh } from "./refresh-bus";
 
@@ -92,7 +92,7 @@ export async function addDrugTestEvent(
   assertPersistable();
   const withGroup: Omit<DrugTestEvent, "id" | "createdAt"> = {
     ...input,
-    testingEventId: input.testingEventId?.trim() || newTestingEventId(),
+    testingEventId: asDrugText(input.testingEventId).trim() || newTestingEventId(),
   };
   const ev = await secureAddDrugTest(withGroup);
   notifyDriverHrRefresh();
