@@ -25,7 +25,8 @@ export function resolveDeptAsOf(
   date: string,
 ): Dept | undefined {
   const id = resolveDeptIdAsOf(emp, date);
-  return depts.find((d) => d.id === id);
+  const list = Array.isArray(depts) ? depts : [];
+  return list.find((d) => d.id === id);
 }
 
 /** Sorted copy of assignments (oldest first). Seeds current deptId when history is empty. */
