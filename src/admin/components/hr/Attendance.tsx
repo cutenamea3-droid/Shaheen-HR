@@ -85,7 +85,9 @@ export function Attendance() {
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
-      const next = { ...prev, [id]: !isExpanded(id, prev) };
+      const safe =
+        prev && typeof prev === "object" && !Array.isArray(prev) ? prev : ({} as Record<string, boolean>);
+      const next = { ...safe, [id]: !isExpanded(id, safe) };
       saveAttendancePrefs({ expanded: next });
       return next;
     });
@@ -93,7 +95,9 @@ export function Attendance() {
 
   /** Compact: collapsed unless explicitly opened. Comfortable: open unless explicitly closed. */
   const isExpanded = (id: string, map = expanded) => {
-    if (map[id] != null) return map[id]!;
+    const safe =
+      map && typeof map === "object" && !Array.isArray(map) ? map : ({} as Record<string, boolean>);
+    if (safe[id] != null) return safe[id]!;
     return density !== "compact";
   };
 

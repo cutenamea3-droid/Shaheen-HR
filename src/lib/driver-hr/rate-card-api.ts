@@ -38,7 +38,9 @@ export async function setRateField(
 
   if (getDriverRateCardMode() === "secure") {
     const prev = await getRateCard(driverId, actor);
-    const rates = { ...prev.rates };
+    const prevRates =
+      prev.rates && typeof prev.rates === "object" && !Array.isArray(prev.rates) ? prev.rates : {};
+    const rates = { ...prevRates };
     if (norm === "") delete rates[key];
     else rates[key] = norm;
     const card = await secureUpsertRateCard({ ...prev, rates, updatedAt: Date.now() });

@@ -72,7 +72,12 @@ export function saveDashboardPrefs(p: DashboardPrefs) {
 }
 
 export function loadAttendancePrefs(): AttendancePrefs {
-  return readJson<AttendancePrefs>(ATTENDANCE) ?? {};
+  const raw = readJson<AttendancePrefs>(ATTENDANCE) ?? {};
+  if (raw.expanded && typeof raw.expanded === "object" && !Array.isArray(raw.expanded)) {
+    return { ...raw, expanded: raw.expanded };
+  }
+  const { expanded: _drop, ...rest } = raw;
+  return rest;
 }
 export function saveAttendancePrefs(p: AttendancePrefs) {
   writeJson(ATTENDANCE, { ...loadAttendancePrefs(), ...p });

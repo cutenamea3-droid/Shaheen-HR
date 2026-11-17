@@ -58,6 +58,14 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(cleared.ok && cleared.card.rates.percentage).toBeUndefined();
     const zero = useRateCardMock.getState().setRate("d1", "loadedCpm", "0");
     expect(zero.ok && zero.card.rates.loadedCpm).toBe("0");
+    // Corrupt rates shape must not throw on setRate / spread.
+    useRateCardMock.setState({
+      byDriver: {
+        d_corrupt: { ...emptyRateCard("d_corrupt"), rates: null as never },
+      },
+    });
+    const healed = useRateCardMock.getState().setRate("d_corrupt", "percentage", "1.25");
+    expect(healed.ok && healed.card.rates.percentage).toBe("1.25");
   });
 
   it("2. Rate card allows empty/partial Pay Method save without inventing rates", () => {

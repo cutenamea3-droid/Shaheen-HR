@@ -29,7 +29,16 @@ export const useRateCardMock = create<RateCardState>((set, get) => ({
       ...patch,
       driverId,
       // Replace rates object when provided so cleared keys stay cleared (blank ≠ keep prior).
-      rates: patch.rates !== undefined ? { ...patch.rates } : prev.rates,
+      rates:
+        patch.rates !== undefined
+          ? {
+              ...(patch.rates && typeof patch.rates === "object" && !Array.isArray(patch.rates)
+                ? patch.rates
+                : {}),
+            }
+          : prev.rates && typeof prev.rates === "object" && !Array.isArray(prev.rates)
+            ? prev.rates
+            : {},
       updatedAt: Date.now(),
     };
     set((s) => ({ byDriver: { ...s.byDriver, [driverId]: next } }));
@@ -39,7 +48,9 @@ export const useRateCardMock = create<RateCardState>((set, get) => ({
     const norm = normalizeRateInput(raw);
     if (norm === null) return { ok: false, error: "Enter a number (decimals allowed) or leave blank." };
     const prev = get().byDriver[driverId] ?? emptyRateCard(driverId);
-    const rates = { ...prev.rates };
+    const prevRates =
+      prev.rates && typeof prev.rates === "object" && !Array.isArray(prev.rates) ? prev.rates : {};
+    const rates = { ...prevRates };
     if (norm === "") delete rates[key];
     else rates[key] = norm;
     const card = get().upsert(driverId, { rates });

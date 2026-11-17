@@ -77,6 +77,9 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
 
   const groups: RateFieldGroup[] = ["general", "hourly", "additional"];
   const filled = rateCardHasContent(card);
+  const rates =
+    card.rates && typeof card.rates === "object" && !Array.isArray(card.rates) ? card.rates : {};
+  const payMethodNote = typeof card.payMethodNote === "string" ? card.payMethodNote : "";
 
   return (
     <section className="tracker-profile-section">
@@ -112,7 +115,7 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
                     key={f.key}
                     label={f.label}
                     {...(f.hint ? { hint: f.hint } : {})}
-                    value={card.rates[f.key] ?? ""}
+                    value={rates[f.key] ?? ""}
                     disabled={view}
                     onSave={async (raw) => {
                       const r = await setRateField(driverId, f.key, raw);
@@ -152,7 +155,7 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
               </label>
               <RateFieldInput
                 label="Pay method note"
-                value={card.payMethodNote}
+                value={payMethodNote}
                 disabled={view}
                 onSave={async (raw) => {
                   const updated = await setPayMethod(driverId, card.payMethod, raw.trim());

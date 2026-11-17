@@ -89,7 +89,9 @@ export function memorySetRateField(
   const norm = normalizeRateInput(raw);
   if (norm === null) return { ok: false, error: "Enter a number (decimals allowed) or leave blank." };
   const prev = memoryGetRateCard(driverId, actor);
-  const rates = { ...prev.rates };
+  const prevRates =
+    prev.rates && typeof prev.rates === "object" && !Array.isArray(prev.rates) ? prev.rates : {};
+  const rates = { ...prevRates };
   if (norm === "") delete rates[key];
   else rates[key] = norm;
   return { ok: true, card: memoryUpsertRateCard({ ...prev, rates }, actor) };
