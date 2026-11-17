@@ -136,7 +136,10 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
       tempNotes: countTempNotes(data, d.driverId),
       firstAlert: alertsByDriver.get(d.driverId) ?? null,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.name).localeCompare(asN(b.name), undefined, { sensitivity: "base" });
+    });
 }
 
 /** cmdk value string — name, CDL, and stable driver ID. */

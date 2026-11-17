@@ -412,7 +412,8 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
     const da = a.daysLeft ?? 9999;
     const db = b.daysLeft ?? 9999;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 
@@ -442,7 +443,8 @@ export function groupWorkCenterByDriver(items: WorkCenterItem[]): WorkCenterDriv
     const ta = TONE_RANK.indexOf(a.worstTone);
     const tb = TONE_RANK.indexOf(b.worstTone);
     if (ta !== tb) return ta - tb;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 

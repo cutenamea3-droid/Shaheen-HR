@@ -98,7 +98,8 @@ export function buildFileCompletenessReport(data: AppData): FileCompletenessRepo
   const summaries = buildInspectionSummaries(data);
   const drivers = summaries.map(scoreItems).sort((a, b) => {
     if (a.percent !== b.percent) return a.percent - b.percent;
-    return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+    const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
   });
 
   let fleetComplete = 0;

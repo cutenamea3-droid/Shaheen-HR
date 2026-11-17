@@ -61,7 +61,10 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
       clearinghouseAnnual: r.clearinghouseAnnual || "—",
       overall: overallExpStatus(data, r.driverId),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.name).localeCompare(asN(b.name), undefined, { sensitivity: "base" });
+    });
 }
 
 function csvEscape(v: unknown) {

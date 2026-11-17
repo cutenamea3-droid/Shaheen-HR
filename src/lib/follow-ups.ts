@@ -292,7 +292,8 @@ export function filterFollowUps(
     const da = parseISO(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
     const db = parseISO(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver);
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver));
   });
 }
 

@@ -352,7 +352,8 @@ export function buildInspectionSummaries(data: AppData): InspectionDriverSummary
     .sort((a, b) => {
       const wr = WORST_RANK.indexOf(a.worst) - WORST_RANK.indexOf(b.worst);
       if (wr) return wr;
-      return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
     });
 }
 

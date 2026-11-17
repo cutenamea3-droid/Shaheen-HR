@@ -151,7 +151,10 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
     });
   }
 
-  return out.sort((a, b) => a.date.getTime() - b.date.getTime() || a.driver.localeCompare(b.driver));
+  const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return out.sort(
+    (a, b) => a.date.getTime() - b.date.getTime() || asDrv(a.driver).localeCompare(asDrv(b.driver)),
+  );
 }
 
 export function eventsOnDay(events: CalendarEvent[], day: Date): CalendarEvent[] {

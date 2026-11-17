@@ -268,7 +268,8 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
     const rank: DataQualitySeverity[] = ["high", "medium", "low", "info"];
     const dr = rank.indexOf(a.severity) - rank.indexOf(b.severity);
     if (dr) return dr;
-    return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+    const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
   });
 }
 

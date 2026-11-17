@@ -701,7 +701,8 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     const da = a.daysLeft ?? 9999;
     const db = b.daysLeft ?? 9999;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 
