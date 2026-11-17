@@ -11,7 +11,15 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { SECTIONS, cellsOf, formatDriverStatus, rowsOf, type DriverStatus, type Row } from "@/lib/sections";
+import {
+  SECTIONS,
+  cellsOf,
+  formatDriverStatus,
+  headersOf,
+  rowsOf,
+  type DriverStatus,
+  type Row,
+} from "@/lib/sections";
 import {
   alertsMuteBanner,
   analyzeRow,
@@ -162,7 +170,7 @@ export function DriverCards({
         if (!d.name.trim()) d.name = r.cells[0] ?? "";
         // Issue counts only for ordinary company lists (New/OO have dedicated scopes).
         const muted = rowAlertsMuted(def, r, data) || d.scope !== "company";
-        if (!muted) d.issues += analyzeRow(def, sec.headers, r).issues.length;
+        if (!muted) d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
         const aidx = def.types.indexOf("active");
         if (aidx >= 0 && !d.statusTarget)
           d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
@@ -599,7 +607,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
   const data = useData();
   const def = SECTIONS.find((s) => s.id === sectionId);
   const sec = data.sections[sectionId];
-  const headers = Array.isArray(sec?.headers) ? sec!.headers : [];
+  const headers = headersOf(sec);
   if (!def || !sec) {
     return (
       <p className="px-4 py-3 text-sm text-muted-foreground italic">
@@ -624,7 +632,7 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
         return (
           <div key={i} className={cn(wide && "sm:col-span-2")}>
             <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-              {headers[i]?.trim()}
+              {(headers[i] ?? "").trim()}
             </div>
             {(t === "text" || t === "state") && (
               <EditableText value={v} onSave={save} boxed tone={tone} />

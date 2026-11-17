@@ -34,7 +34,7 @@ import {
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { DensityToggle } from "./DensityToggle";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, headersOf } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
 import {
@@ -147,7 +147,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
         c[def.id] = 0;
         continue;
       }
-      const headers = Array.isArray(sec.headers) ? sec.headers : [];
+      const headers = headersOf(sec);
       c[def.id] = sec.rows.filter(
         (r) =>
           !rowOrdinaryComplianceMuted(def, r, data) &&

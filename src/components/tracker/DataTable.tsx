@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { analyzeRow, complianceScore, rowIsActive, statusExpiryCol } from "@/lib/alerts";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { isNewDriver, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
-import { cellsOf, rowsOf, sectionById } from "@/lib/sections";
+import { cellsOf, headersOf, rowsOf, sectionById } from "@/lib/sections";
 import {
   addRowForDriver,
   deleteDriver,
@@ -119,7 +119,7 @@ export function DataTable({
   useEffect(() => setWidths(Array.isArray(sec.widths) ? sec.widths : []), [sec.widths]);
 
   const safeRows = Array.isArray(sec.rows) ? sec.rows : [];
-  const safeHeaders = Array.isArray(sec.headers) ? sec.headers : [];
+  const safeHeaders = headersOf(sec);
   const safeHidden = Array.isArray(sec.hidden) ? sec.hidden : [];
 
   const analyzed = useMemo(

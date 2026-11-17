@@ -173,3 +173,24 @@ test("normalizeSections tolerates missing headers/widths/hidden arrays", () => {
   expect(Array.isArray(data.sections.dmv.headers)).toBe(true);
   expect(data.sections.dmv.headers.length).toBeGreaterThan(0);
 });
+
+test("normalizeSections stringifies non-string header entries", () => {
+  const base = buildSeed();
+  const n = base.sections.dmv.headers.length;
+  const broken = {
+    ...base,
+    sections: {
+      ...base.sections,
+      dmv: {
+        ...base.sections.dmv,
+        headers: base.sections.dmv.headers.map((h, i) => (i === 0 ? 42 : h)) as unknown as string[],
+      },
+    },
+  } as AppData;
+  expect(() => normalizeSections(broken)).not.toThrow();
+  const { data, changed } = normalizeSections(broken);
+  expect(data.sections.dmv.headers).toHaveLength(n);
+  expect(data.sections.dmv.headers.every((h) => typeof h === "string")).toBe(true);
+  expect(data.sections.dmv.headers[0]).toBe("42");
+  expect(changed).toContain("dmv");
+});

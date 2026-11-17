@@ -491,14 +491,17 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
     const sec = sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
 
-    let headers = Array.isArray(sec.headers) ? [...sec.headers] : [];
+    let headers = headersOf(sec);
     let widths = [...(Array.isArray(sec.widths) ? sec.widths : [])];
     let hidden = [...(Array.isArray(sec.hidden) ? sec.hidden : [])];
     let rows = sec.rows.map((r) => ({
       ...r,
       cells: [...cellsOf(r)],
     }));
-    let touched = sec.rows.some((r) => !Array.isArray(r.cells));
+    let touched =
+      sec.rows.some((r) => !Array.isArray(r.cells)) ||
+      (Array.isArray(sec.headers) &&
+        sec.headers.some((h) => h != null && typeof h !== "string"));
 
     const padRow = (cells: string[], len: number) => {
       if (cells.length >= len) return cells;

@@ -6,7 +6,7 @@ describe("missing section rows UI guards", () => {
   it("AppShell nav counts skip sections without rows", () => {
     const src = readFileSync(resolve(process.cwd(), "src/components/tracker/AppShell.tsx"), "utf8");
     expect(src).toMatch(/if \(!sec \|\| !Array\.isArray\(sec\.rows\)\)/);
-    expect(src).toMatch(/const headers = Array\.isArray\(sec\.headers\) \? sec\.headers : \[\]/);
+    expect(src).toMatch(/const headers = headersOf\(sec\)/);
     expect(src).toMatch(/analyzeRow\(def, headers, r\)/);
   });
 
@@ -29,7 +29,7 @@ describe("missing section rows UI guards", () => {
       "utf8",
     );
     expect(src).toMatch(/Section unavailable \(missing or corrupt cloud data\)/);
-    expect(src).toMatch(/const headers = Array\.isArray\(sec\?\.headers\) \? sec!\.headers : \[\]/);
+    expect(src).toMatch(/const headers = headersOf\(sec\)/);
     expect(src).toMatch(/const cells = cellsOf\(row\)/);
   });
 

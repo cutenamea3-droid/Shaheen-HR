@@ -315,7 +315,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
       if (mutedOrdinary) continue;
       if (def.id === "info") continue;
 
-      const { issues } = analyzeRow(def, sec.headers, row);
+      const { issues } = analyzeRow(def, headersOf(sec), row);
       for (const issue of issues) {
         // Skip pure note highlights (not tempnote — those never enter analyzeRow)
         if (issue.tone === "note" && !/future plan/i.test(issue.label) && !/report:/i.test(issue.label)) {
@@ -502,7 +502,7 @@ export function findWorkCenterRow(
   if (!sec || !Array.isArray(sec.rows)) return null;
   const row = sec.rows.find((r) => r.id === rowId);
   if (!row) return null;
-  return { row, headers: Array.isArray(sec.headers) ? sec.headers : [] };
+  return { row, headers: headersOf(sec) };
 }
 
 export function sectionStatusOptions(sectionId: string): string[] {

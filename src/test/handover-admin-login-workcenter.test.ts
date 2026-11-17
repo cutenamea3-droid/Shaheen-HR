@@ -19,6 +19,6 @@ describe("Handover / Admin login onInput / work-center headers", () => {
 
   it("findWorkCenterRow returns array headers", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/alerts-work-center.ts"), "utf8");
-    expect(src).toMatch(/headers: Array\.isArray\(sec\.headers\) \? sec\.headers : \[\]/);
+    expect(src).toMatch(/headers: headersOf\(sec\)/);
   });
 });
