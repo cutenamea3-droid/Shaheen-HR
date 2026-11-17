@@ -37,6 +37,11 @@ export function resetDispatchFixtureMemory(): void {
   memory = null;
 }
 
+/** Only real arrays leave the cloud boundary — never truthy string `.length`. */
+function asRows<T>(data: unknown): T[] {
+  return Array.isArray(data) ? (data as T[]) : [];
+}
+
 /** Only real stop arrays may round-trip — never truthy string `.length`. */
 function arrayStops(stops: unknown): LoadStop[] | undefined {
   return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
@@ -59,7 +64,7 @@ export async function listRosterDrivers(): Promise<RosterDriver[]> {
     .eq("active", true)
     .order("display_name");
   if (error) throw error;
-  return (data ?? []) as RosterDriver[];
+  return asRows<RosterDriver>(data);
 }
 
 export async function upsertRosterDriver(
@@ -110,7 +115,7 @@ export async function listLoads(): Promise<DispatchLoad[]> {
     .select("*")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  const loads = (data ?? []) as DispatchLoad[];
+  const loads = asRows<DispatchLoad>(data);
   const ids = loads.map((l) => l.id);
   if (!ids.length) return loads;
   const { data: stops, error: stopError } = await dispatchSupabase
@@ -120,7 +125,7 @@ export async function listLoads(): Promise<DispatchLoad[]> {
     .order("sequence");
   if (stopError) throw stopError;
   const byLoad = new Map<string, LoadStop[]>();
-  for (const stop of (stops ?? []) as LoadStop[]) {
+  for (const stop of asRows<LoadStop>(stops)) {
     const list = byLoad.get(stop.load_id!) ?? [];
     list.push(stop);
     byLoad.set(stop.load_id!, list);
@@ -360,7 +365,7 @@ export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
     .eq("load_id", loadId)
     .order("called_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as CheckCall[];
+  return asRows<CheckCall>(data);
 }
 
 export async function listExceptions(): Promise<DispatchException[]> {
@@ -370,7 +375,7 @@ export async function listExceptions(): Promise<DispatchException[]> {
     .select("*")
     .order("opened_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as DispatchException[];
+  return asRows<DispatchException>(data);
 }
 
 export async function saveException(
@@ -425,7 +430,7 @@ export async function listIssues(): Promise<DispatchIssue[]> {
     .select("*")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as DispatchIssue[];
+  return asRows<DispatchIssue>(data);
 }
 
 export async function saveIssue(
@@ -494,7 +499,7 @@ export async function listFollowUps(): Promise<DispatchFollowUp[]> {
     .select("*")
     .order("due_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as DispatchFollowUp[];
+  return asRows<DispatchFollowUp>(data);
 }
 
 export async function saveFollowUp(
@@ -636,7 +641,7 @@ export async function listHandovers(): Promise<ShiftHandover[]> {
     .order("shift_date", { ascending: false })
     .limit(30);
   if (error) throw error;
-  return (data ?? []) as ShiftHandover[];
+  return asRows<ShiftHandover>(data);
 }
 
 export async function saveHandover(
@@ -825,7 +830,7 @@ export async function listAccessorials(loadId?: string): Promise<DispatchAccesso
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as DispatchAccessorial[];
+  return asRows<DispatchAccessorial>(data);
 }
 
 export async function saveAccessorial(
@@ -902,7 +907,7 @@ export async function listCommunications(loadId?: string): Promise<DispatchCommu
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as DispatchCommunication[];
+  return asRows<DispatchCommunication>(data);
 }
 
 export async function saveCommunication(

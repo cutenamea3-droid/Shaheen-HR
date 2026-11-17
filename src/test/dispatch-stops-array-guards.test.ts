@@ -20,4 +20,15 @@ describe("Dispatch stops Array.isArray guards (no truthy string .length)", () =>
     expect(src).toMatch(/Array\.isArray\(load\.stops\) \? \{ stops: load\.stops \}/);
     expect(src).not.toMatch(/load\.stops \? \{ stops: load\.stops \}/);
   });
+
+  it("cloud/auth list results use Array.isArray — never (data ?? []) alone", () => {
+    const cloud = readFileSync(resolve(process.cwd(), "src/dispatch/lib/cloud.ts"), "utf8");
+    const auth = readFileSync(resolve(process.cwd(), "src/dispatch/lib/auth.ts"), "utf8");
+    expect(cloud).toMatch(/function asRows<T>\(data: unknown\): T\[\]/);
+    expect(cloud).toMatch(/asRows<LoadStop>\(stops\)/);
+    expect(cloud).not.toMatch(/\(data \?\? \[\]\) as /);
+    expect(cloud).not.toMatch(/\(stops \?\? \[\]\) as /);
+    expect(auth).toMatch(/Array\.isArray\(data\) \? \(data as DispatchAccount\[\]\) : \[\]/);
+    expect(auth).not.toMatch(/\(data \?\? \[\]\) as DispatchAccount/);
+  });
 });

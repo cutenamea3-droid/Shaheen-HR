@@ -83,7 +83,7 @@ export async function listDispatchAccounts(): Promise<DispatchAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("email");
   if (error) throw error;
-  return (data ?? []) as DispatchAccount[];
+  return Array.isArray(data) ? (data as DispatchAccount[]) : [];
 }
 
 export async function setDispatchAccess(userId: string, role: DispatchRole, active: boolean): Promise<void> {
