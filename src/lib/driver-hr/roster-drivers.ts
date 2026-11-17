@@ -33,9 +33,10 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
 }
 
 export function filterRosterDrivers(drivers: RosterDriverRef[], q: string): RosterDriverRef[] {
+  const list = Array.isArray(drivers) ? drivers : [];
   const needle = q.trim().toLowerCase();
-  if (!needle) return drivers;
-  return drivers.filter(
+  if (!needle) return list;
+  return list.filter(
     (d) => d.name.toLowerCase().includes(needle) || d.driverId.toLowerCase().includes(needle),
   );
 }

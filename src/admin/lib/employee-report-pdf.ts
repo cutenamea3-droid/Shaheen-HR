@@ -113,10 +113,11 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   }
 
   y = section(doc, y + 6, "B", "Daily attendance");
+  const days = Array.isArray(emp.days) ? emp.days : [];
   autoTable(doc, {
     startY: y,
     head: [["Date", "Status", "Hours", "Late", "Break", "OT", "Note"]],
-    body: emp.days.map((d) => [
+    body: days.map((d) => [
       shortDate(d.date),
       d.rec.status,
       d.rec.status === "present" || d.rec.status === "half" ? fmtHours(d.c.worked ?? 0) : "—",
@@ -159,7 +160,7 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 14;
 
-  const notes = emp.days
+  const notes = days
     .flatMap((d) => {
       const rows: string[][] = [];
       if (d.rec.note?.trim()) rows.push([shortDate(d.date), "Attendance statement", d.rec.note.trim().slice(0, 120)]);
@@ -197,17 +198,20 @@ export function buildEmployeeReportDoc(
   opts: Omit<EmployeeReportOptions, "returnBytes" | "logoDataUrl"> & { logo?: string | null },
 ): { doc: jsPDF; emp: EmpMonth | null } {
   const model = buildMonthlyReportModel(data, opts.month);
-  const emp = model.employees.find((e) => e.employee.id === opts.employeeId) ?? null;
+  const modelEmps = Array.isArray(model.employees) ? model.employees : [];
+  const emp = modelEmps.find((e) => e.employee.id === opts.employeeId) ?? null;
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const generatedAt = opts.generatedAt ?? new Date();
-  if (!emp || emp.days.length === 0) {
+  const empDays = Array.isArray(emp?.days) ? emp!.days : [];
+  if (!emp || empDays.length === 0) {
     doc.setFont("helvetica", "bold").setFontSize(14);
     doc.setTextColor(...PDF_THEME.forest);
     doc.text("No attendance records for this employee in the selected month.", MARGIN.left, MARGIN.top);
+    const roster = Array.isArray(data.employees) ? data.employees : [];
     drawChrome(doc, {
       company: opts.company,
       monthLabel: monthLabel(opts.month),
-      employeeName: data.employees.find((e) => e.id === opts.employeeId)?.name ?? "Employee",
+      employeeName: roster.find((e) => e.id === opts.employeeId)?.name ?? "Employee",
       generatedAt,
       logo: opts.logo ?? null,
       page: 1,

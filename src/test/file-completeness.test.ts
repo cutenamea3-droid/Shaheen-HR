@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildSeed, type Row } from "@/lib/sections";
 import {
   FILE_COMPLETENESS_FORMULA,
@@ -87,16 +89,17 @@ describe("file completeness", () => {
     expect(csv).toContain("Pct Driver");
   });
 
-  test("fileCompletenessCsv tolerates missing drivers array", () => {
-    expect(() =>
-      fileCompletenessCsv({
-        generatedAt: "x",
-        formula: "y",
-        fleetPercent: 0,
-        fleetComplete: 0,
-        fleetApplicable: 0,
-        drivers: null as never,
-      }),
-    ).not.toThrow();
+  test("fileCompletenessCsv/print tolerate missing drivers array", () => {
+    const bad = {
+      generatedAt: "x",
+      formula: "y",
+      fleetPercent: 0,
+      fleetComplete: 0,
+      fleetApplicable: 0,
+      drivers: null as never,
+    };
+    expect(() => fileCompletenessCsv(bad)).not.toThrow();
+    const src = readFileSync(resolve(process.cwd(), "src/lib/file-completeness.ts"), "utf8");
+    expect(src).toMatch(/Array\.isArray\(report\?\.drivers\)/);
   });
 });

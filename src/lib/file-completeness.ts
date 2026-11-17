@@ -221,8 +221,9 @@ function esc(s: string) {
 
 /** Printable HTML with formula explanation (complements PDF). */
 export function printFileCompletenessSummary(report: FileCompletenessReport) {
-  const rows = report.drivers.length
-    ? report.drivers
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
+  const rows = drivers.length
+    ? drivers
         .map(
           (d) => `<tr>
       <td>${esc(d.driverName)}</td>
