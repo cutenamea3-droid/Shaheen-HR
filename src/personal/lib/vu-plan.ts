@@ -64,11 +64,13 @@ export function liveTodoStatus(todo: VuTodo, todayIso: string): VuTodoStatus {
 }
 
 export function academicTodos(plan: VuStudyPlan = VU_STUDY_PLAN): VuTodo[] {
-  return (plan.todos as VuTodo[]).filter((t) => t.kind !== "fee" && t.courseCode);
+  const todos = Array.isArray(plan?.todos) ? (plan.todos as VuTodo[]) : [];
+  return todos.filter((t) => t.kind !== "fee" && t.courseCode);
 }
 
 export function feeTodos(plan: VuStudyPlan = VU_STUDY_PLAN): VuTodo[] {
-  return (plan.todos as VuTodo[]).filter((t) => t.kind === "fee");
+  const todos = Array.isArray(plan?.todos) ? (plan.todos as VuTodo[]) : [];
+  return todos.filter((t) => t.kind === "fee");
 }
 
 export function pendencyTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
@@ -94,7 +96,10 @@ export function overdueTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
 }
 
 export function slotsForDate(plan: VuStudyPlan, dateIso: string): VuLectureSlot[] {
-  return (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+  const slots = Array.isArray(plan?.weeklyLectureSchedule?.slots)
+    ? (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+    : [];
+  return slots
     .filter((s) => s.date === dateIso)
     .slice()
     .sort((a, b) => parseVuTime(a.time) - parseVuTime(b.time));

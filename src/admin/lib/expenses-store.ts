@@ -28,6 +28,7 @@ import type {
 } from "./expenses-types";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const asArr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 export type ExpenseUpsertInput = {
   title: string;
@@ -100,20 +101,22 @@ export const useExpensesStore = create<ExpensesState>()(
       addCategory: (name) => {
         const n = name.trim();
         if (!n) return { ok: false, error: "Category name required" };
-        const exists = get().categories.some((c) => c.name.toLowerCase() === n.toLowerCase() && !c.archived);
+        const categories = asArr<ExpenseCategory>(get().categories);
+        const exists = categories.some((c) => c.name.toLowerCase() === n.toLowerCase() && !c.archived);
         if (exists) return { ok: false, error: "Category already exists" };
         const id = `custom-${uid()}`;
-        set((s) => ({ categories: [...s.categories, { id, name: n, custom: true }] }));
+        set({ categories: [...categories, { id, name: n, custom: true }] });
         return { ok: true, id };
       },
 
       archiveCategory: (id) => {
-        const cat = get().categories.find((c) => c.id === id);
+        const categories = asArr<ExpenseCategory>(get().categories);
+        const cat = categories.find((c) => c.id === id);
         if (!cat) return { ok: false, error: "Not found" };
         if (!cat.custom) return { ok: false, error: "Built-in categories cannot be archived" };
-        set((s) => ({
-          categories: s.categories.map((c) => (c.id === id ? { ...c, archived: true } : c)),
-        }));
+        set({
+          categories: categories.map((c) => (c.id === id ? { ...c, archived: true } : c)),
+        });
         return { ok: true };
       },
 
@@ -127,7 +130,8 @@ export const useExpensesStore = create<ExpensesState>()(
         const check = validateExpenseInput({ ...input, amountPkr: amount });
         if (!check.ok) return check;
 
-        const dup = findDuplicateExpense(get().expenses, { ...input, amountPkr: amount }, opts?.id);
+        const expenses = asArr<ExpenseRecord>(get().expenses);
+        const dup = findDuplicateExpense(expenses, { ...input, amountPkr: amount }, opts?.id);
         if (dup && !input.allowDuplicate) {
           return {
             ok: false,
@@ -138,29 +142,32 @@ export const useExpensesStore = create<ExpensesState>()(
 
         const now = Date.now();
         if (opts?.id) {
-          const existing = get().expenses.find((e) => e.id === opts.id);
+          const existing = expenses.find((e) => e.id === opts.id);
           if (!existing) return { ok: false, error: "Expense not found" };
           if (existing.deletedAt) return { ok: false, error: "Restore before editing" };
-          set((s) => ({
-            expenses: s.expenses.map((e) =>
-              e.id === opts.id
-                ? {
-                    ...e,
-                    title: input.title.trim(),
-                    categoryId: input.categoryId,
-                    amountPkr: amount,
-                    expenseDate: input.expenseDate,
-                    scope: input.scope,
-                    employeeIds: input.scope === "all" ? [] : [...input.employeeIds],
-                    status: input.status,
-                    note: input.note.trim(),
-                    templateId: input.templateId ?? e.templateId,
-                    updatedAt: now,
-                  }
-                : e,
-            ),
-            audit: appendAudit(s.audit, opts.id!, "edit", `Updated “${input.title.trim()}” · Rs ${amount}`),
-          }));
+          set((s) => {
+            const list = asArr<ExpenseRecord>(s.expenses);
+            return {
+              expenses: list.map((e) =>
+                e.id === opts.id
+                  ? {
+                      ...e,
+                      title: input.title.trim(),
+                      categoryId: input.categoryId,
+                      amountPkr: amount,
+                      expenseDate: input.expenseDate,
+                      scope: input.scope,
+                      employeeIds: input.scope === "all" ? [] : [...input.employeeIds],
+                      status: input.status,
+                      note: input.note.trim(),
+                      templateId: input.templateId ?? e.templateId,
+                      updatedAt: now,
+                    }
+                  : e,
+              ),
+              audit: appendAudit(asArr(s.audit), opts.id!, "edit", `Updated “${input.title.trim()}” · Rs ${amount}`),
+            };
+          });
           return { ok: true, id: opts.id };
         }
 
@@ -181,42 +188,51 @@ export const useExpensesStore = create<ExpensesState>()(
           templateId: input.templateId ?? null,
         };
         set((s) => ({
-          expenses: [row, ...s.expenses],
-          audit: appendAudit(s.audit, id, "create", `Created “${row.title}” · Rs ${amount}`),
+          expenses: [row, ...asArr<ExpenseRecord>(s.expenses)],
+          audit: appendAudit(asArr(s.audit), id, "create", `Created “${row.title}” · Rs ${amount}`),
         }));
         return { ok: true, id };
       },
 
       softDeleteExpense: (id) => {
-        const row = get().expenses.find((e) => e.id === id);
+        const expenses = asArr<ExpenseRecord>(get().expenses);
+        const row = expenses.find((e) => e.id === id);
         if (!row) return { ok: false, error: "Not found" };
         if (row.deletedAt) return { ok: false, error: "Already deleted" };
         const now = Date.now();
         set((s) => ({
-          expenses: s.expenses.map((e) => (e.id === id ? { ...e, deletedAt: now, updatedAt: now } : e)),
-          audit: appendAudit(s.audit, id, "soft_delete", `Soft-deleted “${row.title}”`),
+          expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
+            e.id === id ? { ...e, deletedAt: now, updatedAt: now } : e,
+          ),
+          audit: appendAudit(asArr(s.audit), id, "soft_delete", `Soft-deleted “${row.title}”`),
         }));
         return { ok: true };
       },
 
       restoreExpense: (id) => {
-        const row = get().expenses.find((e) => e.id === id);
+        const expenses = asArr<ExpenseRecord>(get().expenses);
+        const row = expenses.find((e) => e.id === id);
         if (!row) return { ok: false, error: "Not found" };
         if (!row.deletedAt) return { ok: false, error: "Not deleted" };
         const now = Date.now();
         set((s) => ({
-          expenses: s.expenses.map((e) => (e.id === id ? { ...e, deletedAt: null, updatedAt: now } : e)),
-          audit: appendAudit(s.audit, id, "restore", `Restored “${row.title}”`),
+          expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
+            e.id === id ? { ...e, deletedAt: null, updatedAt: now } : e,
+          ),
+          audit: appendAudit(asArr(s.audit), id, "restore", `Restored “${row.title}”`),
         }));
         return { ok: true };
       },
 
       setExpenseStatus: (id, status) => {
-        const row = get().expenses.find((e) => e.id === id);
+        const expenses = asArr<ExpenseRecord>(get().expenses);
+        const row = expenses.find((e) => e.id === id);
         if (!row || row.deletedAt) return { ok: false, error: "Not found" };
         set((s) => ({
-          expenses: s.expenses.map((e) => (e.id === id ? { ...e, status, updatedAt: Date.now() } : e)),
-          audit: appendAudit(s.audit, id, "status", `${row.status} → ${status}`),
+          expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
+            e.id === id ? { ...e, status, updatedAt: Date.now() } : e,
+          ),
+          audit: appendAudit(asArr(s.audit), id, "status", `${row.status} → ${status}`),
         }));
         return { ok: true };
       },
@@ -240,7 +256,7 @@ export const useExpensesStore = create<ExpensesState>()(
         const now = Date.now();
         if (t.id) {
           set((s) => ({
-            templates: s.templates.map((x) =>
+            templates: asArr<ExpenseTemplate>(s.templates).map((x) =>
               x.id === t.id
                 ? {
                     ...x,
@@ -271,13 +287,14 @@ export const useExpensesStore = create<ExpensesState>()(
               active: t.active,
               updatedAt: now,
             },
-            ...s.templates,
+            ...asArr<ExpenseTemplate>(s.templates),
           ],
         }));
         return { ok: true, id };
       },
 
-      removeTemplate: (id) => set((s) => ({ templates: s.templates.filter((t) => t.id !== id) })),
+      removeTemplate: (id) =>
+        set((s) => ({ templates: asArr<ExpenseTemplate>(s.templates).filter((t) => t.id !== id) })),
 
       upsertBudget: (b) => {
         try {
@@ -286,30 +303,35 @@ export const useExpensesStore = create<ExpensesState>()(
           return { ok: false, error: e instanceof Error ? e.message : "Invalid limit" };
         }
         if (!/^\d{4}-\d{2}$/.test(b.month)) return { ok: false, error: "Month must be YYYY-MM" };
+        const budgets = asArr<ExpenseBudget>(get().budgets);
         if (b.id) {
-          set((s) => ({
-            budgets: s.budgets.map((x) => (x.id === b.id ? { ...x, ...b, limitPkr: b.limitPkr } : x)),
-          }));
+          set({
+            budgets: budgets.map((x) => (x.id === b.id ? { ...x, ...b, limitPkr: b.limitPkr } : x)),
+          });
           return { ok: true };
         }
-        const clash = get().budgets.find((x) => x.month === b.month && x.categoryId === b.categoryId);
+        const clash = budgets.find((x) => x.month === b.month && x.categoryId === b.categoryId);
         if (clash) {
-          set((s) => ({
-            budgets: s.budgets.map((x) =>
+          set({
+            budgets: budgets.map((x) =>
               x.id === clash.id ? { ...x, limitPkr: b.limitPkr, note: b.note } : x,
             ),
-          }));
+          });
           return { ok: true };
         }
-        set((s) => ({
-          budgets: [...s.budgets, { id: uid(), month: b.month, categoryId: b.categoryId, limitPkr: b.limitPkr, note: b.note }],
-        }));
+        set({
+          budgets: [
+            ...budgets,
+            { id: uid(), month: b.month, categoryId: b.categoryId, limitPkr: b.limitPkr, note: b.note },
+          ],
+        });
         return { ok: true };
       },
 
-      removeBudget: (id) => set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+      removeBudget: (id) =>
+        set((s) => ({ budgets: asArr<ExpenseBudget>(s.budgets).filter((b) => b.id !== id) })),
 
-      auditFor: (expenseId) => get().audit.filter((a) => a.expenseId === expenseId),
+      auditFor: (expenseId) => asArr<ExpenseAuditEvent>(get().audit).filter((a) => a.expenseId === expenseId),
     }),
     {
       name: HR_EXPENSES_STORAGE_KEY,

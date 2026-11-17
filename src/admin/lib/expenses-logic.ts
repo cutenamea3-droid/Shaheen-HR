@@ -114,8 +114,9 @@ export function findDuplicateExpense(
   candidate: Pick<ExpenseRecord, "title" | "categoryId" | "amountPkr" | "expenseDate" | "scope" | "employeeIds">,
   excludeId?: string,
 ): ExpenseRecord | undefined {
+  const list = Array.isArray(rows) ? rows : [];
   const ids = [...(Array.isArray(candidate.employeeIds) ? candidate.employeeIds : [])].sort().join(",");
-  return rows.find((r) => {
+  return list.find((r) => {
     if (r.deletedAt) return false;
     if (excludeId && r.id === excludeId) return false;
     if (r.expenseDate !== candidate.expenseDate) return false;
@@ -165,6 +166,7 @@ export function appendAudit(
   action: string,
   detail: string,
 ): ExpenseAuditEvent[] {
+  const prev = Array.isArray(events) ? events : [];
   return [
     {
       id: Math.random().toString(36).slice(2, 10),
@@ -173,6 +175,6 @@ export function appendAudit(
       detail,
       at: Date.now(),
     },
-    ...events,
+    ...prev,
   ].slice(0, 1000);
 }

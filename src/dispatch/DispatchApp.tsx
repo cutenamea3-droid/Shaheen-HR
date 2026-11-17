@@ -1151,9 +1151,9 @@ function LoadEditor({
       listCommunications(load.id),
       listAccessorials(load.id),
     ]).then(([c, com, acc]) => {
-      setCalls(c);
-      setComms(com);
-      setAccessorials(acc);
+      setCalls(Array.isArray(c) ? c : []);
+      setComms(Array.isArray(com) ? com : []);
+      setAccessorials(Array.isArray(acc) ? acc : []);
     });
   }, [load?.id]);
 
@@ -1904,7 +1904,8 @@ function LoadEditor({
                   setCommSummary("");
                   setCommDetail("");
                   setCommDecision("");
-                  setComms(await listCommunications(load.id));
+                  const nextComms = await listCommunications(load.id);
+                  setComms(Array.isArray(nextComms) ? nextComms : []);
                 } catch (e) {
                   setOpsError(e instanceof Error ? e.message : "Could not save communication.");
                 } finally {
@@ -1989,7 +1990,8 @@ function LoadEditor({
                 });
                 setCheckNotes("");
                 setCheckLocation("");
-                setCalls(await listCheckCalls(load.id));
+                const nextCalls = await listCheckCalls(load.id);
+                setCalls(Array.isArray(nextCalls) ? nextCalls : []);
                 if (nextLoc) {
                   setForm((f) => ({ ...f, last_manual_location: nextLoc }));
                 }
@@ -2297,9 +2299,10 @@ function HandoverBoard({
               next_day_priorities: nextPriorities,
               open_load_ids: openLoads.map((l) => l.id),
             });
-            setRows(await listHandovers());
+            const nextRows = await listHandovers();
+            setRows(Array.isArray(nextRows) ? nextRows : []);
             await onSaved();
-            exportHandoverPdf(saved, loads);
+            exportHandoverPdf(saved, safeLoads);
           }}
         >
           Save handover + PDF
@@ -2793,7 +2796,8 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
   const passwordRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
-    setRows(await listDispatchAccounts());
+    const next = await listDispatchAccounts();
+    setRows(Array.isArray(next) ? next : []);
   }
 
   useEffect(() => {
