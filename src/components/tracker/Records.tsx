@@ -318,6 +318,7 @@ export function Records() {
                       </thead>
                       <tbody>
                         {p.rows.map((r, ri) => {
+                          const cells = cellsOf(r);
                           const save = (ci: number) => (v: string) => setCell(tab, r.id, ci, v);
                           return (
                             <tr key={r.id} className="ui-row-hover">
@@ -325,17 +326,17 @@ export function Records() {
                                 {ri + 1}
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <EditableText value={r.cells[1] ?? ""} onSave={save(1)} />
+                                <EditableText value={cells[1] ?? ""} onSave={save(1)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <StatusToggle value={r.cells[2] ?? ""} options={STATUS} onSave={save(2)} />
+                                <StatusToggle value={cells[2] ?? ""} options={STATUS} onSave={save(2)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <DateCell value={r.cells[3] ?? ""} onSave={save(3)} />
+                                <DateCell value={cells[3] ?? ""} onSave={save(3)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
                                 <EditableText
-                                  value={r.cells[4] ?? ""}
+                                  value={cells[4] ?? ""}
                                   onSave={save(4)}
                                   placeholder="Add note"
                                   boxed
@@ -347,7 +348,7 @@ export function Records() {
                                     type="button"
                                     aria-label="Delete document"
                                     onClick={() =>
-                                      confirm(`Delete “${r.cells[1] || "document"}” for ${p.name}?`) &&
+                                      confirm(`Delete “${cells[1] || "document"}” for ${p.name}?`) &&
                                       deleteRecord(tab, r.id)
                                     }
                                     className="ui-press rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"

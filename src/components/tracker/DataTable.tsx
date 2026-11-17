@@ -184,7 +184,7 @@ export function DataTable({
       for (const r of data.sections[id]?.rows ?? []) {
         if (here.has(r.driverId) || out.has(r.driverId)) continue;
         if (!matchesListScope(data, r.driverId, listScope)) continue;
-        out.set(r.driverId, nameOf.get(r.driverId) ?? r.cells[0]);
+        out.set(r.driverId, nameOf.get(r.driverId) ?? cellsOf(r)[0]);
       }
     return [...out].map(([driverId, name]) => ({ driverId, name }));
   }, [data, sec, sectionId, nameOf, listScope, safeRows]);

@@ -1,7 +1,7 @@
 /**
  * Roster helpers for Drug Test Records (Driver Compliance AppData — not Admin).
  */
-import { SECTIONS, type AppData } from "@/lib/sections";
+import { SECTIONS, cellsOf, type AppData } from "@/lib/sections";
 
 export type RosterDriverRef = {
   driverId: string;
@@ -18,7 +18,7 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
     for (const r of sec.rows) {
       const id = r.driverId;
       if (!id) continue;
-      const name = (r.cells[0] ?? "").trim();
+      const name = (cellsOf(r)[0] ?? "").trim();
       const prev = map.get(id);
       if (!prev) {
         map.set(id, { driverId: id, name });

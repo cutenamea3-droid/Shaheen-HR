@@ -136,7 +136,8 @@ export function DriverCards({
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
       if (!sec || !Array.isArray(sec.rows)) continue;
-      for (const r of sec.rows) {
+      for (const raw of sec.rows) {
+        const r = { ...raw, cells: cellsOf(raw) };
         let d = map.get(r.driverId);
         if (!d) {
           d = {

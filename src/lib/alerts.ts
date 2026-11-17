@@ -1,5 +1,6 @@
 import {
   SECTIONS,
+  cellsOf,
   formatDriverStatus,
   parseDriverStatus,
   type AppData,
@@ -705,7 +706,7 @@ export function fleetCompliancePct(data: AppData) {
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, r, data)) continue;
-      const name = (r.cells[0] ?? "").trim().toLowerCase();
+      const name = (cellsOf(r)[0] ?? "").trim().toLowerCase();
       if (!name) continue;
       names.add(name);
       for (const i of analyzeRow(def, sec.headers, r).issues) {

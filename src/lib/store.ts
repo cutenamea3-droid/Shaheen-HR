@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   buildInactiveCells,
   buildSeed,
+  cellsOf,
   formatDriverStatus,
   migrateData,
   parseDriverStatus,
@@ -81,7 +82,27 @@ export function parseCloudSectionJson(raw: string): SectionData | undefined {
     if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
     const o = v as Partial<SectionData>;
     if (!Array.isArray(o.headers) || !Array.isArray(o.rows)) return undefined;
-    return v as SectionData;
+    const rows = o.rows
+      .map((r) => {
+        if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+        const row = r as unknown as Record<string, unknown>;
+        const id = typeof row.id === "string" ? row.id : "";
+        if (!id) return null;
+        const driverId =
+          typeof row.driverId === "string" && row.driverId ? row.driverId : id;
+        const cells = Array.isArray(row.cells)
+          ? row.cells.map((c) => (c == null ? "" : String(c)))
+          : [];
+        return { ...row, id, driverId, cells } as SectionData["rows"][number];
+      })
+      .filter((r): r is SectionData["rows"][number] => r != null);
+    return {
+      headers: o.headers.map((h) => (h == null ? "" : String(h))),
+      widths: Array.isArray(o.widths) ? o.widths.map((w) => Number(w) || 0) : [],
+      hidden: Array.isArray(o.hidden) ? o.hidden.map((h) => !!h) : [],
+      rows,
+      ...(Array.isArray(o.dismissed) ? { dismissed: o.dismissed.filter((x): x is string => typeof x === "string") } : {}),
+    };
   } catch {
     return undefined;
   }
@@ -818,13 +839,13 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
     const toRaw = d.sections[toId] ?? emptyRecordSection();
     const from = { ...fromRaw, rows: Array.isArray(fromRaw.rows) ? fromRaw.rows : [] };
     const to = { ...toRaw, rows: Array.isArray(toRaw.rows) ? toRaw.rows : [] };
-    const moving = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") === key);
+    const moving = from.rows.filter((r) => recordPersonKey(cellsOf(r)[0] ?? "") === key);
     if (!moving.length) return d;
-    const stay = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") !== key);
+    const stay = from.rows.filter((r) => recordPersonKey(cellsOf(r)[0] ?? "") !== key);
     const added = moving.map((r) => ({
       ...r,
       id: toId + "_" + uid(),
-      cells: [...r.cells],
+      cells: [...cellsOf(r)],
     }));
     return {
       ...d,

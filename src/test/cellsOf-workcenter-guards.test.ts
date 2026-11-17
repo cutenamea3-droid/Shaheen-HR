@@ -77,16 +77,27 @@ describe("UI Records/DataTable/Dashboard cellsOf", () => {
       resolve(process.cwd(), "src/components/tracker/Records.tsx"),
       "utf8",
     );
-    expect(records).toMatch(/cellsOf\(r\)/);
+    expect(records).toMatch(/const cells = cellsOf\(r\)/);
     const table = readFileSync(
       resolve(process.cwd(), "src/components/tracker/DataTable.tsx"),
       "utf8",
     );
     expect(table).toMatch(/cellsOf\(a\.row\)/);
+    expect(table).toMatch(/cellsOf\(r\)\[0\]/);
     const dash = readFileSync(
       resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
       "utf8",
     );
     expect(dash).toMatch(/cellsOf\(x\.row\)/);
+    const cards = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DriverCards.tsx"),
+      "utf8",
+    );
+    expect(cards).toMatch(/cells: cellsOf\(raw\)/);
+    const hist = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/ComplianceHistoryPanel.tsx"),
+      "utf8",
+    );
+    expect(hist).toMatch(/cellsOf\(r\)/);
   });
 });
