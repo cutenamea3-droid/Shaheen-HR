@@ -158,14 +158,23 @@ export function defaultDiscipline(): DisciplineCheck[] {
 /** Merge legacy discipline lists without wiping doneDates. */
 export function migrateDiscipline(raw: DisciplineCheck[] | undefined): DisciplineCheck[] {
   const base = defaultDiscipline();
-  if (!raw?.length) return base;
-  const byId = new Map(raw.map((d) => [d.id, d]));
-  return base.map((d) => {
-    const prev = byId.get(d.id);
-    return prev ? { ...d, doneDates: prev.doneDates ?? [] } : d;
-  }).concat(
-    raw.filter((d) => !base.some((b) => b.id === d.id)),
-  );
+  const src = Array.isArray(raw) ? raw : [];
+  if (!src.length) return base;
+  const byId = new Map(src.map((d) => [d.id, d]));
+  return base
+    .map((d) => {
+      const prev = byId.get(d.id);
+      const doneDates = Array.isArray(prev?.doneDates) ? prev!.doneDates : [];
+      return prev ? { ...d, doneDates } : d;
+    })
+    .concat(
+      src
+        .filter((d) => !base.some((b) => b.id === d.id))
+        .map((d) => ({
+          ...d,
+          doneDates: Array.isArray(d.doneDates) ? d.doneDates : [],
+        })),
+    );
 }
 
 export const PERSONAL_STORAGE_KEY = "hr-personal-v1";

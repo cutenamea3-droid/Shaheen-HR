@@ -19,7 +19,7 @@ export function isDocAwaiting(status: DispatchLoad["bol_status"] | DispatchLoad[
 }
 
 export function awaitingBolLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       l.status !== "cancelled" &&
       l.status !== "draft" &&
@@ -28,7 +28,7 @@ export function awaitingBolLoads(loads: DispatchLoad[]): DispatchLoad[] {
 }
 
 export function awaitingPodLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       (l.status === "delivered" || l.status === "at_delivery" || l.status === "closed") &&
       isDocAwaiting(l.pod_status),
@@ -40,17 +40,21 @@ export function dueFollowUps(
   followUps: DispatchFollowUp[],
   now = Date.now(),
 ): DispatchFollowUp[] {
-  return followUps
+  return (Array.isArray(followUps) ? followUps : [])
     .filter((f) => f.status === "open" && Date.parse(f.due_at) <= now)
     .sort((a, b) => a.due_at.localeCompare(b.due_at));
 }
 
 export function openFollowUps(followUps: DispatchFollowUp[]): DispatchFollowUp[] {
-  return followUps.filter((f) => f.status === "open").sort((a, b) => a.due_at.localeCompare(b.due_at));
+  return (Array.isArray(followUps) ? followUps : [])
+    .filter((f) => f.status === "open")
+    .sort((a, b) => a.due_at.localeCompare(b.due_at));
 }
 
 export function openEscalations(issues: DispatchIssue[]): DispatchIssue[] {
-  return issues.filter((i) => i.status === "open" || i.status === "escalated");
+  return (Array.isArray(issues) ? issues : []).filter(
+    (i) => i.status === "open" || i.status === "escalated",
+  );
 }
 
 export function issuesMissingSeniorInformed(issues: DispatchIssue[]): DispatchIssue[] {
@@ -79,10 +83,12 @@ export function buildEquipmentBoard(
   drivers: RosterDriver[],
   loads: DispatchLoad[],
 ): EquipmentBoardRow[] {
-  return drivers
+  const roster = Array.isArray(drivers) ? drivers : [];
+  const deskLoads = Array.isArray(loads) ? loads : [];
+  return roster
     .filter((d) => d.active)
     .map((driver) => {
-      const activeLoads = loads.filter(
+      const activeLoads = deskLoads.filter(
         (l) =>
           l.assigned_driver_id === driver.id &&
           (ACTIVE_LOAD_STATUSES.includes(l.status) || l.status === "delivered"),
@@ -126,13 +132,14 @@ export function validateReschedule(note: string, plannedPickup: string | null, p
 
 /** Re-number stop sequences after reorder/remove. */
 export function renumberStops(stops: LoadStop[]): LoadStop[] {
-  return stops.map((s, i) => ({ ...s, sequence: i + 1 }));
+  return (Array.isArray(stops) ? stops : []).map((s, i) => ({ ...s, sequence: i + 1 }));
 }
 
 export function moveStop(stops: LoadStop[], index: number, direction: -1 | 1): LoadStop[] {
+  const list = Array.isArray(stops) ? stops : [];
   const j = index + direction;
-  if (j < 0 || j >= stops.length) return renumberStops(stops);
-  const next = [...stops];
+  if (j < 0 || j >= list.length) return renumberStops(list);
+  const next = [...list];
   const tmp = next[index];
   next[index] = next[j];
   next[j] = tmp;
@@ -140,8 +147,9 @@ export function moveStop(stops: LoadStop[], index: number, direction: -1 | 1): L
 }
 
 export function removeStop(stops: LoadStop[], index: number): LoadStop[] {
-  if (stops.length <= 1) return renumberStops(stops);
-  return renumberStops(stops.filter((_, i) => i !== index));
+  const list = Array.isArray(stops) ? stops : [];
+  if (list.length <= 1) return renumberStops(list);
+  return renumberStops(list.filter((_, i) => i !== index));
 }
 
 /** Handover watch-item hints from live desk state — never invents docs/ETAs. */

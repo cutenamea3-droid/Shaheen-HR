@@ -55,10 +55,8 @@ function nameOf(data: AppData, driverId: string): string {
 
 function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
   for (const def of SECTIONS) {
-    const rows = data.sections[def.id]?.rows;
-    if (!Array.isArray(rows)) continue;
-    const r = rows.find((x) => x.driverId === driverId);
-    if (r?.rosterHistory?.length) return r.rosterHistory;
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
+    if (Array.isArray(r?.rosterHistory) && r!.rosterHistory.length) return r!.rosterHistory;
   }
   return [];
 }

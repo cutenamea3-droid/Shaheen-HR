@@ -97,7 +97,7 @@ export function ExpensesManagement() {
       if (scopeFilter !== "all" && e.scope !== scopeFilter) return false;
       if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
       if (q.trim()) {
-        const hay = `${e.title} ${e.note} ${e.employeeIds.map((id) => nameById.get(id) ?? "").join(" ")}`.toLowerCase();
+        const hay = `${e.title} ${e.note} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => nameById.get(id) ?? "").join(" ")}`.toLowerCase();
         if (!hay.includes(q.trim().toLowerCase())) return false;
       }
       return true;
@@ -155,13 +155,13 @@ export function ExpensesManagement() {
       amountPkr: e.amountPkr,
       expenseDate: e.expenseDate,
       scope: e.scope,
-      employeeIds: e.employeeIds,
+      employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds : [],
       status: e.status,
       note: e.note,
       templateId: e.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...e.employeeIds]);
+    setEmpPick([...(Array.isArray(e.employeeIds) ? e.employeeIds : [])]);
     setFormOpen(true);
     setErr("");
     setMsg("");
@@ -523,7 +523,9 @@ export function ExpensesManagement() {
                   <div className="text-xs font-normal text-muted-foreground">
                     {e.scope === "all"
                       ? "Company total (not split)"
-                      : e.employeeIds.map((id) => nameById.get(id) ?? id).join(", ")}
+                      : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
+                          .map((id) => nameById.get(id) ?? id)
+                          .join(", ")}
                   </div>
                 </td>
                 <td className="p-3">{activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId}</td>

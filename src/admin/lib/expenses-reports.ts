@@ -43,7 +43,9 @@ export function toExpenseExportRows(
       employees:
         e.scope === "all"
           ? "(company total — not split)"
-          : e.employeeIds.map((id) => nameById.get(id) ?? id).join("; "),
+          : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
+              .map((id) => nameById.get(id) ?? id)
+              .join("; "),
       status: EXPENSE_STATUS_LABEL[e.status as ExpenseStatus],
       note: e.note,
     }));

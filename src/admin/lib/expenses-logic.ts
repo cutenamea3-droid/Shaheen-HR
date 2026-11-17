@@ -89,7 +89,7 @@ export function summarizeExpenses(
     if (opts?.month && !r.expenseDate.startsWith(opts.month)) continue;
     if (opts?.employeeId) {
       if (r.scope === "all") continue; // company totals are not attributed per employee
-      if (!r.employeeIds.includes(opts.employeeId)) continue;
+      if (!(Array.isArray(r.employeeIds) ? r.employeeIds : []).includes(opts.employeeId)) continue;
     }
     count++;
     totalPkr += r.amountPkr;
@@ -114,7 +114,7 @@ export function findDuplicateExpense(
   candidate: Pick<ExpenseRecord, "title" | "categoryId" | "amountPkr" | "expenseDate" | "scope" | "employeeIds">,
   excludeId?: string,
 ): ExpenseRecord | undefined {
-  const ids = [...candidate.employeeIds].sort().join(",");
+  const ids = [...(Array.isArray(candidate.employeeIds) ? candidate.employeeIds : [])].sort().join(",");
   return rows.find((r) => {
     if (r.deletedAt) return false;
     if (excludeId && r.id === excludeId) return false;
@@ -122,7 +122,7 @@ export function findDuplicateExpense(
     if (r.categoryId !== candidate.categoryId) return false;
     if (r.amountPkr !== candidate.amountPkr) return false;
     if (r.scope !== candidate.scope) return false;
-    if ([...r.employeeIds].sort().join(",") !== ids) return false;
+    if ([...(Array.isArray(r.employeeIds) ? r.employeeIds : [])].sort().join(",") !== ids) return false;
     // Same title OR empty titles both count as duplicate signal
     return r.title.trim().toLowerCase() === candidate.title.trim().toLowerCase();
   });
@@ -152,7 +152,7 @@ export function templateToExpenseDraft(t: ExpenseTemplate, expenseDate: string):
     amountPkr: t.amountPkr,
     expenseDate,
     scope: t.scope,
-    employeeIds: [...t.employeeIds],
+    employeeIds: [...(Array.isArray(t.employeeIds) ? t.employeeIds : [])],
     status: "draft",
     note: t.note,
     templateId: t.id,

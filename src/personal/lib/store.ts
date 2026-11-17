@@ -273,14 +273,13 @@ export const usePersonal = create<PersonalStore>()(
       },
       toggleDiscipline: (id, date = todayIso()) =>
         set((s) => ({
-          discipline: s.discipline.map((d) => {
+          discipline: (Array.isArray(s.discipline) ? s.discipline : []).map((d) => {
             if (d.id !== id) return d;
-            const has = d.doneDates.includes(date);
+            const doneDates = Array.isArray(d.doneDates) ? d.doneDates : [];
+            const has = doneDates.includes(date);
             return {
               ...d,
-              doneDates: has
-                ? d.doneDates.filter((x) => x !== date)
-                : [...d.doneDates, date],
+              doneDates: has ? doneDates.filter((x) => x !== date) : [...doneDates, date],
             };
           }),
         })),

@@ -311,6 +311,32 @@ export const useExpensesStore = create<ExpensesState>()(
 
       auditFor: (expenseId) => get().audit.filter((a) => a.expenseId === expenseId),
     }),
-    { name: HR_EXPENSES_STORAGE_KEY },
+    {
+      name: HR_EXPENSES_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<ExpensesState>)
+            : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        const healExpense = (e: ExpenseRecord): ExpenseRecord => ({
+          ...e,
+          employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds : [],
+        });
+        const healTemplate = (t: ExpenseTemplate): ExpenseTemplate => ({
+          ...t,
+          employeeIds: Array.isArray(t.employeeIds) ? t.employeeIds : [],
+        });
+        return {
+          ...current,
+          ...raw,
+          categories: arr(raw.categories, current.categories),
+          expenses: arr(raw.expenses, current.expenses).map(healExpense),
+          templates: arr(raw.templates, current.templates).map(healTemplate),
+          budgets: arr(raw.budgets, current.budgets),
+          audit: arr(raw.audit, current.audit),
+        };
+      },
+    },
   ),
 );
