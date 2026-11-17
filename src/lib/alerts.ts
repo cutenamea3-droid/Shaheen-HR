@@ -230,19 +230,20 @@ export function appliedExpiryView(
   };
 }
 
-function statusIssue(v: string, col: number, header: string, expiryRaw?: string): Issue | null {
+function statusIssue(v: string, col: number, header: unknown, expiryRaw?: string): Issue | null {
+  const hdr = header == null ? "" : typeof header === "string" ? header : String(header);
   const s = normStatus(v);
   if (s === "Applied") {
     const view = expiryRaw != null ? appliedExpiryView(expiryRaw) : null;
     if (view) {
       // Tone follows the expiration axis; Application stays Applied in the label.
-      return { tone: view.tone, label: `${header.trim()}: ${view.label}`, col };
+      return { tone: view.tone, label: `${hdr.trim()}: ${view.label}`, col };
     }
-    return { tone: "info", label: `${header.trim()}: Applied`, col };
+    return { tone: "info", label: `${hdr.trim()}: Applied`, col };
   }
   if (s === "Missing" || s === "Invalid" || s === "Expired")
-    return { tone: "danger", label: `${header.trim()}: ${s}`, col };
-  if (s === "Sign Missing") return { tone: "sign", label: `${header.trim()}: Sign missing`, col };
+    return { tone: "danger", label: `${hdr.trim()}: ${s}`, col };
+  if (s === "Sign Missing") return { tone: "sign", label: `${hdr.trim()}: Sign missing`, col };
   return null;
 }
 

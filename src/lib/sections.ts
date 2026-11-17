@@ -378,10 +378,12 @@ function editDist(a: string, b: string) {
   return dp[m][n];
 }
 /** Small typos in a name (Sara/Sarah, Ismail/Ismael): same word count, each word off by at most 1 letter, 2 in total. */
-export function similarNames(a: string, b: string) {
-  const x = a.split(" "),
-    y = b.split(" ");
-  if (!a || !b || x.length !== y.length) return false;
+export function similarNames(a: unknown, b: unknown) {
+  const as = a == null ? "" : typeof a === "string" ? a : String(a);
+  const bs = b == null ? "" : typeof b === "string" ? b : String(b);
+  const x = as.split(" "),
+    y = bs.split(" ");
+  if (!as || !bs || x.length !== y.length) return false;
   let total = 0;
   for (let i = 0; i < x.length; i++) {
     const d = editDist(x[i], y[i]);

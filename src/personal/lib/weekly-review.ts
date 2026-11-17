@@ -10,9 +10,16 @@ import type {
   WeeklyReview,
 } from "./types";
 
+/** Coerce cloud/local date keys before `.split("-")` — corrupt non-strings crash otherwise. */
+function asIsoDate(raw: unknown, fallback = todayLocal()): string {
+  const s = raw == null ? "" : typeof raw === "string" ? raw : String(raw);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return fallback;
+}
+
 /** Monday YYYY-MM-DD for the week containing `isoDate` (local). */
-export function weekStartMonday(isoDate = todayLocal()): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
+export function weekStartMonday(isoDate: unknown = todayLocal()): string {
+  const [y, m, d] = asIsoDate(isoDate).split("-").map(Number);
   const dt = new Date(y!, m! - 1, d!);
   const day = dt.getDay(); // 0 Sun … 6 Sat
   const diff = day === 0 ? -6 : 1 - day;
@@ -20,15 +27,15 @@ export function weekStartMonday(isoDate = todayLocal()): string {
   return toIso(dt);
 }
 
-export function weekEndSunday(weekStart: string): string {
-  const [y, m, d] = weekStart.split("-").map(Number);
+export function weekEndSunday(weekStart: unknown): string {
+  const [y, m, d] = asIsoDate(weekStart).split("-").map(Number);
   const dt = new Date(y!, m! - 1, d!);
   dt.setDate(dt.getDate() + 6);
   return toIso(dt);
 }
 
-export function weekRangeMs(weekStart: string): { fromMs: number; toMs: number } {
-  const [y, m, d] = weekStart.split("-").map(Number);
+export function weekRangeMs(weekStart: unknown): { fromMs: number; toMs: number } {
+  const [y, m, d] = asIsoDate(weekStart).split("-").map(Number);
   const from = new Date(y!, m! - 1, d!, 0, 0, 0, 0);
   const to = new Date(y!, m! - 1, d!, 23, 59, 59, 999);
   to.setDate(to.getDate() + 6);
@@ -48,14 +55,15 @@ export type WeeklyStats = {
 };
 
 export function buildWeeklyStats(
-  weekStart: string,
+  weekStart: unknown,
   sessions: FocusSession[],
   discipline: DisciplineCheck[],
   assessments: Assessment[],
 ): WeeklyStats {
-  const { fromMs, toMs } = weekRangeMs(weekStart);
-  const weekEnd = weekEndSunday(weekStart);
-  const datesInWeek = enumerateDates(weekStart, weekEnd);
+  const start = asIsoDate(weekStart);
+  const { fromMs, toMs } = weekRangeMs(start);
+  const weekEnd = weekEndSunday(start);
+  const datesInWeek = enumerateDates(start, weekEnd);
 
   const sess = Array.isArray(sessions) ? sessions : [];
   const disc = Array.isArray(discipline) ? discipline : [];
@@ -75,7 +83,7 @@ export function buildWeeklyStats(
   );
 
   return {
-    weekStart,
+    weekStart: start,
     weekEnd,
     focusMinutes,
     sessionCount,
@@ -87,9 +95,9 @@ export function buildWeeklyStats(
   };
 }
 
-export function emptyWeeklyReview(weekStart: string): WeeklyReview {
+export function emptyWeeklyReview(weekStart: unknown): WeeklyReview {
   return {
-    weekStart,
+    weekStart: asIsoDate(weekStart),
     wins: "",
     blockers: "",
     nextFocus: "",
@@ -107,7 +115,7 @@ function toIso(d: Date): string {
 
 function enumerateDates(from: string, to: string): string[] {
   const out: string[] = [];
-  const [y, m, d] = from.split("-").map(Number);
+  const [y, m, d] = asIsoDate(from).split("-").map(Number);
   const cursor = new Date(y!, m! - 1, d!);
   const end = to;
   for (let i = 0; i < 8; i++) {
