@@ -332,7 +332,13 @@ export function EmployeeDirectory() {
                 >
                   <label>
                     <span className="lbl">Search institution</span>
-                    <input className="field" value={instQuery} onChange={(e) => setInstQuery(e.target.value)} placeholder="HBL, Meezan, JazzCash…" />
+                    <input
+                      className="field"
+                      value={instQuery}
+                      onChange={(e) => setInstQuery(e.target.value)}
+                      onInput={(e) => setInstQuery((e.target as HTMLInputElement).value)}
+                      placeholder="HBL, Meezan, JazzCash…"
+                    />
                   </label>
                   <label>
                     <span className="lbl">Institution</span>
@@ -353,7 +359,15 @@ export function EmployeeDirectory() {
                   {form.institutionId === PK_INSTITUTION_OTHER_ID && (
                     <label>
                       <span className="lbl">Other label</span>
-                      <input className="field" value={form.otherLabel} onChange={(e) => setForm((f) => ({ ...f, otherLabel: e.target.value }))} />
+                      <input
+                        className="field"
+                        data-testid="admin-bank-other-label"
+                        value={form.otherLabel}
+                        onChange={(e) => setForm((f) => ({ ...f, otherLabel: e.target.value }))}
+                        onInput={(e) =>
+                          setForm((f) => ({ ...f, otherLabel: (e.target as HTMLInputElement).value }))
+                        }
+                      />
                     </label>
                   )}
                   <label className="inline-flex items-center gap-2 text-sm">

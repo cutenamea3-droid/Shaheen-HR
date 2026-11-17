@@ -58,9 +58,11 @@ export function SalaryPayments() {
     const ids = [...liveEmployees.map((e) => e.id), ...SYNTHETIC_EMPLOYEES.map((e) => e.id)];
     for (const id of ids) {
       ensureMeta(id);
-      const draft = dueDraft[id];
+      const dom =
+        document.querySelector<HTMLInputElement>(`[data-testid="admin-due-${id}"]`)?.value ?? "";
+      const draft = (dueDraft[id] ?? "").trim() || dom.trim();
       const existing = payments.find((p) => p.employeeId === id && p.month === month);
-      if (draft != null && draft !== "") {
+      if (draft !== "") {
         const n = Number(draft);
         const r = upsertPaymentDue(id, month, n);
         if (!r.ok) {
@@ -160,9 +162,13 @@ export function SalaryPayments() {
                 <input
                   className="field"
                   inputMode="numeric"
+                  data-testid={`admin-due-${e.id}`}
                   value={dueDraft[e.id] ?? ""}
                   placeholder="e.g. 150000"
                   onChange={(ev) => setDueDraft((d) => ({ ...d, [e.id]: ev.target.value }))}
+                  onInput={(ev) =>
+                    setDueDraft((d) => ({ ...d, [e.id]: (ev.target as HTMLInputElement).value }))
+                  }
                 />
               </label>
             </div>

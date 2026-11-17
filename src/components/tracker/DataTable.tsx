@@ -520,12 +520,18 @@ export function DataTable({
                           <div className="flex items-center gap-1">
                             <input
                               autoFocus
+                              data-testid={`datatable-header-edit-${i}`}
                               value={headDraft}
                               onChange={(e) => setHeadDraft(e.target.value)}
+                              onInput={(e) => setHeadDraft((e.target as HTMLInputElement).value)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
+                                  const next =
+                                    headDraft.trim() ||
+                                    (e.currentTarget as HTMLInputElement).value ||
+                                    "";
                                   patchSection(sectionId, {
-                                    headers: safeHeaders.map((x, j) => (j === i ? headDraft : x)),
+                                    headers: safeHeaders.map((x, j) => (j === i ? next : x)),
                                   });
                                   setEditHead(null);
                                 }
@@ -535,9 +541,13 @@ export function DataTable({
                             />
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                const dom =
+                                  (e.currentTarget.previousElementSibling as HTMLInputElement | null)
+                                    ?.value ?? "";
+                                const next = headDraft.trim() || dom;
                                 patchSection(sectionId, {
-                                  headers: safeHeaders.map((x, j) => (j === i ? headDraft : x)),
+                                  headers: safeHeaders.map((x, j) => (j === i ? next : x)),
                                 });
                                 setEditHead(null);
                               }}

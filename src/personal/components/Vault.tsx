@@ -114,8 +114,12 @@ export function Vault() {
               type="number"
               min={20}
               max={480}
+              data-testid="personal-weekday-minutes"
               value={settings.weekdayMinutes}
               onChange={(e) => setSettings({ weekdayMinutes: Number(e.target.value) || 120 })}
+              onInput={(e) =>
+                setSettings({ weekdayMinutes: Number((e.target as HTMLInputElement).value) || 120 })
+              }
             />
           </Field>
           <Field label="Sunday Recovery Mission (minutes)">
@@ -124,8 +128,12 @@ export function Vault() {
               type="number"
               min={20}
               max={600}
+              data-testid="personal-sunday-minutes"
               value={settings.sundayMinutes}
               onChange={(e) => setSettings({ sundayMinutes: Number(e.target.value) || 270 })}
+              onInput={(e) =>
+                setSettings({ sundayMinutes: Number((e.target as HTMLInputElement).value) || 270 })
+              }
             />
           </Field>
           <Field label="Pomodoro focus (min)">
@@ -136,6 +144,9 @@ export function Vault() {
               max={90}
               value={settings.pomodoroFocus}
               onChange={(e) => setSettings({ pomodoroFocus: Number(e.target.value) || 25 })}
+              onInput={(e) =>
+                setSettings({ pomodoroFocus: Number((e.target as HTMLInputElement).value) || 25 })
+              }
             />
           </Field>
           <Field label="Pomodoro break (min)">
@@ -146,6 +157,9 @@ export function Vault() {
               max={30}
               value={settings.pomodoroBreak}
               onChange={(e) => setSettings({ pomodoroBreak: Number(e.target.value) || 5 })}
+              onInput={(e) =>
+                setSettings({ pomodoroBreak: Number((e.target as HTMLInputElement).value) || 5 })
+              }
             />
           </Field>
           <Field label="Deep focus (min)">
@@ -156,6 +170,9 @@ export function Vault() {
               max={120}
               value={settings.deepFocus}
               onChange={(e) => setSettings({ deepFocus: Number(e.target.value) || 50 })}
+              onInput={(e) =>
+                setSettings({ deepFocus: Number((e.target as HTMLInputElement).value) || 50 })
+              }
             />
           </Field>
           <Field label="Deep break (min)">
@@ -166,6 +183,9 @@ export function Vault() {
               max={30}
               value={settings.deepBreak}
               onChange={(e) => setSettings({ deepBreak: Number(e.target.value) || 10 })}
+              onInput={(e) =>
+                setSettings({ deepBreak: Number((e.target as HTMLInputElement).value) || 10 })
+              }
             />
           </Field>
         </div>
@@ -394,8 +414,10 @@ export function Vault() {
         <Field label="Private vault scratchpad">
           <textarea
             className="hp-field min-h-[120px] py-2"
+            data-testid="personal-vault-notes"
             value={vaultNotes}
             onChange={(e) => setVaultNotes(e.target.value)}
+            onInput={(e) => setVaultNotes((e.target as HTMLTextAreaElement).value)}
             placeholder="Do not store real passwords here. Semester goals only."
           />
         </Field>

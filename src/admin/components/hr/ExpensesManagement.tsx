@@ -688,15 +688,20 @@ export function ExpensesManagement() {
               min={0}
               step={1}
               className="field w-28"
+              data-testid="admin-budget-limit"
               placeholder="Limit PKR"
               value={budgetLimit}
               onChange={(e) => setBudgetLimit(e.target.value)}
+              onInput={(e) => setBudgetLimit((e.target as HTMLInputElement).value)}
             />
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => {
-                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: Number(budgetLimit), note: "" });
+              onClick={(e) => {
+                const dom =
+                  (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
+                const limit = Number((budgetLimit.trim() || dom || "0"));
+                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: limit, note: "" });
                 setMsg(r.ok ? "Budget saved." : r.error ?? "Failed");
               }}
             >

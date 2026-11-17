@@ -175,17 +175,29 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                       ))}
                     </div>
                   ) : t === "date" ? (
-                    <input type="date" value={v} onChange={(e) => setV(def, i, e.target.value)} className={inputCls} />
+                    <input
+                      type="date"
+                      value={v}
+                      onChange={(e) => setV(def, i, e.target.value)}
+                      onInput={(e) => setV(def, i, (e.target as HTMLInputElement).value)}
+                      className={inputCls}
+                    />
                   ) : t === "note" || t === "plan" || t === "tempnote" ? (
                     <textarea
                       value={v}
                       onChange={(e) => setV(def, i, e.target.value)}
+                      onInput={(e) => setV(def, i, (e.target as HTMLTextAreaElement).value)}
                       rows={2}
                       className={inputCls}
                       placeholder={t === "tempnote" ? "Add temporary reminder (never highlights)" : t === "plan" ? "Add future plan" : "Add note"}
                     />
                   ) : (
-                    <input value={v} onChange={(e) => setV(def, i, e.target.value)} className={inputCls} />
+                    <input
+                      value={v}
+                      onChange={(e) => setV(def, i, e.target.value)}
+                      onInput={(e) => setV(def, i, (e.target as HTMLInputElement).value)}
+                      className={inputCls}
+                    />
                   )}
                 </Field>
               );
