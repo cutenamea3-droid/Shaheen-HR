@@ -159,7 +159,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <Field key={i} label={(headers[i] ?? `Column ${i + 1}`).trim()}>
                   {t === "status" ? (
                     <div className="flex flex-wrap gap-2">
-                      {def.statusOptions.map((o) => (
+                      {(Array.isArray(def.statusOptions) ? def.statusOptions : []).map((o) => (
                         <button
                           key={o}
                           type="button"

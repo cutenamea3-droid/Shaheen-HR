@@ -287,6 +287,7 @@ export function StatusToggle({
   /** May be omitted or explicitly undefined when the status column has no paired expiry. */
   expiryValue?: string | undefined;
 }) {
+  const safeOptions = Array.isArray(options) ? options : [];
   const view = useViewMode();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
@@ -328,7 +329,7 @@ export function StatusToggle({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-3" align="start">
         <div className="grid grid-cols-2 gap-2">
-          {options.map((o) => {
+          {safeOptions.map((o) => {
             const t = statusTone(o);
             const active = normStatus(value) === o;
             return (

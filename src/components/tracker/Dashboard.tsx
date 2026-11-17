@@ -364,7 +364,9 @@ function SectionAlerts({
             className="h-10 rounded-lg border-2 bg-card px-2 text-sm font-semibold"
           >
             <option value="missing">Missing / Invalid</option>
-            {def.statusOptions.includes("Applied") && <option value="applied">Applied</option>}
+            {(Array.isArray(def.statusOptions) ? def.statusOptions : []).includes("Applied") && (
+              <option value="applied">Applied</option>
+            )}
             <option value="all">All alerts</option>
           </select>
           <button
