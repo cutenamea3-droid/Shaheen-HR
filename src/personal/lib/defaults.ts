@@ -112,7 +112,7 @@ export function defaultSettings(): PersonalSettings {
 /** Merge older localStorage blobs without wiping progress / timetable. */
 export function migrateSettings(raw: Partial<PersonalSettings> | undefined): PersonalSettings {
   const base = defaultSettings();
-  if (!raw) return base;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
   const weekday =
     typeof raw.weekdayMinutes === "number"
       ? raw.weekdayMinutes

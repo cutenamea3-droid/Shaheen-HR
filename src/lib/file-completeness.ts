@@ -58,7 +58,18 @@ export type FileCompletenessReport = {
 function scoreItems(summary: InspectionDriverSummary): FileCompletenessRow {
   let complete = 0;
   let applicable = 0;
-  const c = summary.counts;
+  const c =
+    summary.counts && typeof summary.counts === "object" && !Array.isArray(summary.counts)
+      ? summary.counts
+      : ({
+          verified: 0,
+          present: 0,
+          missing: 0,
+          expired: 0,
+          pending: 0,
+          unable: 0,
+          n_a: 0,
+        } as Record<InspectionStatus, number>);
   for (const status of Object.keys(c) as InspectionStatus[]) {
     const n = c[status];
     if (APPLICABLE_EXCLUDE.includes(status)) continue;

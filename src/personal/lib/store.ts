@@ -174,8 +174,9 @@ export const usePersonal = create<PersonalStore>()(
       setAuthed: (authed) => set({ authed }),
       setSettings: (p) =>
         set((s) => {
-          const next = { ...s.settings, ...p };
-          if (p.weekdayMinutes != null) next.dailyTargetMinutes = p.weekdayMinutes;
+          const patch = p && typeof p === "object" && !Array.isArray(p) ? p : {};
+          const next = migrateSettings({ ...migrateSettings(s.settings), ...patch });
+          if (patch.weekdayMinutes != null) next.dailyTargetMinutes = patch.weekdayMinutes;
           return { settings: next };
         }),
       upsertCourse: (c) =>
@@ -417,7 +418,12 @@ export const usePersonal = create<PersonalStore>()(
           courses: seed.courses,
           assessments: seed.assessments,
           backlog: seed.backlog,
-          settings: { ...s.settings, ...seed.settingsPatch },
+          settings: migrateSettings({
+            ...migrateSettings(s.settings),
+            ...(seed.settingsPatch && typeof seed.settingsPatch === "object" && !Array.isArray(seed.settingsPatch)
+              ? seed.settingsPatch
+              : {}),
+          }),
           vaultNotes,
           vuSeededAt: new Date().toISOString(),
           vuPlanAsOf: plan.asOf,

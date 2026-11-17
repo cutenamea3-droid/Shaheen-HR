@@ -358,9 +358,12 @@ export function buildInspectionSummaries(data: AppData): InspectionDriverSummary
 export function fleetInspectionCounts(summaries: InspectionDriverSummary[]) {
   const counts = emptyCounts();
   let drivers = 0;
-  for (const s of summaries) {
+  const list = Array.isArray(summaries) ? summaries : [];
+  for (const s of list) {
     drivers++;
-    for (const k of Object.keys(counts) as InspectionStatus[]) counts[k] += s.counts[k];
+    const sc =
+      s?.counts && typeof s.counts === "object" && !Array.isArray(s.counts) ? s.counts : emptyCounts();
+    for (const k of Object.keys(counts) as InspectionStatus[]) counts[k] += sc[k] ?? 0;
   }
   return { drivers, ...counts };
 }
