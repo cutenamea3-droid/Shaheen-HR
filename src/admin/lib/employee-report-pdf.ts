@@ -142,9 +142,13 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   doc.setTextColor(...PDF_THEME.muted);
   doc.text("Assessment ≠ facts ≠ statements. Ratings are HR judgment; facts come from attendance calc.", MARGIN.left + 6, y);
   y += 14;
-  const ratingRows = (Object.keys(emp.ratingCounts) as Rating[])
-    .filter((r) => emp.ratingCounts[r] > 0)
-    .map((r) => [RATING_LABEL[r], String(emp.ratingCounts[r])]);
+  const ratingCounts =
+    emp.ratingCounts && typeof emp.ratingCounts === "object" && !Array.isArray(emp.ratingCounts)
+      ? emp.ratingCounts
+      : ({} as typeof emp.ratingCounts);
+  const ratingRows = (Object.keys(ratingCounts) as Rating[])
+    .filter((r) => ratingCounts[r] > 0)
+    .map((r) => [RATING_LABEL[r], String(ratingCounts[r])]);
   autoTable(doc, {
     startY: y,
     head: [["Assessment rating", "Days"]],

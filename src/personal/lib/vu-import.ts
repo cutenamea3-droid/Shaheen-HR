@@ -27,7 +27,8 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
   vaultAppendix: string;
 } {
   const student = plan.student;
-  const courses: Course[] = plan.enrolledCourses.map((c) => {
+  const enrolled = Array.isArray(plan?.enrolledCourses) ? plan.enrolledCourses : [];
+  const courses: Course[] = enrolled.map((c) => {
     const code = c.code;
     const prog = plan.progressTimeline.courses[code as keyof typeof plan.progressTimeline.courses] as
       | {
@@ -65,7 +66,8 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
     };
   });
 
-  const assessments: Assessment[] = (plan.todos as VuTodo[])
+  const todos = Array.isArray(plan?.todos) ? (plan.todos as VuTodo[]) : [];
+  const assessments: Assessment[] = todos
     .filter((t) => t.kind !== "fee" && t.due)
     .map((t) => ({
       id: assessmentId(t),
@@ -86,7 +88,8 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
   // Owner can add exam refs later via Assessments after confirming on VULMS.
 
   const now = Date.now();
-  const backlog: BacklogItem[] = plan.recovery.priorityTodos.map((t, i) => ({
+  const priorityTodos = Array.isArray(plan?.recovery?.priorityTodos) ? plan.recovery.priorityTodos : [];
+  const backlog: BacklogItem[] = priorityTodos.map((t, i) => ({
     id: `vu-backlog-${i}-${assessmentId(t as VuTodo).slice(3, 24)}`,
     courseId: t.courseCode ? courseIdFromCode(t.courseCode) : "general",
     label:

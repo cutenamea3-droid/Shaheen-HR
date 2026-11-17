@@ -56,12 +56,17 @@ type TimerState = {
 const DONE_KEY = "hr-personal-vu-today-done-v1";
 const MODE_KEY = "hr-personal-vu-today-modes-v1";
 
+function asDoneMap(v: unknown): Record<string, boolean> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, boolean>) : {};
+}
+
 function loadDoneMap(date: string): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(DONE_KEY);
     if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Record<string, boolean>>;
-    return parsed[date] ?? {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return asDoneMap((parsed as Record<string, unknown>)[date]);
   } catch {
     return {};
   }
@@ -70,8 +75,14 @@ function loadDoneMap(date: string): Record<string, boolean> {
 function saveDoneMap(date: string, map: Record<string, boolean>) {
   try {
     const raw = localStorage.getItem(DONE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, boolean>>) : {};
-    parsed[date] = map;
+    let parsed: Record<string, Record<string, boolean>> = {};
+    if (raw) {
+      const j = JSON.parse(raw) as unknown;
+      if (j && typeof j === "object" && !Array.isArray(j)) {
+        parsed = j as Record<string, Record<string, boolean>>;
+      }
+    }
+    parsed[date] = asDoneMap(map);
     localStorage.setItem(DONE_KEY, JSON.stringify(parsed));
   } catch {
     /* ignore */
@@ -183,7 +194,8 @@ export function Today() {
   const minutes7d = studyMinutesInRange(sessions, Date.now() - 7 * 86400000, Date.now());
   const streak = streakDays(sessions);
   const active14 = consistencyDays(sessions, 14);
-  const doneCount = Object.values(doneMap).filter(Boolean).length;
+  const safeDone = asDoneMap(doneMap);
+  const doneCount = Object.values(safeDone).filter(Boolean).length;
   const progressPct = rx.blocks.length
     ? Math.round((doneCount / rx.blocks.length) * 100)
     : 0;
@@ -196,7 +208,7 @@ export function Today() {
   });
 
   const markDone = (block: TodayBlock, done: boolean) => {
-    const next = { ...doneMap, [block.id]: done };
+    const next = { ...safeDone, [block.id]: done };
     setDoneMap(next);
     saveDoneMap(today, next);
     if (block.todoTitle) {
@@ -451,7 +463,7 @@ export function Today() {
 
           <ul className="space-y-2.5">
             {rx.blocks.map((b, i) => {
-              const done = !!doneMap[b.id];
+              const done = !!safeDone[b.id];
               const active = timer.blockId === b.id;
               return (
                 <li

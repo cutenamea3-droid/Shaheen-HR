@@ -243,7 +243,9 @@ export async function cloudStamp() {
 export async function cloudLoad() {
   const { data: rows, error } = await db.from(T).select("id, data, updated_at");
   if (error) throw new Error(error.message);
-  const list = (rows as unknown as { id: string; data: unknown; updated_at: string }[]) ?? [];
+  const list = Array.isArray(rows)
+    ? (rows as { id: string; data: unknown; updated_at: string }[])
+    : [];
   const stamp = list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
   return { sections: Object.fromEntries(list.map((r) => [r.id, JSON.stringify(r.data)])) as Record<string, string>, stamp };
 }
@@ -260,6 +262,6 @@ export async function cloudSave({ data }: { data: { sections: Record<string, str
   if (!rows.length) return { stamp: "" };
   const { data: out, error } = await db.from(T).upsert(rows as never).select("updated_at");
   if (error) throw new Error(error.message);
-  const list = (out as unknown as { updated_at: string }[]) ?? [];
+  const list = Array.isArray(out) ? (out as { updated_at: string }[]) : [];
   return { stamp: list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "") };
 }

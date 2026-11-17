@@ -199,14 +199,17 @@ export function buildTodayPrescription(
   const overdue = pending.filter((t) => t.statusAsOf === "window_ended");
   const openNow = pending.filter((t) => t.statusAsOf === "open_now");
   const slots = slotsForDate(plan, todayIso);
-  const weekSlots = plan.weeklyLectureSchedule.slots as VuLectureSlot[];
+  const weekSlots = Array.isArray(plan?.weeklyLectureSchedule?.slots)
+    ? (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+    : [];
   const catchUp = plan.recovery.cs101ProgressCatchUp as {
     absentWeeksVisible: number;
     estimatedCatchUpMinutes: number;
     attendanceAbsentPct?: number | null;
   };
+  const enrolled = Array.isArray(plan?.enrolledCourses) ? plan.enrolledCourses : [];
   const creditByCode = new Map(
-    plan.enrolledCourses.map((c) => [c.code, c.creditHours ?? 0] as const),
+    enrolled.map((c) => [c.code, c.creditHours ?? 0] as const),
   );
 
   let pendencyMinutes = 0;
