@@ -213,36 +213,65 @@ export const usePerfFollowUps = create<State>()(
           createdAt: Date.now(),
           completedAt: null,
         };
-        set({ followUps: [row, ...get().followUps] });
+        const prev = Array.isArray(get().followUps) ? get().followUps : [];
+        set({ followUps: [row, ...prev] });
         return row;
       },
       completeFollowUp: (id) =>
-        set((s) => ({
-          followUps: s.followUps.map((f) =>
-            f.id === id ? { ...f, status: "done", completedAt: Date.now() } : f,
-          ),
-        })),
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return {
+            followUps: list.map((f) =>
+              f.id === id ? { ...f, status: "done", completedAt: Date.now() } : f,
+            ),
+          };
+        }),
       reopenFollowUp: (id) =>
-        set((s) => ({
-          followUps: s.followUps.map((f) =>
-            f.id === id ? { ...f, status: "open", completedAt: null } : f,
-          ),
-        })),
-      removeFollowUp: (id) => set((s) => ({ followUps: s.followUps.filter((f) => f.id !== id) })),
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return {
+            followUps: list.map((f) =>
+              f.id === id ? { ...f, status: "open", completedAt: null } : f,
+            ),
+          };
+        }),
+      removeFollowUp: (id) =>
+        set((s) => {
+          const list = Array.isArray(s.followUps) ? s.followUps : [];
+          return { followUps: list.filter((f) => f.id !== id) };
+        }),
       addHrStatement: (employeeId, date, text) => {
         const t = text.trim();
         if (!t) return { error: "Statement text required" };
         if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Employee and date required" };
         const row: HrStatement = { id: uid(), employeeId, date, text: t, createdAt: Date.now() };
-        set({ hrStatements: [row, ...get().hrStatements].slice(0, 500) });
+        const prev = Array.isArray(get().hrStatements) ? get().hrStatements : [];
+        set({ hrStatements: [row, ...prev].slice(0, 500) });
         return row;
       },
       openFollowUps: (date) => {
-        const open = get().followUps.filter((f) => f.status === "open");
+        const open = (Array.isArray(get().followUps) ? get().followUps : []).filter(
+          (f) => f.status === "open",
+        );
         if (!date) return open;
         return open.filter((f) => f.due <= date);
       },
     }),
-    { name: PERF_FOLLOWUPS_STORAGE_KEY },
+    {
+      name: PERF_FOLLOWUPS_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        return {
+          ...current,
+          ...raw,
+          followUps: arr(raw.followUps, current.followUps),
+          hrStatements: arr(raw.hrStatements, current.hrStatements),
+        };
+      },
+    },
   ),
 );

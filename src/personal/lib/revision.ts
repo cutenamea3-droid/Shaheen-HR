@@ -23,18 +23,21 @@ export function suggestRevisionTargets(
   nowMs = Date.now(),
 ): RevisionSuggestion[] {
   const out: RevisionSuggestion[] = [];
+  const noteList = Array.isArray(notes) ? notes : [];
+  const courseList = Array.isArray(courses) ? courses : [];
+  const assessmentList = Array.isArray(assessments) ? assessments : [];
   const notesByCourse = new Map<string, number>();
-  for (const n of notes) {
+  for (const n of noteList) {
     const key = n.courseId === "general" ? "general" : n.courseId;
     notesByCourse.set(key, (notesByCourse.get(key) ?? 0) + 1);
   }
 
-  for (const a of assessments) {
+  for (const a of assessmentList) {
     if (a.submitted || a.done) continue;
     if (a.kind !== "assignment" && a.kind !== "quiz" && a.kind !== "gdb" && a.kind !== "midterm" && a.kind !== "final") {
       continue;
     }
-    const course = courses.find((c) => c.id === a.courseId);
+    const course = courseList.find((c) => c.id === a.courseId);
     const code = course?.code ?? a.courseId;
     let urgency: RevisionSuggestion["urgency"] = "medium";
     if (a.dueDate) {
@@ -57,7 +60,7 @@ export function suggestRevisionTargets(
     });
   }
 
-  for (const c of courses) {
+  for (const c of courseList) {
     if (c.isTbd) continue;
     const n = notesByCourse.get(c.id) ?? 0;
     if (n === 0) {
@@ -76,9 +79,12 @@ export function suggestRevisionTargets(
 }
 
 export function filterNotesByTag(notes: Note[], tag: string | "all"): Note[] {
-  if (tag === "all") return notes;
+  const list = Array.isArray(notes) ? notes : [];
+  if (tag === "all") return list;
   const t = tag.toLowerCase();
-  return notes.filter((n) => n.tags.some((x) => x.toLowerCase() === t));
+  return list.filter((n) =>
+    (Array.isArray(n.tags) ? n.tags : []).some((x) => x.toLowerCase() === t),
+  );
 }
 
 export const PRACTICE_CHECKLIST = [

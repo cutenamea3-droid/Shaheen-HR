@@ -37,8 +37,10 @@ type DirectoryRow = {
 };
 
 export function EmployeeDirectory() {
-  const liveEmployees = useApp((s) => s.employees);
-  const depts = useApp((s) => s.depts);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const deptsRaw = useApp((s) => s.depts);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
   const meta = useEmployeeFinanceMock((s) => s.meta);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const setStatus = useEmployeeFinanceMock((s) => s.setStatus);

@@ -149,6 +149,11 @@ function blankStops(): LoadStop[] {
   ];
 }
 
+/** Truthy `.length` on a string is unsafe — only real stop arrays hydrate the editor. */
+function stopsOf(stops: unknown): LoadStop[] {
+  return Array.isArray(stops) && stops.length ? (stops as LoadStop[]) : blankStops();
+}
+
 export function DispatchApp() {
   const [account, setAccount] = useState<DispatchAccount | null>(null);
   const [booting, setBooting] = useState(true);
@@ -1099,8 +1104,9 @@ function LoadEditor({
     reopen_reason: load?.reopen_reason ?? "",
     payment_status: (load?.payment_status ?? "unpaid") as PaymentStatus,
     stale_after_minutes: load?.stale_after_minutes ?? 180,
-    stops: load?.stops?.length ? structuredClone(load.stops) : blankStops(),
+    stops: Array.isArray(load?.stops) ? structuredClone(stopsOf(load.stops)) : blankStops(),
   }));
+  const editorStops = stopsOf(form.stops);
   const [checkNotes, setCheckNotes] = useState("");
   const [checkLocation, setCheckLocation] = useState("");
   const checkNotesRef = useRef<HTMLInputElement>(null);
@@ -1146,7 +1152,7 @@ function LoadEditor({
 
   function setStop(i: number, patch: Partial<LoadStop>) {
     setForm((f) => {
-      const stops = [...f.stops];
+      const stops = [...stopsOf(f.stops)];
       stops[i] = { ...stops[i], ...patch };
       return { ...f, stops };
     });
@@ -1371,24 +1377,27 @@ function LoadEditor({
             type="button"
             className="dispatch-btn-ghost"
             onClick={() =>
-              setForm((f) => ({
-                ...f,
-                stops: [
-                  ...f.stops,
-                  {
-                    sequence: f.stops.length + 1,
-                    stop_type: "other",
-                    name: "",
-                    address: "",
-                    city: "",
-                    state: "",
-                    postal_code: "",
-                    planned_at: null,
-                    actual_at: null,
-                    notes: "",
-                  },
-                ],
-              }))
+              setForm((f) => {
+                const cur = stopsOf(f.stops);
+                return {
+                  ...f,
+                  stops: [
+                    ...cur,
+                    {
+                      sequence: cur.length + 1,
+                      stop_type: "other",
+                      name: "",
+                      address: "",
+                      city: "",
+                      state: "",
+                      postal_code: "",
+                      planned_at: null,
+                      actual_at: null,
+                      notes: "",
+                    },
+                  ],
+                };
+              })
             }
           >
             Add stop
@@ -1398,7 +1407,7 @@ function LoadEditor({
           Reorder or remove stops as needed. Planned times are desk-entered — no invented ETAs.
         </p>
         <div className="grid gap-3">
-          {form.stops.map((stop, i) => (
+          {editorStops.map((stop, i) => (
             <div
               key={i}
               className="grid gap-2 rounded-lg border border-[color:var(--dispatch-border)] p-3 sm:grid-cols-3"
@@ -1411,23 +1420,23 @@ function LoadEditor({
                   type="button"
                   className="dispatch-btn-ghost"
                   disabled={i === 0}
-                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, -1) }))}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(stopsOf(f.stops), i, -1) }))}
                 >
                   Up
                 </button>
                 <button
                   type="button"
                   className="dispatch-btn-ghost"
-                  disabled={i >= form.stops.length - 1}
-                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(f.stops, i, 1) }))}
+                  disabled={i >= editorStops.length - 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: moveStop(stopsOf(f.stops), i, 1) }))}
                 >
                   Down
                 </button>
                 <button
                   type="button"
                   className="dispatch-btn-ghost"
-                  disabled={form.stops.length <= 1}
-                  onClick={() => setForm((f) => ({ ...f, stops: removeStop(f.stops, i) }))}
+                  disabled={editorStops.length <= 1}
+                  onClick={() => setForm((f) => ({ ...f, stops: removeStop(stopsOf(f.stops), i) }))}
                 >
                   Remove
                 </button>
@@ -1627,7 +1636,7 @@ function LoadEditor({
                     note: nextReschedule,
                     planned_pickup_at: pickup,
                     planned_delivery_at: delivery,
-                    stops: form.stops.map((s, idx) => ({ ...s, sequence: idx + 1 })),
+                    stops: editorStops.map((s, idx) => ({ ...s, sequence: idx + 1 })),
                   });
                   setForm((f) => ({
                     ...f,
@@ -2082,7 +2091,7 @@ function LoadEditor({
               closed_at: load?.closed_at ?? null,
               reopened_at: load?.reopened_at ?? null,
               stale_after_minutes: form.stale_after_minutes,
-              stops: form.stops.map((s, i) => ({ ...s, sequence: i + 1 })),
+              stops: editorStops.map((s, i) => ({ ...s, sequence: i + 1 })),
             });
           }}
         >

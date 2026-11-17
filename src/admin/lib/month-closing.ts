@@ -51,15 +51,31 @@ export const useMonthClosing = create<State>()(
     (set, get) => ({
       months: {},
       closingMeansPaid: false,
-      statusOf: (month) => get().months[month]?.status ?? "open",
-      isClosed: (month) => (get().months[month]?.status ?? "open") === "closed",
+      statusOf: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return months[month]?.status ?? "open";
+      },
+      isClosed: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return (months[month]?.status ?? "open") === "closed";
+      },
       closeMonth: (month, who) => {
         if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
         if (get().isClosed(month)) return { ok: false, error: "Month already closed" };
-        const prev = get().months[month] ?? empty(month);
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[month] ?? empty(month);
         set({
           months: {
-            ...get().months,
+            ...months,
             [month]: {
               ...prev,
               month,
@@ -79,10 +95,14 @@ export const useMonthClosing = create<State>()(
         if (!get().isClosed(month)) return { ok: false, error: "Month is not closed" };
         const trimmed = reason.trim();
         if (!trimmed) return { ok: false, error: "Reopen requires a reason" };
-        const prev = get().months[month] ?? empty(month);
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[month] ?? empty(month);
         set({
           months: {
-            ...get().months,
+            ...months,
             [month]: {
               ...prev,
               status: "open",
@@ -95,7 +115,20 @@ export const useMonthClosing = create<State>()(
         return { ok: true };
       },
     }),
-    { name: MONTH_CLOSING_STORAGE_KEY },
+    {
+      name: MONTH_CLOSING_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const months =
+          raw.months && typeof raw.months === "object" && !Array.isArray(raw.months)
+            ? raw.months
+            : current.months;
+        return { ...current, ...raw, months, closingMeansPaid: false as const };
+      },
+    },
   ),
 );
 

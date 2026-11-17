@@ -44,7 +44,21 @@ export function Attendance() {
   const monthSpan = useMemo(() => monthDays(month), [month]);
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);
-  const { employees, depts, records, perf, settings, setRec, resetRec, resetDay } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setRec,
+    resetRec,
+    resetDay,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const monthClosed = isDateInClosedMonth(date, isClosedFn);
   const day = records[date] ?? {};
