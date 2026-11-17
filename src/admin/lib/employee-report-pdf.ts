@@ -237,7 +237,14 @@ export async function downloadEmployeeReportPdf(
 ): Promise<Uint8Array | void> {
   const logo = opts.logoDataUrl !== undefined ? opts.logoDataUrl : await loadLogoDataUrl();
   const { doc, emp } = buildEmployeeReportDoc(data, { ...opts, logo });
-  const name = emp?.employee.name.replace(/\s+/g, "-") ?? opts.employeeId;
+  const rawName = emp?.employee?.name;
+  const name =
+    (rawName == null
+      ? ""
+      : typeof rawName === "string"
+        ? rawName
+        : String(rawName)
+    ).replace(/\s+/g, "-") || opts.employeeId;
   const filename = `Shaheen-Employee-Report-${name}-${opts.month}.pdf`;
   if (opts.returnBytes) return new Uint8Array(doc.output("arraybuffer"));
   doc.save(filename);

@@ -344,20 +344,23 @@ const SPLITS: { id: string; oldLen: number; at: number; moveNote: boolean }[] = 
   { id: "ssccdl", oldLen: 8, at: 7, moveNote: false },
 ];
 /** Matching key for one person: ignores ID numbers (S16, 498250, ,s232), punctuation, spacing and l/I scan mix-ups. */
-export const driverKey = (n: string) =>
-  (n ?? "")
+export const driverKey = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  return s
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .filter((t) => t && !/^s?\d+$/.test(t))
     .join(" ")
     .replace(/l/g, "i");
+};
 
 /** Links rows of the same person (in every section) to one driver, so Driver Cards shows one card. Cell values are untouched. */
 /** Sections whose column 1 holds the CDL number. */
 const CDL_COL: Record<string, number> = { dmv: 1, ssccdl: 1, inactive: 1 };
-export const cdlDigits = (v: string) => {
-  const d = (v ?? "").replace(/\D/g, "");
+export const cdlDigits = (v: unknown) => {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  const d = s.replace(/\D/g, "");
   return d.length >= 6 ? d : "";
 };
 function editDist(a: string, b: string) {
