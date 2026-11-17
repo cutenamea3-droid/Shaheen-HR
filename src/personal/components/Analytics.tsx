@@ -65,7 +65,7 @@ export function Analytics() {
       .reduce((sum, s) => sum + s.minutes, 0),
   }));
 
-  const plansDone = Object.values(dayPlans ?? {}).reduce(
+  const plansDone = Object.values(dayPlans).reduce(
     (acc, p) => {
       const blocks = blocksOf(p);
       acc.total += blocks.length;

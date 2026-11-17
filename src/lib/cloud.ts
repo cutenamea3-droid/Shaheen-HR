@@ -252,7 +252,11 @@ export async function cloudLoad() {
 
 export async function cloudSave({ data }: { data: { sections: Record<string, string> } }) {
   const now = new Date().toISOString();
-  const rows = Object.entries(data.sections).flatMap(([id, json]) => {
+  const sections =
+    data?.sections && typeof data.sections === "object" && !Array.isArray(data.sections)
+      ? data.sections
+      : {};
+  const rows = Object.entries(sections).flatMap(([id, json]) => {
     try {
       return [{ id, data: JSON.parse(json), updated_at: now }];
     } catch {

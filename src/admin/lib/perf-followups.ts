@@ -141,7 +141,8 @@ export function collectPerfStatements(input: {
       text: input.perf.note.trim(),
     });
   }
-  for (const s of input.hrStatements ?? []) {
+  const hrStatements = Array.isArray(input.hrStatements) ? input.hrStatements : [];
+  for (const s of hrStatements) {
     if (s.employeeId === input.employeeId && s.date === input.date && s.text.trim()) {
       out.push({
         layer: "statement",

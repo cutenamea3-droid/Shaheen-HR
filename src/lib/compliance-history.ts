@@ -146,7 +146,8 @@ export function buildComplianceHistory(
   }
 
   // Portal activity — section-level; attribute to a driver only when action text contains the name.
-  for (const entry of opts?.portalActivity ?? []) {
+  const portalActivity = Array.isArray(opts?.portalActivity) ? opts!.portalActivity : [];
+  for (const entry of portalActivity) {
     const at = Date.parse(entry.occurred_at);
     if (!Number.isFinite(at)) continue;
 
@@ -177,7 +178,8 @@ export function buildComplianceHistory(
     });
   }
 
-  for (const entry of opts?.sensitiveAudit ?? []) {
+  const sensitiveAudit = Array.isArray(opts?.sensitiveAudit) ? opts!.sensitiveAudit : [];
+  for (const entry of sensitiveAudit) {
     if (filterDriver && entry.driverId !== filterDriver) continue;
     events.push({
       id: `sensitive:${entry.id}`,

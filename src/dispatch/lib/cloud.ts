@@ -658,7 +658,7 @@ export async function saveHandover(
       from_dispatcher: input.from_dispatcher,
       to_dispatcher: input.to_dispatcher ?? null,
       summary: input.summary,
-      open_load_ids: input.open_load_ids ?? [],
+      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
       watch_items: input.watch_items ?? "",
       next_day_priorities: input.next_day_priorities ?? "",
       created_at: new Date().toISOString(),
@@ -677,7 +677,7 @@ export async function saveHandover(
       from_dispatcher: input.from_dispatcher,
       to_dispatcher: input.to_dispatcher ?? null,
       summary: input.summary,
-      open_load_ids: input.open_load_ids ?? [],
+      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
       watch_items: input.watch_items ?? "",
       next_day_priorities: input.next_day_priorities ?? "",
     })
