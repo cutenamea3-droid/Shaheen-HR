@@ -126,7 +126,7 @@ describe("expenses CSV — no bank fields", () => {
     expect(toExpenseExportRows(null as never, null as never, new Map())).toEqual([]);
     expect(
       toExpenseExportRows(
-        [base({ scope: "selected", employeeIds: null as never })],
+        [base({ scope: "multiple", employeeIds: null as never })],
         [{ id: "fuel", name: "Fuel", custom: false }],
         new Map([["a", "Ayesha"]]),
       )[0]?.employees,

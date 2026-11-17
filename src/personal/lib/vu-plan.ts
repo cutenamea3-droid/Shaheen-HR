@@ -165,6 +165,55 @@ function activityNoun(t: VuTodo): string {
   return "Activity";
 }
 
+const DEFAULT_ASSUMPTIONS = {
+  assignmentMinutes: 90,
+  quizMinutes: 45,
+  lectureMinutes: 50,
+  recoveryDays: 7,
+  keepUpDaysPerWeek: 6,
+} as const;
+
+function recoveryOf(plan: VuStudyPlan): Record<string, unknown> {
+  const r = (plan as { recovery?: unknown })?.recovery;
+  return r && typeof r === "object" && !Array.isArray(r) ? (r as Record<string, unknown>) : {};
+}
+
+function assumptionsOf(plan: VuStudyPlan) {
+  const raw = recoveryOf(plan).assumptions;
+  const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const num = (k: keyof typeof DEFAULT_ASSUMPTIONS, fallback: number) =>
+    typeof o[k] === "number" && Number.isFinite(o[k] as number) ? (o[k] as number) : fallback;
+  return {
+    assignmentMinutes: num("assignmentMinutes", DEFAULT_ASSUMPTIONS.assignmentMinutes),
+    quizMinutes: num("quizMinutes", DEFAULT_ASSUMPTIONS.quizMinutes),
+    lectureMinutes: num("lectureMinutes", DEFAULT_ASSUMPTIONS.lectureMinutes),
+    recoveryDays: Math.max(1, num("recoveryDays", DEFAULT_ASSUMPTIONS.recoveryDays)),
+    keepUpDaysPerWeek: Math.max(1, num("keepUpDaysPerWeek", DEFAULT_ASSUMPTIONS.keepUpDaysPerWeek)),
+  };
+}
+
+function catchUpOf(plan: VuStudyPlan): {
+  absentWeeksVisible: number;
+  estimatedCatchUpMinutes: number;
+  attendanceAbsentPct?: number | null;
+} | null {
+  const raw = recoveryOf(plan).cs101ProgressCatchUp;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const out: {
+    absentWeeksVisible: number;
+    estimatedCatchUpMinutes: number;
+    attendanceAbsentPct?: number | null;
+  } = {
+    absentWeeksVisible: typeof o.absentWeeksVisible === "number" ? o.absentWeeksVisible : 0,
+    estimatedCatchUpMinutes:
+      typeof o.estimatedCatchUpMinutes === "number" ? o.estimatedCatchUpMinutes : 0,
+  };
+  if (typeof o.attendanceAbsentPct === "number") out.attendanceAbsentPct = o.attendanceAbsentPct;
+  else if (o.attendanceAbsentPct === null) out.attendanceAbsentPct = null;
+  return out;
+}
+
 /**
  * Today plan engine (§8): graded closing soon → handout prep → Lecture Schedule → Progress backlog.
  * Remaining minutes/counts come only from exports + explicit planning assumptions.
@@ -188,13 +237,7 @@ export function buildTodayPrescription(
   nextIrreversible: VuTodo | null;
 } {
   const handoutFirst = !!opts.handoutFirst;
-  const assumptions = plan.recovery.assumptions as {
-    assignmentMinutes: number;
-    quizMinutes: number;
-    lectureMinutes: number;
-    recoveryDays: number;
-    keepUpDaysPerWeek: number;
-  };
+  const assumptions = assumptionsOf(plan);
   const pending = pendencyTodos(plan, todayIso);
   const overdue = pending.filter((t) => t.statusAsOf === "window_ended");
   const openNow = pending.filter((t) => t.statusAsOf === "open_now");
@@ -202,11 +245,7 @@ export function buildTodayPrescription(
   const weekSlots = Array.isArray(plan?.weeklyLectureSchedule?.slots)
     ? (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
     : [];
-  const catchUp = plan.recovery.cs101ProgressCatchUp as {
-    absentWeeksVisible: number;
-    estimatedCatchUpMinutes: number;
-    attendanceAbsentPct?: number | null;
-  };
+  const catchUp = catchUpOf(plan);
   const enrolled = Array.isArray(plan?.enrolledCourses) ? plan.enrolledCourses : [];
   const creditByCode = new Map(
     enrolled.map((c) => [c.code, c.creditHours ?? 0] as const),
@@ -298,13 +337,14 @@ export function buildTodayPrescription(
   }
 
   if (cs101Portion > 0) {
+    const absentWeeks = catchUp?.absentWeeksVisible ?? "?";
     blocks.push({
       id: "cs101-progress-catchup",
       kind: "cs101_catchup",
       courseCode: "CS101",
       label: handoutFirst
-        ? `CS101 Handouts catch-up · Progress Timeline ${catchUp.absentWeeksVisible} absent weeks`
-        : `CS101 Progress Timeline catch-up · ${catchUp.absentWeeksVisible} absent weeks`,
+        ? `CS101 Handouts catch-up · Progress Timeline ${absentWeeks} absent weeks`
+        : `CS101 Progress Timeline catch-up · ${absentWeeks} absent weeks`,
       minutes: cs101Portion,
       clock: minutesToClock(Math.max(cursor, 19 * 60)),
       room: null,
@@ -330,7 +370,9 @@ export function buildTodayPrescription(
     overdue[0] ||
     null;
 
-  const daysBehind = plan.recovery.estimatedDaysBehindByOldestEndedWindow as number | null;
+  const daysBehindRaw = recoveryOf(plan).estimatedDaysBehindByOldestEndedWindow;
+  const daysBehind =
+    typeof daysBehindRaw === "number" && Number.isFinite(daysBehindRaw) ? daysBehindRaw : null;
   const howBehind =
     `CS101 Progress Timeline: ${catchUp?.absentWeeksVisible ?? "?"} absent weeks` +
     (catchUp?.attendanceAbsentPct != null ? ` · ${catchUp.attendanceAbsentPct}% absent` : "") +

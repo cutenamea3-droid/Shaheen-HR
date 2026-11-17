@@ -27,12 +27,13 @@ export function ComplianceHistoryPanel() {
     void listPortalActivity()
       .then((items) => {
         if (!active) return;
-        setPortal(items);
+        setPortal(Array.isArray(items) ? items : []);
         setPortalNote("");
       })
       .catch(() => {
         if (!active) return;
-        setPortal(listLocalActivity(500));
+        const local = listLocalActivity(500);
+        setPortal(Array.isArray(local) ? local : []);
         setPortalNote("Cloud activity unavailable — showing local activity cache only.");
       });
     return () => {

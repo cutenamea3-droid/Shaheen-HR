@@ -18,6 +18,10 @@ function assessmentId(t: VuTodo): string {
   return `vu-${raw}`.slice(0, 72);
 }
 
+function asPlainObject(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
 /** Map VU fixture into Personal store slices — progress fields stay honest. */
 export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
   courses: Course[];
@@ -26,11 +30,20 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
   settingsPatch: Partial<PersonalSettings>;
   vaultAppendix: string;
 } {
-  const student = plan.student;
+  const student = asPlainObject((plan as { student?: unknown })?.student) ?? {};
+  const studentName = typeof student.name === "string" ? student.name : "Student";
+  const studentId = typeof student.studentId === "string" ? student.studentId : "";
+  const studentProgram = typeof student.program === "string" ? student.program : "";
+  const studentSemester =
+    typeof student.semesterLabel === "string" ? student.semesterLabel : "";
+  const studentVersion = typeof student.version === "string" ? student.version : "";
+  const recovery = asPlainObject((plan as { recovery?: unknown })?.recovery) ?? {};
+  const progressTimeline = asPlainObject((plan as { progressTimeline?: unknown })?.progressTimeline);
+  const progressCourses = asPlainObject(progressTimeline?.courses) ?? {};
   const enrolled = Array.isArray(plan?.enrolledCourses) ? plan.enrolledCourses : [];
   const courses: Course[] = enrolled.map((c) => {
     const code = c.code;
-    const prog = plan.progressTimeline.courses[code as keyof typeof plan.progressTimeline.courses] as
+    const prog = progressCourses[code] as
       | {
           quizSummary?: { totalQuizzes?: number | null; submitted?: number | null } | null;
           learningActivityByWeek?: { week: string; topicCompleted: number }[] | null;
@@ -102,23 +115,32 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
   }));
 
   // CS101 Progress catch-up backlog
-  const catchUp = plan.recovery.cs101ProgressCatchUp;
-  if (catchUp?.estimatedCatchUpMinutes) {
+  const catchUp = asPlainObject(recovery.cs101ProgressCatchUp);
+  const catchUpMinutes =
+    typeof catchUp?.estimatedCatchUpMinutes === "number" ? catchUp.estimatedCatchUpMinutes : 0;
+  if (catchUpMinutes > 0) {
+    const absentWeeks =
+      typeof catchUp?.absentWeeksVisible === "number" ? catchUp.absentWeeksVisible : "?";
     backlog.unshift({
       id: "vu-backlog-cs101-progress",
       courseId: "cs101",
-      label: `CS101 Progress catch-up (${catchUp.absentWeeksVisible} absent weeks)`,
-      estimatedMinutes: Math.min(90, Math.round(catchUp.estimatedCatchUpMinutes / 7)),
+      label: `CS101 Progress catch-up (${absentWeeks} absent weeks)`,
+      estimatedMinutes: Math.min(90, Math.round(catchUpMinutes / 7)),
       done: false,
       createdAt: now - 1,
     });
   }
 
-  const daily = plan.recovery.recommendedDailyMinutes.total;
+  const dailyRaw = asPlainObject(recovery.recommendedDailyMinutes);
+  const daily = typeof dailyRaw?.total === "number" && Number.isFinite(dailyRaw.total) ? dailyRaw.total : 120;
+  const dailyMath =
+    typeof dailyRaw?.math === "string" && dailyRaw.math.trim()
+      ? dailyRaw.math
+      : "Daily target math unavailable (corrupt/missing recovery.recommendedDailyMinutes).";
   const settingsPatch: Partial<PersonalSettings> = {
-    studentLabel: `${student.name} · ${student.studentId}`,
-    program: `BS ${student.program} — VU`,
-    semester: `${student.semesterLabel} · Sem 1 · ${student.version}`,
+    studentLabel: `${studentName}${studentId ? ` · ${studentId}` : ""}`,
+    program: studentProgram ? `BS ${studentProgram} — VU` : "VU",
+    semester: `${studentSemester || "Semester"}${studentVersion ? ` · Sem 1 · ${studentVersion}` : ""}`,
     weekdayMinutes: Math.min(Math.max(daily, 120), 300),
     dailyTargetMinutes: Math.min(Math.max(daily, 120), 300),
     sundayMinutes: Math.min(Math.max(Math.round(daily * 1.25), 180), 360),
@@ -127,10 +149,11 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
     finalsRef: "",
   };
 
+  const asOf = typeof (plan as { asOf?: unknown }).asOf === "string" ? (plan as { asOf: string }).asOf : "unknown";
   const vaultAppendix = [
     "— VU export seed —",
-    `As-of ${plan.asOf} · ${student.name} (${student.studentId})`,
-    `Daily target math: ${plan.recovery.recommendedDailyMinutes.math}`,
+    `As-of ${asOf} · ${studentName}${studentId ? ` (${studentId})` : ""}`,
+    `Daily target math: ${dailyMath}`,
     `Grade Book recorded marks: none`,
     `Progress full payload: CS101 only in this export`,
     "Deadlines marked Verified are from To-Do Calendar export only.",

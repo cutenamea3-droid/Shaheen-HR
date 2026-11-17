@@ -19,7 +19,7 @@ export function ActivityLogs() {
     void listPortalActivity()
       .then((items) => {
         if (active) {
-          setEntries(items);
+          setEntries(Array.isArray(items) ? items : []);
           setError("");
         }
       })
@@ -27,7 +27,7 @@ export function ActivityLogs() {
         if (!active) return;
         // Tables missing / not signed into cloud yet → show local cache, not a hard failure.
         const local = listLocalActivity(500);
-        setEntries(local);
+        setEntries(Array.isArray(local) ? local : []);
         const msg = e instanceof Error ? e.message : "Could not load activity logs.";
         if (/does not exist|not find the table|PGRST205|42P01/i.test(msg)) {
           setError("Cloud activity table is not set up yet — showing local cache. Paste the Driver SQL migration in Supabase.");
