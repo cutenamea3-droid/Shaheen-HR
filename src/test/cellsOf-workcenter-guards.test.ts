@@ -46,3 +46,27 @@ describe("work-center / plan-dates null cells", () => {
     expect(src).toMatch(/catch \{/);
   });
 });
+
+describe("sections / follow-ups / dossier null cells", () => {
+  it("linkDrivers and syncInactiveRoster tolerate null cells", async () => {
+    const { linkDrivers, syncInactiveRoster, buildInactiveCells, driverEmploymentStatus } =
+      await import("@/lib/sections");
+    const base = buildSeed();
+    const broken = {
+      ...base,
+      sections: {
+        ...base.sections,
+        dmv: {
+          ...base.sections.dmv,
+          rows: base.sections.dmv.rows.map((r, i) =>
+            i === 0 ? { ...r, cells: null as unknown as string[] } : r,
+          ),
+        },
+      },
+    } as AppData;
+    expect(() => linkDrivers(broken)).not.toThrow();
+    expect(() => syncInactiveRoster(broken)).not.toThrow();
+    expect(() => buildInactiveCells(broken, base.sections.dmv.rows[0]?.driverId ?? "d", "inactive")).not.toThrow();
+    expect(() => driverEmploymentStatus(broken, base.sections.dmv.rows[0]?.driverId ?? "d")).not.toThrow();
+  });
+});

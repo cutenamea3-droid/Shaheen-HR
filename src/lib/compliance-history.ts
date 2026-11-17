@@ -43,8 +43,11 @@ export type PortalActivityLike = {
 
 function nameOf(data: AppData, driverId: string): string {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
-    const n = (r?.cells[0] ?? "").trim();
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
+    const cells = Array.isArray(r?.cells) ? r!.cells : [];
+    const n = (cells[0] ?? "").trim();
     if (n) return n;
   }
   return driverId;
@@ -52,7 +55,9 @@ function nameOf(data: AppData, driverId: string): string {
 
 function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
   for (const def of SECTIONS) {
-    const r = data.sections[def.id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (r?.rosterHistory?.length) return r.rosterHistory;
   }
   return [];
@@ -61,7 +66,9 @@ function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] 
 function allDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const def of SECTIONS) {
-    for (const r of data.sections[def.id]?.rows ?? []) ids.add(r.driverId);
+    const rows = data.sections[def.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) ids.add(r.driverId);
   }
   return [...ids];
 }

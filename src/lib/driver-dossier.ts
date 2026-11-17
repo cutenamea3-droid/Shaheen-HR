@@ -115,9 +115,10 @@ function buildRelevantRecords(data: AppData, driverName: string): DossierRecordL
   if (!key) return [];
   const out: DossierRecordLine[] = [];
   for (const tab of RECORD_TABS) {
-    const rows = data.sections[tab.id]?.rows ?? [];
+    const rows = data.sections[tab.id]?.rows;
+    if (!Array.isArray(rows)) continue;
     for (const row of rows) {
-      if (normName(row.cells[0] ?? "") !== key) continue;
+      if (normName(cell(row, 0)) !== key) continue;
       out.push({
         source: tab.label,
         document: cell(row, 1) || "—",
@@ -155,7 +156,7 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
   let docsNotes = "";
   if (docs) {
     let valid = 0;
-    for (let i = 2; i <= 13; i++) if (normStatus(docs.cells[i] ?? "") === "Valid") valid++;
+    for (let i = 2; i <= 13; i++) if (normStatus(cell(docs, i)) === "Valid") valid++;
     docsStatus = `${complianceScore(docs)}% · ${valid}/12 valid`;
     docsNotes = cell(docs, 14);
   }

@@ -15,8 +15,7 @@ import {
   today,
   type Tone,
 } from "./alerts";
-import type { AppData, Row, SectionData } from "./sections";
-import { SECTIONS } from "./sections";
+import { SECTIONS, cellsOf, type AppData, type Row, type SectionData } from "./sections";
 
 export const FOLLOW_UP_SECTION_ID = "compliance_follow_ups";
 
@@ -197,7 +196,8 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
     if (!["dmv", "medical", "queries", "ssccdl"].includes(def.id)) continue;
     const sec = data.sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
-    for (const row of sec.rows) {
+    for (const rawRow of sec.rows) {
+      const row = { ...rawRow, cells: cellsOf(rawRow) };
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
       def.types.forEach((t, col) => {

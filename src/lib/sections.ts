@@ -380,7 +380,7 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
     const rows = data.sections[id]?.rows;
     if (!Array.isArray(rows)) continue;
     for (const r of rows) {
-      const k = driverKey(r.cells[0]);
+      const k = driverKey(cellsOf(r)[0]);
       if (k && !owner.has(k)) owner.set(k, r.driverId);
     }
   }
@@ -389,7 +389,7 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
     const rows = data.sections[id]?.rows;
     if (!Array.isArray(rows)) continue;
     for (const r of rows) {
-      const want = owner.get(driverKey(r.cells[0]));
+      const want = owner.get(driverKey(cellsOf(r)[0]));
       if (want && want !== r.driverId) target.set(r.driverId, want);
     }
   }
@@ -412,10 +412,11 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
       const gid = resolve(r.driverId);
       const g = groups.get(gid) ?? { id: gid, keys: new Set(), cdls: new Set(), rows: 0 };
       g.rows++;
-      const k = driverKey(r.cells[0]);
+      const cells = cellsOf(r);
+      const k = driverKey(cells[0]);
       if (k) g.keys.add(k);
       if (id in CDL_COL) {
-        const c = cdlDigits(r.cells[CDL_COL[id]]);
+        const c = cdlDigits(cells[CDL_COL[id]]);
         if (c) g.cdls.add(c);
       }
       groups.set(gid, g);
@@ -563,15 +564,19 @@ export function driverEmploymentStatus(
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
-    const r = data.sections[s.id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[s.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (!r) continue;
     // Prefer optional Row.status when set; otherwise the active cell (empty → active).
-    return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
+    return formatDriverStatus(r.status ?? parseDriverStatus(cellsOf(r)[i]));
   }
   const inaDef = SECTIONS.find((s) => s.id === "inactive");
   const i = inaDef?.types.indexOf("active") ?? -1;
-  const r = i >= 0 ? data.sections.inactive?.rows?.find((x) => x.driverId === driverId) : undefined;
-  if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
+  const inaRows = data.sections.inactive?.rows;
+  const r =
+    i >= 0 && Array.isArray(inaRows) ? inaRows.find((x) => x.driverId === driverId) : undefined;
+  if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(cellsOf(r)[i]));
   return "Active";
 }
 
@@ -582,17 +587,20 @@ export function buildInactiveCells(data: AppData, driverId: string, status: stri
   let phone = "";
   let state = "";
   for (const id of ["dmv", "ssccdl", "docs", "medical", "queries", "info", "inactive"] as const) {
-    const r = data.sections[id]?.rows?.find((x) => x.driverId === driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (!r) continue;
-    if (!name.trim()) name = (r.cells[0] ?? "").trim();
+    const cells = cellsOf(r);
+    if (!name.trim()) name = (cells[0] ?? "").trim();
     if ((id === "dmv" || id === "ssccdl" || id === "inactive") && !license.trim())
-      license = (r.cells[1] ?? "").trim();
-    if (id === "info" && !phone.trim()) phone = (r.cells[1] ?? "").trim();
-    if (id === "inactive" && !phone.trim()) phone = (r.cells[2] ?? "").trim();
+      license = (cells[1] ?? "").trim();
+    if (id === "info" && !phone.trim()) phone = (cells[1] ?? "").trim();
+    if (id === "inactive" && !phone.trim()) phone = (cells[2] ?? "").trim();
     const def = SECTIONS.find((s) => s.id === id);
     const si = def?.types.indexOf("state") ?? -1;
-    if (si >= 0 && !state.trim()) state = (r.cells[si] ?? "").trim();
-    if (id === "info" && !state.trim()) state = (r.cells[3] ?? "").trim();
+    if (si >= 0 && !state.trim()) state = (cells[si] ?? "").trim();
+    if (id === "info" && !state.trim()) state = (cells[3] ?? "").trim();
   }
   // Inactive roster only stores Active/Inactive (Leave drivers stay on main sections).
   const label = parseDriverStatus(status) === "inactive" ? "Inactive" : "Active";
@@ -616,7 +624,7 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
     const i = s.types.indexOf("active");
     if (i < 0) continue;
     for (const r of input.sections[s.id]?.rows ?? []) {
-      if (r.cells[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
+      if (cellsOf(r)[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
     }
   }
 
@@ -627,9 +635,10 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
   const rows = inaSec.rows.map((r) => {
     // Roster Status is Active/Inactive only — Leave maps to Active here.
     const want = inactiveIds.has(r.driverId) ? "Inactive" : "Active";
-    if ((r.cells[statusIdx] ?? "").trim() === want) return r;
+    const cells = cellsOf(r);
+    if ((cells[statusIdx] ?? "").trim() === want) return r;
     touched = true;
-    return { ...r, cells: r.cells.map((c, i) => (i === statusIdx ? want : c)) };
+    return { ...r, cells: cells.map((c, i) => (i === statusIdx ? want : c)) };
   });
 
   for (const driverId of inactiveIds) {
