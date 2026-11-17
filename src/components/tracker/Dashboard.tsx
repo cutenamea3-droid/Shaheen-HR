@@ -572,7 +572,9 @@ function FuturePlans() {
               <span className="font-display text-xl">{p.date.getDate()}</span>
             </Chip>
             <div className="min-w-0">
-              <div className="font-extrabold">{p.driver.trim()}</div>
+              <div className="font-extrabold">
+                {(p.driver == null ? "" : typeof p.driver === "string" ? p.driver : String(p.driver)).trim()}
+              </div>
               <div className="text-xs font-bold tracking-wide text-primary uppercase">
                 {SECTIONS.find((s) => s.id === p.sectionId)?.title}
               </div>

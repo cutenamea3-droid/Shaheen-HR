@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeRow, isOldExpiry, normStatus } from "@/lib/alerts";
+import { analyzeRow, appliedExpiryView, fmtCell, isOldExpiry, normStatus } from "@/lib/alerts";
 import { filterWorkCenterItems } from "@/lib/alerts-work-center";
 import { statusFromCell } from "@/lib/inspection-readiness";
 import { SECTIONS } from "@/lib/sections";
@@ -36,6 +36,13 @@ describe("alerts / inspection scanners use cellsOf + coerce", () => {
         addedAt: 1,
       }),
     ).not.toThrow();
+  });
+
+  it("fmtCell / appliedExpiryView coerce non-string expiry", () => {
+    expect(() => fmtCell(20261117 as unknown as string)).not.toThrow();
+    expect(fmtCell(null as unknown as string)).toBe("");
+    expect(() => appliedExpiryView(20261117 as unknown as string)).not.toThrow();
+    expect(appliedExpiryView(null as unknown as string)?.hint).toMatch(/No parseable/);
   });
 
   it("normStatus / isOldExpiry / statusFromCell / work-center search coerce", () => {

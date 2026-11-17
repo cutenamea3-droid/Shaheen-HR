@@ -38,9 +38,10 @@ export const daysUntil = (d: Date) => Math.round((d.getTime() - today().getTime(
 export function fmtDate(d: Date) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
-export function fmtCell(v: string) {
-  const d = parseISO(v);
-  return d ? fmtDate(d) : v;
+export function fmtCell(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  const d = parseISO(s);
+  return d ? fmtDate(d) : s;
 }
 
 /** Pull a date out of free text like "I will Apply On December 12 , 2026 (Saturday)". */
@@ -164,10 +165,11 @@ export const APPLIED_EXPIRING_SOON_DAYS = 30;
  * never rewrites the stored status or expiry date, and countdown keeps running.
  */
 export function appliedExpiryView(
-  expiryRaw: string,
+  expiryRaw: unknown,
   soonDays = APPLIED_EXPIRING_SOON_DAYS,
 ): AppliedExpiryView | null {
-  if (isOldExpiry(expiryRaw)) {
+  const raw = expiryRaw == null ? "" : typeof expiryRaw === "string" ? expiryRaw : String(expiryRaw);
+  if (isOldExpiry(raw)) {
     return {
       application: "Applied",
       expiration: null,
@@ -178,7 +180,7 @@ export function appliedExpiryView(
       daysLeft: null,
     };
   }
-  const d = parseISO(expiryRaw);
+  const d = parseISO(raw);
   if (!d) {
     return {
       application: "Applied",
@@ -589,7 +591,9 @@ export interface SmartAlert {
 }
 
 function docName(headers: string[] | null | undefined, col: number, fallback: string) {
-  const hdrs = Array.isArray(headers) ? headers : [];
+  const hdrs = Array.isArray(headers)
+    ? headers.map((h) => (h == null ? "" : typeof h === "string" ? h : String(h)))
+    : [];
   const h = (hdrs[col] ?? "").trim();
   if (!h) return fallback;
   const cleaned = h.replace(/\s*(exp(iry|iration|ires)?|date)\s*$/i, "").trim();

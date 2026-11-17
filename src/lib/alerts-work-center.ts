@@ -434,7 +434,9 @@ export function groupWorkCenterByDriver(items: WorkCenterItem[]): WorkCenterDriv
     g.items.push(item);
     g.worstTone = worseTone(g.worstTone, item.tone);
     if (item.isNew) g.isNew = true;
-    if (!g.driver.trim() || g.driver === "—") g.driver = item.driver;
+    const gDriver =
+      g.driver == null ? "" : typeof g.driver === "string" ? g.driver : String(g.driver);
+    if (!gDriver.trim() || gDriver === "—") g.driver = item.driver;
   }
   return [...map.values()].sort((a, b) => {
     const ta = TONE_RANK.indexOf(a.worstTone);
