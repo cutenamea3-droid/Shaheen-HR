@@ -228,7 +228,8 @@ export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]
   const next = doc.splitTextToSize(handover.next_day_priorities || "—", 180);
   doc.text(next, 14, y);
   y += next.length * 5 + 10;
-  const openLoads = loads.filter((l) => handover.open_load_ids.includes(l.id));
+  const openIds = Array.isArray(handover.open_load_ids) ? handover.open_load_ids : [];
+  const openLoads = (Array.isArray(loads) ? loads : []).filter((l) => openIds.includes(l.id));
   autoTable(doc, {
     startY: y,
     head: [["Open load", "Status", "Payment", "Driver", "Manual location"]],
