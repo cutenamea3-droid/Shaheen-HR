@@ -67,7 +67,7 @@ export function DocsBoard({
         last_manual_location: load.last_manual_location,
         last_manual_location_at: load.last_manual_location_at,
         stale_after_minutes: load.stale_after_minutes,
-        ...(load.stops ? { stops: load.stops } : {}),
+        ...(Array.isArray(load.stops) ? { stops: load.stops } : {}),
       });
       await onRefresh();
     } catch (err) {

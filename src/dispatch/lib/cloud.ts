@@ -37,6 +37,16 @@ export function resetDispatchFixtureMemory(): void {
   memory = null;
 }
 
+/** Only real stop arrays may round-trip — never truthy string `.length`. */
+function arrayStops(stops: unknown): LoadStop[] | undefined {
+  return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
+}
+
+function withStops(stops: unknown): { stops: LoadStop[] } | Record<string, never> {
+  const list = arrayStops(stops);
+  return list ? { stops: list } : {};
+}
+
 function newId(): string {
   return crypto.randomUUID();
 }
@@ -220,7 +230,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
       reopened_at: input.reopened_at ?? base.reopened_at,
       payment_status: input.payment_status ?? base.payment_status ?? "unpaid",
       updated_at: now,
-      stops: input.stops ?? base.stops ?? [],
+      stops: arrayStops(input.stops) ?? arrayStops(base.stops) ?? [],
     };
     if (idx >= 0) mem().loads[idx] = next;
     else mem().loads.unshift(next);
@@ -263,10 +273,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   if (error) throw error;
   const load = data as DispatchLoad;
 
-  if (input.stops) {
+  const nextStops = arrayStops(input.stops);
+  if (nextStops) {
     await dispatchSupabase.from("dispatch_load_stops").delete().eq("load_id", load.id);
-    if (input.stops.length) {
-      const stopRows = input.stops.map((s, i) => ({
+    if (nextStops.length) {
+      const stopRows = nextStops.map((s, i) => ({
         load_id: load.id,
         sequence: s.sequence || i + 1,
         stop_type: s.stop_type,
@@ -284,7 +295,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     }
   }
 
-  return (await getLoad(load.id)) ?? { ...load, stops: input.stops ?? [] };
+  return (await getLoad(load.id)) ?? { ...load, stops: nextStops ?? [] };
 }
 
 export async function addCheckCall(input: {
@@ -565,7 +576,7 @@ export async function cancelLoad(
     reopened_at: load.reopened_at,
     payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -583,7 +594,7 @@ export async function rescheduleLoad(
   const delivery = input.planned_delivery_at ?? load.planned_delivery_at;
   const err = validateReschedule(input.note, pickup, delivery);
   if (err) throw new Error(err);
-  const stops = input.stops ?? load.stops;
+  const stops = arrayStops(input.stops) ?? arrayStops(load.stops);
   return saveLoad({
     id: load.id,
     load_number: load.load_number,
@@ -613,7 +624,7 @@ export async function rescheduleLoad(
     reopened_at: load.reopened_at,
     payment_status: load.payment_status,
     stale_after_minutes: load.stale_after_minutes,
-    ...(stops ? { stops } : {}),
+    ...withStops(stops),
   });
 }
 
@@ -717,7 +728,7 @@ export async function closeLoad(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -761,7 +772,7 @@ export async function reopenLoad(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
@@ -799,7 +810,7 @@ export async function setLoadPaymentStatus(
     last_manual_location: load.last_manual_location,
     last_manual_location_at: load.last_manual_location_at,
     stale_after_minutes: load.stale_after_minutes,
-    ...(load.stops ? { stops: load.stops } : {}),
+    ...withStops(load.stops),
   });
 }
 
