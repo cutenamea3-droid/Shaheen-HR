@@ -111,8 +111,10 @@ function buildBlocks(
   backlog: BacklogItem[],
   settings: PersonalSettings,
 ): DayPlan["blocks"] {
+  const courseList = Array.isArray(courses) ? courses : [];
+  const backlogList = Array.isArray(backlog) ? backlog : [];
   const budget = modeBudgetMinutes(mode, date, settings);
-  const open = backlog.filter((b) => !b.done);
+  const open = backlogList.filter((b) => !b.done);
   const blocks: DayPlan["blocks"] = [];
   let left = budget;
 
@@ -130,7 +132,7 @@ function buildBlocks(
   }
 
   if (left > 0 && blocks.length === 0) {
-    const active = courses.filter((c) => !c.isTbd || c.code !== "TBD");
+    const active = courseList.filter((c) => !c.isTbd || c.code !== "TBD");
     const slice = Math.max(15, Math.floor(budget / Math.max(1, Math.min(3, active.length))));
     for (const c of active.slice(0, 3)) {
       if (left <= 0) break;
@@ -272,11 +274,13 @@ export const usePersonal = create<PersonalStore>()(
         }),
       ensureDayPlan: (date, mode) => {
         const s = get();
-        if (s.dayPlans[date]) return;
+        const dayPlans =
+          s.dayPlans && typeof s.dayPlans === "object" && !Array.isArray(s.dayPlans) ? s.dayPlans : {};
+        if (dayPlans[date]) return;
         const m = mode ?? "normal";
         set({
           dayPlans: {
-            ...s.dayPlans,
+            ...dayPlans,
             [date]: {
               ...emptyPlan(date, m),
               blocks: buildBlocks(m, date, s.courses, s.backlog, s.settings),
@@ -286,10 +290,12 @@ export const usePersonal = create<PersonalStore>()(
       },
       setDayMode: (date, mode) => {
         const s = get();
-        const prev = s.dayPlans[date] ?? emptyPlan(date, mode);
+        const dayPlans =
+          s.dayPlans && typeof s.dayPlans === "object" && !Array.isArray(s.dayPlans) ? s.dayPlans : {};
+        const prev = dayPlans[date] ?? emptyPlan(date, mode);
         set({
           dayPlans: {
-            ...s.dayPlans,
+            ...dayPlans,
             [date]: {
               ...prev,
               mode,
@@ -300,11 +306,13 @@ export const usePersonal = create<PersonalStore>()(
       },
       setDayBlockDone: (date, blockId, done) =>
         set((s) => {
-          const plan = s.dayPlans[date];
+          const dayPlans =
+            s.dayPlans && typeof s.dayPlans === "object" && !Array.isArray(s.dayPlans) ? s.dayPlans : {};
+          const plan = dayPlans[date];
           if (!plan) return s;
           return {
             dayPlans: {
-              ...s.dayPlans,
+              ...dayPlans,
               [date]: {
                 ...plan,
                 blocks: blocksOf(plan).map((b) => (b.id === blockId ? { ...b, done } : b)),
@@ -314,10 +322,12 @@ export const usePersonal = create<PersonalStore>()(
         }),
       rebuildDayBlocks: (date) => {
         const s = get();
-        const plan = s.dayPlans[date] ?? emptyPlan(date, "normal");
+        const dayPlans =
+          s.dayPlans && typeof s.dayPlans === "object" && !Array.isArray(s.dayPlans) ? s.dayPlans : {};
+        const plan = dayPlans[date] ?? emptyPlan(date, "normal");
         set({
           dayPlans: {
-            ...s.dayPlans,
+            ...dayPlans,
             [date]: {
               ...plan,
               blocks: buildBlocks(plan.mode, date, s.courses, s.backlog, s.settings),

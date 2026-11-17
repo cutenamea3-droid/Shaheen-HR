@@ -90,10 +90,17 @@ function loadModes(): { handoutFirst: boolean; creditTriage: boolean } {
 
 export function Today() {
   const settings = usePersonal((s) => s.settings);
-  const courses = usePersonal((s) => s.courses);
-  const sessions = usePersonal((s) => s.sessions);
-  const assessments = usePersonal((s) => s.assessments);
-  const dayPlans = usePersonal((s) => s.dayPlans);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
   const vuSeededAt = usePersonal((s) => s.vuSeededAt);
   const vuPlanAsOf = usePersonal((s) => s.vuPlanAsOf);
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
@@ -103,7 +110,6 @@ export function Today() {
   const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
-  const backlog = usePersonal((s) => s.backlog);
 
   const today = todayKey();
   const sunday = isSundayIso(today);

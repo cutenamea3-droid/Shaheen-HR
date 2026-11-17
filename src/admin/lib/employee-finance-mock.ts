@@ -313,15 +313,19 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
     return { ok: true };
   },
 
-  currentBanking: (employeeId) =>
-    get()
-      .banking.filter((b) => b.employeeId === employeeId && !b.supersededAt)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0],
+  currentBanking: (employeeId) => {
+    const banking = Array.isArray(get().banking) ? get().banking : [];
+    return banking
+      .filter((b) => b.employeeId === employeeId && !b.supersededAt)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+  },
 
-  bankingHistory: (employeeId) =>
-    get()
-      .banking.filter((b) => b.employeeId === employeeId)
-      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom)),
+  bankingHistory: (employeeId) => {
+    const banking = Array.isArray(get().banking) ? get().banking : [];
+    return banking
+      .filter((b) => b.employeeId === employeeId)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom));
+  },
 
   addBankingChange: (input) => {
     const ref = input.isIban ? normalizePkIban(input.accountRef) : input.accountRef.trim();
@@ -344,14 +348,17 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
       supersededAt: null,
       note: input.note?.trim() ?? "",
     });
-    set((s) => ({
-      banking: [
-        ...s.banking.map((b) =>
-          b.employeeId === input.employeeId && !b.supersededAt ? { ...b, supersededAt: today } : b,
-        ),
-        newRow,
-      ],
-    }));
+    set((s) => {
+      const banking = Array.isArray(s.banking) ? s.banking : [];
+      return {
+        banking: [
+          ...banking.map((b) =>
+            b.employeeId === input.employeeId && !b.supersededAt ? { ...b, supersededAt: today } : b,
+          ),
+          newRow,
+        ],
+      };
+    });
     return { ok: true };
   },
 
@@ -370,7 +377,8 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   },
 
   revealAccount: (accountId) => {
-    const row = get().banking.find((b) => b.id === accountId);
+    const banking = Array.isArray(get().banking) ? get().banking : [];
+    const row = banking.find((b) => b.id === accountId);
     if (!row) return { ok: false, error: "Account not found" };
     set((s) => {
       const next = new Set(s.revealAccountIds);
@@ -386,47 +394,57 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
   isRevealed: (accountId) => get().revealAccountIds.has(accountId),
   getRevealedPlaintext: (accountId) => get().revealedPlaintext[accountId],
 
-  paymentsForMonth: (month) => get().payments.filter((p) => p.month === month),
-  paymentEvents: (paymentId) =>
-    get()
-      .events.filter((e) => e.paymentId === paymentId)
-      .sort((a, b) => b.createdAt - a.createdAt),
+  paymentsForMonth: (month) => {
+    const payments = Array.isArray(get().payments) ? get().payments : [];
+    return payments.filter((p) => p.month === month);
+  },
+  paymentEvents: (paymentId) => {
+    const events = Array.isArray(get().events) ? get().events : [];
+    return events
+      .filter((e) => e.paymentId === paymentId)
+      .sort((a, b) => b.createdAt - a.createdAt);
+  },
 
   upsertPaymentDue: (employeeId, month, amountDuePkr) => {
     try {
       const due = assertWholePkr(amountDuePkr);
-      const existing = get().payments.find((p) => p.employeeId === employeeId && p.month === month);
+      const payments = Array.isArray(get().payments) ? get().payments : [];
+      const existing = payments.find((p) => p.employeeId === employeeId && p.month === month);
       const bank = get().currentBanking(employeeId);
       if (existing) {
         // Keep Oct 2026 history untouched — refuse due rewrite on locked historical month.
         if (month === HISTORICAL_LOCKED_MONTH) {
           return { ok: false, error: `Historical month ${HISTORICAL_LOCKED_MONTH} is locked — due/paid amounts cannot be rewritten` };
         }
-        set((s) => ({
-          payments: s.payments.map((p) =>
-            p.id === existing.id
-              ? {
-                  ...p,
-                  amountDuePkr: due,
-                  status: p.status === "on_hold" ? "on_hold" : derivePaymentStatus(due, p.amountPaidPkr),
-                  bankingAccountId: p.bankingAccountId ?? bank?.id ?? null,
-                  updatedAt: Date.now(),
-                }
-              : p,
-          ),
-          events: [
-            {
-              id: uid(),
-              paymentId: existing.id,
-              eventType: "due_set",
-              amountPkr: due,
-              statusAfter: existing.status,
-              note: "due upsert",
-              createdAt: Date.now(),
-            },
-            ...s.events,
-          ],
-        }));
+        set((s) => {
+          const list = Array.isArray(s.payments) ? s.payments : [];
+          const events = Array.isArray(s.events) ? s.events : [];
+          return {
+            payments: list.map((p) =>
+              p.id === existing.id
+                ? {
+                    ...p,
+                    amountDuePkr: due,
+                    status: p.status === "on_hold" ? "on_hold" : derivePaymentStatus(due, p.amountPaidPkr),
+                    bankingAccountId: p.bankingAccountId ?? bank?.id ?? null,
+                    updatedAt: Date.now(),
+                  }
+                : p,
+            ),
+            events: [
+              {
+                id: uid(),
+                paymentId: existing.id,
+                eventType: "due_set",
+                amountPkr: due,
+                statusAfter: existing.status,
+                note: "due upsert",
+                createdAt: Date.now(),
+              },
+              ...events,
+            ],
+          };
+        });
       } else {
         const row: SalaryPaymentRecord = {
           id: uid(),
@@ -440,21 +458,25 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
           note: "",
           updatedAt: Date.now(),
         };
-        set((s) => ({
-          payments: [...s.payments, row],
-          events: [
-            {
-              id: uid(),
-              paymentId: row.id,
-              eventType: "due_set",
-              amountPkr: due,
-              statusAfter: "unpaid",
-              note: "due create",
-              createdAt: Date.now(),
-            },
-            ...s.events,
-          ],
-        }));
+        set((s) => {
+          const list = Array.isArray(s.payments) ? s.payments : [];
+          const events = Array.isArray(s.events) ? s.events : [];
+          return {
+            payments: [...list, row],
+            events: [
+              {
+                id: uid(),
+                paymentId: row.id,
+                eventType: "due_set",
+                amountPkr: due,
+                statusAfter: "unpaid",
+                note: "due create",
+                createdAt: Date.now(),
+              },
+              ...events,
+            ],
+          };
+        });
       }
       return { ok: true };
     } catch (e) {
@@ -464,24 +486,29 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
 
   recordPayment: (paymentId, addPkr, paidOn) => {
     try {
-      const row = get().payments.find((p) => p.id === paymentId);
+      const payments = Array.isArray(get().payments) ? get().payments : [];
+      const row = payments.find((p) => p.id === paymentId);
       if (!row) return { ok: false, error: "Payment row not found" };
       const next = applyPartialPayment(row, addPkr, paidOn);
-      set((s) => ({
-        payments: s.payments.map((p) => (p.id === paymentId ? next : p)),
-        events: [
-          {
-            id: uid(),
-            paymentId,
-            eventType: "partial_pay",
-            amountPkr: addPkr,
-            statusAfter: next.status,
-            note: "",
-            createdAt: Date.now(),
-          },
-          ...s.events,
-        ],
-      }));
+      set((s) => {
+        const list = Array.isArray(s.payments) ? s.payments : [];
+        const events = Array.isArray(s.events) ? s.events : [];
+        return {
+          payments: list.map((p) => (p.id === paymentId ? next : p)),
+          events: [
+            {
+              id: uid(),
+              paymentId,
+              eventType: "partial_pay",
+              amountPkr: addPkr,
+              statusAfter: next.status,
+              note: "",
+              createdAt: Date.now(),
+            },
+            ...events,
+          ],
+        };
+      });
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Payment failed" };
@@ -490,7 +517,9 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
 
   setPaymentStatus: (paymentId, status) => {
     set((s) => {
-      const payments = s.payments.map((p) => {
+      const list = Array.isArray(s.payments) ? s.payments : [];
+      const events = Array.isArray(s.events) ? s.events : [];
+      const payments = list.map((p) => {
         if (p.id !== paymentId) return p;
         if (status === "on_hold") return { ...p, status, updatedAt: Date.now() };
         if (status === "unpaid") return { ...p, status, amountPaidPkr: 0, paidOn: null, updatedAt: Date.now() };
@@ -522,7 +551,7 @@ export const useEmployeeFinanceMock = create<FinanceState>()((set, get) => ({
             note: "manual status",
             createdAt: Date.now(),
           },
-          ...s.events,
+          ...events,
         ],
       };
     });

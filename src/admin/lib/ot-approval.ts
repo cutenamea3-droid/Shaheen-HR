@@ -110,25 +110,29 @@ type OtApprovalState = {
   resetApprovals: () => void;
 };
 
+const rowsOf = (v: unknown): Record<string, OtApprovalRow> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, OtApprovalRow>) : {};
+
 export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
   rows: {},
 
   ensureCandidate: (c) => {
     const id = otApprovalId(c.employeeId, c.date, c.kind);
-    const existing = get().rows[id];
+    const rows = rowsOf(get().rows);
+    const existing = rows[id];
     if (existing) {
       // Refresh minutes/note from attendance; keep decision.
-      set((s) => ({
+      set({
         rows: {
-          ...s.rows,
+          ...rows,
           [id]: { ...existing, minutes: c.minutes, note: c.note ?? existing.note },
         },
-      }));
+      });
       return;
     }
-    set((s) => ({
+    set({
       rows: {
-        ...s.rows,
+        ...rows,
         [id]: {
           id,
           employeeId: c.employeeId,
@@ -140,15 +144,16 @@ export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
           decidedAt: null,
         },
       },
-    }));
+    });
   },
 
   setStatus: (id, status, note) => {
-    const row = get().rows[id];
+    const rows = rowsOf(get().rows);
+    const row = rows[id];
     if (!row) return { ok: false, error: "Approval row not found" };
-    set((s) => ({
+    set({
       rows: {
-        ...s.rows,
+        ...rows,
         [id]: {
           ...row,
           status,
@@ -156,7 +161,7 @@ export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
           decidedAt: Date.now(),
         },
       },
-    }));
+    });
     return { ok: true };
   },
 
@@ -172,7 +177,7 @@ export function approvedMinutesForEmployee(
 ): { minutes: number; days: number } {
   let minutes = 0;
   let days = 0;
-  for (const r of Object.values(rows)) {
+  for (const r of Object.values(rowsOf(rows))) {
     if (r.employeeId !== employeeId) continue;
     if (!r.date.startsWith(month)) continue;
     if (r.kind !== kind) continue;
