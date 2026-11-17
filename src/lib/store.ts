@@ -687,7 +687,7 @@ export function addRecord(sectionId: string, cells: string[]) {
       ...secRaw,
       rows: Array.isArray(secRaw.rows) ? secRaw.rows : [],
     };
-    const padded = [...cells];
+    const padded = [...(Array.isArray(cells) ? cells : [])];
     while (padded.length < RECORD_HEADERS.length) {
       padded.push(padded.length === RECORD_ACTIVE_COL ? "Active" : "");
     }

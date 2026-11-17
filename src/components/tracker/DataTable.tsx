@@ -305,7 +305,7 @@ export function DataTable({
           </button>
           {showRules && (
             <ul className="grid gap-2 px-5 pb-4 md:grid-cols-2">
-              {def.rules.map((r) => (
+              {(Array.isArray(def.rules) ? def.rules : []).map((r) => (
                 <li
                   key={r}
                   className="rounded-lg border border-primary/20 bg-accent/40 px-3 py-1.5 text-sm font-medium"
