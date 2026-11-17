@@ -123,33 +123,37 @@ export function collectPerfStatements(input: {
   hrStatements?: HrStatement[];
 }): PerfStatementView[] {
   const out: PerfStatementView[] = [];
-  if (input.rec?.note?.trim()) {
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const recNote = asText(input.rec?.note).trim();
+  if (recNote) {
     out.push({
       layer: "statement",
       date: input.date,
       employeeId: input.employeeId,
       source: "attendance_note",
-      text: input.rec.note.trim(),
+      text: recNote,
     });
   }
-  if (input.perf?.note?.trim()) {
+  const perfNote = asText(input.perf?.note).trim();
+  if (perfNote) {
     out.push({
       layer: "statement",
       date: input.date,
       employeeId: input.employeeId,
       source: "performance_note",
-      text: input.perf.note.trim(),
+      text: perfNote,
     });
   }
   const hrStatements = Array.isArray(input.hrStatements) ? input.hrStatements : [];
   for (const s of hrStatements) {
-    if (s.employeeId === input.employeeId && s.date === input.date && s.text.trim()) {
+    const text = asText(s.text).trim();
+    if (s.employeeId === input.employeeId && s.date === input.date && text) {
       out.push({
         layer: "statement",
         date: input.date,
         employeeId: input.employeeId,
         source: "hr_statement",
-        text: s.text.trim(),
+        text,
       });
     }
   }
@@ -201,19 +205,20 @@ export const usePerfFollowUps = create<State>()(
       followUps: [],
       hrStatements: [],
       addFollowUp: (input) => {
-        const title = input.title.trim();
+        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+        const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
         if (!input.employeeId) return { error: "Employee required" };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
         const row: PerfFollowUp = {
           id: uid(),
           employeeId: input.employeeId,
-          employeeName: input.employeeName,
+          employeeName: asText(input.employeeName),
           due: input.due,
           title,
           status: "open",
-          linkedDate: input.linkedDate ?? "",
-          note: (input.note ?? "").trim(),
+          linkedDate: asText(input.linkedDate),
+          note: asText(input.note).trim(),
           createdAt: Date.now(),
           completedAt: null,
         };
@@ -245,7 +250,7 @@ export const usePerfFollowUps = create<State>()(
           return { followUps: list.filter((f) => f.id !== id) };
         }),
       addHrStatement: (employeeId, date, text) => {
-        const t = text.trim();
+        const t = (text == null ? "" : typeof text === "string" ? text : String(text)).trim();
         if (!t) return { error: "Statement text required" };
         if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Employee and date required" };
         const row: HrStatement = { id: uid(), employeeId, date, text: t, createdAt: Date.now() };

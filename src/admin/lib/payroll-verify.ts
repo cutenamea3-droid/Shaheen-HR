@@ -104,7 +104,13 @@ export function buildPayrollVerifyRow(input: {
     label: "Bonus (manual)",
     amountPkr: bonus,
     gate: null,
-    detail: input.bonusNote?.trim() || "Separate from OT and Additional days — never auto-merged",
+    detail:
+      (input.bonusNote == null
+        ? ""
+        : typeof input.bonusNote === "string"
+          ? input.bonusNote.trim()
+          : String(input.bonusNote).trim()) ||
+      "Separate from OT and Additional days — never auto-merged",
   });
 
   let payablePkr = 0;

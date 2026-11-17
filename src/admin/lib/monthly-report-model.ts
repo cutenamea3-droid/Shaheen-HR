@@ -188,26 +188,29 @@ function collectExceptions(emp: EmpMonth): ExceptionItem[] {
 }
 
 function collectNotes(emp: EmpMonth): NoteItem[] {
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const out: NoteItem[] = [];
   for (const x of emp.days) {
-    if (x.rec.note?.trim()) {
+    const recNote = asText(x.rec.note).trim();
+    if (recNote) {
       out.push({
         employee: emp.employee.name,
         dept: emp.deptName,
         date: shortDate(x.date),
         source: "attendance",
-        text: x.rec.note.trim(),
+        text: recNote,
       });
     }
-    if (x.p?.note?.trim()) {
+    const perfNote = asText(x.p?.note).trim();
+    if (perfNote) {
       const item: NoteItem = {
         employee: emp.employee.name,
         dept: emp.deptName,
         date: shortDate(x.date),
         source: "performance",
-        text: x.p.note.trim(),
+        text: perfNote,
       };
-      if (x.p.rating) item.rating = RATING_LABEL[x.p.rating];
+      if (x.p?.rating) item.rating = RATING_LABEL[x.p.rating];
       out.push(item);
     }
   }

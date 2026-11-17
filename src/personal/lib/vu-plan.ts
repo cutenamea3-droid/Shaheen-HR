@@ -31,8 +31,8 @@ export type VuStudyPlan = typeof planFixture;
 
 export const VU_STUDY_PLAN = planFixture as VuStudyPlan;
 
-export function courseIdFromCode(code: string): string {
-  return code.trim().toLowerCase();
+export function courseIdFromCode(code: unknown): string {
+  return (code == null ? "" : typeof code === "string" ? code : String(code)).trim().toLowerCase();
 }
 
 export function formatMinutes(total: number): string {

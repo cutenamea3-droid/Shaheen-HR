@@ -160,11 +160,14 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 14;
 
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const notes = days
     .flatMap((d) => {
       const rows: string[][] = [];
-      if (d.rec.note?.trim()) rows.push([shortDate(d.date), "Attendance statement", d.rec.note.trim().slice(0, 120)]);
-      if (d.p?.note?.trim()) rows.push([shortDate(d.date), "Performance statement", d.p.note.trim().slice(0, 120)]);
+      const recNote = asText(d.rec.note).trim();
+      if (recNote) rows.push([shortDate(d.date), "Attendance statement", recNote.slice(0, 120)]);
+      const perfNote = asText(d.p?.note).trim();
+      if (perfNote) rows.push([shortDate(d.date), "Performance statement", perfNote.slice(0, 120)]);
       return rows;
     });
   y = section(doc, y, "D", "Statements (recorded text)");

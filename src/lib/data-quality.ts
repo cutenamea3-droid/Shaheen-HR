@@ -290,16 +290,21 @@ export function filterDataQualityFindings(
   opts?: { severity?: DataQualitySeverity | "all"; q?: string },
 ): DataQualityFinding[] {
   const severity = opts?.severity ?? "all";
-  const q = (opts?.q ?? "").trim().toLowerCase();
+  const q = (
+    opts?.q == null ? "" : typeof opts.q === "string" ? opts.q : String(opts.q)
+  )
+    .trim()
+    .toLowerCase();
   const list = Array.isArray(findings) ? findings : [];
   return list.filter((f) => {
     if (severity !== "all" && f.severity !== severity) return false;
     if (!q) return true;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return (
-      f.driverName.toLowerCase().includes(q) ||
-      f.title.toLowerCase().includes(q) ||
-      f.detail.toLowerCase().includes(q) ||
-      (f.sectionId ?? "").toLowerCase().includes(q)
+      asText(f.driverName).toLowerCase().includes(q) ||
+      asText(f.title).toLowerCase().includes(q) ||
+      asText(f.detail).toLowerCase().includes(q) ||
+      asText(f.sectionId).toLowerCase().includes(q)
     );
   });
 }

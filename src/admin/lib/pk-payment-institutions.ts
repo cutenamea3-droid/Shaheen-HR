@@ -107,8 +107,10 @@ export function findPkInstitution(id: string): PkPaymentInstitution | undefined 
   return PK_PAYMENT_INSTITUTIONS.find((x) => x.id === id);
 }
 
-export function searchPkInstitutions(query: string): PkPaymentInstitution[] {
-  const q = query.trim().toLowerCase();
+export function searchPkInstitutions(query: unknown): PkPaymentInstitution[] {
+  const q = (query == null ? "" : typeof query === "string" ? query : String(query))
+    .trim()
+    .toLowerCase();
   if (!q) return [...PK_PAYMENT_INSTITUTIONS];
   return PK_PAYMENT_INSTITUTIONS.filter((inst) => {
     if (inst.name.toLowerCase().includes(q)) return true;

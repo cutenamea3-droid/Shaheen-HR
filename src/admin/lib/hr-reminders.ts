@@ -44,17 +44,18 @@ export const useHrReminders = create<State>()(
     (set, get) => ({
       reminders: [],
       add: (input) => {
-        const title = input.title.trim();
+        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+        const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
         if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
         const r: HrReminder = {
           id: uid(),
           title,
           due: input.due,
-          employeeId: input.employeeId ?? "",
-          employeeName: input.employeeName ?? "",
+          employeeId: asText(input.employeeId),
+          employeeName: asText(input.employeeName),
           status: "open",
-          note: (input.note ?? "").trim(),
+          note: asText(input.note).trim(),
           createdAt: Date.now(),
           completedAt: null,
         };

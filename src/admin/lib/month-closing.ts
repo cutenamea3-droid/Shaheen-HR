@@ -93,7 +93,7 @@ export const useMonthClosing = create<State>()(
       reopenMonth: (month, who, reason) => {
         if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
         if (!get().isClosed(month)) return { ok: false, error: "Month is not closed" };
-        const trimmed = reason.trim();
+        const trimmed = (reason == null ? "" : typeof reason === "string" ? reason : String(reason)).trim();
         if (!trimmed) return { ok: false, error: "Reopen requires a reason" };
         const months =
           get().months && typeof get().months === "object" && !Array.isArray(get().months)

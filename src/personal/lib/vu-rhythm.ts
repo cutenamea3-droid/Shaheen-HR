@@ -160,7 +160,11 @@ export type VuQuickLink = {
 };
 
 export function vuQuickLinks(courseCode?: string): VuQuickLink[] {
-  const code = (courseCode || "").trim().toUpperCase();
+  const code = (
+    courseCode == null ? "" : typeof courseCode === "string" ? courseCode : String(courseCode)
+  )
+    .trim()
+    .toUpperCase();
   const links: VuQuickLink[] = [
     {
       id: "vulms",

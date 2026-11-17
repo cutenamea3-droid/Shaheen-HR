@@ -32,11 +32,13 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
   );
 }
 
-export function filterRosterDrivers(drivers: RosterDriverRef[], q: string): RosterDriverRef[] {
+export function filterRosterDrivers(drivers: RosterDriverRef[], q: unknown): RosterDriverRef[] {
   const list = Array.isArray(drivers) ? drivers : [];
-  const needle = q.trim().toLowerCase();
+  const needle = (q == null ? "" : typeof q === "string" ? q : String(q)).trim().toLowerCase();
   if (!needle) return list;
-  return list.filter(
-    (d) => d.name.toLowerCase().includes(needle) || d.driverId.toLowerCase().includes(needle),
-  );
+  return list.filter((d) => {
+    const name = d.name == null ? "" : typeof d.name === "string" ? d.name : String(d.name);
+    const id = d.driverId == null ? "" : typeof d.driverId === "string" ? d.driverId : String(d.driverId);
+    return name.toLowerCase().includes(needle) || id.toLowerCase().includes(needle);
+  });
 }
