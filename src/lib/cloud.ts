@@ -191,7 +191,8 @@ export async function listPortalAccounts(): Promise<PortalAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
+  const rows = Array.isArray(data) ? data : [];
+  return rows.filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
 }
 
 export async function createPortalAccount(input: { email: string; displayName: string; password: string }): Promise<void> {
@@ -206,7 +207,7 @@ export async function listPortalActivity() {
     .order("occurred_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
 
 /** Best-effort cloud activity write (trigger also logs tracker_sections upserts). */
