@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isDispatchPreviewMode, signInDispatch } from "@/dispatch/lib/auth";
 import type { DispatchAccount } from "@/dispatch/lib/types";
 
@@ -7,6 +7,8 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const preview = isDispatchPreviewMode();
 
   async function submit(e: React.FormEvent) {
@@ -14,7 +16,9 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
     setBusy(true);
     setError(null);
     try {
-      const account = await signInDispatch(email, password);
+      const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
+      const nextPassword = (password || passwordRef.current?.value || "").trim();
+      const account = await signInDispatch(nextEmail, nextPassword);
       onSignedIn(account);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
@@ -58,12 +62,14 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Email</span>
             <input
+              ref={emailRef}
               className="dispatch-field"
               data-testid="dispatch-email"
               type="email"
               autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               required={!preview}
               placeholder={preview ? "any email (fixtures)" : "dispatcher@company.com"}
             />
@@ -71,12 +77,14 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Password</span>
             <input
+              ref={passwordRef}
               className="dispatch-field"
               data-testid="dispatch-password"
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
               required={!preview}
               placeholder={preview ? "any password (fixtures)" : "••••••••"}
             />

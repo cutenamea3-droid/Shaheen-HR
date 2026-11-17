@@ -117,6 +117,7 @@ export function EditableText({
       <div className="w-full">
         <textarea
           ref={ref}
+          data-testid="editable-text"
           value={draft}
           onChange={(e) => {
             const v = e.target.value;
@@ -124,9 +125,15 @@ export function EditableText({
             e.target.style.height = "auto";
             e.target.style.height = e.target.scrollHeight + "px";
           }}
+          onInput={(e) => {
+            const el = e.target as HTMLTextAreaElement;
+            setDraft(el.value);
+            el.style.height = "auto";
+            el.style.height = el.scrollHeight + "px";
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              commit(draft);
+              commit(draft || ref.current?.value || "");
               setEditing(false);
             }
             if (e.key === "Escape") {
@@ -139,7 +146,8 @@ export function EditableText({
         />
         <SaveBar
           onSave={() => {
-            commit(draft);
+            const next = draft || ref.current?.value || "";
+            commit(next);
             setEditing(false);
           }}
           onCancel={() => {
@@ -199,6 +207,8 @@ export function DateCell({
   const view = useViewMode();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const datePickerRef = useRef<HTMLInputElement>(null);
+  const dateTextRef = useRef<HTMLInputElement>(null);
   const isDate = !!parseISO(value);
   const applied = normStatus(appliedStatus ?? "") === "Applied";
   const appliedView = applied ? appliedExpiryView(value) : null;
@@ -207,20 +217,27 @@ export function DateCell({
     return (
       <div className="w-full space-y-2">
         <input
+          ref={datePickerRef}
+          data-testid="date-cell-picker"
           type="date"
           value={parseISO(draft) ? draft : ""}
           onChange={(e) => change(e.target.value)}
+          onInput={(e) => change((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1 text-base"
         />
         <input
+          ref={dateTextRef}
+          data-testid="date-cell-text"
           value={draft}
           onChange={(e) => change(e.target.value)}
+          onInput={(e) => change((e.target as HTMLInputElement).value)}
           placeholder="…or type text (e.g. New Driver!)"
           className="w-full rounded-lg border bg-card px-2.5 py-1 text-sm"
         />
         <SaveBar
           onSave={() => {
-            onSave(draft);
+            const next = draft || dateTextRef.current?.value || datePickerRef.current?.value || "";
+            onSave(next);
             setEditing(false);
           }}
           onCancel={() => setEditing(false)}
