@@ -27,7 +27,9 @@ export function Overtime() {
   const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
   const records =
     recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
-  const rowsMap = useOtApprovalStore((s) => s.rows);
+  const rowsMapRaw = useOtApprovalStore((s) => s.rows);
+  const rowsMap =
+    rowsMapRaw && typeof rowsMapRaw === "object" && !Array.isArray(rowsMapRaw) ? rowsMapRaw : {};
   const ensureCandidate = useOtApprovalStore((s) => s.ensureCandidate);
   const setStatus = useOtApprovalStore((s) => s.setStatus);
 

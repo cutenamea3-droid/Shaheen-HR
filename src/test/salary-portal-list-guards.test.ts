@@ -35,4 +35,9 @@ describe("salary + portal list Array.isArray guards", () => {
     expect(src).toMatch(/const bonuses = Array\.isArray\(bonusesRaw\)/);
     expect(src).toMatch(/approvalsRaw && typeof approvalsRaw === "object" && !Array\.isArray\(approvalsRaw\)/);
   });
+
+  it("Overtime UI coerces OT approval rowsMap object", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/admin/components/hr/Overtime.tsx"), "utf8");
+    expect(src).toMatch(/rowsMapRaw && typeof rowsMapRaw === "object" && !Array\.isArray\(rowsMapRaw\)/);
+  });
 });
