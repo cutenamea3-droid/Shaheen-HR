@@ -12,6 +12,9 @@ describe("dispatch preview list asRows guards", () => {
     expect(src).toMatch(/asRows<DispatchFollowUp>\(mem\(\)\.followUps\)/);
     expect(src).toMatch(/asRows<ShiftHandover>\(mem\(\)\.handovers\)/);
     expect(src).toMatch(/asRows<DispatchAccessorial>\(mem\(\)\.accessorials\)/);
+    expect(src).toMatch(/asRows<CheckCall>\(mem\(\)\.checkCalls\)/);
+    expect(src).toMatch(/asRows<DispatchException>\(mem\(\)\.exceptions\)/);
+    expect(src).toMatch(/asRows<DispatchCommunication>\(mem\(\)\.communications\)/);
   });
 
   it("driverLoadHistory tolerates non-array loads", () => {

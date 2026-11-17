@@ -362,7 +362,7 @@ export async function addCheckCall(input: {
 
 export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
   if (isDispatchPreviewMode()) {
-    return mem().checkCalls.filter((c) => c.load_id === loadId);
+    return asRows<CheckCall>(mem().checkCalls).filter((c) => c.load_id === loadId);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_check_calls")
@@ -374,7 +374,7 @@ export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
 }
 
 export async function listExceptions(): Promise<DispatchException[]> {
-  if (isDispatchPreviewMode()) return mem().exceptions;
+  if (isDispatchPreviewMode()) return asRows<DispatchException>(mem().exceptions);
   const { data, error } = await dispatchSupabase
     .from("dispatch_exceptions")
     .select("*")
@@ -900,7 +900,7 @@ export async function saveAccessorial(
 
 export async function listCommunications(loadId?: string): Promise<DispatchCommunication[]> {
   if (isDispatchPreviewMode()) {
-    const rows = mem().communications;
+    const rows = asRows<DispatchCommunication>(mem().communications);
     return (loadId ? rows.filter((c) => c.load_id === loadId) : [...rows]).sort((a, b) =>
       b.created_at.localeCompare(a.created_at),
     );
