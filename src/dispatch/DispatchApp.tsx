@@ -1203,6 +1203,7 @@ function LoadEditor({
             className="dispatch-field"
             value={form.commodity}
             onChange={(e) => setForm({ ...form, commodity: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, commodity: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1211,6 +1212,7 @@ function LoadEditor({
             className="dispatch-field"
             value={form.equipment}
             onChange={(e) => setForm({ ...form, equipment: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, equipment: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1248,6 +1250,7 @@ function LoadEditor({
             type="datetime-local"
             value={form.planned_pickup_at}
             onChange={(e) => setForm({ ...form, planned_pickup_at: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, planned_pickup_at: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1257,6 +1260,7 @@ function LoadEditor({
             type="datetime-local"
             value={form.actual_pickup_at}
             onChange={(e) => setForm({ ...form, actual_pickup_at: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, actual_pickup_at: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1266,6 +1270,7 @@ function LoadEditor({
             type="datetime-local"
             value={form.planned_delivery_at}
             onChange={(e) => setForm({ ...form, planned_delivery_at: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, planned_delivery_at: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm">
@@ -1275,6 +1280,7 @@ function LoadEditor({
             type="datetime-local"
             value={form.actual_delivery_at}
             onChange={(e) => setForm({ ...form, actual_delivery_at: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, actual_delivery_at: (e.target as HTMLInputElement).value }))}
           />
         </label>
         <label className="grid gap-1 text-sm sm:col-span-2">
@@ -1283,6 +1289,7 @@ function LoadEditor({
             className="dispatch-field"
             value={form.last_manual_location}
             onChange={(e) => setForm({ ...form, last_manual_location: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, last_manual_location: (e.target as HTMLInputElement).value }))}
             placeholder="City, highway mile marker, yard…"
           />
         </label>
@@ -1305,6 +1312,7 @@ function LoadEditor({
             className="dispatch-field"
             value={form.external_ref_label}
             onChange={(e) => setForm({ ...form, external_ref_label: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, external_ref_label: (e.target as HTMLInputElement).value }))}
             placeholder="TMS / load-app reference"
           />
         </label>
@@ -1314,6 +1322,7 @@ function LoadEditor({
             className="dispatch-field"
             value={form.external_ref_url}
             onChange={(e) => setForm({ ...form, external_ref_url: e.target.value })}
+            onInput={(e) => setForm((f) => ({ ...f, external_ref_url: (e.target as HTMLInputElement).value }))}
             placeholder="https://…"
           />
         </label>

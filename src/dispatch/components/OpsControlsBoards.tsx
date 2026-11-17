@@ -2,7 +2,7 @@
  * Batch 8 surfaces: BOL/POD docs, follow-ups, driver/equipment board.
  * Additive — does not rewrite My Dispatch Today / Active Loads / Driver Updates / Handover cores.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listFollowUps, saveFollowUp, saveLoad } from "@/dispatch/lib/cloud";
 import {
   awaitingBolLoads,
@@ -183,6 +183,9 @@ export function FollowUpsBoard({
   const [dueAt, setDueAt] = useState("");
   const [loadId, setLoadId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const fuTitleRef = useRef<HTMLInputElement>(null);
+  const fuNotesRef = useRef<HTMLInputElement>(null);
+  const fuDueRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
     setRows(await listFollowUps());
@@ -208,16 +211,22 @@ export function FollowUpsBoard({
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <input
+          ref={fuTitleRef}
+          data-testid="dispatch-fu-title"
           className="dispatch-field"
           placeholder="Reminder title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
         />
         <input
+          ref={fuDueRef}
+          data-testid="dispatch-fu-due"
           className="dispatch-field"
           type="datetime-local"
           value={dueAt}
           onChange={(e) => setDueAt(e.target.value)}
+          onInput={(e) => setDueAt((e.target as HTMLInputElement).value)}
         />
         <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
           <option value="">No load link</option>
@@ -228,25 +237,31 @@ export function FollowUpsBoard({
           ))}
         </select>
         <input
+          ref={fuNotesRef}
+          data-testid="dispatch-fu-notes"
           className="dispatch-field"
           placeholder="Notes (optional)"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          onInput={(e) => setNotes((e.target as HTMLInputElement).value)}
         />
       </div>
       <button
         type="button"
         className="dispatch-btn-primary w-fit"
         onClick={async () => {
-          if (!title.trim() || !dueAt) {
+          const nextTitle = (title.trim() || fuTitleRef.current?.value || "").trim();
+          const nextDue = (dueAt.trim() || fuDueRef.current?.value || "").trim();
+          const nextNotes = (notes.trim() || fuNotesRef.current?.value || "").trim();
+          if (!nextTitle || !nextDue) {
             setError("Title and due time are required.");
             return;
           }
           setError(null);
           await saveFollowUp({
-            title: title.trim(),
-            notes: notes.trim() || null,
-            due_at: new Date(dueAt).toISOString(),
+            title: nextTitle,
+            notes: nextNotes || null,
+            due_at: new Date(nextDue).toISOString(),
             load_id: loadId || null,
           });
           setTitle("");
