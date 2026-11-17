@@ -19,6 +19,8 @@ describe("Follow-up / drug / rate / invite autofill", () => {
     );
     expect(src).toMatch(/specimenRef\.current\?\.value/);
     expect(src).toMatch(/data-testid="drug-specimen-id"/);
+    expect(src).toMatch(/data-testid="drug-manual-event-search"/);
+    expect(src).toMatch(/onInput=\{\(e\) => setManualQ/);
   });
 
   it("RateCard SoftField debounced persist without blur", () => {

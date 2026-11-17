@@ -191,9 +191,11 @@ export function DrugTestEventEditor({
                   value={manualQ}
                   disabled={disabled || busy}
                   onChange={(e) => setManualQ(e.target.value)}
+                  onInput={(e) => setManualQ((e.target as HTMLInputElement).value)}
                   placeholder="Specimen, reason, date, missing doc…"
                   className={fieldCls}
                   aria-label="Search events for manual matching"
+                  data-testid="drug-manual-event-search"
                 />
               </label>
               <label className={labelCls}>

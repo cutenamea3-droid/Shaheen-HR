@@ -147,10 +147,11 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
         c[def.id] = 0;
         continue;
       }
+      const headers = Array.isArray(sec.headers) ? sec.headers : [];
       c[def.id] = sec.rows.filter(
         (r) =>
           !rowOrdinaryComplianceMuted(def, r, data) &&
-          analyzeRow(def, sec.headers, r).issues.length,
+          analyzeRow(def, headers, r).issues.length,
       ).length;
     }
     return c;
