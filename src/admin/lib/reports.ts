@@ -257,14 +257,17 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
   doc.setFont("helvetica", "bold").setFontSize(15).text(company, logo ? 78 : 30, y);
   doc.setFont("helvetica", "normal").setFontSize(9).text("Prepared by HR Department", W - 30, y, { align: "right" });
   y += 8;
-  tables.forEach((t, ti) => {
+  const list = Array.isArray(tables) ? tables : [];
+  list.forEach((t, ti) => {
     if (ti === 0) y += 16;
     else y += 14;
+    const head = Array.isArray(t.head) ? t.head : [];
+    const rows = Array.isArray(t.rows) ? t.rows : [];
     doc.setFont("helvetica", "bold").setFontSize(12).text(t.title, 30, y + 14);
     autoTable(doc, {
       startY: y + 22,
-      head: [t.head],
-      body: t.rows.map((r) => r.map((c) => c.t)),
+      head: [head],
+      body: rows.map((r) => (Array.isArray(r) ? r : []).map((c) => c.t)),
       theme: "grid",
       margin: { left: 30, right: 30 },
       styles: { fontSize: 8.5, cellPadding: 4, overflow: "linebreak", valign: "top", lineColor: [90, 90, 90], lineWidth: 0.5, textColor: [20, 20, 20] },
@@ -272,21 +275,21 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
       columnStyles: t.noWrapFirst ? { 0: { cellWidth: "wrap" }, 1: { cellWidth: "wrap" } } : { 0: { cellWidth: 22, halign: "center" } },
       didParseCell: (h) => {
         if (h.section !== "body") return;
-        const tone = t.rows[h.row.index]?.[h.column.index]?.c;
+        const tone = rows[h.row.index]?.[h.column.index]?.c;
         if (tone) {
           h.cell.styles.textColor = TONE[tone];
           h.cell.styles.fontStyle = "bold";
         }
       },
     });
-    if (!t.rows.length) {
+    if (!rows.length) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fy = (doc as any).lastAutoTable.finalY;
       doc.setFont("helvetica", "italic").setFontSize(9).text("No entries.", 30, fy + 12);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable.finalY + 10;
-    if (y > doc.internal.pageSize.getHeight() - 80 && ti < tables.length - 1) {
+    if (y > doc.internal.pageSize.getHeight() - 80 && ti < list.length - 1) {
       doc.addPage();
       y = 30;
     }
@@ -296,8 +299,17 @@ export async function downloadPdf(tables: Table[], company: string, filename: st
 
 export function downloadCsv(tables: Table[], filename: string) {
   const esc = (s: string) => `"${s.replace(/"/g, '""').replace(/\n/g, "; ")}"`;
-  const out = tables
-    .map((t) => [esc(t.title), t.head.map(esc).join(","), ...t.rows.map((r) => r.map((c) => esc(c.t)).join(","))].join("\n"))
+  const list = Array.isArray(tables) ? tables : [];
+  const out = list
+    .map((t) => {
+      const head = Array.isArray(t.head) ? t.head : [];
+      const rows = Array.isArray(t.rows) ? t.rows : [];
+      return [
+        esc(t.title),
+        head.map(esc).join(","),
+        ...rows.map((r) => (Array.isArray(r) ? r : []).map((c) => esc(c.t)).join(",")),
+      ].join("\n");
+    })
     .join("\n\n");
   const blob = new Blob(["\ufeff" + out], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
