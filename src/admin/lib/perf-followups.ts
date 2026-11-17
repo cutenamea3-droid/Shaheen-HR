@@ -105,7 +105,10 @@ export function collectPerfFacts(input: {
   if (c.lateLevel === "grace") facts.push({ ...base, kind: "Within grace", detail: `${c.lateMin}m` });
   if (v.earlyOutMin > 0) facts.push({ ...base, kind: "Early out", detail: `${v.earlyOutMin}m` });
   if (c.breakLevel === "over") facts.push({ ...base, kind: "Over break", detail: `${c.overBreak}m` });
-  if (c.missPunch) facts.push({ ...base, kind: "Miss punch", detail: c.missing.join(", ") || "miss" });
+  if (c.missPunch) {
+    const missing = Array.isArray(c.missing) ? c.missing : [];
+    facts.push({ ...base, kind: "Miss punch", detail: missing.join(", ") || "miss" });
+  }
   if (c.overtimeMin > 0) facts.push({ ...base, kind: "OT marked hours", detail: `${(c.overtimeMin / 60).toFixed(2)}h` });
   if (c.extraDay) facts.push({ ...base, kind: "Additional day", detail: `${(c.extraDayMin / 60).toFixed(2)}h` });
 

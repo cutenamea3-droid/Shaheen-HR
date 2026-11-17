@@ -31,4 +31,22 @@ describe("leaveBalance + reports DayCalc array guards", () => {
     expect(src).toMatch(/const missing = Array\.isArray\(c\.missing\)/);
     expect(src).toMatch(/const flags = Array\.isArray\(c\.flags\)/);
   });
+
+  it("monthly-report-model + perf-followups + Attendance coerce DayCalc arrays", () => {
+    const model = readFileSync(
+      resolve(process.cwd(), "src/admin/lib/monthly-report-model.ts"),
+      "utf8",
+    );
+    const fu = readFileSync(resolve(process.cwd(), "src/admin/lib/perf-followups.ts"), "utf8");
+    const att = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Attendance.tsx"),
+      "utf8",
+    );
+    expect(model).toMatch(/Array\.isArray\(x\.c\.violations\)/);
+    expect(model).toMatch(/Array\.isArray\(x\.c\.missing\)/);
+    expect(fu).toMatch(/Array\.isArray\(c\.missing\)/);
+    expect(att).toMatch(/Array\.isArray\(c\.flags\)/);
+    expect(att).toMatch(/Array\.isArray\(c\.missing\)/);
+    expect(att).toMatch(/Array\.isArray\(c\.violations\)/);
+  });
 });

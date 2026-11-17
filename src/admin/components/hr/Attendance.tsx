@@ -317,7 +317,10 @@ export function Attendance() {
                       <span className="ml-2 text-sm text-muted-foreground">
                         {r.status}
                         {c.worked != null ? ` · ${fmtHours(c.worked)} h` : ""}
-                        {c.flags.length ? ` · ${c.flags[0]}` : ""}
+                        {(() => {
+                          const flags = Array.isArray(c.flags) ? c.flags : [];
+                          return flags.length ? ` · ${flags[0]}` : "";
+                        })()}
                       </span>
                     )}
                   </span>
@@ -425,7 +428,8 @@ export function Attendance() {
 
                   {rec && (() => {
                     const tips: string[] = [];
-                    if (c.missPunch) tips.push(`Missing ${c.missing.length} punch(es) — paste them from the machine or add a note.`);
+                    const missing = Array.isArray(c.missing) ? c.missing : [];
+                    if (c.missPunch) tips.push(`Missing ${missing.length} punch(es) — paste them from the machine or add a note.`);
                     if (r.in != null && r.out == null) tips.push("Missing clock-out — paste punch out from the machine or add a note.");
                     if (e.afterHours && !r.doubleShift && !c.extraDay && c.worked != null && c.worked >= c.shiftLen + 120)
                       tips.push(`Worked ${fmtHours(c.worked)} h — more than a normal shift. Tick "Double shift" if he stayed for an extra shift.`);
@@ -446,15 +450,19 @@ export function Attendance() {
                         Worked: <b>{c.worked != null ? `${fmtHours(c.worked)} h` : "—"}</b>
                       </span>
                       {c.breakTaken != null && <span>Break: <b>{c.breakTaken}m</b></span>}
-                      {c.flags.length ? (
-                        c.flags.map((f) => (
-                          <Tone key={f} tone={c.violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
-                            {f}
-                          </Tone>
-                        ))
-                      ) : (
-                        <Tone tone="green">On time</Tone>
-                      )}
+                      {(() => {
+                        const flags = Array.isArray(c.flags) ? c.flags : [];
+                        const violations = Array.isArray(c.violations) ? c.violations : [];
+                        return flags.length ? (
+                          flags.map((f) => (
+                            <Tone key={f} tone={violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
+                              {f}
+                            </Tone>
+                          ))
+                        ) : (
+                          <Tone tone="green">On time</Tone>
+                        );
+                      })()}
                     </div>
                   )}
                 </>

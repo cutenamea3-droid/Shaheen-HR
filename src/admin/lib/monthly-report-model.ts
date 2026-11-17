@@ -160,7 +160,7 @@ function buildEmpMonth(data: Data, month: string, e: Employee, index: number): E
     absent: days.filter((x) => x.rec.status === "absent").length,
     satMissCount: days.filter((x) => x.c.satTargetMiss).length,
     ratingCounts,
-    violationDays: days.filter((x) => x.c.violations.length).length,
+    violationDays: days.filter((x) => (Array.isArray(x.c.violations) ? x.c.violations : []).length).length,
     otMin: ot.reduce((a, x) => a + x.c.overtimeMin, 0),
     otDays: ot.length,
     extraMin: ex.reduce((a, x) => a + x.c.extraDayMin, 0),
@@ -175,7 +175,10 @@ function collectExceptions(emp: EmpMonth): ExceptionItem[] {
     const base = { employee: emp.employee.name, dept: emp.deptName, date: shortDate(x.date) };
     if (x.c.lateLevel === "late") out.push({ ...base, kind: "Late (after grace)", detail: `${x.c.lateMin}m` });
     if (x.c.breakLevel === "over") out.push({ ...base, kind: "Over break", detail: `${x.c.overBreak}m` });
-    if (x.c.missPunch) out.push({ ...base, kind: "Miss punch", detail: x.c.missing.join(", ") || "miss" });
+    if (x.c.missPunch) {
+      const missing = Array.isArray(x.c.missing) ? x.c.missing : [];
+      out.push({ ...base, kind: "Miss punch", detail: missing.join(", ") || "miss" });
+    }
     if (x.rec.status === "absent") out.push({ ...base, kind: "Absent", detail: "—" });
     if (x.rec.status === "leave" && !x.rec.leavePaid) out.push({ ...base, kind: "Unpaid leave", detail: "—" });
     if (x.rec.status === "half") out.push({ ...base, kind: "Half day", detail: x.rec.halfReason || "—" });
