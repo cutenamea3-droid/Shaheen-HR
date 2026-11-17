@@ -682,9 +682,10 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
   });
 }
 
-export function recordPersonIsActive(rows: { cells: string[] }[]) {
+export function recordPersonIsActive(rows: { cells?: unknown }[]) {
   for (const r of rows) {
-    const v = (r.cells[RECORD_ACTIVE_COL] ?? "").trim();
+    const cells = Array.isArray(r.cells) ? (r.cells as string[]) : [];
+    const v = (cells[RECORD_ACTIVE_COL] ?? "").trim();
     if (v) return v.toLowerCase() !== "inactive";
   }
   return true;

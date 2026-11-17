@@ -85,11 +85,14 @@ function emptyCounts(): Record<InspectionStatus, number> {
 }
 
 function cell(row: Row | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+  const cells = Array.isArray(row?.cells) ? row!.cells : [];
+  return (cells[i] ?? "").trim();
 }
 
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
-  return data.sections[sectionId]?.rows?.find((r) => r.driverId === driverId);
+  const rows = data.sections[sectionId]?.rows;
+  if (!Array.isArray(rows)) return undefined;
+  return rows.find((r) => r.driverId === driverId);
 }
 
 function driverName(data: AppData, driverId: string): string {

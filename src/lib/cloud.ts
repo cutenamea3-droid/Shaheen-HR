@@ -249,7 +249,13 @@ export async function cloudLoad() {
 
 export async function cloudSave({ data }: { data: { sections: Record<string, string> } }) {
   const now = new Date().toISOString();
-  const rows = Object.entries(data.sections).map(([id, json]) => ({ id, data: JSON.parse(json), updated_at: now }));
+  const rows = Object.entries(data.sections).flatMap(([id, json]) => {
+    try {
+      return [{ id, data: JSON.parse(json), updated_at: now }];
+    } catch {
+      return [];
+    }
+  });
   if (!rows.length) return { stamp: "" };
   const { data: out, error } = await db.from(T).upsert(rows as never).select("updated_at");
   if (error) throw new Error(error.message);

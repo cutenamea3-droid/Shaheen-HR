@@ -22,7 +22,7 @@ import {
   suggestionMatchesToday,
   type FuturePlanSuggestion,
 } from "./plan-dates";
-import { SECTIONS, sectionById, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, sectionById, type AppData, type Row } from "./sections";
 import {
   collectTempNotes,
   isNewDriver,
@@ -166,7 +166,8 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
     const sec = data.sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
 
-    for (const row of sec.rows) {
+    for (const rawRow of sec.rows) {
+      const row: Row = { ...rawRow, cells: cellsOf(rawRow) };
       const driver = (row.cells[0] ?? "").trim() || "—";
       const driverId = row.driverId;
       const isNew = isNewDriver(data, driverId);
@@ -373,7 +374,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
           sectionId: def.id,
           sectionTitle: def.title,
           rowId: row.id,
-          docType: (sec.headers[issue.col] ?? def.short).trim() || def.short,
+          docType: ((Array.isArray(sec.headers) ? sec.headers[issue.col] : undefined) ?? def.short).trim() || def.short,
           statusLabel,
           expiryRaw,
           expiryDisplay: expiryD ? fmtDate(expiryD) : fmtCell(expiryRaw) || "—",

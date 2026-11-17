@@ -47,7 +47,8 @@ export const DATA_QUALITY_POLICY =
 const WIZARD_SECTIONS = SECTIONS.filter((s) => s.inWizard).map((s) => s.id);
 
 function cell(row: Row | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+  const cells = Array.isArray(row?.cells) ? row!.cells : [];
+  return (cells[i] ?? "").trim();
 }
 
 function nameOf(data: AppData, driverId: string): string {

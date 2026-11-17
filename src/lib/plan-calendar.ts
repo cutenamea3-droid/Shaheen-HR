@@ -19,7 +19,7 @@ import {
   toISODateLocal,
 } from "./plan-dates";
 import { listFollowUps, followUpTone, type FollowUp } from "./follow-ups";
-import { SECTIONS, type AppData } from "./sections";
+import { SECTIONS, cellsOf, type AppData } from "./sections";
 import { rowIsActive, rowOrdinaryComplianceMuted } from "./alerts";
 
 function startOfDay(d: Date): Date {
@@ -96,7 +96,8 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
     const sec = data.sections[rule.sectionId];
     const def = SECTIONS.find((s) => s.id === rule.sectionId);
     if (!sec || !def || !Array.isArray(sec.rows)) continue;
-    for (const row of sec.rows) {
+    for (const rawRow of sec.rows) {
+      const row = { ...rawRow, cells: cellsOf(rawRow) };
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
       const suggestion = buildFuturePlanSuggestion(rule, row);

@@ -43,8 +43,9 @@ export interface DriverDossier {
   records: DossierRecordLine[];
 }
 
-function cell(row: { cells: string[] } | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+function cell(row: { cells?: unknown } | undefined, i: number) {
+  const cells = Array.isArray(row?.cells) ? (row!.cells as string[]) : [];
+  return (cells[i] ?? "").trim();
 }
 
 function statusOf(row: { cells: string[] } | undefined, i: number) {

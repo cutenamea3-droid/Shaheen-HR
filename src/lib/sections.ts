@@ -227,6 +227,11 @@ export interface Row {
   dateOfHire?: string;
 }
 
+/** Safe cells array for corrupt/missing cloud rows — never assume `row.cells` is an array. */
+export function cellsOf(row: { cells?: unknown } | null | undefined): string[] {
+  return Array.isArray(row?.cells) ? (row!.cells as string[]) : [];
+}
+
 /** Parse employment status from a cell or optional Row.status. Empty → active. */
 export function parseDriverStatus(value?: string | null): DriverStatus {
   const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
