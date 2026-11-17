@@ -239,12 +239,14 @@ export const dmvDays = (state: string) => (state.trim().toUpperCase() === "CA" ?
 /** Returns row issues and the per-cell highlight tone map. */
 export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
   const c = row.cells;
+  const hdrs = Array.isArray(headers) ? headers : [];
+  const headerAt = (i: number) => (hdrs[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`;
   const issues: Issue[] = [];
   const push = (i: Issue | null) => i && issues.push(i);
   const noteIssues = () =>
     def.types.forEach((t, i) => {
       // Temporary Note (tempnote) never yellow-highlights.
-      if (t === "note" && filled(c[i])) push({ tone: "note", label: `${headers[i].trim()}: note`, col: i });
+      if (t === "note" && filled(c[i])) push({ tone: "note", label: `${headerAt(i)}: note`, col: i });
     });
   switch (def.id) {
     case "dmv": {
@@ -293,14 +295,14 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
     case "docs": {
       for (let i = 2; i <= 13; i++) {
         const s = normStatus(c[i]);
-        if (s !== "Valid") push(statusIssue(c[i], i, headers[i]) ?? { tone: "danger", label: `${headers[i]}: empty`, col: i });
+        if (s !== "Valid") push(statusIssue(c[i], i, headerAt(i)) ?? { tone: "danger", label: `${headerAt(i)}: empty`, col: i });
       }
       noteIssues();
       break;
     }
     case "info": {
       [1, 2].forEach((i) => {
-        if (!filled(c[i]) || normStatus(c[i]) === "Invalid") push({ tone: "danger", label: `${headers[i]}: ${c[i].trim() || "empty"}`, col: i });
+        if (!filled(c[i]) || normStatus(c[i]) === "Invalid") push({ tone: "danger", label: `${headerAt(i)}: ${c[i].trim() || "empty"}`, col: i });
       });
       break;
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2, UserPlus } from "lucide-react";
 import { createPortalAccount, listPortalAccounts, updatePortalAccess, type PortalAccount, type PortalRole } from "@/lib/cloud";
 import {
@@ -17,6 +17,9 @@ export function TeamManagement() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -137,11 +140,17 @@ export function TeamManagement() {
           setMessage("");
           try {
             try {
-              await createPortalAccount({ email, displayName: name, password });
+              const nextName = (name.trim() || nameRef.current?.value || "").trim();
+              const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
+              const nextPassword = (password || passwordRef.current?.value || "").trim();
+              await createPortalAccount({ email: nextEmail, displayName: nextName, password: nextPassword });
             } catch {
               /* edge function / cloud may be unavailable — local create below */
             }
-            const created = await createLocalAccount({ email, displayName: name, password });
+            const nextName = (name.trim() || nameRef.current?.value || "").trim();
+            const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
+            const nextPassword = (password || passwordRef.current?.value || "").trim();
+            const created = await createLocalAccount({ email: nextEmail, displayName: nextName, password: nextPassword });
             setName("");
             setEmail("");
             setPassword("");
@@ -161,15 +170,15 @@ export function TeamManagement() {
       >
         <label className="text-sm font-bold">
           Name
-          <input required maxLength={80} className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={name} onChange={(event) => setName(event.target.value)} />
+          <input ref={nameRef} data-testid="team-user-name" required maxLength={80} className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={name} onChange={(event) => setName(event.target.value)} onInput={(event) => setName((event.target as HTMLInputElement).value)} />
         </label>
         <label className="text-sm font-bold">
           Email
-          <input required type="email" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <input ref={emailRef} data-testid="team-user-email" required type="email" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={email} onChange={(event) => setEmail(event.target.value)} onInput={(event) => setEmail((event.target as HTMLInputElement).value)} />
         </label>
         <label className="text-sm font-bold">
           Temporary password
-          <input required type="password" minLength={8} autoComplete="new-password" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input ref={passwordRef} data-testid="team-user-password" required type="password" minLength={8} autoComplete="new-password" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={password} onChange={(event) => setPassword(event.target.value)} onInput={(event) => setPassword((event.target as HTMLInputElement).value)} />
         </label>
         <button disabled={busy} className="ui-press inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 font-semibold text-primary-foreground disabled:opacity-60">
           <UserPlus className="size-4" /> Add user

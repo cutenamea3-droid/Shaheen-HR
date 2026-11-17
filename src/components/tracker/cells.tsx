@@ -290,6 +290,7 @@ export function StatusToggle({
   const view = useViewMode();
   const [open, setOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const customRef = useRef<HTMLInputElement>(null);
   const applied = normStatus(value) === "Applied";
   const appliedView = applied && expiryValue != null ? appliedExpiryView(expiryValue) : null;
   const tone = appliedView?.tone ?? statusTone(value);
@@ -351,16 +352,21 @@ export function StatusToggle({
         </div>
         <div className="mt-3 flex gap-2">
           <input
+            ref={customRef}
+            data-testid="status-custom"
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
+            onInput={(e) => setCustom((e.target as HTMLInputElement).value)}
             placeholder="Custom…"
             className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-sm"
           />
           <button
             type="button"
-            disabled={!custom.trim()}
+            disabled={!(custom.trim() || customRef.current?.value?.trim())}
             onClick={() => {
-              onSave(custom.trim());
+              const next = (custom.trim() || customRef.current?.value || "").trim();
+              if (!next) return;
+              onSave(next);
               setCustom("");
               setOpen(false);
             }}
