@@ -366,6 +366,7 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
   const attendanceRows = Array.isArray(model.attendanceRows) ? model.attendanceRows : [];
   const exceptions = Array.isArray(model.exceptions) ? model.exceptions : [];
   const notes = Array.isArray(model.notes) ? model.notes : [];
+  const otRows = Array.isArray(model.otRows) ? model.otRows : [];
 
   y = sectionTitle(doc, y, "B", "Attendance Summary", chromeBase);
   y = table(
@@ -511,16 +512,20 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       doc,
       y,
       ["#", "Employee", "Dept", "Type", "OT days", "OT hours", "Add. days", "Add. hours"],
-      model.otRows.map((r, i) => [
-        String(i + 1),
-        r.employee,
-        r.dept,
-        r.type,
-        String(r.otDays.length),
-        r.otHours,
-        String(r.extraDays.length),
-        r.extraHours,
-      ]),
+      otRows.map((r, i) => {
+        const otDays = Array.isArray(r.otDays) ? r.otDays : [];
+        const extraDays = Array.isArray(r.extraDays) ? r.extraDays : [];
+        return [
+          String(i + 1),
+          r.employee,
+          r.dept,
+          r.type,
+          String(otDays.length),
+          r.otHours,
+          String(extraDays.length),
+          r.extraHours,
+        ];
+      }),
       {
         widths: {
           0: { cellWidth: 28, halign: "center" },
@@ -536,16 +541,20 @@ function renderModel(doc: jsPDF, model: MonthlyReportModel, opts: MonthlyPdfOpti
       doc,
       y,
       ["#", "Employee", "Dept", "Type", "Over time days", "OT hours", "Additional days", "Add. hours"],
-      model.otRows.map((r, i) => [
-        String(i + 1),
-        r.employee,
-        r.dept,
-        r.type,
-        r.otDays.length ? r.otDays.join("\n") : "—",
-        r.otHours,
-        r.extraDays.length ? r.extraDays.join("\n") : "—",
-        r.extraHours,
-      ]),
+      otRows.map((r, i) => {
+        const otDays = Array.isArray(r.otDays) ? r.otDays : [];
+        const extraDays = Array.isArray(r.extraDays) ? r.extraDays : [];
+        return [
+          String(i + 1),
+          r.employee,
+          r.dept,
+          r.type,
+          otDays.length ? otDays.join("\n") : "—",
+          r.otHours,
+          extraDays.length ? extraDays.join("\n") : "—",
+          r.extraHours,
+        ];
+      }),
       {
         widths: {
           0: { cellWidth: 28, halign: "center" },

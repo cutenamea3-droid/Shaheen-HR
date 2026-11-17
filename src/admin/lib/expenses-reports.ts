@@ -17,9 +17,10 @@ export type ExpenseExportRow = {
 export function expensesCsv(rows: ExpenseExportRow[]): string {
   const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
   const head = ["Title", "Category", "Amount (PKR)", "Date", "Scope", "Employees", "Status", "Note"];
+  const list = Array.isArray(rows) ? rows : [];
   const lines = [
     head.map(esc).join(","),
-    ...rows.map((r) =>
+    ...list.map((r) =>
       [r.title, r.category, r.amountPkr, r.expenseDate, r.scope, r.employees, r.status, r.note].map(esc).join(","),
     ),
   ];
@@ -31,8 +32,9 @@ export function toExpenseExportRows(
   categories: ExpenseCategory[],
   nameById: Map<string, string>,
 ): ExpenseExportRow[] {
-  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? id;
-  return expenses
+  const cats = Array.isArray(categories) ? categories : [];
+  const catName = (id: string) => cats.find((c) => c.id === id)?.name ?? id;
+  return (Array.isArray(expenses) ? expenses : [])
     .filter((e) => !e.deletedAt)
     .map((e) => ({
       title: e.title,
@@ -58,7 +60,7 @@ export function expensesPrintHtml(opts: {
   rows: ExpenseExportRow[];
   totalPkr: number;
 }): string {
-  const body = opts.rows
+  const body = (Array.isArray(opts.rows) ? opts.rows : [])
     .map(
       (r) =>
         `<tr><td>${escapeHtml(r.title)}</td><td>${escapeHtml(r.category)}</td><td class="num">${r.amountPkr.toLocaleString("en-PK")}</td><td>${escapeHtml(r.expenseDate)}</td><td>${escapeHtml(r.scope)}</td><td>${escapeHtml(r.employees)}</td><td>${escapeHtml(r.status)}</td></tr>`,

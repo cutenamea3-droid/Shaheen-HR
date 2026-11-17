@@ -7,7 +7,7 @@ import {
   validateExpenseInput,
 } from "./expenses-logic";
 import { HR_EXPENSES_STORAGE_KEY } from "./expenses-mode";
-import { expensesCsv, toExpenseExportRows } from "./expenses-reports";
+import { expensesCsv, expensesPrintHtml, toExpenseExportRows } from "./expenses-reports";
 import type { ExpenseRecord } from "./expenses-types";
 import { tenureFromJoiningDate } from "./employee-finance-types";
 
@@ -119,6 +119,29 @@ describe("expenses CSV — no bank fields", () => {
     expect(lower).not.toContain("iban");
     expect(lower).not.toMatch(/\baccount\b/);
     expect(lower).toContain("company total");
+  });
+
+  it("expensesCsv / toExpenseExportRows tolerate non-array inputs", () => {
+    expect(expensesCsv(null as never)).toContain("Title");
+    expect(toExpenseExportRows(null as never, null as never, new Map())).toEqual([]);
+    expect(
+      toExpenseExportRows(
+        [base({ scope: "selected", employeeIds: null as never })],
+        [{ id: "fuel", name: "Fuel", custom: false }],
+        new Map([["a", "Ayesha"]]),
+      )[0]?.employees,
+    ).toBe("");
+  });
+
+  it("expensesPrintHtml tolerates non-array rows", () => {
+    const html = expensesPrintHtml({
+      company: "Shaheen",
+      monthLabel: "2026-11",
+      rows: null as never,
+      totalPkr: 0,
+    });
+    expect(html).toContain("Expenses");
+    expect(html).toContain("<tbody></tbody>");
   });
 });
 
