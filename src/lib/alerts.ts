@@ -2,6 +2,7 @@ import {
   SECTIONS,
   cellsOf,
   formatDriverStatus,
+  headersOf,
   parseDriverStatus,
   type AppData,
   type DriverStatus,
@@ -649,7 +650,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
         if (t !== "date") return;
         const raw = cells[i] ?? "";
         if (isOldExpiry(raw)) return;
-        const document = docName(sec.headers, i, def.short);
+        const document = docName(headersOf(sec), i, def.short);
         const d = parseISO(raw);
         if (!d) {
           // Empty or non-date / Missing → Incomplete
@@ -724,7 +725,7 @@ export function fleetCompliancePct(data: AppData) {
       const name = (cellsOf(r)[0] ?? "").trim().toLowerCase();
       if (!name) continue;
       names.add(name);
-      for (const i of analyzeRow(def, sec.headers, r).issues) {
+      for (const i of analyzeRow(def, headersOf(sec), r).issues) {
         if (i.tone !== "note") bad.add(name);
       }
     }

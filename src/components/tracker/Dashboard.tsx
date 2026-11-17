@@ -112,7 +112,7 @@ export function Dashboard() {
       if (!sec || !Array.isArray(sec.rows)) continue;
       for (const r of sec.rows) {
         if (rowOrdinaryComplianceMuted(d, r, data)) continue;
-        const { issues } = analyzeRow(d, sec.headers, r);
+        const { issues } = analyzeRow(d, headersOf(sec), r);
         if (issues.length) alerts++;
         if (issues.some((i) => /expired/i.test(i.label))) expired++;
       }
@@ -793,7 +793,7 @@ function TodayPanel() {
         const name = (cellsOf(r)[0] ?? "").trim();
         if (!name) continue;
         names.add(name.toLowerCase());
-        for (const i of analyzeRow(def, Array.isArray(sec.headers) ? sec.headers : [], r).issues) {
+        for (const i of analyzeRow(def, headersOf(sec), r).issues) {
           if (i.tone !== "note") bad.add(name.toLowerCase());
           const left = urgentLeft(i);
           if (left !== null)

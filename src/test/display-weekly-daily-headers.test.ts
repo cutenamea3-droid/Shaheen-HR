@@ -24,7 +24,7 @@ describe("Display name / weekly review / daily-summary headers", () => {
 
   it("daily-summary passes safe headers into analyzeRow", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/daily-summary.ts"), "utf8");
-    expect(src).toMatch(/Array\.isArray\(sec\.headers\) \? sec\.headers : \[\]/);
+    expect(src).toMatch(/analyzeRow\(def, headersOf\(sec\), r\)/);
   });
 
   it("Admin designation updates on input", () => {

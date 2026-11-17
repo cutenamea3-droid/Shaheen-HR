@@ -20,7 +20,7 @@ import {
   listScopeOf,
   type ListScope,
 } from "@/lib/driver-meta";
-import { SECTIONS, cellsOf, type AppData } from "@/lib/sections";
+import { SECTIONS, cellsOf, headersOf, type AppData } from "@/lib/sections";
 
 export type FinderEmploymentLabel = "Active" | "Leave" | "Inactive" | "New";
 
@@ -108,7 +108,7 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
       if (!d.name) d.name = (cells[0] ?? "").trim();
 
       if (!rowAlertsMuted(def, r, data)) {
-        d.issues += analyzeRow(def, Array.isArray(sec.headers) ? sec.headers : [], r).issues.length;
+        d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
       }
 
       if (def.id === "ssccdl" && (cells[1] ?? "").trim()) d.cdl = (cells[1] ?? "").trim();

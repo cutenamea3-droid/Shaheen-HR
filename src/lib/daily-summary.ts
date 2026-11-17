@@ -3,7 +3,7 @@
  * matchers and driver-meta. Temp notes are never treated as issues.
  */
 import { analyzeRow, rowOrdinaryComplianceMuted, type Issue } from "./alerts";
-import { SECTIONS, type AppData } from "./sections";
+import { SECTIONS, headersOf, type AppData } from "./sections";
 import { countTempNotes, isNewDriver, isOwnerOperator } from "./driver-meta";
 
 export type DriverDailyKey = "expired" | "soon" | "applied" | "tempNotes" | "new" | "oo";
@@ -32,7 +32,7 @@ export function buildDriverDailyCounts(data: AppData): DriverDailyCounts {
       if (countTempNotes(data, r.driverId) > 0) tempDrivers.add(r.driverId);
       if (def.id === "inactive") continue;
       if (rowOrdinaryComplianceMuted(def, r, data)) continue;
-      for (const i of analyzeRow(def, Array.isArray(sec.headers) ? sec.headers : [], r).issues) {
+      for (const i of analyzeRow(def, headersOf(sec), r).issues) {
         if (matchExpired(i)) expired++;
         else if (matchSoon(i)) soon++;
         else if (matchApplied(i)) applied++;
