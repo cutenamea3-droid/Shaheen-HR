@@ -14,6 +14,8 @@ export { setLogoCacheForTests };
 
 const MARGIN = { left: 40, right: 40, top: 72, bottom: 48 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export type EmployeeReportOptions = {
   company: string;
   month: string;
@@ -124,7 +126,7 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
       d.c.lateLevel === "late" ? `${d.c.lateMin}m` : d.c.lateLevel === "grace" ? `g ${d.c.lateMin}m` : "—",
       d.c.breakLevel === "over" ? `${d.c.overBreak}m` : "—",
       d.c.overtimeMin > 0 ? fmtHours(d.c.overtimeMin) : "—",
-      (d.rec.note || "").slice(0, 80),
+      asText(d.rec.note).slice(0, 80),
     ]),
     styles: { fontSize: 9, cellPadding: 3, textColor: PDF_THEME.charcoal },
     headStyles: { fillColor: PDF_THEME.forest, textColor: PDF_THEME.white, fontStyle: "bold" },
@@ -160,7 +162,6 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 14;
 
-  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const notes = days
     .flatMap((d) => {
       const rows: string[][] = [];

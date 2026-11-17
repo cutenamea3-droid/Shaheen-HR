@@ -8,5 +8,7 @@ describe("employee report days guards", () => {
     expect(src).toMatch(/Array\.isArray\(emp\.days\)/);
     expect(src).toMatch(/Array\.isArray\(model\.employees\)/);
     expect(src).toMatch(/Array\.isArray\(data\.employees\)/);
+    expect(src).toMatch(/asText\(d\.rec\.note\)\.slice\(0,\s*80\)/);
+    expect(src).not.toMatch(/\(d\.rec\.note \|\| ""\)\.slice/);
   });
 });
