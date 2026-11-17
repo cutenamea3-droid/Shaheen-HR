@@ -5,7 +5,10 @@ import {
   normalizeAssessment,
   normalizeBacklogItem,
   normalizeCourse,
+  normalizeCourseGrade,
   normalizeExamPrepTask,
+  normalizeFocusSession,
+  normalizeGradeEntry,
   normalizeNote,
 } from "@/personal/lib/assessment-phases";
 import { migrateDiscipline } from "@/personal/lib/defaults";
@@ -68,6 +71,32 @@ describe("normalizeAssessment coerce guards", () => {
       "20260101",
       "2026-01-02",
     ]);
+    const sess = normalizeFocusSession({
+      id: "s1",
+      minutes: "12" as unknown as number,
+      startedAt: "100" as unknown as number,
+      endedAt: "200" as unknown as number,
+      mode: "BUSY" as unknown as "busy",
+    });
+    expect(sess.minutes).toBe(12);
+    expect(sess.mode).toBe("busy");
+    expect(sess.startedAt).toBe(100);
+    const ge = normalizeGradeEntry({
+      id: "g1",
+      label: 7 as unknown as string,
+      score: "80" as unknown as number,
+      maxScore: "100" as unknown as number,
+    });
+    expect(ge.label).toBe("7");
+    expect(ge.score).toBe(80);
+    expect(ge.maxScore).toBe(100);
+    const cg = normalizeCourseGrade({
+      id: "cg1",
+      letter: 3 as unknown as string,
+      creditHours: "3" as unknown as number,
+    });
+    expect(cg.letter).toBe("3");
+    expect(cg.creditHours).toBe(3);
   });
 
   it("source keeps kind coerce + revision/attendance/overview/quickfind guards", () => {
@@ -100,9 +129,15 @@ describe("normalizeAssessment coerce guards", () => {
     expect(store).toMatch(/normalizeBacklogItem\(b as Partial<BacklogItem>/);
     expect(store).toMatch(/normalizeNote\(n as Partial<Note>/);
     expect(store).toMatch(/normalizeExamPrepTask\(t as Partial<ExamPrepTask>/);
+    expect(store).toMatch(/normalizeFocusSession\(/);
+    expect(store).toMatch(/normalizeGradeEntry\(/);
+    expect(store).toMatch(/normalizeCourseGrade\(/);
     expect(courses).toMatch(/typeof id === "string" \? id : String\(id\)\)\.toUpperCase\(\)/);
     expect(phases).toMatch(/export function normalizeBacklogItem/);
     expect(phases).toMatch(/export function normalizeNote/);
     expect(phases).toMatch(/export function normalizeExamPrepTask/);
+    expect(phases).toMatch(/export function normalizeFocusSession/);
+    expect(phases).toMatch(/export function normalizeGradeEntry/);
+    expect(phases).toMatch(/export function normalizeCourseGrade/);
   });
 });

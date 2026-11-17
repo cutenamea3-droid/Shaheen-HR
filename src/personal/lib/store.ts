@@ -29,7 +29,10 @@ import {
   normalizeAssessment,
   normalizeBacklogItem,
   normalizeCourse,
+  normalizeCourseGrade,
   normalizeExamPrepTask,
+  normalizeFocusSession,
+  normalizeGradeEntry,
   normalizeNote,
   withPrepDone,
   withSubmitted,
@@ -499,12 +502,18 @@ export const usePersonal = create<PersonalStore>()(
           notes: arr(raw.notes, current.notes).map((n) =>
             normalizeNote(n as Partial<Note> & Pick<Note, "id">),
           ),
-          sessions: arr(raw.sessions, current.sessions),
+          sessions: arr(raw.sessions, current.sessions).map((s) =>
+            normalizeFocusSession(s as Partial<FocusSession> & Pick<FocusSession, "id">),
+          ),
           dayPlans: healDayPlans(raw.dayPlans, current.dayPlans),
           discipline: migrateDiscipline(arr(raw.discipline, current.discipline)),
           vaultNotes: typeof raw.vaultNotes === "string" ? raw.vaultNotes : current.vaultNotes,
-          gradeEntries: arr(raw.gradeEntries, []),
-          courseGrades: arr(raw.courseGrades, []),
+          gradeEntries: arr(raw.gradeEntries, []).map((g) =>
+            normalizeGradeEntry(g as Partial<GradeEntry> & Pick<GradeEntry, "id">),
+          ),
+          courseGrades: arr(raw.courseGrades, []).map((g) =>
+            normalizeCourseGrade(g as Partial<CourseGrade> & Pick<CourseGrade, "id">),
+          ),
           examPrepTasks: arr(raw.examPrepTasks, []).map((t) =>
             normalizeExamPrepTask(t as Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">),
           ),

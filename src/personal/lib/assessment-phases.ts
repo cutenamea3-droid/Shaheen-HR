@@ -3,9 +3,13 @@ import type {
   AssessmentKind,
   BacklogItem,
   Course,
+  CourseGrade,
   DeadlineSource,
   ExamPrepTask,
+  FocusSession,
+  GradeEntry,
   Note,
+  StudyMode,
 } from "./types";
 
 /** Graded LMS activity nouns — GDB is first-class (not “other”). */
@@ -185,6 +189,80 @@ export function normalizeExamPrepTask(
     label: asText(raw.label),
     done: Boolean(raw.done),
     notes: asText(raw.notes),
+  };
+}
+
+const MODE_SET = new Set<string>(["normal", "busy", "rescue"]);
+
+function asMs(v: unknown, fallback: number): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function asNumOrNull(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Coerce focus session scalars before Analytics/Focus minute sums. */
+export function normalizeFocusSession(
+  raw: Partial<FocusSession> & Pick<FocusSession, "id">,
+): FocusSession {
+  const modeRaw = asText(raw.mode, "normal").trim().toLowerCase();
+  const mode = (MODE_SET.has(modeRaw) ? modeRaw : "normal") as StudyMode;
+  const mins = asNumOrNull(raw.minutes);
+  return {
+    id: asText(raw.id) || "session",
+    courseId: raw.courseId == null ? null : asText(raw.courseId) || null,
+    startedAt: asMs(raw.startedAt, Date.now()),
+    endedAt: asMs(raw.endedAt, Date.now()),
+    minutes: mins != null && mins >= 0 ? mins : 0,
+    mode,
+    label: asText(raw.label),
+    ...(raw.activityKind != null ? { activityKind: raw.activityKind } : {}),
+    ...(raw.lessonLabel != null ? { lessonLabel: asText(raw.lessonLabel) } : {}),
+  };
+}
+
+/** Coerce Grade Book rows before Analytics display / percent math. */
+export function normalizeGradeEntry(
+  raw: Partial<GradeEntry> & Pick<GradeEntry, "id">,
+): GradeEntry {
+  const prov =
+    raw.provenance === "owner_whatif" || raw.provenance === "owner_recorded"
+      ? raw.provenance
+      : "owner_recorded";
+  return {
+    id: asText(raw.id) || "grade",
+    courseId: asText(raw.courseId, "general") || "general",
+    label: asText(raw.label),
+    score: asNumOrNull(raw.score),
+    maxScore: asNumOrNull(raw.maxScore),
+    provenance: prov,
+    notes: asText(raw.notes),
+    updatedAt: asMs(raw.updatedAt, Date.now()),
+  };
+}
+
+/** Coerce CGPA letter rows before estimateCgpa. */
+export function normalizeCourseGrade(
+  raw: Partial<CourseGrade> & Pick<CourseGrade, "id">,
+): CourseGrade {
+  const prov =
+    raw.provenance === "owner_whatif" || raw.provenance === "owner_recorded"
+      ? raw.provenance
+      : "owner_recorded";
+  return {
+    id: asText(raw.id) || "course-grade",
+    courseId: asText(raw.courseId, "general") || "general",
+    letter: asText(raw.letter),
+    creditHours: asNumOrNull(raw.creditHours),
+    provenance: prov,
+    notes: asText(raw.notes),
+    updatedAt: asMs(raw.updatedAt, Date.now()),
   };
 }
 
