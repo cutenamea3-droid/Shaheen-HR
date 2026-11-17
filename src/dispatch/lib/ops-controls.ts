@@ -36,19 +36,21 @@ export function awaitingPodLoads(loads: DispatchLoad[]): DispatchLoad[] {
 }
 
 /** Open desk follow-ups due by `now` (inclusive). Manual reminders only — not notifications. */
+const asTs = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function dueFollowUps(
   followUps: DispatchFollowUp[],
   now = Date.now(),
 ): DispatchFollowUp[] {
   return (Array.isArray(followUps) ? followUps : [])
-    .filter((f) => f.status === "open" && Date.parse(f.due_at) <= now)
-    .sort((a, b) => a.due_at.localeCompare(b.due_at));
+    .filter((f) => f.status === "open" && Date.parse(asTs(f.due_at)) <= now)
+    .sort((a, b) => asTs(a.due_at).localeCompare(asTs(b.due_at)));
 }
 
 export function openFollowUps(followUps: DispatchFollowUp[]): DispatchFollowUp[] {
   return (Array.isArray(followUps) ? followUps : [])
     .filter((f) => f.status === "open")
-    .sort((a, b) => a.due_at.localeCompare(b.due_at));
+    .sort((a, b) => asTs(a.due_at).localeCompare(asTs(b.due_at)));
 }
 
 export function openEscalations(issues: DispatchIssue[]): DispatchIssue[] {
@@ -111,7 +113,9 @@ export function buildEquipmentBoard(
         activeLoads,
       };
     })
-    .sort((a, b) => a.driver.display_name.localeCompare(b.driver.display_name));
+    .sort((a, b) =>
+      asTs(a.driver.display_name).localeCompare(asTs(b.driver.display_name)),
+    );
 }
 
 export function canCancelLoad(status: DispatchLoad["status"]): boolean {

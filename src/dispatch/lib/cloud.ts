@@ -114,7 +114,9 @@ export async function upsertRosterDriver(
 
 export async function listLoads(): Promise<DispatchLoad[]> {
   if (isDispatchPreviewMode()) {
-    return [...asRows<DispatchLoad>(mem().loads)].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    return [...asRows<DispatchLoad>(mem().loads)].sort((a, b) =>
+      asText(b.updated_at).localeCompare(asText(a.updated_at)),
+    );
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_loads")
@@ -503,7 +505,9 @@ export async function saveIssue(
 
 export async function listFollowUps(): Promise<DispatchFollowUp[]> {
   if (isDispatchPreviewMode()) {
-    return [...asRows<DispatchFollowUp>(mem().followUps)].sort((a, b) => a.due_at.localeCompare(b.due_at));
+    return [...asRows<DispatchFollowUp>(mem().followUps)].sort((a, b) =>
+      asText(a.due_at).localeCompare(asText(b.due_at)),
+    );
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_follow_ups")
@@ -701,7 +705,7 @@ export async function saveHandover(
 export function driverLoadHistory(loads: DispatchLoad[], driverId: string): DispatchLoad[] {
   return asRows<DispatchLoad>(loads)
     .filter((l) => l.assigned_driver_id === driverId)
-    .sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+    .sort((a, b) => asText(b.updated_at).localeCompare(asText(a.updated_at)));
 }
 
 /** Close a delivered load. Does NOT mark payment paid. */
@@ -834,7 +838,7 @@ export async function listAccessorials(loadId?: string): Promise<DispatchAccesso
   if (isDispatchPreviewMode()) {
     const rows = asRows<DispatchAccessorial>(mem().accessorials);
     return (loadId ? rows.filter((a) => a.load_id === loadId) : [...rows]).sort((a, b) =>
-      b.updated_at.localeCompare(a.updated_at),
+      asText(b.updated_at).localeCompare(asText(a.updated_at)),
     );
   }
   let q = dispatchSupabase.from("dispatch_accessorials").select("*").order("updated_at", { ascending: false });
@@ -908,7 +912,7 @@ export async function listCommunications(loadId?: string): Promise<DispatchCommu
   if (isDispatchPreviewMode()) {
     const rows = asRows<DispatchCommunication>(mem().communications);
     return (loadId ? rows.filter((c) => c.load_id === loadId) : [...rows]).sort((a, b) =>
-      b.created_at.localeCompare(a.created_at),
+      asText(b.created_at).localeCompare(asText(a.created_at)),
     );
   }
   let q = dispatchSupabase
