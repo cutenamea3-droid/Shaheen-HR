@@ -244,7 +244,7 @@ export function Overtime() {
                                 : "text-muted-foreground"
                           }
                         >
-                          {r.status}
+                          {asText(r.status)}
                         </span>
                       </td>
                       <td>

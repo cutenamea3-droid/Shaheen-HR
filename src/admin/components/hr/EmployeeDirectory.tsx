@@ -321,8 +321,16 @@ export function EmployeeDirectory() {
                   onSubmit={(e) => {
                     e.preventDefault();
                     setBankErr("");
-                    const nextTitle = (form.accountTitle.trim() || accountTitleRef.current?.value || "").trim();
-                    const nextRef = (form.accountRef.trim() || accountRefRef.current?.value || "").trim();
+                    const nextTitle = (
+                      asText(form.accountTitle).trim() ||
+                      accountTitleRef.current?.value ||
+                      ""
+                    ).trim();
+                    const nextRef = (
+                      asText(form.accountRef).trim() ||
+                      accountRefRef.current?.value ||
+                      ""
+                    ).trim();
                     const res = addBankingChange({
                       employeeId: selected.id,
                       ...form,

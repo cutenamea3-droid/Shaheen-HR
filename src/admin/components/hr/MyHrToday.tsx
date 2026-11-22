@@ -228,7 +228,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
               recordAudit({
                 who: "HR",
                 kind: "reminder_add",
-                detail: `Reminder “${r.title}” due ${r.due}`,
+                detail: `Reminder “${asText(r.title)}” due ${asText(r.due)}`,
                 month: (remDue == null ? "" : typeof remDue === "string" ? remDue : String(remDue)).slice(
                   0,
                   7,
@@ -260,7 +260,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
                   recordAudit({
                     who: "HR",
                     kind: "reminder_done",
-                    detail: `Completed reminder “${r.title}”`,
+                    detail: `Completed reminder “${asText(r.title)}”`,
                     month: due.slice(0, 7),
                     ...(r.employeeId ? { employeeId: r.employeeId } : {}),
                   });

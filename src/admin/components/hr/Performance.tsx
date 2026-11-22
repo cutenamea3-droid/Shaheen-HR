@@ -75,7 +75,7 @@ export function Performance() {
     recordAudit({
       who: "HR",
       kind: "perf_followup_add",
-      detail: `Follow-up “${r.title}” for ${r.employeeName}`,
+      detail: `Follow-up “${asText(r.title)}” for ${asText(r.employeeName)}`,
       employeeId: r.employeeId,
       month: (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7),
     });
@@ -140,7 +140,7 @@ export function Performance() {
                   recordAudit({
                     who: "HR",
                     kind: "perf_followup_done",
-                    detail: `Completed follow-up “${f.title}”`,
+                    detail: `Completed follow-up “${asText(f.title)}”`,
                     employeeId: f.employeeId,
                     month: due.slice(0, 7),
                   });

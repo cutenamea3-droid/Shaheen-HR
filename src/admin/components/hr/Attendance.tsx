@@ -350,11 +350,11 @@ export function Attendance() {
                     )}
                     {!open && rec && (
                       <span className="ml-2 text-sm text-muted-foreground">
-                        {r.status}
+                        {asText(r.status)}
                         {c.worked != null ? ` · ${fmtHours(c.worked)} h` : ""}
                         {(() => {
                           const flags = Array.isArray(c.flags) ? c.flags : [];
-                          return flags.length ? ` · ${flags[0]}` : "";
+                          return flags.length ? ` · ${asText(flags[0])}` : "";
                         })()}
                       </span>
                     )}

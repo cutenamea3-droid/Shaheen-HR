@@ -226,6 +226,19 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(followUpUi).toMatch(/\{asText\(fu\.driver\)\}/);
     expect(followUpUi).toMatch(/\{asText\(fu\.subject\)\}/);
+    expect(followUpUi).toMatch(/\{asText\(fu\.status\)\}/);
+    expect(attendanceUi).toMatch(/\{asText\(r\.status\)\}/);
+    expect(overtimeUi).toMatch(/\{asText\(r\.status\)\}/);
+    const closeoutLib = readFileSync(
+      resolve(process.cwd(), "src/dispatch/lib/closeout.ts"),
+      "utf8",
+    );
+    expect(closeoutLib).toMatch(/Issue: \$\{asTrimmedText\(i\.title\)\}/);
+    const alertStripUi = readFileSync(
+      resolve(process.cwd(), "src/personal/components/AlertStrip.tsx"),
+      "utf8",
+    );
+    expect(alertStripUi).toMatch(/\{asTxt\(todo\.title\)\}/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",

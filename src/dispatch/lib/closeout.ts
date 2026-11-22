@@ -202,45 +202,52 @@ export function buildCompleteLoadHistory(input: {
   const communications = Array.isArray(input.communications) ? input.communications : [];
   const accessorials = Array.isArray(input.accessorials) ? input.accessorials : [];
   for (const c of checkCalls) {
+    const loc = asTrimmedText(c.manual_location);
+    const notes = asTrimmedText(c.notes);
     events.push({
       at: c.called_at,
       source: "check_call",
       title: "Check-call",
-      detail: [c.manual_location, c.notes].filter(Boolean).join(" · ") || "Manual check-call",
+      detail: [loc, notes].filter(Boolean).join(" · ") || "Manual check-call",
     });
   }
   for (const i of issues) {
     events.push({
       at: i.updated_at || i.created_at,
       source: "issue",
-      title: `Issue: ${i.title}`,
-      detail: `${i.status} · ${i.escalation_level}${i.senior_informed ? " · Senior Informed (manual)" : ""}`,
+      title: `Issue: ${asTrimmedText(i.title)}`,
+      detail: `${asTrimmedText(i.status)} · ${asTrimmedText(i.escalation_level)}${i.senior_informed ? " · Senior Informed (manual)" : ""}`,
     });
   }
   for (const f of followUps) {
     events.push({
       at: f.updated_at || f.created_at,
       source: "follow_up",
-      title: `Follow-up: ${f.title}`,
-      detail: `${f.status} · due ${new Date(f.due_at).toLocaleString()}`,
+      title: `Follow-up: ${asTrimmedText(f.title)}`,
+      detail: `${asTrimmedText(f.status)} · due ${new Date(f.due_at).toLocaleString()}`,
     });
   }
   for (const c of communications) {
     events.push({
       at: c.created_at,
       source: "communication",
-      title: `${c.kind}: ${c.summary}`,
-      detail: [c.decided_action, c.detail].filter(Boolean).join(" · ") || "Desk log only — no external notify",
+      title: `${asTrimmedText(c.kind)}: ${asTrimmedText(c.summary)}`,
+      detail:
+        [asTrimmedText(c.decided_action), asTrimmedText(c.detail)].filter(Boolean).join(" · ") ||
+        "Desk log only — no external notify",
     });
   }
   for (const a of accessorials) {
+    const currency = asTrimmedText(a.currency);
     const amt =
-      a.amount_manual == null ? "amount: Needs Policy / blank" : `${a.currency} ${a.amount_manual}`;
+      a.amount_manual == null
+        ? "amount: Needs Policy / blank"
+        : `${currency} ${a.amount_manual}`;
     events.push({
       at: a.updated_at || a.created_at,
       source: "accessorial",
-      title: `${accessorialKindLabel(a.kind)} · ${a.status}`,
-      detail: `${a.description} · ${amt}${a.hours_manual != null ? ` · hours (manual): ${a.hours_manual}` : ""}`,
+      title: `${accessorialKindLabel(a.kind)} · ${asTrimmedText(a.status)}`,
+      detail: `${asTrimmedText(a.description)} · ${amt}${a.hours_manual != null ? ` · hours (manual): ${a.hours_manual}` : ""}`,
     });
   }
 

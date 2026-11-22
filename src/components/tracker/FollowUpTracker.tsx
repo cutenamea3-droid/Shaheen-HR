@@ -224,7 +224,7 @@ export function FollowUpTracker() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Chip tone={followUpTone(fu)}>{fu.status}</Chip>
+                    <Chip tone={followUpTone(fu)}>{asText(fu.status)}</Chip>
                     <span className="font-display text-base font-extrabold">
                       {asText(fu.driver)}
                     </span>
