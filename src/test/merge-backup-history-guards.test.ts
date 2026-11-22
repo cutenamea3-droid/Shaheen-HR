@@ -6,13 +6,17 @@ import {
   applyDriverClass,
   applyRosterKind,
   classHistoryOf,
+  healClassHistoryEntry,
+  healRosterHistoryEntry,
   parseDriverClass,
   parseRosterKind,
+  rosterHistoryOf,
 } from "@/lib/driver-meta";
 import { parseDriverStatus } from "@/lib/sections";
 import { buildCompleteLoadHistory, awaitingCloseoutLoads } from "@/dispatch/lib/closeout";
 import { isPersonalMeaningful } from "@/personal/lib/sync-protect";
 import { healAttendanceBackupData } from "@/admin/components/hr/Settings";
+import { buildComplianceHistory } from "@/lib/compliance-history";
 
 describe("history / merge / backup corrupt guards", () => {
   it("status/class/roster parsers coerce non-string values before trim", () => {
@@ -33,6 +37,44 @@ describe("history / merge / backup corrupt guards", () => {
     expect(() => applyDriverClass(data, id, "owner_operator")).not.toThrow();
     expect(() => applyRosterKind(data, id, "new")).not.toThrow();
     expect(classHistoryOf(data, id)).toEqual([]);
+  });
+
+  it("class/roster history readers drop null slots and coerce from/to/at", () => {
+    const at = 1_700_000_000_000;
+    expect(healClassHistoryEntry(null)).toBeNull();
+    expect(healClassHistoryEntry({ at, from: "oo", to: { x: 1 } })).toEqual({
+      at,
+      from: "owner_operator",
+      to: "company",
+    });
+    expect(healRosterHistoryEntry({ at: "not-a-date", from: "new", to: "roster" })).toBeNull();
+    expect(healRosterHistoryEntry({ at, from: "onboarding", to: "ROSTER" })).toEqual({
+      at,
+      from: "new",
+      to: "roster",
+    });
+
+    const data = structuredClone(buildSeed()) as AppData;
+    const id = data.sections.dmv.rows[0]!.driverId;
+    data.sections.dmv.rows[0] = {
+      ...data.sections.dmv.rows[0]!,
+      classHistory: [
+        null,
+        { at, from: "company", to: "owner_operator" },
+        "bad",
+        { at: "x", from: "company", to: "company" },
+      ] as unknown as [],
+      rosterHistory: [
+        undefined,
+        { at, from: "new", to: "roster" },
+        { from: "roster", to: "new" },
+      ] as unknown as [],
+    };
+    expect(classHistoryOf(data, id)).toEqual([
+      { at, from: "company", to: "owner_operator" },
+    ]);
+    expect(rosterHistoryOf(data, id)).toEqual([{ at, from: "new", to: "roster" }]);
+    expect(() => buildComplianceHistory(data, { driverId: id, limit: 20 })).not.toThrow();
   });
 
   it("Dispatch complete history + awaitingCloseout tolerate missing arrays", () => {

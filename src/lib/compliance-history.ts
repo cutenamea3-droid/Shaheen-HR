@@ -9,8 +9,8 @@
  * - Sensitive in-memory audit (rate/drug) — when provided
  */
 import { fmtDate } from "./alerts";
-import { classHistoryOf, rosterKindOf, driverClassOf } from "./driver-meta";
-import { SECTIONS, cellsOf, rowsOf, type AppData, type RosterHistoryEntry } from "./sections";
+import { classHistoryOf, rosterHistoryOf, rosterKindOf, driverClassOf } from "./driver-meta";
+import { SECTIONS, cellsOf, rowsOf, type AppData } from "./sections";
 import type { LocalActivity } from "./portal-local";
 import type { SensitiveAuditEntry } from "./driver-hr/sensitive-audit";
 
@@ -50,14 +50,6 @@ function nameOf(data: AppData, driverId: string): string {
     if (n) return n;
   }
   return driverId;
-}
-
-function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
-  for (const def of SECTIONS) {
-    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
-    if (Array.isArray(r?.rosterHistory) && r!.rosterHistory.length) return r!.rosterHistory;
-  }
-  return [];
 }
 
 function allDriverIds(data: AppData): string[] {

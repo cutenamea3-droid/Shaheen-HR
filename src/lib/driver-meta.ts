@@ -198,11 +198,72 @@ export function applyRosterKind(
 
 // Date of Hire lives in driver-hr/hire-date.ts (parse/format/lengthOfService + applyDateOfHire).
 
+/** Coerce history timestamps — corrupt cloud/local `at` may be non-numeric. */
+function asHistoryAtMs(at: unknown): number | null {
+  if (typeof at === "number" && Number.isFinite(at)) return at;
+  if (typeof at === "string" && at.trim()) {
+    const n = Date.parse(at);
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(at);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Drop null/non-object class-history slots; coerce from/to/at for UI + Compliance History. */
+export function healClassHistoryEntry(raw: unknown): ClassHistoryEntry | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const e = raw as Partial<ClassHistoryEntry>;
+  const at = asHistoryAtMs(e.at);
+  if (at == null) return null;
+  return {
+    at,
+    from: parseDriverClass(e.from),
+    to: parseDriverClass(e.to),
+  };
+}
+
+/** Drop null/non-object roster-history slots; coerce from/to/at. */
+export function healRosterHistoryEntry(raw: unknown): RosterHistoryEntry | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const e = raw as Partial<RosterHistoryEntry>;
+  const at = asHistoryAtMs(e.at);
+  if (at == null) return null;
+  return {
+    at,
+    from: parseRosterKind(e.from),
+    to: parseRosterKind(e.to),
+  };
+}
+
+function healHistoryList<T>(
+  raw: unknown,
+  heal: (entry: unknown) => T | null,
+): T[] {
+  if (!Array.isArray(raw)) return [];
+  const out: T[] = [];
+  for (const item of raw) {
+    const h = heal(item);
+    if (h) out.push(h);
+  }
+  return out;
+}
+
 /** Class history for a driver (from any row that has it). */
 export function classHistoryOf(data: AppData, driverId: string): ClassHistoryEntry[] {
   for (const def of SECTIONS) {
     const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
-    if (Array.isArray(r?.classHistory) && r!.classHistory.length) return r!.classHistory;
+    const healed = healHistoryList(r?.classHistory, healClassHistoryEntry);
+    if (healed.length) return healed;
+  }
+  return [];
+}
+
+/** Roster history for a driver (from any row that has it). */
+export function rosterHistoryOf(data: AppData, driverId: string): RosterHistoryEntry[] {
+  for (const def of SECTIONS) {
+    const r = rowsOf(data.sections[def.id]).find((x) => x.driverId === driverId);
+    const healed = healHistoryList(r?.rosterHistory, healRosterHistoryEntry);
+    if (healed.length) return healed;
   }
   return [];
 }
