@@ -50,7 +50,15 @@ export async function hashSecret(value: string): Promise<string> {
 
 export function listLocalAccounts(): PortalAccount[] {
   const raw = readJson<unknown>(ACCOUNTS_KEY, []);
-  return Array.isArray(raw) ? (raw as PortalAccount[]) : [];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a): a is PortalAccount => !!a && typeof a === "object" && !Array.isArray(a))
+    .map((a) => ({
+      ...a,
+      email: portalEmailKey((a as PortalAccount).email),
+      display_name: asPortalText((a as PortalAccount).display_name),
+      user_id: asPortalText((a as PortalAccount).user_id),
+    }));
 }
 
 export function saveLocalAccounts(accounts: PortalAccount[]) {
@@ -59,8 +67,9 @@ export function saveLocalAccounts(accounts: PortalAccount[]) {
 
 export function ensureLocalOwner(account: PortalAccount) {
   const list = listLocalAccounts();
-  if (list.some((a) => a.user_id === account.user_id || a.email.toLowerCase() === account.email.toLowerCase())) return;
-  saveLocalAccounts([{ ...account, role: account.role || "admin", active: true }, ...list]);
+  const email = portalEmailKey(account.email);
+  if (list.some((a) => a.user_id === account.user_id || portalEmailKey(a.email) === email)) return;
+  saveLocalAccounts([{ ...account, email, role: account.role || "admin", active: true }, ...list]);
 }
 
 export function upsertLocalAccount(account: PortalAccount) {
@@ -130,15 +139,19 @@ function asPortalText(v: unknown): string {
   return typeof v === "string" ? v : String(v);
 }
 
+function portalEmailKey(v: unknown): string {
+  return asPortalText(v).trim().toLowerCase();
+}
+
 export function createLocalAccount(input: {
   email: string;
   displayName: string;
   password: string;
   role?: PortalRole;
 }): Promise<PortalAccount> {
-  const email = asPortalText(input.email).trim().toLowerCase();
+  const email = portalEmailKey(input.email);
   const list = listLocalAccounts();
-  if (list.some((a) => a.email.toLowerCase() === email)) {
+  if (list.some((a) => portalEmailKey(a.email) === email)) {
     return Promise.reject(new Error("An account with that email already exists."));
   }
   const account: PortalAccount = {
@@ -155,8 +168,8 @@ export function createLocalAccount(input: {
 }
 
 export function findLocalAccountByEmail(email: string): PortalAccount | null {
-  const normalized = asPortalText(email).trim().toLowerCase();
-  return listLocalAccounts().find((a) => a.email.toLowerCase() === normalized) ?? null;
+  const normalized = portalEmailKey(email);
+  return listLocalAccounts().find((a) => portalEmailKey(a.email) === normalized) ?? null;
 }
 
 /** Persist a local-only portal session (used when cloud auth is unavailable). */

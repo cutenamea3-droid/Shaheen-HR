@@ -100,7 +100,15 @@ export const useApp = create<State>()(
       addEmployee: (e) =>
         set((s) => {
           const id = uid();
-          const effectiveFrom = `${(e.joinMonth || new Date().toISOString().slice(0, 7))}-01`;
+          const joinRaw =
+            e.joinMonth == null
+              ? ""
+              : typeof e.joinMonth === "string"
+                ? e.joinMonth
+                : String(e.joinMonth);
+          const joinMonth =
+            /^\d{4}-\d{2}/.test(joinRaw) ? joinRaw.slice(0, 7) : new Date().toISOString().slice(0, 7);
+          const effectiveFrom = `${joinMonth}-01`;
           const emp: Employee = {
             ...e,
             id,

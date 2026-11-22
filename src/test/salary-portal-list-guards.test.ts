@@ -11,7 +11,8 @@ describe("salary + portal list Array.isArray guards", () => {
 
   it("portal-local listAccounts/Activity coerce with Array.isArray", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/portal-local.ts"), "utf8");
-    expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as PortalAccount\[\]\) : \[\]/);
+    expect(src).toMatch(/if \(!Array\.isArray\(raw\)\) return \[\]/);
+    expect(src).toMatch(/portalEmailKey\(\(a as PortalAccount\)\.email\)/);
     expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as LocalActivity\[\]\) : \[\]/);
   });
 
