@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useApp } from "@/admin/lib/store";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
 import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { shiftVariance } from "@/admin/lib/shift-variance";
 import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing";
-import { emptyRec, type Status } from "@/admin/lib/types";
+import { emptyRec, type Dept, type Employee, type Status } from "@/admin/lib/types";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useDensity, setDensity } from "@/lib/density";
 import { loadAttendancePrefs, saveAttendancePrefs } from "@/lib/uiprefs";
 import { SectionTitle, TimeInput, Toggle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 function needsReview(
   e: { afterHours: boolean },
@@ -54,8 +56,20 @@ export function Attendance() {
     resetRec,
     resetDay,
   } = useApp();
-  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
-  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
   const records =
     recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
@@ -277,7 +291,12 @@ export function Attendance() {
           const setStatus = (st: Status) => {
             if (st === "leave") {
               const bal = leaveBalance(e, date, records);
-              const paid = bal >= 1 ? true : confirm(`${e.name} has ${bal} paid leave left.\n\nOK = mark as PAID leave\nCancel = mark as UNPAID leave`);
+              const paid =
+                bal >= 1
+                  ? true
+                  : confirm(
+                      `${asText(e.name)} has ${bal} paid leave left.\n\nOK = mark as PAID leave\nCancel = mark as UNPAID leave`,
+                    );
               set({ status: st, leavePaid: paid });
             } else set({ status: st });
           };
@@ -300,8 +319,8 @@ export function Attendance() {
                   </span>
                   <span className="min-w-0">
                     <span className="mr-2 font-display text-muted-foreground">{i + 1}.</span>
-                    <span className="font-bold tracking-tight">{e.name}</span>
-                    <span className="ml-2 text-sm text-muted-foreground">{dept?.name}</span>
+                    <span className="font-bold tracking-tight">{asText(e.name)}</span>
+                    <span className="ml-2 text-sm text-muted-foreground">{asText(dept?.name)}</span>
                     {e.afterHours && <span className="chip ml-2 bg-secondary text-secondary-foreground">After-hours</span>}
                     {!rec && <span className="chip ml-2 bg-muted text-muted-foreground">Not entered</span>}
                     {!timesOff && r.in != null && r.out == null && (
@@ -349,7 +368,13 @@ export function Attendance() {
                     <option value="absent">Absent</option>
                   </select>
                   {rec && (
-                    <button type="button" className="btn-ghost" onClick={() => confirm(`Reset ${e.name}'s record for this day?`) && resetRec(date, e.id)}>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        confirm(`Reset ${asText(e.name)}'s record for this day?`) && resetRec(date, e.id)
+                      }
+                    >
                       Reset
                     </button>
                   )}

@@ -48,6 +48,18 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(userAdmin).toMatch(/healDispatchAccount/);
     expect(userAdmin).toMatch(/asText\(a\.display_name\)/);
+    const attendanceUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Attendance.tsx"),
+      "utf8",
+    );
+    expect(attendanceUi).toMatch(/normalizeEmployee\(/);
+    expect(attendanceUi).toMatch(/\{asText\(e\.name\)\}/);
+    const overtimeUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Overtime.tsx"),
+      "utf8",
+    );
+    expect(overtimeUi).toMatch(/normalizeEmployee\(/);
+    expect(overtimeUi).toMatch(/\{asText\(x\.e\.name\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

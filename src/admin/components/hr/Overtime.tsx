@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useApp } from "@/admin/lib/store";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { calcDay, fmtHours, monthDays, prettyDate } from "@/admin/lib/calc";
 import {
   COMPENSATION_KIND_LABEL,
@@ -9,9 +9,12 @@ import {
   type OtApprovalKind,
   type OtApprovalStatus,
 } from "@/admin/lib/ot-approval";
+import type { Dept, Employee } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
 
 type Row = { d: string; kind: OtApprovalKind; min: number; note: string; status: OtApprovalStatus; id: string };
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Overtime() {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
@@ -23,8 +26,20 @@ export function Overtime() {
     records: recordsRaw,
     settings,
   } = useApp();
-  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
-  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
   const records =
     recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const rowsMapRaw = useOtApprovalStore((s) => s.rows);
@@ -128,7 +143,7 @@ export function Overtime() {
               <option value="">All departments</option>
               {depts.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.name}
+                  {asText(d.name)}
                 </option>
               ))}
             </select>
@@ -187,9 +202,10 @@ export function Overtime() {
           <div key={x.e.id} className="admin-emp-card">
             <div className="admin-emp-head">
               <h3 className="font-bold tracking-tight">
-                {x.n}. {x.e.name}{" "}
+                {x.n}. {asText(x.e.name)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
-                  · {depts.find((d) => d.id === x.e.deptId)?.name} · {x.e.afterHours ? "After-hours" : "Normal"}
+                  · {asText(depts.find((d) => d.id === x.e.deptId)?.name)} ·{" "}
+                  {x.e.afterHours ? "After-hours" : "Normal"}
                 </span>
               </h3>
               <p className="text-sm">
@@ -266,7 +282,7 @@ export function Overtime() {
                           </button>
                         </div>
                       </td>
-                      <td className="whitespace-pre-wrap">{r.note || "—"}</td>
+                      <td className="whitespace-pre-wrap">{asText(r.note) || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
