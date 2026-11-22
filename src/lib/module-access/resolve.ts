@@ -72,7 +72,9 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
   try {
     const { supabase: adminSb } = await import("@/admin/integrations/supabase/client");
     const { data } = await adminSb.auth.getSession();
-    const mail = data.session?.user?.email?.toLowerCase() ?? "";
+    const mailRaw = data.session?.user?.email;
+    const mail =
+      mailRaw == null ? "" : (typeof mailRaw === "string" ? mailRaw : String(mailRaw)).trim().toLowerCase();
     if (mail) {
       const { resolveAdminHrRoleFromEmail } = await import("@/admin/lib/hr-access");
       grants["admin-hr"] = resolveAdminHrRoleFromEmail(mail);

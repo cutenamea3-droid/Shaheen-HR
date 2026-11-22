@@ -42,7 +42,7 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
 
   // Bootstrap path for owner / first admin when migration applied.
   const { data: ensured, error: ensureError } = await dispatchSupabase.rpc("dispatch_ensure_self", {
-    p_display_name: user.email?.split("@")[0] ?? "Dispatcher",
+    p_display_name: asLoginEmail(user.email).split("@")[0] || "Dispatcher",
   });
   if (ensureError) {
     // No seat and ensure rejected → not a dispatcher.

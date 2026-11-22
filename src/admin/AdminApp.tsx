@@ -236,7 +236,14 @@ function CloudReconnectBanner({
               return;
             }
             setMsg("Connected — uploading protected local changes when needed…");
-            onConnected(data.session?.user.email?.toLowerCase() || email, uid);
+            {
+              const sessMail = data.session?.user.email;
+              const mail =
+                sessMail == null
+                  ? ""
+                  : (typeof sessMail === "string" ? sessMail : String(sessMail)).trim().toLowerCase();
+              onConnected(mail || email, uid);
+            }
           } catch {
             setErr("Couldn't reach the server. Try again.");
           } finally {
@@ -444,7 +451,16 @@ function Login({
                 if (isStale()) return;
                 const uid = data.session?.user.id;
                 if (uid) {
-                  onCloudAuth(data.session?.user.email?.toLowerCase() || normalized, uid);
+                  {
+                    const sessMail = data.session?.user.email;
+                    const mail =
+                      sessMail == null
+                        ? ""
+                        : (typeof sessMail === "string" ? sessMail : String(sessMail))
+                            .trim()
+                            .toLowerCase();
+                    onCloudAuth(mail || normalized, uid);
+                  }
                   return;
                 }
                 // Session should exist after a successful cloud sign-in; treat as network-ish failure.

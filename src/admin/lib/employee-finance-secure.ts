@@ -21,7 +21,13 @@ import { isValidPkIban, normalizePkIban } from "./pk-iban";
 type RpcError = { message?: string } | null;
 
 function errMsg(error: RpcError, fallback: string): string {
-  return error?.message?.trim() || fallback;
+  const msg =
+    error?.message == null
+      ? ""
+      : typeof error.message === "string"
+        ? error.message
+        : String(error.message);
+  return msg.trim() || fallback;
 }
 
 function mapMasked(row: Record<string, unknown>): BankingAccountMasked {

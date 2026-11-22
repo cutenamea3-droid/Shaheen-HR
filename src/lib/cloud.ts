@@ -147,7 +147,10 @@ export async function getPortalAccount(userId: string): Promise<PortalAccount | 
     if (isMissingAccountsTable(error)) {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw new Error(userError.message);
-      if (userData.user?.id === userId && userData.user.email?.toLowerCase() === PORTAL_EMAIL) {
+      if (
+        userData.user?.id === userId &&
+        asErrText(userData.user.email).trim().toLowerCase() === PORTAL_EMAIL
+      ) {
         return legacyOwnerAccount(userId);
       }
     }
