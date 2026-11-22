@@ -226,20 +226,42 @@ export function buildComplianceHistory(
 
   const sensitiveAudit = Array.isArray(opts?.sensitiveAudit) ? opts!.sensitiveAudit : [];
   for (const entry of sensitiveAudit) {
-    if (filterDriver && entry.driverId !== filterDriver) continue;
+    const driverId =
+      entry.driverId == null
+        ? ""
+        : typeof entry.driverId === "string"
+          ? entry.driverId
+          : String(entry.driverId);
+    if (filterDriver && driverId !== filterDriver) continue;
     const at = asAtMs(entry?.at);
     if (at == null) continue;
+    const action =
+      entry.action == null
+        ? ""
+        : typeof entry.action === "string"
+          ? entry.action
+          : String(entry.action);
+    const detail =
+      entry.detail == null
+        ? ""
+        : typeof entry.detail === "string"
+          ? entry.detail
+          : String(entry.detail);
+    const actor =
+      entry.actor == null
+        ? ""
+        : typeof entry.actor === "string"
+          ? entry.actor
+          : String(entry.actor);
     events.push({
       id: `sensitive:${entry.id}`,
       at,
       atLabel: labelTime(at),
       source: "sensitive_audit",
-      title: `Sensitive: ${entry.action}`,
-      detail: entry.detail
-        ? `${entry.action} · ${entry.detail}`
-        : entry.action,
-      driverId: entry.driverId,
-      actor: entry.actor || null,
+      title: `Sensitive: ${action}`,
+      detail: detail ? `${action} · ${detail}` : action,
+      driverId,
+      actor: actor || null,
       sectionId: null,
     });
   }
