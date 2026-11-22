@@ -103,7 +103,9 @@ export const useExpensesStore = create<ExpensesState>()(
         const n = asText(name).trim();
         if (!n) return { ok: false, error: "Category name required" };
         const categories = asArr<ExpenseCategory>(get().categories);
-        const exists = categories.some((c) => c.name.toLowerCase() === n.toLowerCase() && !c.archived);
+        const exists = categories.some(
+          (c) => asText(c.name).toLowerCase() === n.toLowerCase() && !c.archived,
+        );
         if (exists) return { ok: false, error: "Category already exists" };
         const id = `custom-${uid()}`;
         set({ categories: [...categories, { id, name: n, custom: true }] });

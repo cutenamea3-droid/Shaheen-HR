@@ -102,7 +102,8 @@ export function DrugTestEventEditor({
     const all = listManualMatchOptions(driverId, kind, existingEvents);
     const q = manualQ.trim().toLowerCase();
     if (!q) return all;
-    return all.filter((c) => c.label.toLowerCase().includes(q));
+    const asLab = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return all.filter((c) => asLab(c.label).toLowerCase().includes(q));
   }, [enablePairing, driverId, kind, existingEvents, manualQ]);
 
   const submit = (addAnother: boolean) => {

@@ -131,7 +131,10 @@ export function rowToFollowUp(row: Row): FollowUp {
     source: parseSource(cells[5]),
     sectionId: (cells[6] ?? "").trim(),
     docType: (cells[7] ?? "").trim(),
-    linkedRowId: row.id.startsWith("fu_") ? "" : row.id,
+    linkedRowId: (() => {
+      const rid = row.id == null ? "" : typeof row.id === "string" ? row.id : String(row.id);
+      return rid.startsWith("fu_") ? "" : rid;
+    })(),
   };
 }
 

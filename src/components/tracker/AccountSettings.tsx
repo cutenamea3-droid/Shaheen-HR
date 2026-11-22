@@ -120,7 +120,13 @@ export function AccountSettings() {
             // Prefer Supabase when session supports it
             let cloudOk = false;
             try {
-              await updatePortalPassword(nextPassword, account.email.toLowerCase() === PORTAL_EMAIL);
+              const emailKey =
+                account.email == null
+                  ? ""
+                  : typeof account.email === "string"
+                    ? account.email
+                    : String(account.email);
+              await updatePortalPassword(nextPassword, emailKey.trim().toLowerCase() === PORTAL_EMAIL);
               cloudOk = true;
             } catch (e) {
               if (!localExists) {

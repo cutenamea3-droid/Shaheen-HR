@@ -117,23 +117,28 @@ function daysLabel(daysLeft: number | null, d: Date | null): string {
   return `${daysLeft}d left · ${fmtDate(d)}`;
 }
 
+function issueLabel(issue: { label?: unknown } | null | undefined): string {
+  const v = issue?.label;
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
 function issueFilters(issue: Issue, sectionId: string): WorkCenterFilter[] {
   const f: WorkCenterFilter[] = [];
-  const lab = issue.label.toLowerCase();
-  if (/expired/i.test(issue.label) && issue.tone === "danger") f.push("expired");
-  if (issue.tone === "warn" || (/expires in/i.test(issue.label) && issue.tone !== "danger")) f.push("expiring_soon");
-  if (/applied/i.test(issue.label)) f.push("pending_applications");
+  const lab = issueLabel(issue).toLowerCase();
+  if (/expired/i.test(lab) && issue.tone === "danger") f.push("expired");
+  if (issue.tone === "warn" || (/expires in/i.test(lab) && issue.tone !== "danger")) f.push("expiring_soon");
+  if (/applied/i.test(lab)) f.push("pending_applications");
   if (sectionId === "docs" || /missing|invalid|empty|sign missing/i.test(lab)) {
     if (!/applied/i.test(lab) && !/expired \d/i.test(lab) && !/expires in/i.test(lab)) {
       f.push("missing_documents");
     }
   }
-  if (/future plan/i.test(issue.label)) f.push("future_plans");
+  if (/future plan/i.test(lab)) f.push("future_plans");
   return f.length ? f : ["all"];
 }
 
 function neededActionFor(issue: Issue, sectionId: string, suggestion: FuturePlanSuggestion | null): string {
-  const lab = issue.label.toLowerCase();
+  const lab = issueLabel(issue).toLowerCase();
   if (/applied/i.test(lab)) return "Check application status — do not mark Valid until renewed";
   if (/future plan/i.test(lab)) {
     if (suggestion?.available) return `Act by ${suggestion.reminderLabel ?? suggestion.text}`;
@@ -317,12 +322,13 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
 
       const { issues } = analyzeRow(def, headersOf(sec), row);
       for (const issue of issues) {
+        const lab = issueLabel(issue);
         // Skip pure note highlights (not tempnote — those never enter analyzeRow)
-        if (issue.tone === "note" && !/future plan/i.test(issue.label) && !/report:/i.test(issue.label)) {
+        if (issue.tone === "note" && !/future plan/i.test(lab) && !/report:/i.test(lab)) {
           continue;
         }
         // Plan issues are covered by plan cards above
-        if (/future plan/i.test(issue.label)) continue;
+        if (/future plan/i.test(lab)) continue;
 
         const colType = def.types[issue.col];
         const expiryPaired =
@@ -354,9 +360,9 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         }
 
         let kind: WorkCenterItemKind = "status";
-        if (/applied/i.test(issue.label)) kind = "applied";
-        else if (def.id === "docs" || /missing|invalid|empty/i.test(issue.label)) kind = "missing_doc";
-        else if (colType === "date" || /expir/i.test(issue.label)) kind = "expiry";
+        if (/applied/i.test(lab)) kind = "applied";
+        else if (def.id === "docs" || /missing|invalid|empty/i.test(lab)) kind = "missing_doc";
+        else if (colType === "date" || /expir/i.test(lab)) kind = "expiry";
 
         const planRule = planRulesForSection(def.id).find(
           (r) => r.expiryCol === dateCol || r.statusCol === statusColN,
@@ -366,7 +372,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         const existingPlan = planCol != null ? (row.cells[planCol] ?? "").trim() : "";
 
         pushUnique(out, {
-          key: `issue-${def.id}-${row.id}-${issue.col}-${issue.label}`,
+          key: `issue-${def.id}-${row.id}-${issue.col}-${lab}`,
           kind,
           filters: [...new Set(filters)],
           driverId,
@@ -380,7 +386,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
           expiryDisplay: expiryD ? fmtDate(expiryD) : fmtCell(expiryRaw) || "—",
           daysLeft: left,
           daysLabel: daysLabel(left, expiryD),
-          details: issue.label,
+          details: lab,
           neededAction: neededActionFor(issue, def.id, planSuggestion),
           tone: issue.tone,
           statusCol: statusColN,
