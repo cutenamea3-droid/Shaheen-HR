@@ -40,7 +40,7 @@ import {
 import { modeBudgetMinutes } from "./schedule";
 import { buildVuSeed } from "./vu-import";
 import { VU_STUDY_PLAN, courseIdFromCode, type VuStudyPlan } from "./vu-plan";
-import { normalizeWeeklyReviews } from "./weekly-review";
+import { normalizeWeeklyReview, normalizeWeeklyReviews } from "./weekly-review";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -234,9 +234,13 @@ export const usePersonal = create<PersonalStore>()(
       addBacklog: (item) =>
         set((s) => {
           const backlog = Array.isArray(s.backlog) ? s.backlog : [];
-          return {
-            backlog: [...backlog, { ...item, id: uid(), done: false, createdAt: Date.now() }],
-          };
+          const next = normalizeBacklogItem({
+            ...item,
+            id: uid(),
+            done: false,
+            createdAt: Date.now(),
+          });
+          return { backlog: [...backlog, next] };
         }),
       toggleBacklog: (id) =>
         set((s) => {
@@ -295,7 +299,7 @@ export const usePersonal = create<PersonalStore>()(
       upsertNote: (n) =>
         set((s) => {
           const notes = Array.isArray(s.notes) ? s.notes : [];
-          const next = { ...n, tags: Array.isArray(n.tags) ? n.tags : [] };
+          const next = normalizeNote(n);
           return {
             notes: notes.some((x) => x.id === next.id)
               ? notes.map((x) => (x.id === next.id ? next : x))
@@ -310,7 +314,8 @@ export const usePersonal = create<PersonalStore>()(
       addSession: (sIn) =>
         set((s) => {
           const sessions = Array.isArray(s.sessions) ? s.sessions : [];
-          return { sessions: [{ ...sIn, id: uid() }, ...sessions].slice(0, 500) };
+          const next = normalizeFocusSession({ ...sIn, id: uid() });
+          return { sessions: [next, ...sessions].slice(0, 500) };
         }),
       ensureDayPlan: (date, mode) => {
         const s = get();
@@ -387,14 +392,19 @@ export const usePersonal = create<PersonalStore>()(
             };
           }),
         })),
-      setVaultNotes: (vaultNotes) => set({ vaultNotes }),
+      setVaultNotes: (vaultNotes) =>
+        set({
+          vaultNotes:
+            vaultNotes == null ? "" : typeof vaultNotes === "string" ? vaultNotes : String(vaultNotes),
+        }),
       upsertGradeEntry: (g) =>
         set((s) => {
           const gradeEntries = Array.isArray(s.gradeEntries) ? s.gradeEntries : [];
+          const next = normalizeGradeEntry(g);
           return {
-            gradeEntries: gradeEntries.some((x) => x.id === g.id)
-              ? gradeEntries.map((x) => (x.id === g.id ? g : x))
-              : [...gradeEntries, g],
+            gradeEntries: gradeEntries.some((x) => x.id === next.id)
+              ? gradeEntries.map((x) => (x.id === next.id ? next : x))
+              : [...gradeEntries, next],
           };
         }),
       removeGradeEntry: (id) =>
@@ -405,10 +415,11 @@ export const usePersonal = create<PersonalStore>()(
       upsertCourseGrade: (g) =>
         set((s) => {
           const courseGrades = Array.isArray(s.courseGrades) ? s.courseGrades : [];
+          const next = normalizeCourseGrade(g);
           return {
-            courseGrades: courseGrades.some((x) => x.id === g.id)
-              ? courseGrades.map((x) => (x.id === g.id ? g : x))
-              : [...courseGrades, g],
+            courseGrades: courseGrades.some((x) => x.id === next.id)
+              ? courseGrades.map((x) => (x.id === next.id ? next : x))
+              : [...courseGrades, next],
           };
         }),
       removeCourseGrade: (id) =>
@@ -419,10 +430,11 @@ export const usePersonal = create<PersonalStore>()(
       upsertExamPrepTask: (t) =>
         set((s) => {
           const examPrepTasks = Array.isArray(s.examPrepTasks) ? s.examPrepTasks : [];
+          const next = normalizeExamPrepTask(t);
           return {
-            examPrepTasks: examPrepTasks.some((x) => x.id === t.id)
-              ? examPrepTasks.map((x) => (x.id === t.id ? t : x))
-              : [...examPrepTasks, t],
+            examPrepTasks: examPrepTasks.some((x) => x.id === next.id)
+              ? examPrepTasks.map((x) => (x.id === next.id ? next : x))
+              : [...examPrepTasks, next],
           };
         }),
       toggleExamPrepTask: (id) =>
@@ -430,7 +442,7 @@ export const usePersonal = create<PersonalStore>()(
           const examPrepTasks = Array.isArray(s.examPrepTasks) ? s.examPrepTasks : [];
           return {
             examPrepTasks: examPrepTasks.map((t) =>
-              t.id === id ? { ...t, done: !t.done } : t,
+              t.id === id ? normalizeExamPrepTask({ ...t, done: !t.done }) : t,
             ),
           };
         }),
@@ -445,7 +457,8 @@ export const usePersonal = create<PersonalStore>()(
             s.weeklyReviews && typeof s.weeklyReviews === "object" && !Array.isArray(s.weeklyReviews)
               ? s.weeklyReviews
               : {};
-          return { weeklyReviews: { ...weeklyReviews, [r.weekStart]: r } };
+          const next = normalizeWeeklyReview(r, r.weekStart);
+          return { weeklyReviews: { ...weeklyReviews, [next.weekStart]: next } };
         }),
       importVuStudyPlan: (plan = VU_STUDY_PLAN) => {
         const seed = buildVuSeed(plan);
