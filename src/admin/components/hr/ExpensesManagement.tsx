@@ -372,7 +372,7 @@ export function ExpensesManagement() {
               ref={titleRef}
               data-testid="admin-expense-title"
               className="field"
-              value={form.title}
+              value={asText(form.title)}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               onInput={(e) => setForm((f) => ({ ...f, title: (e.target as HTMLInputElement).value }))}
               required
@@ -474,7 +474,7 @@ export function ExpensesManagement() {
             <input
               className="field"
               data-testid="admin-expense-note"
-              value={form.note}
+              value={asText(form.note)}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
               onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
             />

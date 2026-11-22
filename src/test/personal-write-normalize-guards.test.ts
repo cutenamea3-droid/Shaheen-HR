@@ -77,6 +77,8 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(expensesUi).toMatch(/\{asText\(e\.title\)\}/);
     expect(expensesUi).toMatch(/\{asText\(c\.name\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(form\.title\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(form\.note\)\}/);
     const hrTodayUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/MyHrToday.tsx"),
       "utf8",
@@ -148,6 +150,9 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(directoryUi).toMatch(/\{asText\(i\.name\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(form\.accountTitle\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(form\.accountRef\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(form\.note\)\}/);
     const accountUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/AccountSettings.tsx"),
       "utf8",
@@ -173,6 +178,12 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(recordsUi).toMatch(/\{asText\(p\.name\)\}/);
+    const driverCardsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DriverCards.tsx"),
+      "utf8",
+    );
+    expect(driverCardsUi).toMatch(/const safeName = name == null/);
+    expect(driverCardsUi).toMatch(/\{safeName\.trim\(\)\}/);
     expect(dispatchApp).toMatch(/asFormText\(c\.summary\)/);
     expect(dispatchApp).toMatch(/asFormText\(c\.notes\)/);
     expect(dispatchApp).toMatch(/asFormText\(h\.summary\)/);

@@ -367,7 +367,7 @@ export function EmployeeDirectory() {
                       <input
                         className="field"
                         data-testid="admin-bank-other-label"
-                        value={form.otherLabel}
+                        value={asText(form.otherLabel)}
                         onChange={(e) => setForm((f) => ({ ...f, otherLabel: e.target.value }))}
                         onInput={(e) =>
                           setForm((f) => ({ ...f, otherLabel: (e.target as HTMLInputElement).value }))
@@ -390,7 +390,7 @@ export function EmployeeDirectory() {
                       ref={accountTitleRef}
                       data-testid="admin-bank-account-title"
                       className="field"
-                      value={form.accountTitle}
+                      value={asText(form.accountTitle)}
                       onChange={(e) => setForm((f) => ({ ...f, accountTitle: e.target.value }))}
                       onInput={(e) => setForm((f) => ({ ...f, accountTitle: (e.target as HTMLInputElement).value }))}
                     />
@@ -401,7 +401,7 @@ export function EmployeeDirectory() {
                       ref={accountRefRef}
                       data-testid="admin-bank-account-ref"
                       className="field font-mono"
-                      value={form.accountRef}
+                      value={asText(form.accountRef)}
                       onChange={(e) => setForm((f) => ({ ...f, accountRef: e.target.value }))}
                       onInput={(e) => setForm((f) => ({ ...f, accountRef: (e.target as HTMLInputElement).value }))}
                     />
@@ -415,7 +415,7 @@ export function EmployeeDirectory() {
                     <input
                       className="field"
                       data-testid="admin-bank-note"
-                      value={form.note}
+                      value={asText(form.note)}
                       onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
                       onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
                     />

@@ -181,10 +181,10 @@ export function DriverCards({
             d.total++;
             if (normStatus(r.cells[i] ?? "") === "Valid") d.valid++;
           }
-          if (t === "state" && !d.state) d.state = (r.cells[i] ?? "").trim();
+          if (t === "state" && !d.state) d.state = asName(r.cells[i]).trim();
         });
-        if (def.id === "info") d.phone = (r.cells[1] ?? "").trim();
-        if (def.id === "ssccdl") d.cdl = (r.cells[1] ?? "").trim();
+        if (def.id === "info") d.phone = asName(r.cells[1]).trim();
+        if (def.id === "ssccdl") d.cdl = asName(r.cells[1]).trim();
       }
     }
     return [...map.values()].sort((a, b) =>
@@ -522,6 +522,8 @@ export function DriverCards({
 }
 
 function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; cdl: string }) {
+  const safeName = name == null ? "" : typeof name === "string" ? name : String(name);
+  const safeCdl = cdl == null ? "" : typeof cdl === "string" ? cdl : String(cdl);
   const data = useData();
   const view = useViewMode();
   const statusInfo = useMemo(() => {
@@ -553,7 +555,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
         </div>
         <SheetHeader>
           <SheetTitle className="font-display text-2xl text-primary-foreground">
-            {name.trim()}
+            {safeName.trim()}
           </SheetTitle>
           <SheetDescription className="text-primary-foreground/90">
             All documents in one place. Changes here are the same as editing in each section.
@@ -572,7 +574,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
           </button>
         </div>
         <p className="mt-2 hidden text-sm text-primary-foreground/90 print:block">
-          CDL {cdl || "—"}
+          CDL {safeCdl || "—"}
         </p>
         {statusInfo && (
           <div className="tracker-manage-panel mt-4">
@@ -594,7 +596,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
             )}
           </div>
         )}
-        <DriverManageControls driverId={driverId} name={name} />
+        <DriverManageControls driverId={driverId} name={safeName} />
       </div>
       {mute && (
         <div
@@ -607,7 +609,7 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
       <div className="space-y-4 px-6 py-5">
         <HireDateField driverId={driverId} />
         <RateCardPanel driverId={driverId} />
-        <DrugTestRegister driverId={driverId} driverName={name} />
+        <DrugTestRegister driverId={driverId} driverName={safeName} />
         {CARD_SECTIONS.map((def) => {
           const sec = data.sections[def.id];
           const row = Array.isArray(sec?.rows)
