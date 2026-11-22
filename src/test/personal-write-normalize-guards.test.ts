@@ -192,6 +192,28 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(alertsUi).toMatch(/\{asText\(item\.linkOnly\.label\)\}/);
+    const dataTableUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DataTable.tsx"),
+      "utf8",
+    );
+    expect(dataTableUi).toMatch(/\{asText\(it\.name\)\}/);
+    expect(dataTableUi).toMatch(/asText\(def\.title\)/);
+    const followUpUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/FollowUpTracker.tsx"),
+      "utf8",
+    );
+    expect(followUpUi).toMatch(/\{asText\(fu\.driver\)\}/);
+    expect(followUpUi).toMatch(/\{asText\(fu\.subject\)\}/);
+    const planCalUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
+      "utf8",
+    );
+    expect(planCalUi).toMatch(/\{asText\(ev\.title\)\}/);
+    const closeoutUi = readFileSync(
+      resolve(process.cwd(), "src/dispatch/components/CloseoutBoards.tsx"),
+      "utf8",
+    );
+    expect(closeoutUi).toMatch(/\{asText\(a\.description\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

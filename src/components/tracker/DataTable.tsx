@@ -39,6 +39,8 @@ import { useViewMode } from "@/lib/viewmode";
 import { setResizeLock, useResizeLock } from "@/lib/resizelock";
 import { Lock, Unlock } from "lucide-react";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /** Employment filter — "Show all" excludes New Drivers (use New scope instead). */
 type Filter = "all" | "active" | "inactive";
 /** The six main sections that must list the same drivers line by line. */
@@ -301,7 +303,7 @@ export function DataTable({
             className="flex w-full items-center justify-between px-4 py-2 text-left"
           >
             <span className="flex items-center gap-2 font-display text-base font-bold">
-              <Info className="size-5 text-primary" /> How alerts work in {def.title}
+              <Info className="size-5 text-primary" /> How alerts work in {asText(def.title)}
             </span>
             <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
               {showRules ? "Hide" : "Show"}{" "}
@@ -330,9 +332,9 @@ export function DataTable({
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={`Search ${def.title}…`}
+            placeholder={`Search ${asText(def.title)}…`}
             className="tracker-search"
-            aria-label={`Search ${def.title}`}
+            aria-label={`Search ${asText(def.title)}`}
           />
         </div>
         <FilterRack>
@@ -499,7 +501,7 @@ export function DataTable({
         <table
           className="tracker-table table-fixed border-separate border-spacing-0"
           style={{ width: 70 + widths.reduce((a, w, i) => a + (visible[i] ? w : 0), 0) + 60 }}
-          aria-label={`${def.title} driver rows`}
+          aria-label={`${asText(def.title)} driver rows`}
         >
           <colgroup>
             <col style={{ width: 70 }} />
@@ -617,7 +619,7 @@ export function DataTable({
                       className="border-b border-foreground/35 bg-warn-soft px-3 py-2"
                     >
                       <div className="sticky left-[78px] flex flex-wrap items-center gap-3">
-                        <b className="text-base text-foreground">{it.name}</b>
+                        <b className="text-base text-foreground">{asText(it.name)}</b>
                         <span className="rounded-md bg-warn px-2 py-0.5 text-xs font-bold text-primary-foreground">
                           MISSING IN THIS SECTION
                         </span>

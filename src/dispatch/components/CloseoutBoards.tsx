@@ -22,6 +22,8 @@ import type {
 import { ACCESSORIAL_KIND_LABELS } from "@/dispatch/lib/types";
 import { EmptyHint, SectionHelp } from "./EmptyHint";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const KINDS = Object.keys(ACCESSORIAL_KIND_LABELS) as AccessorialKind[];
 const STATUSES: AccessorialStatus[] = ["draft", "submitted", "approved", "denied", "paid", "void"];
 
@@ -198,13 +200,15 @@ export function AccessorialsBoard({
                 <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <div>
                     <p className="font-semibold">
-                      {accessorialKindLabel(a.kind)} · {a.status}
-                      {load ? ` · ${load.load_number}` : ""}
+                      {accessorialKindLabel(a.kind)} · {asText(a.status)}
+                      {load ? ` · ${asText(load.load_number)}` : ""}
                     </p>
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {a.description}
+                      {asText(a.description)}
                       {" · "}
-                      {a.amount_manual == null ? "amount blank / Needs Policy" : `USD ${a.amount_manual}`}
+                      {a.amount_manual == null
+                        ? "amount blank / Needs Policy"
+                        : `USD ${a.amount_manual}`}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">

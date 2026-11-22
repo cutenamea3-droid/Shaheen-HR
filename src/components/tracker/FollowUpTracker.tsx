@@ -15,6 +15,8 @@ import {
 import { addFollowUp, deleteFollowUp, updateFollowUp, useData } from "@/lib/store";
 import { Chip } from "./cells";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const FILTERS: { id: "all" | "open" | "today" | "overdue" | "snoozed" | "done"; label: string }[] = [
   { id: "all", label: "All" },
   { id: "open", label: "Open" },
@@ -150,7 +152,7 @@ export function FollowUpTracker() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
               >
                 <div className="min-w-0">
-                  <div className="font-bold">{s.driver}</div>
+                  <div className="font-bold">{asText(s.driver)}</div>
                   <div className="text-sm text-muted-foreground">
                     {s.docType} · {s.statusLabel} · expiry {s.expiryDisplay}
                   </div>
@@ -223,16 +225,18 @@ export function FollowUpTracker() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Chip tone={followUpTone(fu)}>{fu.status}</Chip>
-                    <span className="font-display text-base font-extrabold">{fu.driver}</span>
+                    <span className="font-display text-base font-extrabold">
+                      {asText(fu.driver)}
+                    </span>
                     {fu.docType && (
                       <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                        {fu.docType}
+                        {asText(fu.docType)}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-semibold">{fu.subject}</p>
+                  <p className="mt-1 font-semibold">{asText(fu.subject)}</p>
                   <p className="text-sm text-muted-foreground">{followUpDueLabel(fu)}</p>
-                  {fu.notes && <p className="mt-1 text-sm">{fu.notes}</p>}
+                  {fu.notes ? <p className="mt-1 text-sm">{asText(fu.notes)}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {fu.sectionId && (
@@ -260,7 +264,7 @@ export function FollowUpTracker() {
                   </select>
                   <input
                     type="date"
-                    value={fu.dueDate}
+                    value={asText(fu.dueDate)}
                     onChange={(e) => {
                       updateFollowUp(fu.id, { dueDate: e.target.value });
                       toast.success("Due date saved");

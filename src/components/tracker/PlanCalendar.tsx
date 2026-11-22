@@ -20,6 +20,8 @@ import { useData } from "@/lib/store";
 import { Chip } from "./cells";
 import { fmtDate } from "@/lib/alerts";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const VIEWS: { id: CalendarView; label: string }[] = [
   { id: "month", label: "Month" },
   { id: "week", label: "Week" },
@@ -44,10 +46,10 @@ function EventRow({ ev }: { ev: CalendarEvent }) {
                 ? "Derived"
                 : "Plan"}
         </Chip>
-        <span className="text-sm font-bold">{ev.driver}</span>
+        <span className="text-sm font-bold">{asText(ev.driver)}</span>
       </div>
-      <div className="text-sm font-semibold text-foreground">{ev.title}</div>
-      <div className="truncate text-xs text-muted-foreground">{ev.detail}</div>
+      <div className="text-sm font-semibold text-foreground">{asText(ev.title)}</div>
+      <div className="truncate text-xs text-muted-foreground">{asText(ev.detail)}</div>
     </Link>
   );
 }
