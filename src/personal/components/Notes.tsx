@@ -126,7 +126,7 @@ export function Notes() {
                 <span
                   className={practiceDone[item.id] ? "text-[var(--hp-muted)] line-through" : ""}
                 >
-                  {item.label}
+                  {asTxt(item.label)}
                 </span>
               </li>
             ))}
@@ -149,7 +149,7 @@ export function Notes() {
               <option value="general">General revision</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code}
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -299,8 +299,8 @@ export function Notes() {
               onChange={(e) => setLinkCourse(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.code}>
-                  {c.code}
+                <option key={c.id} value={asTxt(c.code)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -318,7 +318,7 @@ export function Notes() {
                 <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hp-teal)]" />
                 <span>
                   <span className="block text-sm font-semibold text-[var(--hp-ink)]">
-                    {l.label}
+                    {asTxt(l.label)}
                   </span>
                   <span className="block text-xs text-[var(--hp-muted)]">{l.blurb}</span>
                 </span>

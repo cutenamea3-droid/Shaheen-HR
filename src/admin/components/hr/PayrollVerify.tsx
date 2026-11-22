@@ -12,6 +12,8 @@ import { useBonusStore } from "@/admin/lib/bonus-store";
 import { formatPkr } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function PayrollVerify() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
@@ -213,7 +215,7 @@ export function PayrollVerify() {
                 <tbody>
                   {r.lines.map((line) => (
                     <tr key={line.kind}>
-                      <td>{line.label}</td>
+                      <td>{asText(line.label)}</td>
                       <td>
                         {line.amountPkr != null
                           ? formatPkr(line.amountPkr)

@@ -685,8 +685,8 @@ export function Today() {
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold text-[var(--hp-ink)]">
-                      {c.code}{" "}
-                      <span className="font-semibold text-[var(--hp-muted)]">· {c.title}</span>
+                      {asTxt(c.code)}{" "}
+                      <span className="font-semibold text-[var(--hp-muted)]">· {asTxt(c.title)}</span>
                     </div>
                   </div>
                   <span
@@ -696,7 +696,7 @@ export function Today() {
                         : "bg-[var(--hp-violet)]/15 text-[var(--hp-violet)]"
                     }`}
                   >
-                    {c.requirementType || "—"}
+                    {asTxt(c.requirementType) || "—"}
                   </span>
                 </div>
               ))}

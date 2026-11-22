@@ -250,7 +250,7 @@ export function Assessments() {
                 })
               }
             >
-              + {s.label}
+              + {asTxt(s.label)}
             </Btn>
           ))}
         </div>
@@ -263,7 +263,7 @@ export function Assessments() {
             >
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code}
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -407,7 +407,7 @@ export function Assessments() {
               <option value="general">General</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code}
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>

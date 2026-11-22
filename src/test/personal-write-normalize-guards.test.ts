@@ -135,6 +135,19 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(todayUi).toMatch(/\{asTxt\(next\.title\)\}/);
     expect(todayUi).toMatch(/\{asTxt\(b\.label\)\}/);
+    expect(notesUi).toMatch(/\{asTxt\(c\.code\)\}/);
+    expect(backlogUi).toMatch(/\{asTxt\(c\.code\)\}/);
+    expect(assessmentsUi).toMatch(/\{asTxt\(c\.code\)\}/);
+    const payrollUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/PayrollVerify.tsx"),
+      "utf8",
+    );
+    expect(payrollUi).toMatch(/\{asText\(line\.label\)\}/);
+    const directoryUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/EmployeeDirectory.tsx"),
+      "utf8",
+    );
+    expect(directoryUi).toMatch(/\{asText\(i\.name\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

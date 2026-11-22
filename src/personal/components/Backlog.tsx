@@ -53,7 +53,7 @@ export function Backlog() {
           <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.code}
+                {asTxt(c.code)}
               </option>
             ))}
           </select>

@@ -354,7 +354,7 @@ export function EmployeeDirectory() {
                     >
                       {institutions.map((i) => (
                         <option key={i.id} value={i.id}>
-                          {i.name} — {pkInstitutionKindLabel(i.kind)}
+                          {asText(i.name)} — {pkInstitutionKindLabel(i.kind)}
                           {!i.isBank ? " (wallet)" : ""}
                         </option>
                       ))}
