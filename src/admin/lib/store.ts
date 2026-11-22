@@ -106,6 +106,99 @@ export function normalizeDept(raw: Partial<Dept> & Pick<Dept, "id">): Dept {
   };
 }
 
+const asMinOrNull = (v: unknown): number | null => {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const asFinite = (v: unknown, fallback: number): number => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/** Coerce attendance DayRec scalars from corrupt cloud/local persist. */
+export function normalizeDayRec(raw: unknown): DayRec {
+  const base = emptyRec();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
+  const r = raw as Partial<DayRec>;
+  const status =
+    r.status === "present" || r.status === "leave" || r.status === "absent" || r.status === "half"
+      ? r.status
+      : "present";
+  const otMode = r.otMode === "custom" ? "custom" : "auto";
+  return {
+    status,
+    in: asMinOrNull(r.in),
+    bin: asMinOrNull(r.bin),
+    bout: asMinOrNull(r.bout),
+    out: asMinOrNull(r.out),
+    noBreak: Boolean(r.noBreak),
+    otMarked: Boolean(r.otMarked),
+    otMode,
+    otHours: asFinite(r.otHours, 0),
+    extraHours: asMinOrNull(r.extraHours),
+    ...(r.doubleShift != null ? { doubleShift: Boolean(r.doubleShift) } : {}),
+    ...(r.extraMarked != null ? { extraMarked: Boolean(r.extraMarked) } : {}),
+    leavePaid: r.leavePaid !== false,
+    halfReason: asText(r.halfReason),
+    note: asText(r.note),
+  };
+}
+
+/** Coerce performance rating/note from corrupt persist. */
+export function normalizePerf(raw: unknown): Perf {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { rating: "", note: "" };
+  const p = raw as Partial<Perf>;
+  const r = asText(p.rating);
+  const rating = (
+    r === "excellent" || r === "good" || r === "average" || r === "needs" || r === "poor" ? r : ""
+  ) as Perf["rating"];
+  return { rating, note: asText(p.note) };
+}
+
+function healDayTree(
+  raw: unknown,
+  fallback: Record<string, Record<string, DayRec>>,
+): Record<string, Record<string, DayRec>> {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : (fallback as Record<string, unknown>);
+  const out: Record<string, Record<string, DayRec>> = {};
+  for (const [date, day] of Object.entries(src)) {
+    if (!day || typeof day !== "object" || Array.isArray(day)) continue;
+    const healed: Record<string, DayRec> = {};
+    for (const [empId, rec] of Object.entries(day as Record<string, unknown>)) {
+      healed[asText(empId) || empId] = normalizeDayRec(rec);
+    }
+    out[asText(date) || date] = healed;
+  }
+  return out;
+}
+
+function healPerfTree(
+  raw: unknown,
+  fallback: Record<string, Record<string, Perf>>,
+): Record<string, Record<string, Perf>> {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : (fallback as Record<string, unknown>);
+  const out: Record<string, Record<string, Perf>> = {};
+  for (const [date, day] of Object.entries(src)) {
+    if (!day || typeof day !== "object" || Array.isArray(day)) continue;
+    const healed: Record<string, Perf> = {};
+    for (const [empId, p] of Object.entries(day as Record<string, unknown>)) {
+      healed[asText(empId) || empId] = normalizePerf(p);
+    }
+    out[asText(date) || date] = healed;
+  }
+  return out;
+}
+
 export const useApp = create<State>()(
   persist(
     (set) => ({
@@ -198,9 +291,7 @@ export const useApp = create<State>()(
         set((s) => {
           const records = objOf(s.records, {} as State["records"]);
           const day = records[date] ?? {};
-          const merged: DayRec = { ...(day[empId] ?? emptyRec()), ...p };
-          if ("note" in p) merged.note = asText(p.note);
-          if ("halfReason" in p) merged.halfReason = asText(p.halfReason);
+          const merged = normalizeDayRec({ ...(day[empId] ?? emptyRec()), ...p });
           return { records: { ...records, [date]: { ...day, [empId]: merged } } };
         }),
       resetRec: (date, empId) =>
@@ -220,14 +311,7 @@ export const useApp = create<State>()(
         set((s) => {
           const perf = objOf(s.perf, {} as State["perf"]);
           const day = perf[date] ?? {};
-          const merged: Perf = { ...(day[empId] ?? { rating: "", note: "" }), ...p };
-          if ("note" in p) merged.note = asText(p.note);
-          if ("rating" in p) {
-            const r = asText(p.rating);
-            merged.rating = (
-              r === "excellent" || r === "good" || r === "average" || r === "needs" || r === "poor" ? r : ""
-            ) as Perf["rating"];
-          }
+          const merged = normalizePerf({ ...(day[empId] ?? { rating: "", note: "" }), ...p });
           return { perf: { ...perf, [date]: { ...day, [empId]: merged } } };
         }),
       addTask: (t) =>
@@ -246,9 +330,16 @@ export const useApp = create<State>()(
         })),
       removeTask: (id) => set((s) => ({ tasks: normalizeTasks(s.tasks).filter((t) => t.id !== id) })),
       setSettings: (p) =>
-        set((s) => ({
-          settings: { ...objOf(s.settings, seedData.settings), ...p },
-        })),
+        set((s) => {
+          const base = objOf(s.settings, seedData.settings);
+          const next = { ...base, ...p };
+          if ("company" in p) next.company = asText(p.company);
+          for (const k of ["grace", "breakMin", "breakLeeway", "satTargetHours"] as const) {
+            if (k in p) next[k] = asFinite(p[k], base[k]);
+          }
+          if ("overpay" in p) next.overpay = Boolean(p.overpay);
+          return { settings: next };
+        }),
     }),
     {
       name: "hr-attendance-v1",
@@ -261,6 +352,7 @@ export const useApp = create<State>()(
         const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
         const obj = <T extends object>(v: unknown, fallback: T): T =>
           v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+        const settingsRaw = obj(p.settings, current.settings);
         return {
           ...current,
           ...p,
@@ -288,9 +380,17 @@ export const useApp = create<State>()(
                     ? Number((l as LogEntry).at)
                     : Date.now(),
             })),
-          records: obj(p.records, current.records),
-          perf: obj(p.perf, current.perf),
-          settings: obj(p.settings, current.settings),
+          records: healDayTree(p.records, current.records),
+          perf: healPerfTree(p.perf, current.perf),
+          settings: {
+            ...settingsRaw,
+            company: asText(settingsRaw.company),
+            grace: asFinite(settingsRaw.grace, current.settings.grace),
+            breakMin: asFinite(settingsRaw.breakMin, current.settings.breakMin),
+            breakLeeway: asFinite(settingsRaw.breakLeeway, current.settings.breakLeeway),
+            satTargetHours: asFinite(settingsRaw.satTargetHours, current.settings.satTargetHours),
+            overpay: Boolean(settingsRaw.overpay),
+          },
         };
       },
     },
