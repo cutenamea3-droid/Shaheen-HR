@@ -36,7 +36,9 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
           const display = String(fd.get("admin-team-name") ?? name).trim() || name.trim();
           const mail = (String(fd.get("admin-team-email") ?? email).trim() || email.trim()).toLowerCase();
           if (!display || !mail) return;
-          if (team.some((m) => m.email === mail) || mail === adminEmail.toLowerCase()) {
+          const asMail = (v: unknown) =>
+            (v == null ? "" : typeof v === "string" ? v : String(v)).trim().toLowerCase();
+          if (team.some((m) => asMail(m.email) === mail) || mail === asMail(adminEmail)) {
             setMsg("An account with that email already exists.");
             return;
           }

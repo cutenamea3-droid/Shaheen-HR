@@ -95,13 +95,14 @@ export function ExpensesManagement() {
   const activeCats = categories.filter((c) => !c.archived);
 
   const filtered = useMemo(() => {
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const monthKey = asText(month);
     return expenses.filter((e) => {
       if (showDeleted ? !e.deletedAt : !!e.deletedAt) return false;
-      if (!e.expenseDate.startsWith(month)) return false;
+      if (!asText(e.expenseDate).startsWith(monthKey)) return false;
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (scopeFilter !== "all" && e.scope !== scopeFilter) return false;
       if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
-      const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
       const needle = asText(q).trim().toLowerCase();
       if (needle) {
         const hay = `${asText(e.title)} ${asText(e.note)} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => asText(nameById.get(id))).join(" ")}`.toLowerCase();
@@ -111,7 +112,10 @@ export function ExpensesManagement() {
     });
   }, [expenses, showDeleted, month, statusFilter, scopeFilter, categoryFilter, q, nameById]);
 
-  const monthActive = expenses.filter((e) => !e.deletedAt && e.expenseDate.startsWith(month));
+  const monthActive = expenses.filter((e) => {
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return !e.deletedAt && asText(e.expenseDate).startsWith(asText(month));
+  });
   const summary = summarizeExpenses(monthActive);
   const byCategory =
     summary.byCategory && typeof summary.byCategory === "object" && !Array.isArray(summary.byCategory)

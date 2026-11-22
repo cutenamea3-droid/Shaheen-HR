@@ -11,7 +11,8 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
   const [confirm, setConfirm] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const initials = email.slice(0, 2).toUpperCase();
+  const emailKey = (email == null ? "" : typeof email === "string" ? email : String(email)).trim();
+  const initials = emailKey.slice(0, 2).toUpperCase() || "?";
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
@@ -23,7 +24,7 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
         <div className="flex items-center gap-3">
           <div className="brand-gradient flex h-12 w-12 items-center justify-center rounded-xl font-bold text-primary-foreground">{initials}</div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{email}</p>
+            <p className="truncate font-semibold">{emailKey || "—"}</p>
             <p className="text-xs text-muted-foreground">Signed in</p>
           </div>
           <span className="chip bg-primary/10 text-primary">
@@ -50,7 +51,7 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
           if (next === cur) return setMsg({ ok: false, text: "New password must be different from the current password." });
           setBusy(true);
           try {
-            const mail = email.trim().toLowerCase();
+            const mail = emailKey.toLowerCase();
             // Accept current if it matches local hash OR the live cloud password.
             // Local-only checks used to reject the password the user just signed in with
             // after a prior local-fallback save left the two out of sync.

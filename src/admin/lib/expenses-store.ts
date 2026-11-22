@@ -351,7 +351,11 @@ export const useExpensesStore = create<ExpensesState>()(
         const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
         const healExpense = (e: ExpenseRecord): ExpenseRecord => ({
           ...e,
-          employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds : [],
+          title: asText(e.title),
+          expenseDate: asText(e.expenseDate),
+          note: asText(e.note),
+          categoryId: asText(e.categoryId),
+          employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds.map(asText) : [],
         });
         const healTemplate = (t: ExpenseTemplate): ExpenseTemplate => ({
           ...t,

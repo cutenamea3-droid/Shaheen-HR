@@ -10,6 +10,8 @@ import type {
 } from "./expenses-types";
 import { BUILTIN_EXPENSE_CATEGORIES } from "./expenses-types";
 
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function defaultExpenseCategories() {
   return BUILTIN_EXPENSE_CATEGORIES.map((c) => ({ id: c.id, name: c.name, custom: false }));
 }
@@ -106,7 +108,7 @@ export function summarizeExpenses(
       deletedCount++;
       if (!opts?.includeDeleted) continue;
     }
-    if (opts?.month && !r.expenseDate.startsWith(opts.month)) continue;
+    if (opts?.month && !asText(r.expenseDate).startsWith(asText(opts.month))) continue;
     if (opts?.employeeId) {
       if (r.scope === "all") continue; // company totals are not attributed per employee
       if (!(Array.isArray(r.employeeIds) ? r.employeeIds : []).includes(opts.employeeId)) continue;
@@ -164,8 +166,9 @@ export function budgetUsage(
   categoryId: string,
 ): { limitPkr: number | null; spentPkr: number; over: boolean } {
   const budget = budgets.find((b) => b.month === month && b.categoryId === categoryId);
+  const monthKey = asText(month);
   const spentPkr = expenses
-    .filter((e) => !e.deletedAt && e.expenseDate.startsWith(month) && e.categoryId === categoryId)
+    .filter((e) => !e.deletedAt && asText(e.expenseDate).startsWith(monthKey) && e.categoryId === categoryId)
     .reduce((s, e) => s + e.amountPkr, 0);
   const limitPkr = budget?.limitPkr ?? null;
   return { limitPkr, spentPkr, over: limitPkr != null && spentPkr > limitPkr };
