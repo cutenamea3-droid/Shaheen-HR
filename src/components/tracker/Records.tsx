@@ -355,7 +355,9 @@ export function Records() {
                                     type="button"
                                     aria-label="Delete document"
                                     onClick={() =>
-                                      confirm(`Delete “${cells[1] || "document"}” for ${p.name}?`) &&
+                                      confirm(
+                                        `Delete “${asText(cells[1]) || "document"}” for ${asText(p.name)}?`,
+                                      ) &&
                                       deleteRecord(tab, r.id)
                                     }
                                     className="ui-press rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"
