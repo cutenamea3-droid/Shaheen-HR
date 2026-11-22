@@ -23,6 +23,7 @@ import { DocsBoard, EquipmentBoard, FollowUpsBoard } from "@/dispatch/components
 import { AccessorialsBoard } from "@/dispatch/components/CloseoutBoards";
 import {
   getDispatchAccount,
+  healDispatchAccount,
   inviteDispatchUser,
   isDispatchPreviewMode,
   listDispatchAccounts,
@@ -34,6 +35,7 @@ import {
   cancelLoad,
   closeLoad,
   driverLoadHistory,
+  healRosterDriver,
   listAccessorials,
   listCheckCalls,
   listCommunications,
@@ -186,7 +188,9 @@ export function DispatchApp() {
   async function refresh() {
     const [nextLoads, nextDrivers] = await Promise.all([listLoads(), listRosterDrivers()]);
     setLoads(Array.isArray(nextLoads) ? nextLoads : []);
-    setDrivers(Array.isArray(nextDrivers) ? nextDrivers : []);
+    setDrivers(
+      (Array.isArray(nextDrivers) ? nextDrivers : []).map((d) => healRosterDriver(d as RosterDriver)),
+    );
   }
 
   useEffect(() => {
@@ -195,7 +199,7 @@ export function DispatchApp() {
       try {
         const acc = await getDispatchAccount();
         if (cancelled) return;
-        setAccount(acc);
+        setAccount(acc ? healDispatchAccount(acc) : null);
         if (acc) await refresh();
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load Dispatch.");
@@ -269,7 +273,7 @@ export function DispatchApp() {
             })}
           </nav>
           <div className="mt-3 border-t border-white/15 px-2 pt-3 text-xs text-white/70">
-            <p className="font-medium text-white">{account.display_name}</p>
+            <p className="font-medium text-white">{asFormText(account.display_name)}</p>
             <p>{account.role === "admin" ? "Dispatch admin" : "Dispatcher"}</p>
             {isDispatchPreviewMode() && <p className="mt-1 text-amber-200">Fixture mode</p>}
             <button
@@ -591,7 +595,7 @@ function HomeBoard({
                 className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
               >
                 <div>
-                  <p className="font-semibold">{f.title}</p>
+                  <p className="font-semibold">{asFormText(f.title)}</p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
                     Due {new Date(f.due_at).toLocaleString()}
                   </p>
@@ -633,9 +637,9 @@ function HomeBoard({
           <ul className="divide-y divide-[color:var(--dispatch-border)]">
             {openIss.slice(0, 8).map((issue) => (
               <li key={issue.id} className="py-2 text-sm">
-                <p className="font-semibold">{issue.title}</p>
+                <p className="font-semibold">{asFormText(issue.title)}</p>
                 <p className="text-xs text-[color:var(--dispatch-muted)]">
-                  {issue.status} · {issue.escalation_level}
+                  {asFormText(issue.status)} · {asFormText(issue.escalation_level)}
                   {issue.senior_informed
                     ? " · Senior Informed (manual)"
                     : " · Senior Informed: not recorded"}
@@ -785,7 +789,7 @@ function LoadsBoard({
           <option value="all">All drivers</option>
           {safeDrivers.map((d) => (
             <option key={d.id} value={d.id}>
-              {d.display_name}
+              {asFormText(d.display_name)}
             </option>
           ))}
         </select>
@@ -1251,8 +1255,8 @@ function LoadEditor({
             <option value="">Unassigned</option>
             {safeDrivers.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.display_name}
-                {d.unit_number ? ` · #${d.unit_number}` : ""}
+                {asFormText(d.display_name)}
+                {d.unit_number ? ` · #${asFormText(d.unit_number)}` : ""}
               </option>
             ))}
           </select>
@@ -2088,7 +2092,7 @@ function LoadEditor({
               bol_status: form.bol_status,
               pod_status: form.pod_status,
               assigned_driver_id: form.assigned_driver_id || null,
-              assigned_driver_name: driver?.display_name ?? null,
+              assigned_driver_name: driver ? asFormText(driver.display_name) || null : null,
               external_ref_label: form.external_ref_label || null,
               external_ref_url: form.external_ref_url || null,
               planned_pickup_at: toIsoOrNull(form.planned_pickup_at),
@@ -2178,10 +2182,12 @@ function RosterBoard({
           {safeDrivers.map((d) => (
             <li key={d.id} className="flex justify-between py-2 text-sm">
               <span className="font-medium">
-                {d.display_name}
-                {d.unit_number ? ` · #${d.unit_number}` : ""}
+                {asFormText(d.display_name)}
+                {d.unit_number ? ` · #${asFormText(d.unit_number)}` : ""}
               </span>
-              <span className="text-[color:var(--dispatch-muted)]">{d.notes || "Active"}</span>
+              <span className="text-[color:var(--dispatch-muted)]">
+                {asFormText(d.notes) || "Active"}
+              </span>
             </li>
           ))}
         </ul>
@@ -2303,7 +2309,7 @@ function HandoverBoard({
             const nextTo = (toDispatcher.trim() || toDispatcherRef.current?.value || "").trim();
             const saved = await saveHandover({
               shift_date: new Date().toISOString().slice(0, 10),
-              from_dispatcher: account.display_name,
+              from_dispatcher: asFormText(account.display_name),
               to_dispatcher: nextTo || null,
               summary: nextSummary,
               watch_items: nextWatch,
@@ -2433,9 +2439,9 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             <li key={issue.id} className="grid gap-2 py-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="font-semibold">{issue.title}</p>
+                  <p className="font-semibold">{asFormText(issue.title)}</p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
-                    {issue.status} · {issue.escalation_level}
+                    {asFormText(issue.status)} · {asFormText(issue.escalation_level)}
                     {issue.senior_informed
                       ? ` · Senior Informed ${issue.senior_informed_at ? new Date(issue.senior_informed_at).toLocaleString() : ""}`
                       : " · Senior Informed: not recorded"}
@@ -2633,7 +2639,7 @@ function HistoryBoard({
           >
             {safeDrivers.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.display_name}
+                {asFormText(d.display_name)}
               </option>
             ))}
           </select>
@@ -2808,7 +2814,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
 
   async function reload() {
     const next = await listDispatchAccounts();
-    setRows(Array.isArray(next) ? next : []);
+    setRows((Array.isArray(next) ? next : []).map((a) => healDispatchAccount(a)));
   }
 
   useEffect(() => {
@@ -2888,7 +2894,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
           <li key={row.user_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
             <div>
               <p className="font-semibold">
-                {row.display_name} · {row.email}
+                {asFormText(row.display_name)} · {asFormText(row.email)}
               </p>
               <p className="text-xs text-[color:var(--dispatch-muted)]">
                 {row.role} · {row.active ? "active" : "revoked"}

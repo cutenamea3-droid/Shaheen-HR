@@ -7,7 +7,10 @@ describe("Dispatch list coerce + GPA / mergeById guards", () => {
   it("DispatchApp coerces refresh loads/drivers and IssuesBoard list results", () => {
     const src = readFileSync(resolve(process.cwd(), "src/dispatch/DispatchApp.tsx"), "utf8");
     expect(src).toMatch(/setLoads\(Array\.isArray\(nextLoads\)/);
-    expect(src).toMatch(/setDrivers\(Array\.isArray\(nextDrivers\)/);
+    expect(src).toMatch(/healRosterDriver/);
+    expect(src).toMatch(/healDispatchAccount/);
+    expect(src).toMatch(/asFormText\(account\.display_name\)/);
+    expect(src).toMatch(/asFormText\(d\.display_name\)/);
     expect(src).toMatch(/setIssues\(Array\.isArray\(iss\)/);
     expect(src).toMatch(/safeDrivers\.map/);
     expect(src).toMatch(/safeLoads\.map/);

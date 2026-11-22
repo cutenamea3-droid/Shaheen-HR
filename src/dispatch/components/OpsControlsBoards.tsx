@@ -17,6 +17,8 @@ import { EmptyHint, SectionHelp } from "./EmptyHint";
 
 const DOC_STATUSES: DocStatus[] = ["missing", "pending", "received", "verified", "exception"];
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function DocsBoard({
   loads,
   onOpen,
@@ -399,8 +401,8 @@ export function EquipmentBoard({
                 const active = Array.isArray(row.activeLoads) ? row.activeLoads : [];
                 return (
                 <tr key={row.driver.id}>
-                  <td className="font-semibold">{row.driver.display_name}</td>
-                  <td>{row.unit_number || "—"}</td>
+                  <td className="font-semibold">{asText(row.driver.display_name)}</td>
+                  <td>{asText(row.unit_number) || "—"}</td>
                   <td className="text-xs">
                     {labels.length ? labels.join(", ") : "— (none recorded)"}
                   </td>
