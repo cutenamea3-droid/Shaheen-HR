@@ -1,8 +1,19 @@
 import { useMemo, useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
-import { deadlineBadge } from "@/personal/lib/assessment-phases";
+import {
+  deadlineBadge,
+  normalizeAssessment,
+  normalizeExamPrepTask,
+} from "@/personal/lib/assessment-phases";
 import { usePersonal } from "@/personal/lib/store";
-import type { AssessmentKind, DeadlineSource, ExamPrepTask } from "@/personal/lib/types";
+import type {
+  Assessment,
+  AssessmentKind,
+  DeadlineSource,
+  ExamPrepTask,
+} from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 const KINDS: AssessmentKind[] = ["assignment", "quiz", "gdb", "midterm", "final", "other"];
 
@@ -34,7 +45,11 @@ export function Assessments() {
   const coursesRaw = usePersonal((s) => s.courses);
   const assessmentsRaw = usePersonal((s) => s.assessments);
   const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
-  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const assessments = (Array.isArray(assessmentsRaw) ? assessmentsRaw : [])
+    .map((a) =>
+      normalizeAssessment(a as Partial<Assessment> & Pick<Assessment, "id" | "title">),
+    )
+    .filter((a) => !!a.id);
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
   const upsertAssessment = usePersonal((s) => s.upsertAssessment);
@@ -42,7 +57,9 @@ export function Assessments() {
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const removeAssessment = usePersonal((s) => s.removeAssessment);
   const examPrepTasksRaw = usePersonal((s) => s.examPrepTasks);
-  const examPrepTasks = Array.isArray(examPrepTasksRaw) ? examPrepTasksRaw : [];
+  const examPrepTasks = (Array.isArray(examPrepTasksRaw) ? examPrepTasksRaw : [])
+    .map((t) => normalizeExamPrepTask(t as Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">))
+    .filter((t) => !!t.id);
   const upsertExamPrepTask = usePersonal((s) => s.upsertExamPrepTask);
   const toggleExamPrepTask = usePersonal((s) => s.toggleExamPrepTask);
   const removeExamPrepTask = usePersonal((s) => s.removeExamPrepTask);
@@ -277,7 +294,7 @@ export function Assessments() {
               <Btn
                 data-testid="personal-prep-add"
                 onClick={() => {
-                  const next = (prepLabel.trim() || prepLabelRef.current?.value || "").trim();
+                  const next = (asTxt(prepLabel).trim() || prepLabelRef.current?.value || "").trim();
                   if (!next) return;
                   upsertExamPrepTask({
                     id: Math.random().toString(36).slice(2, 10),
@@ -308,7 +325,7 @@ export function Assessments() {
               >
                 <div>
                   <div className={`text-sm font-semibold ${t.done ? "text-[var(--hp-muted)] line-through" : ""}`}>
-                    {t.label}
+                    {asTxt(t.label)}
                   </div>
                   <div className="text-xs text-[var(--hp-muted)]">
                     {courseLabel(courses, t.courseId)} · {t.examKind} · prep checklist (≠ VULMS submit)
@@ -337,7 +354,7 @@ export function Assessments() {
           className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 md:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const nextTitle = (title.trim() || titleRef.current?.value || "").trim();
+            const nextTitle = (asTxt(title).trim() || titleRef.current?.value || "").trim();
             if (!nextTitle) return;
             upsertAssessment({
               id: Math.random().toString(36).slice(2, 10),
@@ -410,11 +427,11 @@ export function Assessments() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
               >
                 <div className="min-w-0 space-y-1">
-                  <div className="font-semibold">{a.title}</div>
+                  <div className="font-semibold">{asTxt(a.title)}</div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--hp-muted)]">
                     <span>
-                      {a.dueDate || "no date"} · {courseLabel(courses, a.courseId)} ·{" "}
-                      {a.kind === "gdb" ? "GDB" : a.kind}
+                      {asTxt(a.dueDate) || "no date"} · {courseLabel(courses, a.courseId)} ·{" "}
+                      {a.kind === "gdb" ? "GDB" : asTxt(a.kind)}
                     </span>
                     <DeadlineChip source={a.deadlineSource} />
                     {a.prepDone ? (

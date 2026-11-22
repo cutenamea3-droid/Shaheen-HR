@@ -1,12 +1,18 @@
 import { useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { todayKey, usePersonal } from "@/personal/lib/store";
+import { normalizeBacklogItem } from "@/personal/lib/assessment-phases";
+import type { BacklogItem } from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Backlog() {
   const coursesRaw = usePersonal((s) => s.courses);
   const backlogRaw = usePersonal((s) => s.backlog);
   const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
-  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
+  const backlog = (Array.isArray(backlogRaw) ? backlogRaw : [])
+    .map((b) => normalizeBacklogItem(b as Partial<BacklogItem> & Pick<BacklogItem, "id">))
+    .filter((b) => !!b.id);
   const addBacklog = usePersonal((s) => s.addBacklog);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
   const removeBacklog = usePersonal((s) => s.removeBacklog);
@@ -31,9 +37,9 @@ export function Backlog() {
         className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 sm:grid-cols-[1fr_2fr_100px_auto]"
         onSubmit={(e) => {
           e.preventDefault();
-          const nextLabel = (label.trim() || labelRef.current?.value || "").trim();
+          const nextLabel = (asTxt(label).trim() || labelRef.current?.value || "").trim();
           if (!nextLabel) return;
-          const nextMins = mins.trim() || minsRef.current?.value || "30";
+          const nextMins = asTxt(mins).trim() || minsRef.current?.value || "30";
           addBacklog({
             courseId,
             label: nextLabel,
@@ -90,7 +96,7 @@ export function Backlog() {
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
             >
               <div>
-                <div className="text-sm font-semibold">{b.label}</div>
+                <div className="text-sm font-semibold">{asTxt(b.label)}</div>
                 <div className="text-xs text-[var(--hp-muted)]">
                   {courseLabel(courses, b.courseId)} · ~{b.estimatedMinutes}m
                 </div>
@@ -123,7 +129,7 @@ export function Backlog() {
             {done.map((b) => (
               <li key={b.id} className="flex justify-between text-sm">
                 <span>
-                  {courseLabel(courses, b.courseId)} — {b.label}
+                  {courseLabel(courses, b.courseId)} — {asTxt(b.label)}
                 </span>
                 <Btn variant="ghost" onClick={() => toggleBacklog(b.id)}>
                   Undo
