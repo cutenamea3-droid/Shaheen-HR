@@ -48,6 +48,45 @@ function asText(v: unknown): string {
   return typeof v === "string" ? v : String(v);
 }
 
+function asNullableText(v: unknown): string | null {
+  if (v == null) return null;
+  return typeof v === "string" ? v : String(v);
+}
+
+/** Heal issue title/detail before UI `{issue.title}` / string templates. */
+export function healDispatchIssue(raw: DispatchIssue): DispatchIssue {
+  return {
+    ...raw,
+    title: asText(raw.title),
+    detail: asNullableText(raw.detail),
+    senior_informed_note: asNullableText(raw.senior_informed_note),
+  };
+}
+
+/** Heal follow-up title/notes/due_at before UI render and localeCompare. */
+export function healDispatchFollowUp(raw: DispatchFollowUp): DispatchFollowUp {
+  return {
+    ...raw,
+    title: asText(raw.title),
+    notes: asNullableText(raw.notes),
+    due_at: asText(raw.due_at),
+  };
+}
+
+/** Heal handover summary/watch text before UI render. */
+export function healShiftHandover(raw: ShiftHandover): ShiftHandover {
+  return {
+    ...raw,
+    shift_date: asText(raw.shift_date),
+    from_dispatcher: asText(raw.from_dispatcher),
+    to_dispatcher: asNullableText(raw.to_dispatcher),
+    summary: asText(raw.summary),
+    watch_items: asText(raw.watch_items),
+    next_day_priorities: asText(raw.next_day_priorities),
+    open_load_ids: Array.isArray(raw.open_load_ids) ? raw.open_load_ids.map(asText) : [],
+  };
+}
+
 /** Only real stop arrays may round-trip — never truthy string `.length`. */
 function arrayStops(stops: unknown): LoadStop[] | undefined {
   return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
@@ -437,51 +476,56 @@ export async function saveException(
 }
 
 export async function listIssues(): Promise<DispatchIssue[]> {
-  if (isDispatchPreviewMode()) return asRows<DispatchIssue>(mem().issues);
+  if (isDispatchPreviewMode()) return asRows<DispatchIssue>(mem().issues).map(healDispatchIssue);
   const { data, error } = await dispatchSupabase
     .from("dispatch_issues")
     .select("*")
     .order("updated_at", { ascending: false });
   if (error) throw error;
-  return asRows<DispatchIssue>(data);
+  return asRows<DispatchIssue>(data).map(healDispatchIssue);
 }
 
 export async function saveIssue(
   input: Partial<DispatchIssue> & { title: string },
 ): Promise<DispatchIssue> {
   const now = new Date().toISOString();
+  const title = asText(input.title).trim();
+  const detail = asNullableText(input.detail);
+  const seniorNote = asNullableText(input.senior_informed_note);
   if (isDispatchPreviewMode()) {
     const existing = mem().issues.find((i) => i.id === input.id);
     if (existing) {
       const senior_informed = input.senior_informed ?? existing.senior_informed;
       Object.assign(existing, input, {
+        title,
+        detail,
         senior_informed,
         senior_informed_at: senior_informed
           ? (input.senior_informed_at ?? existing.senior_informed_at ?? now)
           : null,
         senior_informed_note: senior_informed
-          ? (input.senior_informed_note ?? existing.senior_informed_note)
+          ? (seniorNote ?? existing.senior_informed_note)
           : null,
         updated_at: now,
       });
-      return existing;
+      return healDispatchIssue(existing);
     }
     const senior_informed = input.senior_informed ?? false;
     const row: DispatchIssue = {
       id: newId(),
       load_id: input.load_id ?? null,
-      title: input.title,
-      detail: input.detail ?? null,
+      title,
+      detail,
       escalation_level: input.escalation_level ?? "ops",
       status: input.status ?? "open",
       senior_informed,
       senior_informed_at: senior_informed ? (input.senior_informed_at ?? now) : null,
-      senior_informed_note: senior_informed ? (input.senior_informed_note ?? null) : null,
+      senior_informed_note: senior_informed ? seniorNote : null,
       created_at: now,
       updated_at: now,
     };
     mem().issues.unshift(row);
-    return row;
+    return healDispatchIssue(row);
   }
   const senior_informed = input.senior_informed ?? false;
   const { data, error } = await dispatchSupabase
@@ -489,72 +533,75 @@ export async function saveIssue(
     .upsert({
       id: input.id,
       load_id: input.load_id ?? null,
-      title: input.title,
-      detail: input.detail ?? null,
+      title,
+      detail,
       escalation_level: input.escalation_level ?? "ops",
       status: input.status ?? "open",
       senior_informed,
       senior_informed_at: senior_informed ? (input.senior_informed_at ?? now) : null,
-      senior_informed_note: senior_informed ? (input.senior_informed_note ?? null) : null,
+      senior_informed_note: senior_informed ? seniorNote : null,
     })
     .select("*")
     .single();
   if (error) throw error;
-  return data as DispatchIssue;
+  return healDispatchIssue(data as DispatchIssue);
 }
 
 export async function listFollowUps(): Promise<DispatchFollowUp[]> {
   if (isDispatchPreviewMode()) {
-    return [...asRows<DispatchFollowUp>(mem().followUps)].sort((a, b) =>
-      asText(a.due_at).localeCompare(asText(b.due_at)),
-    );
+    return [...asRows<DispatchFollowUp>(mem().followUps)]
+      .map(healDispatchFollowUp)
+      .sort((a, b) => asText(a.due_at).localeCompare(asText(b.due_at)));
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_follow_ups")
     .select("*")
     .order("due_at", { ascending: true });
   if (error) throw error;
-  return asRows<DispatchFollowUp>(data);
+  return asRows<DispatchFollowUp>(data).map(healDispatchFollowUp);
 }
 
 export async function saveFollowUp(
   input: Partial<DispatchFollowUp> & { title: string; due_at: string },
 ): Promise<DispatchFollowUp> {
   const now = new Date().toISOString();
+  const title = asText(input.title).trim();
+  const notes = asNullableText(input.notes);
+  const due_at = asText(input.due_at);
   if (isDispatchPreviewMode()) {
     const existing = mem().followUps.find((f) => f.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { updated_at: now });
-      return existing;
+      Object.assign(existing, input, { title, notes, due_at, updated_at: now });
+      return healDispatchFollowUp(existing);
     }
     const row: DispatchFollowUp = {
       id: newId(),
       load_id: input.load_id ?? null,
-      title: input.title,
-      notes: input.notes ?? null,
-      due_at: input.due_at,
+      title,
+      notes,
+      due_at,
       status: input.status ?? "open",
       created_by: input.created_by ?? null,
       created_at: now,
       updated_at: now,
     };
     mem().followUps.unshift(row);
-    return row;
+    return healDispatchFollowUp(row);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_follow_ups")
     .upsert({
       id: input.id,
       load_id: input.load_id ?? null,
-      title: input.title,
-      notes: input.notes ?? null,
-      due_at: input.due_at,
+      title,
+      notes,
+      due_at,
       status: input.status ?? "open",
     })
     .select("*")
     .single();
   if (error) throw error;
-  return data as DispatchFollowUp;
+  return healDispatchFollowUp(data as DispatchFollowUp);
 }
 
 /** Cancel a load with a required manual reason. */
@@ -649,14 +696,14 @@ export async function rescheduleLoad(
 }
 
 export async function listHandovers(): Promise<ShiftHandover[]> {
-  if (isDispatchPreviewMode()) return asRows<ShiftHandover>(mem().handovers);
+  if (isDispatchPreviewMode()) return asRows<ShiftHandover>(mem().handovers).map(healShiftHandover);
   const { data, error } = await dispatchSupabase
     .from("dispatch_shift_handovers")
     .select("*")
     .order("shift_date", { ascending: false })
     .limit(30);
   if (error) throw error;
-  return asRows<ShiftHandover>(data);
+  return asRows<ShiftHandover>(data).map(healShiftHandover);
 }
 
 export async function saveHandover(
@@ -666,40 +713,47 @@ export async function saveHandover(
     summary: string;
   },
 ): Promise<ShiftHandover> {
+  const summary = asText(input.summary).trim();
+  const shift_date = asText(input.shift_date);
+  const from_dispatcher = asText(input.from_dispatcher);
+  const to_dispatcher = asNullableText(input.to_dispatcher);
+  const watch_items = asText(input.watch_items);
+  const next_day_priorities = asText(input.next_day_priorities);
+  const open_load_ids = Array.isArray(input.open_load_ids) ? input.open_load_ids.map(asText) : [];
   if (isDispatchPreviewMode()) {
     const row: ShiftHandover = {
       id: input.id ?? newId(),
-      shift_date: input.shift_date,
-      from_dispatcher: input.from_dispatcher,
-      to_dispatcher: input.to_dispatcher ?? null,
-      summary: input.summary,
-      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
-      watch_items: input.watch_items ?? "",
-      next_day_priorities: input.next_day_priorities ?? "",
+      shift_date,
+      from_dispatcher,
+      to_dispatcher,
+      summary,
+      open_load_ids,
+      watch_items,
+      next_day_priorities,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     const idx = mem().handovers.findIndex((h) => h.id === row.id);
     if (idx >= 0) mem().handovers[idx] = row;
     else mem().handovers.unshift(row);
-    return row;
+    return healShiftHandover(row);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_shift_handovers")
     .upsert({
       id: input.id,
-      shift_date: input.shift_date,
-      from_dispatcher: input.from_dispatcher,
-      to_dispatcher: input.to_dispatcher ?? null,
-      summary: input.summary,
-      open_load_ids: Array.isArray(input.open_load_ids) ? input.open_load_ids : [],
-      watch_items: input.watch_items ?? "",
-      next_day_priorities: input.next_day_priorities ?? "",
+      shift_date,
+      from_dispatcher,
+      to_dispatcher,
+      summary,
+      open_load_ids,
+      watch_items,
+      next_day_priorities,
     })
     .select("*")
     .single();
   if (error) throw error;
-  return data as ShiftHandover;
+  return healShiftHandover(data as ShiftHandover);
 }
 
 export function driverLoadHistory(loads: DispatchLoad[], driverId: string): DispatchLoad[] {

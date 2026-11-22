@@ -359,16 +359,39 @@ export const useExpensesStore = create<ExpensesState>()(
         });
         const healTemplate = (t: ExpenseTemplate): ExpenseTemplate => ({
           ...t,
-          employeeIds: Array.isArray(t.employeeIds) ? t.employeeIds : [],
+          name: asText(t.name),
+          title: asText(t.title),
+          note: asText(t.note),
+          categoryId: asText(t.categoryId),
+          employeeIds: Array.isArray(t.employeeIds) ? t.employeeIds.map(asText) : [],
+        });
+        const healCategory = (c: ExpenseCategory): ExpenseCategory => ({
+          ...c,
+          id: asText(c.id),
+          name: asText(c.name),
+        });
+        const healBudget = (b: ExpenseBudget): ExpenseBudget => ({
+          ...b,
+          id: asText(b.id),
+          month: asText(b.month),
+          categoryId: asText(b.categoryId),
+          note: asText(b.note),
+        });
+        const healAudit = (a: ExpenseAuditEvent): ExpenseAuditEvent => ({
+          ...a,
+          id: asText(a.id),
+          expenseId: asText(a.expenseId),
+          action: asText(a.action),
+          detail: asText(a.detail),
         });
         return {
           ...current,
           ...raw,
-          categories: arr(raw.categories, current.categories),
+          categories: arr(raw.categories, current.categories).map(healCategory),
           expenses: arr(raw.expenses, current.expenses).map(healExpense),
           templates: arr(raw.templates, current.templates).map(healTemplate),
-          budgets: arr(raw.budgets, current.budgets),
-          audit: arr(raw.audit, current.audit),
+          budgets: arr(raw.budgets, current.budgets).map(healBudget),
+          audit: arr(raw.audit, current.audit).map(healAudit),
         };
       },
     },
