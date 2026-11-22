@@ -471,8 +471,16 @@ export function Attendance() {
                         const violations = Array.isArray(c.violations) ? c.violations : [];
                         return flags.length ? (
                           flags.map((f) => (
-                            <Tone key={f} tone={violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
-                              {f}
+                            <Tone
+                              key={String(f)}
+                              tone={
+                                violations.includes(f) ||
+                                (f == null ? "" : typeof f === "string" ? f : String(f)).startsWith("Miss")
+                                  ? "red"
+                                  : undefined
+                              }
+                            >
+                              {f == null ? "" : typeof f === "string" ? f : String(f)}
                             </Tone>
                           ))
                         ) : (

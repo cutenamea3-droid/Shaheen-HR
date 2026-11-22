@@ -225,7 +225,11 @@ export const usePersonal = create<PersonalStore>()(
       updateCourse: (id, p) =>
         set((s) => {
           const courses = Array.isArray(s.courses) ? s.courses : [];
-          return { courses: courses.map((c) => (c.id === id ? { ...c, ...p } : c)) };
+          return {
+            courses: courses.map((c) =>
+              c.id === id ? normalizeCourse({ ...c, ...p, id: c.id }) : c,
+            ),
+          };
         }),
       addBacklog: (item) =>
         set((s) => {

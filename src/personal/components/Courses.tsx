@@ -156,8 +156,11 @@ function CourseEditor({
         <Btn
           data-testid="personal-course-save"
           onClick={() => {
-            const nextCode = (codeV.trim() || codeRef.current?.value || code).trim() || code;
-            const nextTitle = (titleV.trim() || titleRef.current?.value || title).trim() || title;
+            const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+            const nextCode =
+              asTxt(codeV.trim() || codeRef.current?.value || code).trim() || asTxt(code);
+            const nextTitle =
+              asTxt(titleV.trim() || titleRef.current?.value || title).trim() || asTxt(title);
             const nextTotal = totalV.trim() || totalRef.current?.value || "";
             const nextDone = doneV.trim() || doneRef.current?.value || "";
             const nextNotes = notesV.length ? notesV : notesRef.current?.value || "";
