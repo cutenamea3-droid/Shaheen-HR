@@ -90,6 +90,22 @@ export function normalizeTeamMember(raw: Partial<TeamMember> & Pick<TeamMember, 
   };
 }
 
+/** Coerce department name/shift minutes from corrupt persist. */
+export function normalizeDept(raw: Partial<Dept> & Pick<Dept, "id">): Dept {
+  const asMin = (v: unknown, fallback: number): number => {
+    if (v == null || v === "") return fallback;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    start: asMin(raw.start, 540),
+    end: asMin(raw.end, 1140),
+  };
+}
+
 export const useApp = create<State>()(
   persist(
     (set) => ({
@@ -117,20 +133,23 @@ export const useApp = create<State>()(
         set((s) => {
           const logs = arrOf<LogEntry>(s.logs);
           const now = Date.now();
+          const whoText = asText(who);
+          const actionText = asText(action);
           const top = logs[0];
           // merge repeated edits of the same kind within one minute
-          if (top && top.who === who && top.action === action && now - top.at < 60_000)
+          if (top && top.who === whoText && top.action === actionText && now - top.at < 60_000)
             return { logs: [{ ...top, at: now, count: (top.count ?? 1) + 1 }, ...logs.slice(1)] };
-          return { logs: [{ id: uid(), at: now, who, action }, ...logs].slice(0, 500) };
+          return { logs: [{ id: uid(), at: now, who: whoText, action: actionText }, ...logs].slice(0, 500) };
         }),
       setAuthed: (authed) => set({ authed }),
       upsertDept: (d) =>
         set((s) => {
           const depts = arrOf<Dept>(s.depts);
+          const next = normalizeDept(d);
           return {
-            depts: depts.some((x) => x.id === d.id)
-              ? depts.map((x) => (x.id === d.id ? d : x))
-              : [...depts, d],
+            depts: depts.some((x) => x.id === next.id)
+              ? depts.map((x) => (x.id === next.id ? next : x))
+              : [...depts, next],
           };
         }),
       removeDept: (id) => set((s) => ({ depts: arrOf<Dept>(s.depts).filter((d) => d.id !== id) })),
@@ -241,8 +260,23 @@ export const useApp = create<State>()(
           team: arr(p.team, current.team)
             .filter((m): m is TeamMember => !!m && typeof m === "object" && !Array.isArray(m))
             .map((m) => normalizeTeamMember(m as TeamMember)),
-          depts: arr(p.depts, current.depts),
-          logs: arr(p.logs, current.logs),
+          depts: arr(p.depts, current.depts)
+            .filter((d): d is Dept => !!d && typeof d === "object" && !Array.isArray(d))
+            .map((d) => normalizeDept(d as Dept)),
+          logs: arr(p.logs, current.logs)
+            .filter((l): l is LogEntry => !!l && typeof l === "object" && !Array.isArray(l))
+            .map((l) => ({
+              ...l,
+              id: asText((l as LogEntry).id) || uid(),
+              who: asText((l as LogEntry).who),
+              action: asText((l as LogEntry).action),
+              at:
+                typeof (l as LogEntry).at === "number" && Number.isFinite((l as LogEntry).at)
+                  ? (l as LogEntry).at
+                  : Number.isFinite(Number((l as LogEntry).at))
+                    ? Number((l as LogEntry).at)
+                    : Date.now(),
+            })),
           records: obj(p.records, current.records),
           perf: obj(p.perf, current.perf),
           settings: obj(p.settings, current.settings),
