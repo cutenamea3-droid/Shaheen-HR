@@ -29,6 +29,8 @@ const STATUS_CHIP: Record<InspectionStatus, string> = {
   unable: "bg-warn text-primary-foreground",
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function InspectionReadinessPanel() {
   const data = useData();
   const [filter, setFilter] = useState<InspectionStatus | "all">("all");
@@ -42,7 +44,6 @@ export function InspectionReadinessPanel() {
   const fleet = useMemo(() => fleetInspectionCounts(summaries), [summaries]);
 
   const visible = useMemo(() => {
-    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const qq = asText(q).trim().toLowerCase();
     return summaries.filter((s) => {
       const counts: Partial<Record<InspectionStatus, number>> =
@@ -119,10 +120,10 @@ export function InspectionReadinessPanel() {
               >
                 {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 <div className="min-w-0 flex-1">
-                  <p className="font-extrabold">{s.driverName}</p>
+                  <p className="font-extrabold">{asText(s.driverName)}</p>
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Worst: {INSPECTION_STATUS_LABEL[s.worst]} · {s.counts.verified} verified ·{" "}
-                    {s.counts.missing + s.counts.expired} gaps
+                    Worst: {asText(INSPECTION_STATUS_LABEL[s.worst])} · {s.counts.verified}{" "}
+                    verified · {s.counts.missing + s.counts.expired} gaps
                   </p>
                 </div>
                 <Link
@@ -152,14 +153,14 @@ export function InspectionReadinessPanel() {
                             {INSPECTION_STATUS_LABEL[it.status]}
                           </span>
                           <span className="text-xs font-bold text-muted-foreground uppercase">
-                            {it.category}
+                            {asText(it.category)}
                           </span>
                         </div>
-                        <p className="mt-1 font-bold">{it.document}</p>
-                        <p className="text-sm text-muted-foreground">{it.evidence}</p>
+                        <p className="mt-1 font-bold">{asText(it.document)}</p>
+                        <p className="text-sm text-muted-foreground">{asText(it.evidence)}</p>
                         <p className="text-sm">
                           <span className="font-bold">Expiry: </span>
-                          {it.expiryDisplay}
+                          {asText(it.expiryDisplay)}
                         </p>
                       </div>
                       {it.rowId && (

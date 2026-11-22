@@ -355,7 +355,7 @@ function SectionAlerts({
             <Icon className="size-6" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold">{def.title}</h2>
+            <h2 className="text-xl font-extrabold">{asText(def.title)}</h2>
             <p className="text-sm text-muted-foreground">{items.length} drivers need attention</p>
           </div>
         </div>
@@ -422,11 +422,13 @@ function SectionAlerts({
             className="ui-press group flex w-full items-start gap-3 rounded-xl border-2 border-transparent bg-muted/50 px-4 py-3 text-left transition hover:border-primary/50 hover:bg-accent"
           >
             <div className="min-w-0 flex-1">
-              <div className="text-[1.05rem] font-extrabold">{(cellsOf(row)[0] ?? "").trim()}</div>
+              <div className="text-[1.05rem] font-extrabold">
+                {asText(cellsOf(row)[0]).trim()}
+              </div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {dedupe(issues).map((i, k) => (
                   <Chip key={k} tone={i.tone}>
-                    {i.label}
+                    {asText(i.label)}
                   </Chip>
                 ))}
               </div>
@@ -446,7 +448,10 @@ function SectionAlerts({
 
 function dedupe(issues: Issue[]) {
   const seen = new Set<string>();
-  return issues.filter((i) => (seen.has(i.label) ? false : (seen.add(i.label), true)));
+  return issues.filter((i) => {
+    const label = asText(i.label);
+    return seen.has(label) ? false : (seen.add(label), true);
+  });
 }
 function noteText(def: SectionDef, cells: string[]) {
   return def.types

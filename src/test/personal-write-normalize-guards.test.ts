@@ -214,6 +214,32 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(closeoutUi).toMatch(/\{asText\(a\.description\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.customer_name\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.load_number\)\}/);
+    const fileCompleteUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/FileCompletenessPanel.tsx"),
+      "utf8",
+    );
+    expect(fileCompleteUi).toMatch(/\{asText\(d\.driverName\)\}/);
+    const dqUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/DataQualityReview.tsx"),
+      "utf8",
+    );
+    expect(dqUi).toMatch(/\{asText\(f\.title\)\}/);
+    expect(dqUi).toMatch(/\{asText\(f\.detail\)\}/);
+    const inspectionUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/InspectionReadinessPanel.tsx"),
+      "utf8",
+    );
+    expect(inspectionUi).toMatch(/\{asText\(s\.driverName\)\}/);
+    expect(inspectionUi).toMatch(/\{asText\(it\.document\)\}/);
+    const dashUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
+      "utf8",
+    );
+    expect(dashUi).toMatch(/\{asText\(i\.label\)\}/);
+    expect(dashUi).toMatch(/\{asText\(def\.title\)\}/);
+    expect(dispatchApp).toMatch(/\{asFormText\(load\.load_number\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

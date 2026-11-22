@@ -11,6 +11,8 @@ import {
   printFileCompletenessSummary,
 } from "@/lib/file-completeness";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function FileCompletenessPanel() {
   const data = useData();
   const report = useMemo(() => buildFileCompletenessReport(data), [data]);
@@ -77,7 +79,7 @@ export function FileCompletenessPanel() {
         </div>
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
           <span className="font-extrabold text-foreground">How % is calculated: </span>
-          {report.formula}
+          {asText(report.formula)}
         </div>
       </div>
 
@@ -104,7 +106,7 @@ export function FileCompletenessPanel() {
                     search={{ driver: d.driverId }}
                     className="text-primary underline-offset-2 hover:underline"
                   >
-                    {d.driverName}
+                    {asText(d.driverName)}
                   </Link>
                 </td>
                 <td className="px-4 py-3 font-extrabold tabular-nums">{d.percent}%</td>
@@ -115,7 +117,7 @@ export function FileCompletenessPanel() {
                 <td className="px-4 py-3 tabular-nums">{d.expired}</td>
                 <td className="px-4 py-3 tabular-nums">{d.pending}</td>
                 <td className="px-4 py-3 tabular-nums">{d.unable}</td>
-                <td className="px-4 py-3 text-muted-foreground">{d.formulaNote}</td>
+                <td className="px-4 py-3 text-muted-foreground">{asText(d.formulaNote)}</td>
               </tr>
             ))}
             {!drivers.length && (

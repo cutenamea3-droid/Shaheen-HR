@@ -555,7 +555,7 @@ function HomeBoard({
               >
                 <div>
                   <p className="font-semibold">
-                    {load.load_number} · {statusLabel(load.status)}
+                    {asFormText(load.load_number)} · {statusLabel(load.status)}
                   </p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
                     Payment: {paymentStatusLabel(load.payment_status)} · POD {load.pod_status}
@@ -650,16 +650,16 @@ function HomeBoard({
         )}
       </section>
       {sections.map((section) => (
-        <section key={section.title} className="dispatch-panel">
+        <section key={asFormText(section.title)} className="dispatch-panel">
           <div className="mb-2 flex items-baseline justify-between gap-2">
             <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
-              {section.title}
+              {asFormText(section.title)}
             </h2>
             <span className="text-xs text-[color:var(--dispatch-muted)]">
               {section.items.length}
             </span>
           </div>
-          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">{section.help}</p>
+          <p className="mb-2 text-xs text-[color:var(--dispatch-muted)]">{asFormText(section.help)}</p>
           {!section.items.length ? (
             <EmptyHint>Nothing in this list.</EmptyHint>
           ) : (
@@ -671,13 +671,13 @@ function HomeBoard({
                 >
                   <div>
                     <p className="text-sm font-semibold">
-                      {load.load_number}{" "}
+                      {asFormText(load.load_number)}{" "}
                       <span className="font-normal text-[color:var(--dispatch-muted)]">
                         · {statusLabel(load.status)}
                       </span>
                     </p>
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {load.assigned_driver_name || "Unassigned"} ·{" "}
+                      {asFormText(load.assigned_driver_name) || "Unassigned"} ·{" "}
                       {load.last_manual_location || "No manual location"}
                     </p>
                   </div>
@@ -823,9 +823,9 @@ function LoadsBoard({
                     key={load.id}
                     className="rounded-md border border-[color:var(--dispatch-border)] bg-[color:var(--dispatch-card)] p-2"
                   >
-                    <p className="text-sm font-semibold">{load.load_number}</p>
+                    <p className="text-sm font-semibold">{asFormText(load.load_number)}</p>
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {load.assigned_driver_name || "Unassigned"}
+                      {asFormText(load.assigned_driver_name) || "Unassigned"}
                     </p>
                     <p className="mt-1 flex items-start gap-1 text-[11px] text-[color:var(--dispatch-muted)]">
                       <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
@@ -869,9 +869,9 @@ function LoadsBoard({
               {filtered.map((load) => (
                 <tr key={load.id}>
                   <td>
-                    <div className="font-semibold">{load.load_number}</div>
+                    <div className="font-semibold">{asFormText(load.load_number)}</div>
                     <div className="text-xs text-[color:var(--dispatch-muted)]">
-                      {load.customer_name}
+                      {asFormText(load.customer_name)}
                     </div>
                   </td>
                   <td>
@@ -956,9 +956,9 @@ function DriverUpdatesBoard({
               >
                 <div>
                   <p className="text-sm font-semibold">
-                    {load.load_number}{" "}
+                    {asFormText(load.load_number)}{" "}
                     <span className="font-normal text-[color:var(--dispatch-muted)]">
-                      · {statusLabel(load.status)} · {load.assigned_driver_name || "Unassigned"}
+                      · {statusLabel(load.status)} · {asFormText(load.assigned_driver_name) || "Unassigned"}
                     </span>
                   </p>
                   <p className="mt-1 flex items-center gap-1 text-xs text-[color:var(--dispatch-muted)]">
@@ -979,7 +979,7 @@ function DriverUpdatesBoard({
                       <input
                         className="dispatch-field"
                         data-testid={`dispatch-check-location-${load.id}`}
-                        value={draft.location}
+                        value={asFormText(draft.location)}
                         onChange={(e) =>
                           setDrafts((d) => ({
                             ...d,
@@ -1003,7 +1003,7 @@ function DriverUpdatesBoard({
                       <input
                         className="dispatch-field"
                         data-testid={`dispatch-check-notes-${load.id}`}
-                        value={draft.notes}
+                        value={asFormText(draft.notes)}
                         onChange={(e) =>
                           setDrafts((d) => ({
                             ...d,
@@ -1192,7 +1192,7 @@ function LoadEditor({
     <section className="dispatch-panel grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-[color:var(--dispatch-navy)]">
-          {load ? `Update Load ${load.load_number}` : "Add Load"}
+          {load ? `Update Load ${asFormText(load.load_number)}` : "Add Load"}
         </h2>
         <button type="button" className="dispatch-btn-ghost" onClick={onCancel}>
           Back to loads
@@ -1210,7 +1210,7 @@ function LoadEditor({
             ref={loadNumberRef}
             className="dispatch-field"
             data-testid="dispatch-load-number"
-            value={form.load_number}
+            value={asFormText(form.load_number)}
             onChange={(e) => setForm({ ...form, load_number: e.target.value })}
             onInput={(e) =>
               setForm((f) => ({ ...f, load_number: (e.target as HTMLInputElement).value }))
@@ -1238,7 +1238,7 @@ function LoadEditor({
             ref={customerRef}
             className="dispatch-field"
             data-testid="dispatch-customer"
-            value={form.customer_name}
+            value={asFormText(form.customer_name)}
             onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
             onInput={(e) =>
               setForm((f) => ({ ...f, customer_name: (e.target as HTMLInputElement).value }))
@@ -1265,7 +1265,7 @@ function LoadEditor({
           Commodity
           <input
             className="dispatch-field"
-            value={form.commodity}
+            value={asFormText(form.commodity)}
             onChange={(e) => setForm({ ...form, commodity: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, commodity: (e.target as HTMLInputElement).value }))}
           />
@@ -1274,7 +1274,7 @@ function LoadEditor({
           Equipment
           <input
             className="dispatch-field"
-            value={form.equipment}
+            value={asFormText(form.equipment)}
             onChange={(e) => setForm({ ...form, equipment: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, equipment: (e.target as HTMLInputElement).value }))}
           />
@@ -1351,7 +1351,7 @@ function LoadEditor({
           Manual location (never Live GPS)
           <input
             className="dispatch-field"
-            value={form.last_manual_location}
+            value={asFormText(form.last_manual_location)}
             onChange={(e) => setForm({ ...form, last_manual_location: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, last_manual_location: (e.target as HTMLInputElement).value }))}
             placeholder="City, highway mile marker, yard…"
@@ -1363,7 +1363,7 @@ function LoadEditor({
             ref={notesRef}
             className="dispatch-field min-h-20"
             data-testid="dispatch-load-notes"
-            value={form.notes}
+            value={asFormText(form.notes)}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             onInput={(e) =>
               setForm((f) => ({ ...f, notes: (e.target as HTMLTextAreaElement).value }))
@@ -1374,7 +1374,7 @@ function LoadEditor({
           External ref label
           <input
             className="dispatch-field"
-            value={form.external_ref_label}
+            value={asFormText(form.external_ref_label)}
             onChange={(e) => setForm({ ...form, external_ref_label: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, external_ref_label: (e.target as HTMLInputElement).value }))}
             placeholder="TMS / load-app reference"
@@ -1384,7 +1384,7 @@ function LoadEditor({
           External ref URL
           <input
             className="dispatch-field"
-            value={form.external_ref_url}
+            value={asFormText(form.external_ref_url)}
             onChange={(e) => setForm({ ...form, external_ref_url: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, external_ref_url: (e.target as HTMLInputElement).value }))}
             placeholder="https://…"
@@ -1577,7 +1577,7 @@ function LoadEditor({
                 ref={cancelReasonRef}
                 data-testid="dispatch-cancel-reason"
                 className="dispatch-field"
-                value={form.cancel_reason}
+                value={asFormText(form.cancel_reason)}
                 onChange={(e) => setForm({ ...form, cancel_reason: e.target.value })}
                 onInput={(e) => setForm((f) => ({ ...f, cancel_reason: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to cancel"
@@ -1589,7 +1589,7 @@ function LoadEditor({
                 ref={rescheduleNoteRef}
                 data-testid="dispatch-reschedule-note"
                 className="dispatch-field"
-                value={form.reschedule_note}
+                value={asFormText(form.reschedule_note)}
                 onChange={(e) => setForm({ ...form, reschedule_note: e.target.value })}
                 onInput={(e) => setForm((f) => ({ ...f, reschedule_note: (e.target as HTMLInputElement).value }))}
                 placeholder="Why planned times changed"
@@ -1695,7 +1695,7 @@ function LoadEditor({
                 ref={closeoutNoteRef}
                 data-testid="dispatch-closeout-note"
                 className="dispatch-field"
-                value={form.closeout_note}
+                value={asFormText(form.closeout_note)}
                 onChange={(e) => setForm({ ...form, closeout_note: e.target.value })}
                 onInput={(e) => setForm((f) => ({ ...f, closeout_note: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to close"
@@ -1707,7 +1707,7 @@ function LoadEditor({
                 ref={reopenReasonRef}
                 data-testid="dispatch-reopen-reason"
                 className="dispatch-field"
-                value={form.reopen_reason}
+                value={asFormText(form.reopen_reason)}
                 onChange={(e) => setForm({ ...form, reopen_reason: e.target.value })}
                 onInput={(e) => setForm((f) => ({ ...f, reopen_reason: (e.target as HTMLInputElement).value }))}
                 placeholder="Required to reopen closed → delivered"
@@ -2652,7 +2652,7 @@ function HistoryBoard({
               {driverHistory.map((load) => (
                 <li key={load.id} className="flex items-center justify-between py-2 text-sm">
                   <span>
-                    {load.load_number} · {statusLabel(load.status)} · pay{" "}
+                    {asFormText(load.load_number)} · {statusLabel(load.status)} · pay{" "}
                     {paymentStatusLabel(load.payment_status)}
                   </span>
                   <button
