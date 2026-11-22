@@ -198,7 +198,10 @@ export const useApp = create<State>()(
         set((s) => {
           const records = objOf(s.records, {} as State["records"]);
           const day = records[date] ?? {};
-          return { records: { ...records, [date]: { ...day, [empId]: { ...(day[empId] ?? emptyRec()), ...p } } } };
+          const merged: DayRec = { ...(day[empId] ?? emptyRec()), ...p };
+          if ("note" in p) merged.note = asText(p.note);
+          if ("halfReason" in p) merged.halfReason = asText(p.halfReason);
+          return { records: { ...records, [date]: { ...day, [empId]: merged } } };
         }),
       resetRec: (date, empId) =>
         set((s) => {
@@ -217,7 +220,15 @@ export const useApp = create<State>()(
         set((s) => {
           const perf = objOf(s.perf, {} as State["perf"]);
           const day = perf[date] ?? {};
-          return { perf: { ...perf, [date]: { ...day, [empId]: { ...(day[empId] ?? { rating: "", note: "" }), ...p } } } };
+          const merged: Perf = { ...(day[empId] ?? { rating: "", note: "" }), ...p };
+          if ("note" in p) merged.note = asText(p.note);
+          if ("rating" in p) {
+            const r = asText(p.rating);
+            merged.rating = (
+              r === "excellent" || r === "good" || r === "average" || r === "needs" || r === "poor" ? r : ""
+            ) as Perf["rating"];
+          }
+          return { perf: { ...perf, [date]: { ...day, [empId]: merged } } };
         }),
       addTask: (t) =>
         set((s) => ({

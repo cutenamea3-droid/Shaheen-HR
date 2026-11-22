@@ -1,6 +1,8 @@
 import { leaveBalance, monthDays } from "./calc";
 import type { DayRec, Employee } from "./types";
 
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export type LeaveDayEntry = {
   date: string;
   employeeId: string;
@@ -38,14 +40,15 @@ export function listLeaveDaysInMonth(
           date: d,
           employeeId: e.id,
           paid: !!r.leavePaid,
-          note: r.note ?? "",
+          note: asText(r.note),
         });
       }
     }
   }
-  const asS = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   return out.sort(
-    (a, b) => asS(a.date).localeCompare(asS(b.date)) || asS(a.employeeId).localeCompare(asS(b.employeeId)),
+    (a, b) =>
+      asText(a.date).localeCompare(asText(b.date)) ||
+      asText(a.employeeId).localeCompare(asText(b.employeeId)),
   );
 }
 
@@ -71,13 +74,18 @@ export function leaveRoster(
       else unpaidThisMonth++;
     }
     return {
-      employeeId: e.id,
-      name: e.name,
+      employeeId: asText(e.id),
+      name: asText(e.name),
       balanceAsOf: leaveBalance(e, asOfDay, days),
       paidThisMonth,
       unpaidThisMonth,
-      openingLeave: e.openingLeave,
-      joinMonth: e.joinMonth,
+      openingLeave:
+        typeof e.openingLeave === "number" && Number.isFinite(e.openingLeave)
+          ? e.openingLeave
+          : Number.isFinite(Number(e.openingLeave))
+            ? Number(e.openingLeave)
+            : 0,
+      joinMonth: asText(e.joinMonth),
     };
   });
 }
@@ -97,6 +105,6 @@ export function leaveDaysOnDate(
       date,
       employeeId: e.id,
       paid: !!day[e.id]!.leavePaid,
-      note: day[e.id]!.note ?? "",
+      note: asText(day[e.id]!.note),
     }));
 }
