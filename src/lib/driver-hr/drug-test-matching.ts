@@ -295,7 +295,7 @@ export function validateManualAttach(
     status: "attach",
     testingEventId: tid,
     candidate: cand,
-    message: `Manually matched to existing event (${cand.label}).`,
+    message: `Manually matched to existing event (${asDrugText(cand.label)}).`,
   };
 }
 
@@ -366,7 +366,7 @@ export function resolvePairing(opts: {
       status: "attach",
       testingEventId: c.testingEventId,
       candidate: c,
-      message: `Automatically matched to existing event (${c.label}).`,
+      message: `Automatically matched to existing event (${asDrugText(c.label)}).`,
     };
   }
 
@@ -378,7 +378,7 @@ export function resolvePairing(opts: {
         status: "attach",
         testingEventId: c.testingEventId,
         candidate: c,
-        message: `Matched to selected event (${c.label}).`,
+        message: `Matched to selected event (${asDrugText(c.label)}).`,
       };
     }
     return {

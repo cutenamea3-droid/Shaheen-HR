@@ -239,6 +239,18 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(alertStripUi).toMatch(/\{asTxt\(todo\.title\)\}/);
+    const drugRecordsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestRecordsPage.tsx"),
+      "utf8",
+    );
+    expect(drugRecordsUi).toMatch(/\{asDrugText\(viewRow\.driverName\)\}/);
+    expect(drugRecordsUi).toMatch(/asDrugText\(row\.driverName\)/);
+    expect(closeoutLib).toMatch(/Load created · \$\{asTrimmedText\(load\.load_number\)\}/);
+    const expensesStore = readFileSync(
+      resolve(process.cwd(), "src/admin/lib/expenses-store.ts"),
+      "utf8",
+    );
+    expect(expensesStore).toMatch(/asText\(row\.title\)/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",

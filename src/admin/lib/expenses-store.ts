@@ -194,7 +194,12 @@ export const useExpensesStore = create<ExpensesState>()(
         };
         set((s) => ({
           expenses: [row, ...asArr<ExpenseRecord>(s.expenses)],
-          audit: appendAudit(asArr(s.audit), id, "create", `Created “${row.title}” · Rs ${amount}`),
+          audit: appendAudit(
+            asArr(s.audit),
+            id,
+            "create",
+            `Created “${asText(row.title)}” · Rs ${amount}`,
+          ),
         }));
         return { ok: true, id };
       },
@@ -209,7 +214,12 @@ export const useExpensesStore = create<ExpensesState>()(
           expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
             e.id === id ? { ...e, deletedAt: now, updatedAt: now } : e,
           ),
-          audit: appendAudit(asArr(s.audit), id, "soft_delete", `Soft-deleted “${row.title}”`),
+          audit: appendAudit(
+            asArr(s.audit),
+            id,
+            "soft_delete",
+            `Soft-deleted “${asText(row.title)}”`,
+          ),
         }));
         return { ok: true };
       },
@@ -224,7 +234,7 @@ export const useExpensesStore = create<ExpensesState>()(
           expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
             e.id === id ? { ...e, deletedAt: null, updatedAt: now } : e,
           ),
-          audit: appendAudit(asArr(s.audit), id, "restore", `Restored “${row.title}”`),
+          audit: appendAudit(asArr(s.audit), id, "restore", `Restored “${asText(row.title)}”`),
         }));
         return { ok: true };
       },
@@ -237,7 +247,12 @@ export const useExpensesStore = create<ExpensesState>()(
           expenses: asArr<ExpenseRecord>(s.expenses).map((e) =>
             e.id === id ? { ...e, status, updatedAt: Date.now() } : e,
           ),
-          audit: appendAudit(asArr(s.audit), id, "status", `${row.status} → ${status}`),
+          audit: appendAudit(
+            asArr(s.audit),
+            id,
+            "status",
+            `${asText(row.status)} → ${asText(status)}`,
+          ),
         }));
         return { ok: true };
       },

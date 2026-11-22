@@ -159,8 +159,8 @@ export function buildCompleteLoadHistory(input: {
   events.push({
     at: load.created_at,
     source: "load",
-    title: `Load created · ${load.load_number}`,
-    detail: `Status now: ${load.status}; payment: ${paymentStatusLabel(load.payment_status)}`,
+    title: `Load created · ${asTrimmedText(load.load_number)}`,
+    detail: `Status now: ${asTrimmedText(load.status)}; payment: ${paymentStatusLabel(load.payment_status)}`,
   });
 
   if (load.actual_pickup_at) {
@@ -168,7 +168,7 @@ export function buildCompleteLoadHistory(input: {
       at: load.actual_pickup_at,
       source: "load",
       title: "Actual pickup recorded",
-      detail: load.last_manual_location ?? "Desk-entered actual pickup",
+      detail: asTrimmedText(load.last_manual_location) || "Desk-entered actual pickup",
     });
   }
   if (load.actual_delivery_at) {
@@ -184,7 +184,7 @@ export function buildCompleteLoadHistory(input: {
       at: load.closed_at,
       source: "closeout",
       title: "Load closed",
-      detail: load.closeout_note ?? "Closed — file complete (payment separate)",
+      detail: asTrimmedText(load.closeout_note) || "Closed — file complete (payment separate)",
     });
   }
   if (load.reopened_at) {
@@ -192,7 +192,7 @@ export function buildCompleteLoadHistory(input: {
       at: load.reopened_at,
       source: "closeout",
       title: "Load reopened",
-      detail: load.reopen_reason ?? "Reopened to delivered",
+      detail: asTrimmedText(load.reopen_reason) || "Reopened to delivered",
     });
   }
 

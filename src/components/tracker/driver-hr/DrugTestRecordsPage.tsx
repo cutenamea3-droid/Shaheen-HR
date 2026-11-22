@@ -318,8 +318,8 @@ export function DrugTestRecordsPage() {
       toast.success(
         resolution.status === "attach"
           ? addAnother
-            ? `${resolution.message} — add another`
-            : resolution.message
+            ? `${asDrugText(resolution.message)} — add another`
+            : asDrugText(resolution.message)
           : addAnother
             ? "Event saved — add another"
             : "Event saved",
@@ -692,27 +692,29 @@ export function DrugTestRecordsPage() {
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Driver</dt>
-              <dd>{viewRow.driverName}</dd>
+              <dd>{asDrugText(viewRow.driverName)}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Pair status</dt>
-              <dd>{DRUG_PAIR_STATUS_LABEL[viewRow.status]}</dd>
+              <dd>{asDrugText(DRUG_PAIR_STATUS_LABEL[viewRow.status])}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Reason</dt>
-              <dd>{viewRow.reason || "—"}</dd>
+              <dd>{asDrugText(viewRow.reason) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Collection date</dt>
-              <dd>{viewRow.eventDate || viewRow.collectionContext || "—"}</dd>
+              <dd>
+                {asDrugText(viewRow.eventDate) || asDrugText(viewRow.collectionContext) || "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Specimen</dt>
-              <dd className="font-mono">{viewRow.specimenId || "—"}</dd>
+              <dd className="font-mono">{asDrugText(viewRow.specimenId) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Testing event id</dt>
-              <dd className="font-mono text-[13px]">{viewRow.testingEventId || "—"}</dd>
+              <dd className="font-mono text-[13px]">{asDrugText(viewRow.testingEventId) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Federal Drug (CCF)</dt>
@@ -864,10 +866,16 @@ function RecordRow({
 }) {
   return (
     <tr className="border-t border-foreground/10 align-top">
-      <td className="px-3 py-2.5 font-semibold">{hideDriver ? "" : row.driverName}</td>
-      <td className="px-3 py-2.5">{row.reason || "—"}</td>
-      <td className="px-3 py-2.5 text-[14px]">{row.eventDate || row.collectionContext || "—"}</td>
-      <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">{row.specimenId || "—"}</td>
+      <td className="px-3 py-2.5 font-semibold">
+        {hideDriver ? "" : asDrugText(row.driverName)}
+      </td>
+      <td className="px-3 py-2.5">{asDrugText(row.reason) || "—"}</td>
+      <td className="px-3 py-2.5 text-[14px]">
+        {asDrugText(row.eventDate) || asDrugText(row.collectionContext) || "—"}
+      </td>
+      <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">
+        {asDrugText(row.specimenId) || "—"}
+      </td>
       <td className="px-3 py-2.5 text-[14px]">
         {row.federal ? (
           <button
@@ -877,7 +885,9 @@ function RecordRow({
             className="text-left hover:underline disabled:no-underline"
           >
             <div className="font-bold">{formatDrugDocKind(row.federal.kind)}</div>
-            <div className="font-mono text-muted-foreground">{row.federal.specimenId || "no specimen"}</div>
+            <div className="font-mono text-muted-foreground">
+              {asDrugText(row.federal.specimenId) || "no specimen"}
+            </div>
           </button>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -892,7 +902,9 @@ function RecordRow({
             className="text-left hover:underline disabled:no-underline"
           >
             <div className="font-bold">{formatDrugDocKind(row.medical.kind)}</div>
-            <div className="font-mono text-muted-foreground">{row.medical.specimenId || "no specimen"}</div>
+            <div className="font-mono text-muted-foreground">
+              {asDrugText(row.medical.specimenId) || "no specimen"}
+            </div>
           </button>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -900,7 +912,7 @@ function RecordRow({
       </td>
       <td className="px-3 py-2.5">
         <span className={cn("inline-flex rounded-md px-2 py-0.5 text-[13px] font-bold", DRUG_STATUS_TONE[row.status])}>
-          {DRUG_PAIR_STATUS_LABEL[row.status]}
+          {asDrugText(DRUG_PAIR_STATUS_LABEL[row.status])}
         </span>
       </td>
       <td className="px-3 py-2.5">
