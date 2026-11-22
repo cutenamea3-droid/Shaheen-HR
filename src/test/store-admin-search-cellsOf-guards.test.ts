@@ -29,5 +29,14 @@ describe("store mutations + Admin search cellsOf/coerce", () => {
     const logs = readFileSync(resolve(process.cwd(), "src/admin/components/hr/SystemLogs.tsx"), "utf8");
     expect(logs).toMatch(/Array\.isArray\(logs\) \? logs : \[\]/);
     expect(logs).toMatch(/asText\(l\.who\)/);
+    expect(logs).toMatch(/\{asText\(l\.action\)\}/);
+    expect(logs).toMatch(/\{asText\(l\.who\)\}/);
+  });
+
+  it("Compliance ActivityLogs coerces action/actor/section before React children", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/components/tracker/ActivityLogs.tsx"), "utf8");
+    expect(src).toMatch(/asText\(entry\.action\)/);
+    expect(src).toMatch(/asText\(entry\.actor_name\)/);
+    expect(src).toMatch(/asText\(entry\.section_id\)/);
   });
 });

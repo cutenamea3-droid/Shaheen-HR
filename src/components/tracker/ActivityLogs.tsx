@@ -11,6 +11,8 @@ type ActivityEntry = {
   occurred_at: string;
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function ActivityLogs() {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [error, setError] = useState("");
@@ -49,13 +51,13 @@ export function ActivityLogs() {
       <div className="rounded-2xl border border-border bg-card shadow-card">
         {entries.length === 0 && !error && <p className="p-6 text-center text-sm text-muted-foreground">No compliance edits have been logged.</p>}
         {entries.map((entry) => (
-          <div key={entry.id} className="flex items-start gap-3 border-b border-border p-4 last:border-0">
+          <div key={asText(entry.id)} className="flex items-start gap-3 border-b border-border p-4 last:border-0">
             <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-primary-foreground"><Activity className="size-4" /></div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold">{entry.action} · {entry.section_id}</p>
-              <p className="text-xs text-muted-foreground">{entry.actor_name}</p>
+              <p className="font-semibold">{asText(entry.action)} · {asText(entry.section_id)}</p>
+              <p className="text-xs text-muted-foreground">{asText(entry.actor_name)}</p>
             </div>
-            <time className="shrink-0 text-xs text-muted-foreground" dateTime={entry.occurred_at}>{new Date(entry.occurred_at).toLocaleString()}</time>
+            <time className="shrink-0 text-xs text-muted-foreground" dateTime={asText(entry.occurred_at)}>{new Date(asText(entry.occurred_at)).toLocaleString()}</time>
           </div>
         ))}
       </div>
