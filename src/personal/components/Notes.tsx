@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { usePersonal } from "@/personal/lib/store";
+import { normalizeNote } from "@/personal/lib/assessment-phases";
+import type { Note } from "@/personal/lib/types";
 import {
   PRACTICE_CHECKLIST,
   REVISION_TAG_PRESETS,
@@ -10,12 +12,16 @@ import {
 } from "@/personal/lib/revision";
 import { vuQuickLinks } from "@/personal/lib/vu-rhythm";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function Notes() {
   const coursesRaw = usePersonal((s) => s.courses);
   const notesRaw = usePersonal((s) => s.notes);
   const assessmentsRaw = usePersonal((s) => s.assessments);
   const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
-  const notes = Array.isArray(notesRaw) ? notesRaw : [];
+  const notes = (Array.isArray(notesRaw) ? notesRaw : [])
+    .map((n) => normalizeNote(n as Partial<Note> & Pick<Note, "id">))
+    .filter((n) => !!n.id);
   const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
   const upsertNote = usePersonal((s) => s.upsertNote);
   const removeNote = usePersonal((s) => s.removeNote);
@@ -32,8 +38,8 @@ export function Notes() {
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   /** Prefer React state; fall back to DOM when autofill/automation set value without onChange. */
-  const readTitle = () => (title.trim() || titleRef.current?.value || "").trim();
-  const readBody = () => (body.length ? body : bodyRef.current?.value || "");
+  const readTitle = () => (asTxt(title).trim() || titleRef.current?.value || "").trim();
+  const readBody = () => (asTxt(body).length ? asTxt(body) : bodyRef.current?.value || "");
 
   const suggestions = useMemo(
     () => suggestRevisionTargets(courses, assessments, notes),
@@ -245,10 +251,10 @@ export function Notes() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold">{n.title}</div>
+                    <div className="font-semibold">{asTxt(n.title)}</div>
                     <div className="text-xs text-[var(--hp-muted)]">
                       {courseLabel(courses, n.courseId)} ·{" "}
-                      {tags.length ? tags.join(", ") + " · " : ""}
+                      {tags.length ? tags.map(asTxt).filter(Boolean).join(", ") + " · " : ""}
                       {new Date(n.updatedAt).toLocaleString()}
                     </div>
                   </div>
@@ -257,10 +263,10 @@ export function Notes() {
                       variant="ghost"
                       onClick={() => {
                         setEditingId(n.id);
-                        setTitle(n.title);
-                        setBody(n.body);
-                        setCourseId(n.courseId);
-                        setTagDraft(tags[0] ?? "revision");
+                        setTitle(asTxt(n.title));
+                        setBody(asTxt(n.body));
+                        setCourseId(asTxt(n.courseId) || "general");
+                        setTagDraft(asTxt(tags[0]) || "revision");
                       }}
                     >
                       Edit
@@ -270,9 +276,9 @@ export function Notes() {
                     </Btn>
                   </div>
                 </div>
-                {n.body ? (
+                {asTxt(n.body) ? (
                   <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-[var(--hp-ink)]/90">
-                    {n.body}
+                    {asTxt(n.body)}
                   </pre>
                 ) : null}
               </li>

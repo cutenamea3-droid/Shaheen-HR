@@ -8,6 +8,10 @@ describe("Personal store write-path normalize guards", () => {
     const src = readFileSync(resolve(process.cwd(), "src/personal/lib/store.ts"), "utf8");
     expect(src).toMatch(/normalizeBacklogItem\(\{/);
     expect(src).toMatch(/normalizeNote\(n\)/);
+    const notesUi = readFileSync(resolve(process.cwd(), "src/personal/components/Notes.tsx"), "utf8");
+    expect(notesUi).toMatch(/normalizeNote\(n as Partial<Note>/);
+    expect(notesUi).toMatch(/asTxt\(n\.title\)/);
+    expect(notesUi).toMatch(/asTxt\(n\.body\)/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);
