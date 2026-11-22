@@ -162,6 +162,20 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(lockGate).toMatch(/healPortalAccount\(next\)/);
+    const complianceTeam = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/TeamManagement.tsx"),
+      "utf8",
+    );
+    expect(complianceTeam).toMatch(/healPortalAccount/);
+    expect(complianceTeam).toMatch(/\{asText\(member\.email\)\}/);
+    const recordsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Records.tsx"),
+      "utf8",
+    );
+    expect(recordsUi).toMatch(/\{asText\(p\.name\)\}/);
+    expect(dispatchApp).toMatch(/asFormText\(c\.summary\)/);
+    expect(dispatchApp).toMatch(/asFormText\(c\.notes\)/);
+    expect(dispatchApp).toMatch(/asFormText\(h\.summary\)/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

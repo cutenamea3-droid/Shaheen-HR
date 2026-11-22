@@ -25,8 +25,10 @@ export const RECORD_TABS = [
 const STATUS = ["Valid", "On File", "Expired", "Missing", "Not Confirmed"];
 type ActiveFilter = "active" | "inactive" | "all";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function nameKey(name: string) {
-  return name.trim().toLowerCase();
+  return asText(name).trim().toLowerCase();
 }
 
 type PersonGroup = {
@@ -239,7 +241,9 @@ export function Records() {
                     <ChevronDown className="size-4" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-lg font-extrabold tracking-tight">{p.name}</span>
+                    <span className="block truncate text-lg font-extrabold tracking-tight">
+                      {asText(p.name)}
+                    </span>
                     <span className="text-sm text-muted-foreground">
                       {p.rows.length} document{p.rows.length === 1 ? "" : "s"}
                       {ownersTab ? ` · ${p.active ? "Active" : "Inactive"}` : ""}
@@ -255,7 +259,7 @@ export function Records() {
                   <ActiveToggle
                     mode="binary"
                     value={p.active ? "Active" : "Inactive"}
-                    onSave={(v) => setRecordPersonActive(tab, p.name, v)}
+                    onSave={(v) => setRecordPersonActive(tab, asText(p.name), v)}
                   />
                 )}
 
@@ -264,10 +268,10 @@ export function Records() {
                     <FolderInput className="size-4 shrink-0" />
                     <span className="sr-only">Move category</span>
                     <select
-                      aria-label={`Move ${p.name} to another category`}
+                      aria-label={`Move ${asText(p.name)} to another category`}
                       className="ui-press h-9 max-w-[14rem] rounded-xl border bg-card px-2 font-semibold text-foreground"
                       value={tab}
-                      onChange={(e) => shiftCategory(p.name, e.target.value)}
+                      onChange={(e) => shiftCategory(asText(p.name), e.target.value)}
                     >
                       {RECORD_TABS.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -288,8 +292,8 @@ export function Records() {
                           {RECORD_HEADERS[0]}
                         </div>
                         <EditableText
-                          value={p.name}
-                          onSave={(v) => renameRecordPerson(tab, p.name, v)}
+                          value={asText(p.name)}
+                          onSave={(v) => renameRecordPerson(tab, asText(p.name), v)}
                           bold
                         />
                       </div>

@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2, UserPlus } from "lucide-react";
-import { createPortalAccount, listPortalAccounts, updatePortalAccess, type PortalAccount, type PortalRole } from "@/lib/cloud";
+import {
+  createPortalAccount,
+  healPortalAccount,
+  listPortalAccounts,
+  updatePortalAccess,
+  type PortalAccount,
+  type PortalRole,
+} from "@/lib/cloud";
 import {
   createLocalAccount,
   ensureLocalOwner,
@@ -10,6 +17,8 @@ import {
   upsertLocalAccount,
 } from "@/lib/portal-local";
 import { usePortalAccount } from "./LockGate";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function TeamManagement() {
   const { account: currentAccount } = usePortalAccount();
@@ -33,9 +42,9 @@ export function TeamManagement() {
     }
     const local = listLocalAccounts();
     const byId = new Map<string, PortalAccount>();
-    for (const a of [...cloud, ...local]) byId.set(a.user_id, a);
+    for (const a of [...cloud, ...local]) byId.set(a.user_id, healPortalAccount(a));
     // Prefer local email matches for edits done offline
-    for (const a of local) byId.set(a.user_id, a);
+    for (const a of local) byId.set(a.user_id, healPortalAccount(a));
     const asEmail = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const merged = [...byId.values()].sort((a, b) => asEmail(a.email).localeCompare(asEmail(b.email)));
     setAccounts(merged);
@@ -207,19 +216,20 @@ export function TeamManagement() {
                 <td className="p-3 font-semibold">
                   <input
                     className="h-9 w-full max-w-[12rem] rounded-lg border bg-card px-2 font-semibold"
-                    aria-label={`Name for ${member.email}`}
-                    defaultValue={member.display_name}
+                    aria-label={`Name for ${asText(member.email)}`}
+                    defaultValue={asText(member.display_name)}
                     disabled={busy}
                     onBlur={(event) => {
-                      if (event.target.value.trim() !== member.display_name) rename(member, event.target.value);
+                      if (event.target.value.trim() !== asText(member.display_name))
+                        rename(member, event.target.value);
                     }}
                   />
                 </td>
-                <td className="p-3">{member.email}</td>
+                <td className="p-3">{asText(member.email)}</td>
                 <td className="p-3">
                   <select
                     className="h-9 rounded-lg border bg-card px-2"
-                    aria-label={`Role for ${member.email}`}
+                    aria-label={`Role for ${asText(member.email)}`}
                     value={member.role}
                     disabled={busy || member.user_id === currentAccount.user_id}
                     onChange={(event) => void changeAccess(member, event.target.value as PortalRole, member.active)}

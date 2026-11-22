@@ -1934,8 +1934,8 @@ function LoadEditor({
                     {c.kind} · {new Date(c.created_at).toLocaleString()}
                   </span>
                   {" — "}
-                  {c.summary}
-                  {c.decided_action ? ` · Decision: ${c.decided_action}` : ""}
+                  {asFormText(c.summary)}
+                  {c.decided_action ? ` · Decision: ${asFormText(c.decided_action)}` : ""}
                 </li>
               ))}
             </ul>
@@ -1953,10 +1953,10 @@ function LoadEditor({
               <ul className="space-y-1 text-sm">
                 {accessorials.map((a) => (
                   <li key={a.id}>
-                    {a.kind} · {a.status} · {a.description}
+                    {asFormText(a.kind)} · {asFormText(a.status)} · {asFormText(a.description)}
                     {a.amount_manual == null
                       ? " · amount Needs Policy"
-                      : ` · ${a.currency} ${a.amount_manual}`}
+                      : ` · ${asFormText(a.currency)} ${a.amount_manual}`}
                   </li>
                 ))}
               </ul>
@@ -2015,7 +2015,8 @@ function LoadEditor({
               {calls.map((c) => (
                 <li key={c.id} className="rounded-md bg-[color:var(--dispatch-soft)] px-2 py-1.5">
                   <span className="font-medium">{new Date(c.called_at).toLocaleString()}</span>
-                  {c.manual_location ? ` · ${c.manual_location}` : ""} — {c.notes}
+                  {c.manual_location ? ` · ${asFormText(c.manual_location)}` : ""} —{" "}
+                  {asFormText(c.notes)}
                 </li>
               ))}
             </ul>
@@ -2329,9 +2330,10 @@ function HandoverBoard({
         {rows.map((h) => (
           <li key={h.id} className="rounded-lg bg-[color:var(--dispatch-soft)] px-3 py-2 text-sm">
             <p className="font-semibold">
-              {h.shift_date} · {h.from_dispatcher} → {h.to_dispatcher || "—"}
+              {asFormText(h.shift_date)} · {asFormText(h.from_dispatcher)} →{" "}
+              {asFormText(h.to_dispatcher) || "—"}
             </p>
-            <p className="text-[color:var(--dispatch-muted)]">{h.summary}</p>
+            <p className="text-[color:var(--dispatch-muted)]">{asFormText(h.summary)}</p>
           </li>
         ))}
       </ul>

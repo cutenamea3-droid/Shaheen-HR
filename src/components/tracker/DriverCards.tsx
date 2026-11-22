@@ -421,19 +421,32 @@ export function DriverCards({
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-semibold">{d.cdl || "—"}</div>
-                    <div className="text-sm text-muted-foreground">{d.state || "—"}</div>
+                    <div className="font-semibold">
+                      {(d.cdl == null ? "" : typeof d.cdl === "string" ? d.cdl : String(d.cdl)) || "—"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {(d.state == null ? "" : typeof d.state === "string" ? d.state : String(d.state)) ||
+                        "—"}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {(() => {
                       const hire = dateOfHireOf(data, d.driverId);
                       const los = lengthOfService(hire);
+                      const losLabel =
+                        los == null
+                          ? ""
+                          : los.label == null
+                            ? ""
+                            : typeof los.label === "string"
+                              ? los.label
+                              : String(los.label);
                       return (
                         <>
                           <div className="font-semibold">
                             {hire ? formatHireDateDisplay(hire) : "—"}
                           </div>
-                          {los && <div className="text-sm text-muted-foreground">{los.label}</div>}
+                          {los && <div className="text-sm text-muted-foreground">{losLabel}</div>}
                         </>
                       );
                     })()}
@@ -602,7 +615,9 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
             : undefined;
           return (
             <section key={def.id} className="tracker-profile-section">
-              <h3 className="tracker-profile-section-h">{def.title}</h3>
+              <h3 className="tracker-profile-section-h">
+                {def.title == null ? "" : typeof def.title === "string" ? def.title : String(def.title)}
+              </h3>
               {row ? (
                 <SectionFields sectionId={def.id} row={row} />
               ) : (
