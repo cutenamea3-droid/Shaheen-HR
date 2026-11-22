@@ -81,8 +81,8 @@ export function TeamManagement() {
       const next = { ...target, role, active: isActive };
       upsertLocalAccount(next);
       logLocalActivity({
-        actorName: currentAccount.display_name || currentAccount.email,
-        action: `Updated access for ${target.email} → ${role}${isActive ? "" : " (disabled)"}`,
+        actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+        action: `Updated access for ${asText(target.email)} → ${asText(role)}${isActive ? "" : " (disabled)"}`,
         sectionId: "accounts",
       });
       setMessage("Account access updated.");
@@ -95,12 +95,15 @@ export function TeamManagement() {
   };
 
   const rename = (target: PortalAccount, displayName: string) => {
-    const next = { ...target, display_name: displayName.trim() || target.display_name };
+    const next = {
+      ...target,
+      display_name: asText(displayName).trim() || asText(target.display_name),
+    };
     upsertLocalAccount(next);
     setAccounts((prev) => prev.map((a) => (a.user_id === target.user_id ? next : a)));
     logLocalActivity({
-      actorName: currentAccount.display_name || currentAccount.email,
-      action: `Renamed account ${target.email} to “${next.display_name}”`,
+      actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+      action: `Renamed account ${asText(target.email)} to “${asText(next.display_name)}”`,
       sectionId: "accounts",
     });
   };
@@ -110,7 +113,7 @@ export function TeamManagement() {
       setMessage("You cannot remove your own account.");
       return;
     }
-    if (!confirm(`Remove ${target.display_name} (${target.email})?`)) return;
+    if (!confirm(`Remove ${asText(target.display_name)} (${asText(target.email)})?`)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -122,8 +125,8 @@ export function TeamManagement() {
         /* ignore */
       }
       logLocalActivity({
-        actorName: currentAccount.display_name || currentAccount.email,
-        action: `Removed account ${target.email}`,
+        actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+        action: `Removed account ${asText(target.email)}`,
         sectionId: "accounts",
       });
       setMessage("Account removed.");
@@ -165,8 +168,8 @@ export function TeamManagement() {
             setEmail("");
             setPassword("");
             logLocalActivity({
-              actorName: currentAccount.display_name || currentAccount.email,
-              action: `Created account ${created.email}`,
+              actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+              action: `Created account ${asText(created.email)}`,
               sectionId: "accounts",
             });
             setMessage("Standard account created.");

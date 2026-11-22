@@ -65,7 +65,7 @@ export function SalaryPayments() {
       ensureMeta(id);
       const dom =
         document.querySelector<HTMLInputElement>(`[data-testid="admin-due-${id}"]`)?.value ?? "";
-      const draft = (dueDraft[id] ?? "").trim() || dom.trim();
+      const draft = asText(dueDraft[id]).trim() || asText(dom).trim();
       const existing = payments.find((p) => p.employeeId === id && p.month === month);
       if (draft !== "") {
         const n = Number(draft);
@@ -262,7 +262,7 @@ export function SalaryPayments() {
                           setErr("");
                           const dom =
                             (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
-                          const n = Number((payAmount[p.id] ?? "").trim() || dom || "");
+                          const n = Number(asText(payAmount[p.id]).trim() || asText(dom) || "");
                           const r = recordPayment(p.id, n, todayStr());
                           if (!r.ok) setErr(r.error ?? "Failed");
                           else setPayAmount((m) => ({ ...m, [p.id]: "" }));

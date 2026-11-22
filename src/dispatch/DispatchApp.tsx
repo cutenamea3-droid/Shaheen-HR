@@ -1931,7 +1931,7 @@ function LoadEditor({
               {comms.map((c) => (
                 <li key={c.id} className="rounded-md bg-[color:var(--dispatch-soft)] px-2 py-1.5">
                   <span className="font-medium">
-                    {c.kind} · {new Date(c.created_at).toLocaleString()}
+                    {asFormText(c.kind)} · {new Date(c.created_at).toLocaleString()}
                   </span>
                   {" — "}
                   {asFormText(c.summary)}
@@ -2391,7 +2391,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             <option value="">No load link</option>
             {safeLoads.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.load_number}
+                {asFormText(l.load_number)}
               </option>
             ))}
           </select>
@@ -2450,7 +2450,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                   </p>
                   {issue.senior_informed_note && (
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {issue.senior_informed_note}
+                      {asFormText(issue.senior_informed_note)}
                     </p>
                   )}
                 </div>
@@ -2525,7 +2525,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
           {exceptions.map((ex) => (
             <li key={ex.id} className="flex justify-between py-2">
               <span>
-                {ex.kind} · {ex.severity} · {ex.status}
+                {asFormText(ex.kind)} · {asFormText(ex.severity)} · {asFormText(ex.status)}
               </span>
               {ex.status !== "resolved" && (
                 <button
@@ -2679,7 +2679,7 @@ function HistoryBoard({
               >
                 {safeLoads.map((l) => (
                   <option key={l.id} value={l.id}>
-                    {l.load_number} · {statusLabel(l.status)}
+                    {asFormText(l.load_number)} · {statusLabel(l.status)}
                   </option>
                 ))}
               </select>
@@ -2899,7 +2899,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
                 {asFormText(row.display_name)} · {asFormText(row.email)}
               </p>
               <p className="text-xs text-[color:var(--dispatch-muted)]">
-                {row.role} · {row.active ? "active" : "revoked"}
+                {asFormText(row.role)} · {row.active ? "active" : "revoked"}
               </p>
             </div>
             {row.user_id !== account.user_id && (

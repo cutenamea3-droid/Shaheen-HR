@@ -187,6 +187,17 @@ describe("Personal store write-path normalize guards", () => {
     expect(dispatchApp).toMatch(/asFormText\(c\.summary\)/);
     expect(dispatchApp).toMatch(/asFormText\(c\.notes\)/);
     expect(dispatchApp).toMatch(/asFormText\(h\.summary\)/);
+    expect(dispatchApp).toMatch(/asFormText\(c\.kind\)/);
+    expect(dispatchApp).toMatch(/asFormText\(ex\.kind\)/);
+    expect(dispatchApp).toMatch(/asFormText\(issue\.senior_informed_note\)/);
+    expect(dispatchApp).toMatch(/asFormText\(row\.role\)/);
+    const auditHistUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/AuditHistory.tsx"),
+      "utf8",
+    );
+    expect(auditHistUi).toMatch(/\{asText\(e\.detail\)\}/);
+    expect(auditHistUi).toMatch(/\{asText\(e\.who\)\}/);
+    expect(complianceTeam).toMatch(/asText\(target\.email\)/);
     const dashboardUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
       "utf8",

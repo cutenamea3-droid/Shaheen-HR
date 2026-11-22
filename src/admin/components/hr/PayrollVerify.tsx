@@ -253,7 +253,7 @@ export function PayrollVerify() {
                     (e.currentTarget.previousElementSibling as HTMLElement | null)
                       ?.querySelector?.("input")
                       ?.value ?? "";
-                  const n = Number((bonusDraft[r.employeeId] ?? "").trim() || dom || "0");
+                  const n = Number(asText(bonusDraft[r.employeeId]).trim() || asText(dom) || "0");
                   const res = upsertBonus(r.employeeId, month, n, "manual bonus");
                   if (!res.ok) setErr(res.error ?? "Bonus failed");
                 }}
