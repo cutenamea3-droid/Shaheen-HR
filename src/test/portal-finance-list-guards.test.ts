@@ -6,7 +6,8 @@ describe("Portal + Admin finance list Array.isArray guards", () => {
   it("Compliance portal listPortalAccounts/Activity never use (data ?? []) alone", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/cloud.ts"), "utf8");
     expect(src).toMatch(/const rows = Array\.isArray\(data\) \? data : \[\]/);
-    expect(src).toMatch(/return Array\.isArray\(data\) \? data : \[\]/);
+    expect(src).toMatch(/\(Array\.isArray\(data\) \? data : \[\]\)/);
+    expect(src).toMatch(/healPortalActivity/);
     expect(src).not.toMatch(/return \(data \?\? \[\]\)\.filter/);
     expect(src).not.toMatch(/return data \?\? \[\]/);
   });

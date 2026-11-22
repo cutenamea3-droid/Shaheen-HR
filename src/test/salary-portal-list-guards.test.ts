@@ -13,7 +13,8 @@ describe("salary + portal list Array.isArray guards", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/portal-local.ts"), "utf8");
     expect(src).toMatch(/if \(!Array\.isArray\(raw\)\) return \[\]/);
     expect(src).toMatch(/portalEmailKey\(\(a as PortalAccount\)\.email\)/);
-    expect(src).toMatch(/Array\.isArray\(raw\) \? \(raw as LocalActivity\[\]\) : \[\]/);
+    expect(src).toMatch(/const list = Array\.isArray\(raw\) \? raw : \[\]/);
+    expect(src).toMatch(/healLocalActivity/);
   });
 
   it("SalaryPayments UI coerces payments/banking; paymentEvents stays store fn", () => {
