@@ -1,14 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
+  addCheckCall,
+  healCheckCall,
+  healDispatchCommunication,
+  healDispatchException,
   healDispatchFollowUp,
   healDispatchIssue,
+  healRosterDriver,
   healShiftHandover,
+  listLoads,
   resetDispatchFixtureMemory,
+  saveCommunication,
+  saveException,
   saveFollowUp,
   saveHandover,
   saveIssue,
+  upsertRosterDriver,
 } from "@/dispatch/lib/cloud";
-import type { DispatchFollowUp, DispatchIssue, ShiftHandover } from "@/dispatch/lib/types";
+import type {
+  CheckCall,
+  DispatchCommunication,
+  DispatchException,
+  DispatchFollowUp,
+  DispatchIssue,
+  RosterDriver,
+  ShiftHandover,
+} from "@/dispatch/lib/types";
 
 describe("Dispatch issue/follow-up/handover text heal", () => {
   it("heal* coerce non-string title/summary fields", () => {
@@ -82,5 +99,94 @@ describe("Dispatch issue/follow-up/handover text heal", () => {
       summary: 7 as unknown as string,
     });
     expect(hand.summary).toBe("7");
+  });
+
+  it("heal check-call / exception / roster / communication scalars", () => {
+    expect(
+      healCheckCall({
+        id: "c1",
+        load_id: "l",
+        called_at: "",
+        manual_location: 9 as unknown as string,
+        notes: true as unknown as string,
+        created_by: null,
+        created_at: "",
+      } as CheckCall).notes,
+    ).toBe("true");
+
+    expect(
+      healDispatchException({
+        id: "e1",
+        load_id: "l",
+        kind: 3 as unknown as string,
+        severity: "medium",
+        status: "open",
+        notes: { n: 1 } as unknown as string,
+        opened_at: "",
+        resolved_at: null,
+      } as DispatchException).kind,
+    ).toBe("3");
+
+    expect(
+      healRosterDriver({
+        id: "d1",
+        display_name: 5 as unknown as string,
+        unit_number: null,
+        phone: true as unknown as string,
+        notes: null,
+        active: true,
+      } as RosterDriver).display_name,
+    ).toBe("5");
+
+    expect(
+      healDispatchCommunication({
+        id: "m1",
+        load_id: "l",
+        kind: "note",
+        summary: 8 as unknown as string,
+        detail: { d: 1 } as unknown as string,
+        decided_action: null,
+        created_by: null,
+        created_at: "",
+      } as DispatchCommunication).summary,
+    ).toBe("8");
+  });
+
+  it("write paths coerce check-call / exception / roster / communication", async () => {
+    resetDispatchFixtureMemory();
+    const loads = await listLoads();
+    const loadId = loads[0]!.id;
+
+    const cc = await addCheckCall({
+      load_id: loadId,
+      notes: 11 as unknown as string,
+      manual_location: true as unknown as string,
+    });
+    expect(cc.notes).toBe("11");
+    expect(cc.manual_location).toBe("true");
+
+    const ex = await saveException({
+      load_id: loadId,
+      kind: 4 as unknown as string,
+      notes: { x: 1 } as unknown as string,
+    });
+    expect(ex.kind).toBe("4");
+    expect(ex.notes).toBe("[object Object]");
+
+    const drv = await upsertRosterDriver({
+      display_name: 99 as unknown as string,
+      phone: false as unknown as string,
+    });
+    expect(drv.display_name).toBe("99");
+    expect(drv.phone).toBe("false");
+
+    const comm = await saveCommunication({
+      load_id: loadId,
+      kind: "note",
+      summary: 2 as unknown as string,
+      detail: true as unknown as string,
+    });
+    expect(comm.summary).toBe("2");
+    expect(comm.detail).toBe("true");
   });
 });

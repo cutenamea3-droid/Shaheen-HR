@@ -87,6 +87,45 @@ export function healShiftHandover(raw: ShiftHandover): ShiftHandover {
   };
 }
 
+/** Heal check-call notes/location before UI `{c.notes}` render. */
+export function healCheckCall(raw: CheckCall): CheckCall {
+  return {
+    ...raw,
+    notes: asText(raw.notes),
+    manual_location: asNullableText(raw.manual_location),
+  };
+}
+
+/** Heal exception kind/notes before UI string templates. */
+export function healDispatchException(raw: DispatchException): DispatchException {
+  return {
+    ...raw,
+    kind: asText(raw.kind),
+    notes: asNullableText(raw.notes),
+  };
+}
+
+/** Heal roster display_name/phone before UI render. */
+export function healRosterDriver(raw: RosterDriver): RosterDriver {
+  return {
+    ...raw,
+    display_name: asText(raw.display_name),
+    unit_number: asNullableText(raw.unit_number),
+    phone: asNullableText(raw.phone),
+    notes: asNullableText(raw.notes),
+  };
+}
+
+/** Heal communication summary/detail before UI render. */
+export function healDispatchCommunication(raw: DispatchCommunication): DispatchCommunication {
+  return {
+    ...raw,
+    summary: asText(raw.summary),
+    detail: asNullableText(raw.detail),
+    decided_action: asNullableText(raw.decided_action),
+  };
+}
+
 /** Only real stop arrays may round-trip — never truthy string `.length`. */
 function arrayStops(stops: unknown): LoadStop[] | undefined {
   return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
@@ -102,44 +141,56 @@ function newId(): string {
 }
 
 export async function listRosterDrivers(): Promise<RosterDriver[]> {
-  if (isDispatchPreviewMode()) return asRows<RosterDriver>(mem().drivers).filter((d) => d.active);
+  if (isDispatchPreviewMode()) {
+    return asRows<RosterDriver>(mem().drivers).filter((d) => d.active).map(healRosterDriver);
+  }
   const { data, error } = await dispatchSupabase
     .from("dispatch_roster_drivers")
     .select("*")
     .eq("active", true)
     .order("display_name");
   if (error) throw error;
-  return asRows<RosterDriver>(data);
+  return asRows<RosterDriver>(data).map(healRosterDriver);
 }
 
 export async function upsertRosterDriver(
   input: Partial<RosterDriver> & { display_name: string },
 ): Promise<RosterDriver> {
+  const display_name = asText(input.display_name).trim();
+  const unit_number = asNullableText(input.unit_number);
+  const phone = asNullableText(input.phone);
+  const notes = asNullableText(input.notes);
   if (isDispatchPreviewMode()) {
     const existing = mem().drivers.find((d) => d.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { updated_at: new Date().toISOString() });
-      return existing;
+      Object.assign(existing, input, {
+        display_name,
+        unit_number,
+        phone,
+        notes,
+        updated_at: new Date().toISOString(),
+      });
+      return healRosterDriver(existing);
     }
     const row: RosterDriver = {
       id: newId(),
-      display_name: input.display_name,
-      unit_number: input.unit_number ?? null,
-      phone: input.phone ?? null,
-      notes: input.notes ?? null,
+      display_name,
+      unit_number,
+      phone,
+      notes,
       active: input.active ?? true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     mem().drivers.push(row);
-    return row;
+    return healRosterDriver(row);
   }
   const payload = {
     id: input.id,
-    display_name: input.display_name,
-    unit_number: input.unit_number ?? null,
-    phone: input.phone ?? null,
-    notes: input.notes ?? null,
+    display_name,
+    unit_number,
+    phone,
+    notes,
     active: input.active ?? true,
   };
   const { data, error } = await dispatchSupabase
@@ -148,7 +199,7 @@ export async function upsertRosterDriver(
     .select("*")
     .single();
   if (error) throw error;
-  return data as RosterDriver;
+  return healRosterDriver(data as RosterDriver);
 }
 
 export async function listLoads(): Promise<DispatchLoad[]> {
@@ -362,54 +413,58 @@ export async function addCheckCall(input: {
   called_at?: string;
 }): Promise<CheckCall> {
   const called_at = input.called_at ?? new Date().toISOString();
+  const notes = asText(input.notes).trim() || "Manual check-call";
+  const manual_location = asNullableText(input.manual_location);
   if (isDispatchPreviewMode()) {
     const row: CheckCall = {
       id: newId(),
       load_id: input.load_id,
       called_at,
-      manual_location: input.manual_location ?? null,
-      notes: input.notes,
+      manual_location,
+      notes,
       created_by: null,
       created_at: called_at,
     };
     mem().checkCalls.unshift(row);
     const load = mem().loads.find((l) => l.id === input.load_id);
-    if (load && input.manual_location) {
-      load.last_manual_location = input.manual_location;
+    if (load && manual_location) {
+      load.last_manual_location = manual_location;
       load.last_manual_location_at = called_at;
       load.updated_at = called_at;
     }
-    return row;
+    return healCheckCall(row);
   }
 
   const { data, error } = await dispatchSupabase
     .from("dispatch_check_calls")
     .insert({
       load_id: input.load_id,
-      notes: input.notes,
-      manual_location: input.manual_location ?? null,
+      notes,
+      manual_location,
       called_at,
     })
     .select("*")
     .single();
   if (error) throw error;
 
-  if (input.manual_location) {
+  if (manual_location) {
     await dispatchSupabase
       .from("dispatch_loads")
       .update({
-        last_manual_location: input.manual_location,
+        last_manual_location: manual_location,
         last_manual_location_at: called_at,
         updated_at: new Date().toISOString(),
       })
       .eq("id", input.load_id);
   }
-  return data as CheckCall;
+  return healCheckCall(data as CheckCall);
 }
 
 export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
   if (isDispatchPreviewMode()) {
-    return asRows<CheckCall>(mem().checkCalls).filter((c) => c.load_id === loadId);
+    return asRows<CheckCall>(mem().checkCalls)
+      .filter((c) => c.load_id === loadId)
+      .map(healCheckCall);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_check_calls")
@@ -417,52 +472,54 @@ export async function listCheckCalls(loadId: string): Promise<CheckCall[]> {
     .eq("load_id", loadId)
     .order("called_at", { ascending: false });
   if (error) throw error;
-  return asRows<CheckCall>(data);
+  return asRows<CheckCall>(data).map(healCheckCall);
 }
 
 export async function listExceptions(): Promise<DispatchException[]> {
-  if (isDispatchPreviewMode()) return asRows<DispatchException>(mem().exceptions);
+  if (isDispatchPreviewMode()) return asRows<DispatchException>(mem().exceptions).map(healDispatchException);
   const { data, error } = await dispatchSupabase
     .from("dispatch_exceptions")
     .select("*")
     .order("opened_at", { ascending: false });
   if (error) throw error;
-  return asRows<DispatchException>(data);
+  return asRows<DispatchException>(data).map(healDispatchException);
 }
 
 export async function saveException(
   input: Partial<DispatchException> & { load_id: string; kind: string },
 ): Promise<DispatchException> {
+  const kind = asText(input.kind).trim() || "exception";
+  const notes = asNullableText(input.notes);
   if (isDispatchPreviewMode()) {
     const existing = mem().exceptions.find((e) => e.id === input.id);
     if (existing) {
-      Object.assign(existing, input);
-      return existing;
+      Object.assign(existing, input, { kind, notes });
+      return healDispatchException(existing);
     }
     const row: DispatchException = {
       id: newId(),
       load_id: input.load_id,
-      kind: input.kind,
+      kind,
       severity: input.severity ?? "medium",
       status: input.status ?? "open",
-      notes: input.notes ?? null,
+      notes,
       opened_at: new Date().toISOString(),
       resolved_at: input.resolved_at ?? null,
     };
     mem().exceptions.unshift(row);
     const load = mem().loads.find((l) => l.id === input.load_id);
     if (load) load.exception_open = row.status !== "resolved";
-    return row;
+    return healDispatchException(row);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_exceptions")
     .upsert({
       id: input.id,
       load_id: input.load_id,
-      kind: input.kind,
+      kind,
       severity: input.severity ?? "medium",
       status: input.status ?? "open",
-      notes: input.notes ?? null,
+      notes,
       resolved_at: input.status === "resolved" ? new Date().toISOString() : input.resolved_at ?? null,
     })
     .select("*")
@@ -472,7 +529,7 @@ export async function saveException(
     .from("dispatch_loads")
     .update({ exception_open: (data as DispatchException).status !== "resolved" })
     .eq("id", input.load_id);
-  return data as DispatchException;
+  return healDispatchException(data as DispatchException);
 }
 
 export async function listIssues(): Promise<DispatchIssue[]> {
@@ -964,7 +1021,7 @@ export async function saveAccessorial(
 
 export async function listCommunications(loadId?: string): Promise<DispatchCommunication[]> {
   if (isDispatchPreviewMode()) {
-    const rows = asRows<DispatchCommunication>(mem().communications);
+    const rows = asRows<DispatchCommunication>(mem().communications).map(healDispatchCommunication);
     return (loadId ? rows.filter((c) => c.load_id === loadId) : [...rows]).sort((a, b) =>
       asText(b.created_at).localeCompare(asText(a.created_at)),
     );
@@ -976,7 +1033,7 @@ export async function listCommunications(loadId?: string): Promise<DispatchCommu
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return asRows<DispatchCommunication>(data);
+  return asRows<DispatchCommunication>(data).map(healDispatchCommunication);
 }
 
 export async function saveCommunication(
@@ -986,31 +1043,34 @@ export async function saveCommunication(
     summary: string;
   },
 ): Promise<DispatchCommunication> {
+  const summary = asText(input.summary).trim();
+  const detail = asNullableText(input.detail);
+  const decided_action = asNullableText(input.decided_action);
   const err = validateCommunication({
     kind: input.kind,
-    summary: input.summary,
-    decided_action: input.decided_action ?? null,
+    summary,
+    decided_action,
   });
   if (err) throw new Error(err);
   const now = new Date().toISOString();
   if (isDispatchPreviewMode()) {
     const existing = mem().communications.find((c) => c.id === input.id);
     if (existing) {
-      Object.assign(existing, input, { summary: asText(input.summary).trim() });
-      return existing;
+      Object.assign(existing, input, { summary, detail, decided_action });
+      return healDispatchCommunication(existing);
     }
     const row: DispatchCommunication = {
       id: newId(),
       load_id: input.load_id,
       kind: input.kind,
-      summary: asText(input.summary).trim(),
-      detail: input.detail ?? null,
-      decided_action: input.decided_action ?? null,
+      summary,
+      detail,
+      decided_action,
       created_by: input.created_by ?? null,
       created_at: now,
     };
     mem().communications.unshift(row);
-    return row;
+    return healDispatchCommunication(row);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_communications")
@@ -1018,12 +1078,12 @@ export async function saveCommunication(
       id: input.id,
       load_id: input.load_id,
       kind: input.kind,
-      summary: asText(input.summary).trim(),
-      detail: input.detail ?? null,
-      decided_action: input.decided_action ?? null,
+      summary,
+      detail,
+      decided_action,
     })
     .select("*")
     .single();
   if (error) throw error;
-  return data as DispatchCommunication;
+  return healDispatchCommunication(data as DispatchCommunication);
 }
