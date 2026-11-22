@@ -186,10 +186,15 @@ export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: Dispa
   doc.save(`dispatch-accessorials-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+function asReportText(v: unknown): string {
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
 export function exportLoadHistoryPdf(load: DispatchLoad, events: LoadHistoryEvent[]) {
+  const loadNumber = asReportText(load.load_number) || "load";
   const doc = new jsPDF();
   doc.setFontSize(14);
-  doc.text(`Complete Load History — ${load.load_number}`, 14, 16);
+  doc.text(`Complete Load History — ${loadNumber}`, 14, 16);
   doc.setFontSize(9);
   doc.text(
     `Status: ${statusLabel(load.status)} · Payment: ${paymentStatusLabel(load.payment_status)} · Delivered ≠ Closed ≠ Paid`,
@@ -202,15 +207,18 @@ export function exportLoadHistoryPdf(load: DispatchLoad, events: LoadHistoryEven
     startY: 34,
     head: [["When", "Source", "Event", "Detail"]],
     body: eventList.map((e) => [
-      new Date(e.at).toLocaleString(),
-      e.source,
-      e.title,
-      e.detail,
+      (() => {
+        const ms = Date.parse(asReportText(e.at));
+        return Number.isFinite(ms) ? new Date(ms).toLocaleString() : asReportText(e.at) || "—";
+      })(),
+      asReportText(e.source),
+      asReportText(e.title),
+      asReportText(e.detail),
     ]),
     styles: { fontSize: 8 },
     columnStyles: { 3: { cellWidth: 70 } },
   });
-  doc.save(`dispatch-history-${load.load_number}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`dispatch-history-${loadNumber}-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]) {
@@ -218,26 +226,26 @@ export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]
   doc.setFontSize(14);
   doc.text("Shift Handover — Dispatch Operations", 14, 16);
   doc.setFontSize(10);
-  doc.text(`Shift date: ${handover.shift_date}`, 14, 26);
-  doc.text(`From: ${handover.from_dispatcher}`, 14, 32);
-  doc.text(`To: ${handover.to_dispatcher || "—"}`, 14, 38);
+  doc.text(`Shift date: ${asReportText(handover.shift_date)}`, 14, 26);
+  doc.text(`From: ${asReportText(handover.from_dispatcher)}`, 14, 32);
+  doc.text(`To: ${asReportText(handover.to_dispatcher) || "—"}`, 14, 38);
   doc.text("Summary", 14, 48);
   doc.setFontSize(9);
-  const summaryLines = doc.splitTextToSize(handover.summary || "—", 180);
+  const summaryLines = doc.splitTextToSize(asReportText(handover.summary) || "—", 180);
   doc.text(summaryLines, 14, 54);
   let y = 54 + summaryLines.length * 5 + 8;
   doc.setFontSize(10);
   doc.text("Watch items", 14, y);
   y += 6;
   doc.setFontSize(9);
-  const watch = doc.splitTextToSize(handover.watch_items || "—", 180);
+  const watch = doc.splitTextToSize(asReportText(handover.watch_items) || "—", 180);
   doc.text(watch, 14, y);
   y += watch.length * 5 + 8;
   doc.setFontSize(10);
   doc.text("Next-day priorities", 14, y);
   y += 6;
   doc.setFontSize(9);
-  const next = doc.splitTextToSize(handover.next_day_priorities || "—", 180);
+  const next = doc.splitTextToSize(asReportText(handover.next_day_priorities) || "—", 180);
   doc.text(next, 14, y);
   y += next.length * 5 + 10;
   const openIds = Array.isArray(handover.open_load_ids) ? handover.open_load_ids : [];
@@ -246,11 +254,11 @@ export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]
     startY: y,
     head: [["Open load", "Status", "Payment", "Driver", "Manual location"]],
     body: openLoads.map((l) => [
-      l.load_number,
+      asReportText(l.load_number),
       statusLabel(l.status),
       paymentStatusLabel(l.payment_status),
-      l.assigned_driver_name ?? "",
-      l.last_manual_location ?? "",
+      asReportText(l.assigned_driver_name),
+      asReportText(l.last_manual_location),
     ]),
     styles: { fontSize: 8 },
   });

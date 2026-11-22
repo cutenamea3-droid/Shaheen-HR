@@ -40,7 +40,8 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
         };
         map.set(r.driverId, row);
       }
-      if (!row.name.trim()) row.name = (cells[0] ?? "").trim();
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
+      if (!asN(row.name)) row.name = asN(cells[0]);
       if (def.id === "dmv") {
         row.dmvStatus = normStatus(cells[2] ?? "") || (cells[2] ?? "").trim() || "—";
         if (!row.cdl) row.cdl = (cells[1] ?? "").trim();

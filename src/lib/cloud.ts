@@ -17,9 +17,17 @@ export interface PortalAccount {
   active: boolean;
 }
 
-function isMissingAccountsTable(error: { code?: string; message: string }) {
-  return error.code === "42P01" || error.code === "PGRST205" ||
-    (error.message.includes("driver_portal_accounts") && /does not exist|not find the table|schema cache/i.test(error.message));
+function asErrText(v: unknown): string {
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
+function isMissingAccountsTable(error: { code?: string; message?: unknown }) {
+  const msg = asErrText(error.message);
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (msg.includes("driver_portal_accounts") && /does not exist|not find the table|schema cache/i.test(msg))
+  );
 }
 
 function legacyOwnerAccount(userId: string): PortalAccount {
@@ -44,8 +52,9 @@ function signUpPasswordFor(email: string, password: string): string {
   return email === PORTAL_EMAIL ? LEGACY_PASSWORD_PREFIX + password : password;
 }
 
-function friendlyAuthError(err: { message?: string } | null | undefined, fallback: string): string {
-  const m = (err?.message ?? "").toLowerCase();
+function friendlyAuthError(err: { message?: unknown } | null | undefined, fallback: string): string {
+  const raw = asErrText(err?.message);
+  const m = raw.toLowerCase();
   if (/confirm|verification|not confirmed|email not confirmed/.test(m)) {
     return "Email confirmation is required. In Supabase: Authentication → Providers → Email → turn off Confirm email, then try again.";
   }
@@ -53,7 +62,7 @@ function friendlyAuthError(err: { message?: string } | null | undefined, fallbac
   if (/already registered|already been registered|user already/.test(m)) {
     return "That email is already registered but the password did not match. Check the password and try again.";
   }
-  if (err?.message?.trim()) return err.message.trim();
+  if (raw.trim()) return raw.trim();
   return fallback;
 }
 

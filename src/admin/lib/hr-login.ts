@@ -51,8 +51,10 @@ export function classifyHrLoginError(error: unknown): "credentials" | "network" 
     return "network";
   }
 
+  const asMsg = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v)).toLowerCase();
+
   if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
+    const msg = asMsg(error.message);
     if (
       msg.includes("failed to fetch") ||
       msg.includes("network") ||
@@ -73,7 +75,7 @@ export function classifyHrLoginError(error: unknown): "credentials" | "network" 
     return "network";
   }
 
-  const msg = (e.message ?? "").toLowerCase();
+  const msg = asMsg(e.message);
   if (
     msg.includes("failed to fetch") ||
     msg.includes("network") ||

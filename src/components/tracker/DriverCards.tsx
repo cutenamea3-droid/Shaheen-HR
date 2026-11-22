@@ -140,6 +140,8 @@ export function DriverCards({
   }, [initialScope, initialExp, initialTempNotes]);
 
   const allDrivers = useMemo(() => {
+    const asName = (v: unknown) =>
+      (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
     const map = new Map<string, Driver>();
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
@@ -150,7 +152,7 @@ export function DriverCards({
         if (!d) {
           d = {
             driverId: r.driverId,
-            name: r.cells[0] ?? "",
+            name: asName(r.cells[0]),
             active: rowIsActive(def, r, data),
             status: rowDriverStatus(def, r, data),
             issues: 0,
@@ -167,7 +169,7 @@ export function DriverCards({
         d.active = rowIsActive(def, r, data);
         d.status = rowDriverStatus(def, r, data);
         d.scope = listScopeOf(data, r.driverId);
-        if (!d.name.trim()) d.name = r.cells[0] ?? "";
+        if (!asName(d.name)) d.name = asName(r.cells[0]);
         // Issue counts only for ordinary company lists (New/OO have dedicated scopes).
         const muted = rowAlertsMuted(def, r, data) || d.scope !== "company";
         if (!muted) d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
@@ -185,8 +187,6 @@ export function DriverCards({
         if (def.id === "ssccdl") d.cdl = (r.cells[1] ?? "").trim();
       }
     }
-    const asName = (v: unknown) =>
-      (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
     return [...map.values()].sort((a, b) =>
       asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
     );
@@ -361,7 +361,12 @@ export function DriverCards({
                       <div>
                         <div className="flex flex-wrap items-center gap-1.5">
                           <div data-driver-name className="font-extrabold">
-                            {d.name.trim() || "—"}
+                            {(d.name == null
+                              ? ""
+                              : typeof d.name === "string"
+                                ? d.name
+                                : String(d.name)
+                            ).trim() || "—"}
                           </div>
                           <TempNotesBadge driverId={d.driverId} />
                           {d.scope === "owner_operator" && (
@@ -466,7 +471,7 @@ export function DriverCards({
                           onClick={() => {
                             if (
                               confirm(
-                                `Delete ${d.name.trim()} from ALL sections? This cannot be undone.`,
+                                `Delete ${(d.name == null ? "" : typeof d.name === "string" ? d.name : String(d.name)).trim()} from ALL sections? This cannot be undone.`,
                               )
                             )
                               deleteDriver(d.driverId);
