@@ -274,7 +274,7 @@ export function Focus() {
               <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.code} — {c.title}
+                    {asTxt(c.code)} — {asTxt(c.title)}
                   </option>
                 ))}
               </select>
@@ -335,7 +335,7 @@ export function Focus() {
               <option value="all">All courses</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code}
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>

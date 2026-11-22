@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Btn, Empty, Panel, SectionHead, courseLabel } from "./common";
+import { normalizeCourse } from "@/personal/lib/assessment-phases";
 import { blocksOf, todayKey, usePersonal } from "@/personal/lib/store";
 import {
   BUSY_MINUTES,
@@ -8,12 +9,16 @@ import {
   modeBudgetMinutes,
   modeLabel,
 } from "@/personal/lib/schedule";
-import type { StudyMode } from "@/personal/lib/types";
+import type { Course, StudyMode } from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Timetable() {
   const coursesRaw = usePersonal((s) => s.courses);
   const dayPlansRaw = usePersonal((s) => s.dayPlans);
-  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
   const dayPlans =
     dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
@@ -131,7 +136,7 @@ export function Timetable() {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
-                    <div className="font-semibold">{b.label}</div>
+                    <div className="font-semibold">{asTxt(b.label)}</div>
                     <div className="text-xs text-[var(--hp-muted)]">
                       {courseLabel(courses, b.courseId)} · {b.minutes} minutes
                     </div>

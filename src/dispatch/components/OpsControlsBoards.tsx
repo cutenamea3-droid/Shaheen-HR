@@ -330,11 +330,11 @@ function FollowUpList({
         return (
           <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
             <div>
-              <p className="font-semibold">{row.title}</p>
+              <p className="font-semibold">{asText(row.title)}</p>
               <p className="text-xs text-[color:var(--dispatch-muted)]">
                 Due {new Date(row.due_at).toLocaleString()}
-                {load ? ` · ${load.load_number}` : ""}
-                {row.notes ? ` · ${row.notes}` : ""}
+                {load ? ` · ${asText(load.load_number)}` : ""}
+                {row.notes ? ` · ${asText(row.notes)}` : ""}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

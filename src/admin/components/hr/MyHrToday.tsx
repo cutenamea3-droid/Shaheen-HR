@@ -177,7 +177,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             {dueTasks.map((t) => (
               <li key={t.id}>
                 <button type="button" className="text-left font-medium text-primary underline-offset-2 hover:underline" onClick={() => requestTab("tasks")}>
-                  {t.title}
+                  {asText(t.title)}
                 </button>
               </li>
             ))}

@@ -1489,7 +1489,7 @@ function LoadEditor({
                 Name
                 <input
                   className="dispatch-field"
-                  value={stop.name}
+                  value={asFormText(stop.name)}
                   onChange={(e) => setStop(i, { name: e.target.value })}
                   onInput={(e) => setStop(i, { name: (e.target as HTMLInputElement).value })}
                 />
@@ -1498,7 +1498,7 @@ function LoadEditor({
                 Address
                 <input
                   className="dispatch-field"
-                  value={stop.address}
+                  value={asFormText(stop.address)}
                   onChange={(e) => setStop(i, { address: e.target.value })}
                   onInput={(e) => setStop(i, { address: (e.target as HTMLInputElement).value })}
                 />
@@ -1508,21 +1508,21 @@ function LoadEditor({
                 <div className="flex gap-1">
                   <input
                     className="dispatch-field"
-                    value={stop.city}
+                    value={asFormText(stop.city)}
                     onChange={(e) => setStop(i, { city: e.target.value })}
                   onInput={(e) => setStop(i, { city: (e.target as HTMLInputElement).value })}
                     placeholder="City"
                   />
                   <input
                     className="dispatch-field w-14"
-                    value={stop.state}
+                    value={asFormText(stop.state)}
                     onChange={(e) => setStop(i, { state: e.target.value })}
                   onInput={(e) => setStop(i, { state: (e.target as HTMLInputElement).value })}
                     placeholder="ST"
                   />
                   <input
                     className="dispatch-field w-20"
-                    value={stop.postal_code}
+                    value={asFormText(stop.postal_code)}
                     onChange={(e) => setStop(i, { postal_code: e.target.value })}
                   onInput={(e) => setStop(i, { postal_code: (e.target as HTMLInputElement).value })}
                     placeholder="ZIP"
@@ -2708,13 +2708,13 @@ function HistoryBoard({
               {events.map((e, i) => (
                 <li key={`${e.at}-${e.source}-${i}`} className="py-2 text-sm">
                   <p className="font-semibold">
-                    {e.title}{" "}
+                    {asFormText(e.title)}{" "}
                     <span className="text-xs font-normal text-[color:var(--dispatch-muted)]">
-                      ({e.source})
+                      ({asFormText(e.source)})
                     </span>
                   </p>
                   <p className="text-xs text-[color:var(--dispatch-muted)]">
-                    {new Date(e.at).toLocaleString()} · {e.detail}
+                    {new Date(e.at).toLocaleString()} · {asFormText(e.detail)}
                   </p>
                 </li>
               ))}
