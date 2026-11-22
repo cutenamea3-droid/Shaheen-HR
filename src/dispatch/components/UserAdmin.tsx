@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import {
+  healDispatchAccount,
   inviteDispatchUser,
   listDispatchAccounts,
   setDispatchAccess,
 } from "@/dispatch/lib/auth";
 import type { DispatchAccount, DispatchRole } from "@/dispatch/lib/types";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function UserAdmin({ actor }: { actor: DispatchAccount }) {
   const [accounts, setAccounts] = useState<DispatchAccount[]>([]);
@@ -17,7 +20,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
 
   const refresh = async () => {
     const next = await listDispatchAccounts();
-    setAccounts(Array.isArray(next) ? next : []);
+    setAccounts((Array.isArray(next) ? next : []).map(healDispatchAccount));
   };
 
   useEffect(() => {
@@ -135,8 +138,8 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
           <tbody>
             {accounts.map((a) => (
               <tr key={a.user_id} className="border-t border-[color:var(--dispatch-border)]">
-                <td className="p-2 font-medium">{a.display_name}</td>
-                <td className="p-2">{a.email}</td>
+                <td className="p-2 font-medium">{asText(a.display_name)}</td>
+                <td className="p-2">{asText(a.email)}</td>
                 <td className="p-2">
                   <select
                     className="dispatch-field h-8 w-36"

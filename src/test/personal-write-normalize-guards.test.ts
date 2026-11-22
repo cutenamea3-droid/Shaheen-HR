@@ -36,6 +36,18 @@ describe("Personal store write-path normalize guards", () => {
     expect(analyticsUi).toMatch(/normalizeGradeEntry\(/);
     expect(analyticsUi).toMatch(/normalizeCourseGrade\(/);
     expect(analyticsUi).toMatch(/asTxt\(g\.letter\)/);
+    const teamUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/TeamManagement.tsx"),
+      "utf8",
+    );
+    expect(teamUi).toMatch(/normalizeTeamMember\(/);
+    expect(teamUi).toMatch(/\{asText\(m\.email\)\}/);
+    const userAdmin = readFileSync(
+      resolve(process.cwd(), "src/dispatch/components/UserAdmin.tsx"),
+      "utf8",
+    );
+    expect(userAdmin).toMatch(/healDispatchAccount/);
+    expect(userAdmin).toMatch(/asText\(a\.display_name\)/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

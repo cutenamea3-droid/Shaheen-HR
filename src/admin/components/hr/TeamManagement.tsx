@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { Trash2, UserPlus } from "lucide-react";
-import { useApp } from "@/admin/lib/store";
-import type { Role } from "@/admin/lib/types";
+import { normalizeTeamMember, useApp } from "@/admin/lib/store";
+import type { Role, TeamMember } from "@/admin/lib/types";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function TeamManagement({ adminEmail }: { adminEmail: string }) {
   const teamRaw = useApp((s) => s.team);
-  const team = Array.isArray(teamRaw) ? teamRaw : [];
+  const team = (Array.isArray(teamRaw) ? teamRaw : [])
+    .map((m) => normalizeTeamMember(m as Partial<TeamMember> & Pick<TeamMember, "id">))
+    .filter((m) => !!m.id);
   const upsert = useApp((s) => s.upsertMember);
   const remove = useApp((s) => s.removeMember);
   const addLog = useApp((s) => s.addLog);
@@ -119,19 +123,19 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                 <td className="p-3 font-semibold">
                   <input
                     className="field h-8 max-w-[12rem] font-semibold"
-                    aria-label={`Name for ${m.email}`}
-                    defaultValue={m.name}
+                    aria-label={`Name for ${asText(m.email)}`}
+                    defaultValue={asText(m.name)}
                     onBlur={(e) => {
                       const next = e.target.value.trim();
-                      if (next && next !== m.name) {
+                      if (next && next !== asText(m.name)) {
                         upsert({ ...m, name: next });
-                        addLog(adminEmail, `Renamed account ${m.email} to “${next}”`);
-                        setMsg(`Updated name for ${m.email}.`);
+                        addLog(adminEmail, `Renamed account ${asText(m.email)} to “${next}”`);
+                        setMsg(`Updated name for ${asText(m.email)}.`);
                       }
                     }}
                   />
                 </td>
-                <td className="p-3">{m.email}</td>
+                <td className="p-3">{asText(m.email)}</td>
                 <td className="p-3">
                   <select
                     className="field h-8 w-32"
@@ -139,8 +143,8 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     onChange={(e) => {
                       const nextRole = e.target.value as Role;
                       upsert({ ...m, role: nextRole });
-                      addLog(adminEmail, `Updated role for ${m.email} → ${nextRole}`);
-                      setMsg(`Updated role for ${m.email}.`);
+                      addLog(adminEmail, `Updated role for ${asText(m.email)} → ${nextRole}`);
+                      setMsg(`Updated role for ${asText(m.email)}.`);
                     }}
                   >
                     <option value="standard">Standard</option>
@@ -154,8 +158,13 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     onClick={() => {
                       const nextActive = !m.active;
                       upsert({ ...m, active: nextActive });
-                      addLog(adminEmail, `${nextActive ? "Enabled" : "Disabled"} account ${m.email}`);
-                      setMsg(`${m.email} is now ${nextActive ? "active" : "disabled"}.`);
+                      addLog(
+                        adminEmail,
+                        `${nextActive ? "Enabled" : "Disabled"} account ${asText(m.email)}`,
+                      );
+                      setMsg(
+                        `${asText(m.email)} is now ${nextActive ? "active" : "disabled"}.`,
+                      );
                     }}
                   >
                     {m.active ? "Active" : "Disabled"}
@@ -167,10 +176,10 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     className="btn-danger h-8 px-2"
                     title="Remove"
                     onClick={() => {
-                      if (!confirm(`Remove ${m.name}?`)) return;
+                      if (!confirm(`Remove ${asText(m.name)}?`)) return;
                       remove(m.id);
-                      addLog(adminEmail, `Removed account ${m.email}`);
-                      setMsg(`Removed ${m.name}.`);
+                      addLog(adminEmail, `Removed account ${asText(m.email)}`);
+                      setMsg(`Removed ${asText(m.name)}.`);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
