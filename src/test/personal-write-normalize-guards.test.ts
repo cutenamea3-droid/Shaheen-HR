@@ -22,6 +22,13 @@ describe("Personal store write-path normalize guards", () => {
     expect(assessmentsUi).toMatch(/normalizeAssessment\(/);
     expect(assessmentsUi).toMatch(/normalizeExamPrepTask\(/);
     expect(assessmentsUi).toMatch(/asTxt\(a\.title\)/);
+    const coursesUi = readFileSync(resolve(process.cwd(), "src/personal/components/Courses.tsx"), "utf8");
+    expect(coursesUi).toMatch(/normalizeCourse\(/);
+    const focusUi = readFileSync(resolve(process.cwd(), "src/personal/components/Focus.tsx"), "utf8");
+    expect(focusUi).toMatch(/normalizeFocusSession\(/);
+    expect(focusUi).toMatch(/asTxt\(s\.label\)/);
+    const vaultUi = readFileSync(resolve(process.cwd(), "src/personal/components/Vault.tsx"), "utf8");
+    expect(vaultUi).toMatch(/asTxt\(d\.label\)/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

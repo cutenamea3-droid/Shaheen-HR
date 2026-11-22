@@ -6,8 +6,9 @@ import { usePersonal } from "@/personal/lib/store";
 describe("Courses save / updateCourse / Attendance flag coerce", () => {
   it("Courses.tsx coerces code/title fallbacks before .trim", () => {
     const src = readFileSync(resolve(process.cwd(), "src/personal/components/Courses.tsx"), "utf8");
-    expect(src).toMatch(/asTxt\(codeV\.trim\(\) \|\| codeRef\.current\?\.value \|\| code\)\.trim\(\)/);
-    expect(src).toMatch(/asTxt\(titleV\.trim\(\) \|\| titleRef\.current\?\.value \|\| title\)\.trim\(\)/);
+    expect(src).toMatch(/normalizeCourse\(/);
+    expect(src).toMatch(/asTxt\(codeV\)\.trim\(\)/);
+    expect(src).toMatch(/asTxt\(titleV\)\.trim\(\)/);
     expect(src).not.toMatch(/const nextCode = \(codeV\.trim\(\)/);
   });
 

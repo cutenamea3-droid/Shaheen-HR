@@ -45,7 +45,15 @@ export function Vault() {
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
   const disciplineRaw = usePersonal((s) => s.discipline);
-  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
+  const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const discipline = (Array.isArray(disciplineRaw) ? disciplineRaw : []).map((d) => ({
+    ...d,
+    id: asTxt(d?.id),
+    label: asTxt(d?.label),
+    doneDates: Array.isArray(d?.doneDates)
+      ? d.doneDates.map((x) => asTxt(x)).filter(Boolean)
+      : [],
+  }));
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
   const vaultNotes = usePersonal((s) => s.vaultNotes);
   const setVaultNotes = usePersonal((s) => s.setVaultNotes);
@@ -90,7 +98,7 @@ export function Vault() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--hp-border)] px-3 py-2"
               >
                 <div>
-                  <div className="text-sm font-semibold">{d.label}</div>
+                  <div className="text-sm font-semibold">{asTxt(d.label)}</div>
                   <div className="text-xs text-[var(--hp-muted)]">
                     {doneDates.length} day(s) logged
                   </div>

@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import { usePersonal } from "@/personal/lib/store";
-import type { FocusActivityKind, StudyMode } from "@/personal/lib/types";
+import { normalizeCourse, normalizeFocusSession } from "@/personal/lib/assessment-phases";
+import type { Course, FocusActivityKind, FocusSession, StudyMode } from "@/personal/lib/types";
 import { VU_FOCUS_MODES, VU_TIMER_PRESETS } from "@/personal/lib/vu-rhythm";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 type Phase = "focus" | "break" | "idle";
 type TimerProfile = "preset" | "pomodoro" | "deep";
@@ -29,8 +32,12 @@ function presetToActivity(id: string): FocusActivityKind {
 export function Focus() {
   const coursesRaw = usePersonal((s) => s.courses);
   const sessionsRaw = usePersonal((s) => s.sessions);
-  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
-  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
+  const sessions = (Array.isArray(sessionsRaw) ? sessionsRaw : [])
+    .map((s) => normalizeFocusSession(s as Partial<FocusSession> & Pick<FocusSession, "id">))
+    .filter((s) => !!s.id);
   const settings = usePersonal((s) => s.settings);
   const addSession = usePersonal((s) => s.addSession);
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
@@ -43,7 +50,7 @@ export function Focus() {
   const [lessonLabel, setLessonLabel] = useState("");
   const lessonLabelRef = useRef<HTMLInputElement>(null);
   const readLessonLabel = () =>
-    (lessonLabel.trim() || lessonLabelRef.current?.value || "").trim();
+    (asTxt(lessonLabel).trim() || lessonLabelRef.current?.value || "").trim();
   const [phase, setPhase] = useState<Phase>("idle");
   const [left, setLeft] = useState(settings.pomodoroFocus * 60);
   const [running, setRunning] = useState(false);
@@ -341,11 +348,11 @@ export function Focus() {
             {filtered.slice(0, 20).map((s) => (
               <li key={s.id} className="flex justify-between gap-3 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === s.courseId)?.code ?? "—"} · {s.label}
+                  {asTxt(courses.find((c) => c.id === s.courseId)?.code) || "—"} · {asTxt(s.label)}
                   {s.activityKind ? (
                     <span className="text-[var(--hp-muted)]">
                       {" "}
-                      · {ACTIVITY_LABELS[s.activityKind] ?? s.activityKind}
+                      · {ACTIVITY_LABELS[s.activityKind] ?? asTxt(s.activityKind)}
                     </span>
                   ) : null}
                 </span>

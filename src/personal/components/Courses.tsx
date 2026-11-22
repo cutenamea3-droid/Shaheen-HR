@@ -1,9 +1,13 @@
 import { useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import { usePersonal } from "@/personal/lib/store";
+import { normalizeCourse } from "@/personal/lib/assessment-phases";
+import type { Course } from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 function numOrNull(raw: string): number | null {
-  const t = raw.trim();
+  const t = asTxt(raw).trim();
   if (t === "") return null;
   const n = Number(t);
   if (!Number.isFinite(n) || n < 0) return null;
@@ -12,7 +16,9 @@ function numOrNull(raw: string): number | null {
 
 export function Courses() {
   const coursesRaw = usePersonal((s) => s.courses);
-  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
   const updateCourse = usePersonal((s) => s.updateCourse);
 
   return (
@@ -68,11 +74,11 @@ function CourseEditor({
     notes?: string;
   }) => void;
 }) {
-  const [codeV, setCodeV] = useState(code);
-  const [titleV, setTitleV] = useState(title);
+  const [codeV, setCodeV] = useState(asTxt(code));
+  const [titleV, setTitleV] = useState(asTxt(title));
   const [totalV, setTotalV] = useState(lecturesTotal == null ? "" : String(lecturesTotal));
   const [doneV, setDoneV] = useState(lecturesDone == null ? "" : String(lecturesDone));
-  const [notesV, setNotesV] = useState(notes);
+  const [notesV, setNotesV] = useState(asTxt(notes));
   const codeRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const totalRef = useRef<HTMLInputElement>(null);
@@ -156,14 +162,14 @@ function CourseEditor({
         <Btn
           data-testid="personal-course-save"
           onClick={() => {
-            const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
             const nextCode =
-              asTxt(codeV.trim() || codeRef.current?.value || code).trim() || asTxt(code);
+              (asTxt(codeV).trim() || codeRef.current?.value || asTxt(code)).trim() || asTxt(code);
             const nextTitle =
-              asTxt(titleV.trim() || titleRef.current?.value || title).trim() || asTxt(title);
-            const nextTotal = totalV.trim() || totalRef.current?.value || "";
-            const nextDone = doneV.trim() || doneRef.current?.value || "";
-            const nextNotes = notesV.length ? notesV : notesRef.current?.value || "";
+              (asTxt(titleV).trim() || titleRef.current?.value || asTxt(title)).trim() ||
+              asTxt(title);
+            const nextTotal = asTxt(totalV).trim() || totalRef.current?.value || "";
+            const nextDone = asTxt(doneV).trim() || doneRef.current?.value || "";
+            const nextNotes = asTxt(notesV).length ? asTxt(notesV) : notesRef.current?.value || "";
             onSave({
               code: nextCode,
               title: nextTitle,
