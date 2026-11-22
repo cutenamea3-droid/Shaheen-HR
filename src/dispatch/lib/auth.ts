@@ -10,6 +10,20 @@ const PREVIEW_ACCOUNT: DispatchAccount = {
   active: true,
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+/** Coerce portal ACL scalars before UI `{account.display_name}` / email render. */
+export function healDispatchAccount(raw: DispatchAccount): DispatchAccount {
+  return {
+    ...raw,
+    user_id: asText(raw.user_id),
+    email: asText(raw.email),
+    display_name: asText(raw.display_name),
+    role: raw.role === "admin" ? "admin" : "dispatcher",
+    active: Boolean(raw.active),
+  };
+}
+
 export function isDispatchPreviewMode(): boolean {
   return isPreviewIsolated() || !isDispatchSupabaseConfigured();
 }
@@ -37,7 +51,7 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
 
   if (error) throw error;
   if (data && data.active && (data.role === "admin" || data.role === "dispatcher")) {
-    return data as DispatchAccount;
+    return healDispatchAccount(data as DispatchAccount);
   }
 
   // Bootstrap path for owner / first admin when migration applied.
@@ -50,7 +64,7 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
   }
   const row = Array.isArray(ensured) ? ensured[0] : ensured;
   if (!row || !row.active) return null;
-  return row as DispatchAccount;
+  return healDispatchAccount(row as DispatchAccount);
 }
 
 function asLoginEmail(email: unknown): string {
@@ -89,7 +103,7 @@ export async function listDispatchAccounts(): Promise<DispatchAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("email");
   if (error) throw error;
-  return Array.isArray(data) ? (data as DispatchAccount[]) : [];
+  return (Array.isArray(data) ? (data as DispatchAccount[]) : []).map(healDispatchAccount);
 }
 
 export async function setDispatchAccess(userId: string, role: DispatchRole, active: boolean): Promise<void> {

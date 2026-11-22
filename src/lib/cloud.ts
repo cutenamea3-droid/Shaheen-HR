@@ -21,6 +21,17 @@ function asErrText(v: unknown): string {
   return v == null ? "" : typeof v === "string" ? v : String(v);
 }
 
+/** Coerce portal ACL scalars before UI display_name / email render. */
+export function healPortalAccount(raw: PortalAccount): PortalAccount {
+  return {
+    user_id: asErrText(raw.user_id),
+    email: asErrText(raw.email),
+    display_name: asErrText(raw.display_name),
+    role: raw.role === "admin" ? "admin" : "standard",
+    active: Boolean(raw.active),
+  };
+}
+
 function isMissingAccountsTable(error: { code?: string; message?: unknown }) {
   const msg = asErrText(error.message);
   return (
@@ -157,7 +168,7 @@ export async function getPortalAccount(userId: string): Promise<PortalAccount | 
     throw new Error(error.message);
   }
   if (data && (data.role === "admin" || data.role === "standard")) {
-    return { ...data, role: data.role as PortalRole };
+    return healPortalAccount({ ...data, role: data.role as PortalRole });
   }
 
   // Empty / missing ACL row: try bootstrap RPC (owner or first admin on a fresh project).
@@ -167,13 +178,13 @@ export async function getPortalAccount(userId: string): Promise<PortalAccount | 
   if (!ensureErr && ensured) {
     const row = Array.isArray(ensured) ? ensured[0] : ensured;
     if (row && (row.role === "admin" || row.role === "standard")) {
-      return {
+      return healPortalAccount({
         user_id: row.user_id,
         email: row.email,
         display_name: row.display_name,
         role: row.role as PortalRole,
         active: Boolean(row.active),
-      };
+      });
     }
   }
   return null;
@@ -208,7 +219,9 @@ export async function listPortalAccounts(): Promise<PortalAccount[]> {
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
   const rows = Array.isArray(data) ? data : [];
-  return rows.filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
+  return rows
+    .filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard")
+    .map(healPortalAccount);
 }
 
 export async function createPortalAccount(input: { email: string; displayName: string; password: string }): Promise<void> {
