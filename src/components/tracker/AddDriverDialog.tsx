@@ -8,6 +8,8 @@ import { statusTone } from "@/lib/alerts";
 import { addDriver, useData } from "@/lib/store";
 import { TONE_BOX } from "./cells";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const WIZ = SECTIONS.filter((s) => s.inWizard);
 
 /** Columns filled automatically from step 1 (name / license / state / active). */
@@ -28,9 +30,9 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const cdlRef = useRef<HTMLInputElement>(null);
   const stateRef = useRef<HTMLInputElement>(null);
   const readBase = () => ({
-    name: (base.name.trim() || nameRef.current?.value || "").trim(),
-    cdl: (base.cdl.trim() || cdlRef.current?.value || "").trim(),
-    state: (base.state.trim() || stateRef.current?.value || "CA").trim().toUpperCase() || "CA",
+    name: (asText(base.name).trim() || nameRef.current?.value || "").trim(),
+    cdl: (asText(base.cdl).trim() || cdlRef.current?.value || "").trim(),
+    state: (asText(base.state).trim() || stateRef.current?.value || "CA").trim().toUpperCase() || "CA",
   });
 
   const cellsFor = (def: SectionDef) => vals[def.id] ?? def.types.map(() => "");
@@ -68,7 +70,9 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
       });
     }
     addDriver(out);
-    toast.success(`${b.name} added as New Driver (onboarding) — use Move to Active when ready`);
+    toast.success(
+      `${asText(b.name)} added as New Driver (onboarding) — use Move to Active when ready`,
+    );
     onOpenChange(false);
     reset();
   }
@@ -116,7 +120,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <input
                   ref={nameRef}
                   data-testid="add-driver-name"
-                  value={base.name}
+                  value={asText(base.name)}
                   onChange={(e) => setBase({ ...base, name: e.target.value })}
                   onInput={(e) => setBase((b) => ({ ...b, name: (e.target as HTMLInputElement).value }))}
                   className={inputCls}
@@ -127,7 +131,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <input
                   ref={cdlRef}
                   data-testid="add-driver-cdl"
-                  value={base.cdl}
+                  value={asText(base.cdl)}
                   onChange={(e) => setBase({ ...base, cdl: e.target.value })}
                   onInput={(e) => setBase((b) => ({ ...b, cdl: (e.target as HTMLInputElement).value }))}
                   className={inputCls}
@@ -137,7 +141,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                 <input
                   ref={stateRef}
                   data-testid="add-driver-state"
-                  value={base.state}
+                  value={asText(base.state)}
                   onChange={(e) => setBase({ ...base, state: e.target.value.toUpperCase() })}
                   onInput={(e) =>
                     setBase((b) => ({ ...b, state: (e.target as HTMLInputElement).value.toUpperCase() }))
@@ -145,7 +149,11 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   className={inputCls}
                 />
               </Field>
-              {err && <p className="rounded-lg bg-danger-soft px-3 py-2 font-semibold text-danger">{err}</p>}
+              {err && (
+                <p className="rounded-lg bg-danger-soft px-3 py-2 font-semibold text-danger">
+                  {asText(err)}
+                </p>
+              )}
             </>
           )}
           {def &&

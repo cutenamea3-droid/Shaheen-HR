@@ -176,6 +176,22 @@ describe("Personal store write-path normalize guards", () => {
     expect(dispatchApp).toMatch(/asFormText\(c\.summary\)/);
     expect(dispatchApp).toMatch(/asFormText\(c\.notes\)/);
     expect(dispatchApp).toMatch(/asFormText\(h\.summary\)/);
+    const dashboardUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/Dashboard.tsx"),
+      "utf8",
+    );
+    expect(dashboardUi).toMatch(/\{asText\(u\.name\)\}/);
+    expect(dashboardUi).toMatch(/\{asText\(d\.driver\) \|\| "—"\}/);
+    const addDriverUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/AddDriverDialog.tsx"),
+      "utf8",
+    );
+    expect(addDriverUi).toMatch(/value=\{asText\(base\.name\)\}/);
+    const alertsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/AlertsWorkCenter.tsx"),
+      "utf8",
+    );
+    expect(alertsUi).toMatch(/\{asText\(item\.linkOnly\.label\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

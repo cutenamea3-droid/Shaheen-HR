@@ -44,6 +44,8 @@ import { ExpirationFilter } from "./ExpirationFilter";
 import { FilterGroup, FilterRack } from "./FilterRack";
 import { SECTION_ICONS } from "./AppShell";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 type Cat = "all" | "expired" | "soon" | "applied" | "missing" | "notes";
 const CATS: { id: Cat; label: string; match: (i: Issue) => boolean }[] = [
   { id: "all", label: "All", match: () => true },
@@ -520,7 +522,7 @@ function FuturePlans() {
           {SECTIONS.filter((s) => ["dmv", "medical", "queries", "ssccdl"].includes(s.id)).map(
             (s) => (
               <option key={s.id} value={s.id}>
-                {s.title}
+                {asText(s.title)}
               </option>
             ),
           )}
@@ -539,7 +541,7 @@ function FuturePlans() {
                 : "bg-muted/60 hover:border-eagle/50",
             )}
           >
-            {r.label}
+            {asText(r.label)}
           </button>
         ))}
       </div>
@@ -722,9 +724,9 @@ function HorizonRadar() {
                 <span className="font-display text-xl">{d.date.getDate()}</span>
               </Chip>
               <div className="min-w-0 flex-1">
-                <div className="font-extrabold">{d.driver || "—"}</div>
+                <div className="font-extrabold">{asText(d.driver) || "—"}</div>
                 <div className="text-sm text-muted-foreground">
-                  {d.sectionTitle} · {d.label} · due {fmtDate(d.date)}
+                  {asText(d.sectionTitle)} · {asText(d.label)} · due {fmtDate(d.date)}
                 </div>
               </div>
               <ArrowRight className="mt-1 size-5 shrink-0 text-muted-foreground group-hover:text-eagle" />
@@ -872,9 +874,9 @@ function TodayPanel() {
                 {u.left < 0 ? "Expired" : u.left === 0 ? "Today" : `${u.left}d left`}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-extrabold">{u.name}</span>
+                <span className="block font-extrabold">{asText(u.name)}</span>
                 <span className="block text-sm text-muted-foreground">
-                  {u.sec.title} · {u.label}
+                  {asText(u.sec.title)} · {asText(u.label)}
                 </span>
               </span>
               <ArrowRight className="size-4 text-muted-foreground" />
@@ -914,7 +916,7 @@ function TodayPanel() {
                   className="size-5 accent-[var(--primary)]"
                 />
                 <span className={cn("text-sm", safeDone[t.k] && "text-muted-foreground line-through")}>
-                  <b>{t.n}</b> {t.label}
+                  <b>{asText(t.n)}</b> {asText(t.label)}
                 </span>
               </label>
             ))}
