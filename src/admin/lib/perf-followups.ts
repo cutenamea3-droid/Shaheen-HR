@@ -73,7 +73,64 @@ export type HrStatement = {
 
 export const PERF_FOLLOWUPS_STORAGE_KEY = "hr-perf-followups-v1";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 const uid = () => Math.random().toString(36).slice(2, 10);
+
+/** Coerce follow-up scalars from corrupt local persist. */
+export function normalizePerfFollowUp(raw: unknown): PerfFollowUp | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const f = raw as Partial<PerfFollowUp>;
+  const due = asText(f.due).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return null;
+  const status: PerfFollowUpStatus = f.status === "done" ? "done" : "open";
+  const createdAt =
+    typeof f.createdAt === "number" && Number.isFinite(f.createdAt)
+      ? f.createdAt
+      : Number.isFinite(Number(f.createdAt))
+        ? Number(f.createdAt)
+        : Date.now();
+  const completedAt =
+    f.completedAt == null
+      ? null
+      : typeof f.completedAt === "number" && Number.isFinite(f.completedAt)
+        ? f.completedAt
+        : Number.isFinite(Number(f.completedAt))
+          ? Number(f.completedAt)
+          : null;
+  return {
+    id: asText(f.id).trim() || uid(),
+    employeeId: asText(f.employeeId),
+    employeeName: asText(f.employeeName),
+    due,
+    title: asText(f.title),
+    status,
+    linkedDate: asText(f.linkedDate),
+    note: asText(f.note),
+    createdAt,
+    completedAt: status === "done" ? completedAt : null,
+  };
+}
+
+/** Coerce HR statement scalars from corrupt local persist. */
+export function normalizeHrStatement(raw: unknown): HrStatement | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const s = raw as Partial<HrStatement>;
+  const date = asText(s.date).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const createdAt =
+    typeof s.createdAt === "number" && Number.isFinite(s.createdAt)
+      ? s.createdAt
+      : Number.isFinite(Number(s.createdAt))
+        ? Number(s.createdAt)
+        : Date.now();
+  return {
+    id: asText(s.id).trim() || uid(),
+    employeeId: asText(s.employeeId),
+    date,
+    text: asText(s.text),
+    createdAt,
+  };
+}
 
 /**
  * Collect attendance facts for one employee/day — only from calc, never invented.
@@ -205,16 +262,17 @@ export const usePerfFollowUps = create<State>()(
       followUps: [],
       hrStatements: [],
       addFollowUp: (input) => {
-        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
         const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
-        if (!input.employeeId) return { error: "Employee required" };
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
+        const employeeId = asText(input.employeeId);
+        if (!employeeId) return { error: "Employee required" };
+        const due = asText(input.due).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return { error: "Due date required" };
         const row: PerfFollowUp = {
           id: uid(),
-          employeeId: input.employeeId,
+          employeeId,
           employeeName: asText(input.employeeName),
-          due: input.due,
+          due,
           title,
           status: "open",
           linkedDate: asText(input.linkedDate),
@@ -250,10 +308,12 @@ export const usePerfFollowUps = create<State>()(
           return { followUps: list.filter((f) => f.id !== id) };
         }),
       addHrStatement: (employeeId, date, text) => {
-        const t = (text == null ? "" : typeof text === "string" ? text : String(text)).trim();
+        const t = asText(text).trim();
         if (!t) return { error: "Statement text required" };
-        if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Employee and date required" };
-        const row: HrStatement = { id: uid(), employeeId, date, text: t, createdAt: Date.now() };
+        const emp = asText(employeeId);
+        const day = asText(date).trim();
+        if (!emp || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Employee and date required" };
+        const row: HrStatement = { id: uid(), employeeId: emp, date: day, text: t, createdAt: Date.now() };
         const prev = Array.isArray(get().hrStatements) ? get().hrStatements : [];
         set({ hrStatements: [row, ...prev].slice(0, 500) });
         return row;
@@ -263,7 +323,8 @@ export const usePerfFollowUps = create<State>()(
           (f) => f.status === "open",
         );
         if (!date) return open;
-        return open.filter((f) => f.due <= date);
+        const day = asText(date);
+        return open.filter((f) => asText(f.due) <= day);
       },
     }),
     {
@@ -277,8 +338,12 @@ export const usePerfFollowUps = create<State>()(
         return {
           ...current,
           ...raw,
-          followUps: arr(raw.followUps, current.followUps),
-          hrStatements: arr(raw.hrStatements, current.hrStatements),
+          followUps: arr(raw.followUps, current.followUps)
+            .map((f) => normalizePerfFollowUp(f))
+            .filter((f): f is PerfFollowUp => !!f),
+          hrStatements: arr(raw.hrStatements, current.hrStatements)
+            .map((s) => normalizeHrStatement(s))
+            .filter((s): s is HrStatement => !!s),
         };
       },
     },

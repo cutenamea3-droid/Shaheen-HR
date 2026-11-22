@@ -22,6 +22,42 @@ export type HrReminder = {
 export const HR_REMINDERS_STORAGE_KEY = "hr-reminders-v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+/** Coerce reminder scalars from corrupt local persist before due/title compares. */
+export function normalizeHrReminder(raw: unknown): HrReminder | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<HrReminder>;
+  const id = asText(r.id).trim() || uid();
+  const due = asText(r.due).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return null;
+  const status: HrReminderStatus = r.status === "done" ? "done" : "open";
+  const createdAt =
+    typeof r.createdAt === "number" && Number.isFinite(r.createdAt)
+      ? r.createdAt
+      : Number.isFinite(Number(r.createdAt))
+        ? Number(r.createdAt)
+        : Date.now();
+  const completedAt =
+    r.completedAt == null
+      ? null
+      : typeof r.completedAt === "number" && Number.isFinite(r.completedAt)
+        ? r.completedAt
+        : Number.isFinite(Number(r.completedAt))
+          ? Number(r.completedAt)
+          : null;
+  return {
+    id,
+    title: asText(r.title),
+    due,
+    employeeId: asText(r.employeeId),
+    employeeName: asText(r.employeeName),
+    status,
+    note: asText(r.note),
+    createdAt,
+    completedAt: status === "done" ? completedAt : null,
+  };
+}
 
 type State = {
   reminders: HrReminder[];
@@ -44,14 +80,14 @@ export const useHrReminders = create<State>()(
     (set, get) => ({
       reminders: [],
       add: (input) => {
-        const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
         const title = asText(input.title).trim();
         if (!title) return { error: "Title required" };
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(input.due)) return { error: "Due date required" };
+        const due = asText(input.due).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return { error: "Due date required" };
         const r: HrReminder = {
           id: uid(),
           title,
-          due: input.due,
+          due,
           employeeId: asText(input.employeeId),
           employeeName: asText(input.employeeName),
           status: "open",
@@ -88,7 +124,8 @@ export const useHrReminders = create<State>()(
         }),
       dueOnOrBefore: (date) => {
         const list = Array.isArray(get().reminders) ? get().reminders : [];
-        return list.filter((r) => r.status === "open" && r.due <= date);
+        const day = asText(date);
+        return list.filter((r) => r.status === "open" && asText(r.due) <= day);
       },
       openCount: (date) => get().dueOnOrBefore(date).length,
     }),
@@ -99,10 +136,13 @@ export const useHrReminders = create<State>()(
           persisted && typeof persisted === "object" && !Array.isArray(persisted)
             ? (persisted as Partial<State>)
             : {};
+        const list = Array.isArray(raw.reminders) ? raw.reminders : current.reminders;
         return {
           ...current,
           ...raw,
-          reminders: Array.isArray(raw.reminders) ? raw.reminders : current.reminders,
+          reminders: list
+            .map((r) => normalizeHrReminder(r))
+            .filter((r): r is HrReminder => !!r),
         };
       },
     },
