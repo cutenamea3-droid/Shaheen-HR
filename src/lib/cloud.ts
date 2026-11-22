@@ -229,14 +229,39 @@ export async function createPortalAccount(input: { email: string; displayName: s
   if (error) throw new Error(error.message);
 }
 
-export async function listPortalActivity() {
+export type PortalActivityRow = {
+  id: string | number;
+  actor_name: string;
+  action: string;
+  section_id: string;
+  occurred_at: string;
+};
+
+/** Coerce activity log scalars before UI `{entry.action}` render. */
+export function healPortalActivity(raw: unknown): PortalActivityRow | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<PortalActivityRow>;
+  const occurred_at = asErrText(r.occurred_at);
+  if (!occurred_at) return null;
+  return {
+    id: r.id == null ? asErrText(Math.random()) : (typeof r.id === "string" || typeof r.id === "number" ? r.id : asErrText(r.id)),
+    actor_name: asErrText(r.actor_name),
+    action: asErrText(r.action),
+    section_id: asErrText(r.section_id) || "portal",
+    occurred_at,
+  };
+}
+
+export async function listPortalActivity(): Promise<PortalActivityRow[]> {
   const { data, error } = await db
     .from("driver_portal_activity")
     .select("id, actor_name, action, section_id, occurred_at")
     .order("occurred_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
-  return Array.isArray(data) ? data : [];
+  return (Array.isArray(data) ? data : [])
+    .map((row: unknown) => healPortalActivity(row))
+    .filter((row: PortalActivityRow | null): row is PortalActivityRow => !!row);
 }
 
 /** Best-effort cloud activity write (trigger also logs tracker_sections upserts). */
@@ -248,9 +273,9 @@ export async function logPortalActivity(input: {
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await db.from("driver_portal_activity").insert({
     actor_id: userData.user?.id ?? null,
-    actor_name: input.actorName,
-    action: input.action,
-    section_id: input.sectionId ?? "portal",
+    actor_name: asErrText(input.actorName),
+    action: asErrText(input.action),
+    section_id: asErrText(input.sectionId) || "portal",
   });
   if (error) throw new Error(error.message);
 }

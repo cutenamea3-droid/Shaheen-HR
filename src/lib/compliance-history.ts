@@ -197,6 +197,18 @@ export function buildComplianceHistory(
     // When filtering to one driver, skip events we cannot attribute to them (never invent).
     if (filterDriver && matchedDriver !== filterDriver) continue;
 
+    const sectionId =
+      entry.section_id == null
+        ? ""
+        : typeof entry.section_id === "string"
+          ? entry.section_id
+          : String(entry.section_id);
+    const actorName =
+      entry.actor_name == null
+        ? ""
+        : typeof entry.actor_name === "string"
+          ? entry.actor_name
+          : String(entry.actor_name);
     events.push({
       id: `portal:${entry.id}`,
       at,
@@ -204,11 +216,11 @@ export function buildComplianceHistory(
       source: "portal_activity",
       title: "Portal activity",
       detail: matchedDriver
-        ? entry.action
-        : `${entry.action} (section ${entry.section_id}; driver not attributed — no invented link)`,
+        ? actionText
+        : `${actionText} (section ${sectionId}; driver not attributed — no invented link)`,
       driverId: matchedDriver,
-      actor: entry.actor_name || null,
-      sectionId: entry.section_id || null,
+      actor: actorName || null,
+      sectionId: sectionId || null,
     });
   }
 

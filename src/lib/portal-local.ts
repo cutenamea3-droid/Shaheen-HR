@@ -111,10 +111,32 @@ export function hasLocalPassword(userId: string): boolean {
   return Boolean(secrets[userId]);
 }
 
+function asPortalText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+function healLocalActivity(raw: unknown): LocalActivity | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<LocalActivity>;
+  const occurred_at = asPortalText(r.occurred_at);
+  if (!occurred_at) return null;
+  return {
+    id: asPortalText(r.id) || uid(),
+    actor_name: asPortalText(r.actor_name),
+    action: asPortalText(r.action),
+    section_id: asPortalText(r.section_id) || "portal",
+    occurred_at,
+  };
+}
+
 export function listLocalActivity(limit = 500): LocalActivity[] {
   const raw = readJson<unknown>(ACTIVITY_KEY, []);
-  const list = Array.isArray(raw) ? (raw as LocalActivity[]) : [];
-  return list.slice(0, limit);
+  const list = Array.isArray(raw) ? raw : [];
+  return list
+    .map((row) => healLocalActivity(row))
+    .filter((row): row is LocalActivity => !!row)
+    .slice(0, limit);
 }
 
 export function logLocalActivity(input: {
@@ -124,19 +146,14 @@ export function logLocalActivity(input: {
 }) {
   const entry: LocalActivity = {
     id: uid(),
-    actor_name: input.actorName,
-    action: input.action,
-    section_id: input.sectionId ?? "portal",
+    actor_name: asPortalText(input.actorName),
+    action: asPortalText(input.action),
+    section_id: asPortalText(input.sectionId) || "portal",
     occurred_at: new Date().toISOString(),
   };
   const next = [entry, ...listLocalActivity(500)].slice(0, 500);
   writeJson(ACTIVITY_KEY, next);
   return entry;
-}
-
-function asPortalText(v: unknown): string {
-  if (v == null) return "";
-  return typeof v === "string" ? v : String(v);
 }
 
 function portalEmailKey(v: unknown): string {
