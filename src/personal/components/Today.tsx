@@ -56,6 +56,8 @@ type TimerState = {
 const DONE_KEY = "hr-personal-vu-today-done-v1";
 const MODE_KEY = "hr-personal-vu-today-modes-v1";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function asDoneMap(v: unknown): Record<string, boolean> {
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, boolean>) : {};
 }
@@ -335,15 +337,16 @@ export function Today() {
         <div className="relative z-[1] flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 max-w-xl">
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--hp-violet-soft)]">
-              My Study Today · {student.name} · {student.studentId} · e-ID to {student.eCardValidUntil}
+              My Study Today · {asTxt(student.name)} · {asTxt(student.studentId)} · e-ID to{" "}
+              {asTxt(student.eCardValidUntil)}
             </div>
             <h2 className="hp-title mt-2 text-3xl font-bold tracking-tight text-[var(--hp-ink)] sm:text-4xl">
               {formatMinutes(rx.dailyTotal)} · graded windows first
             </h2>
             {next ? (
               <p className="mt-2 text-sm font-semibold text-[var(--hp-amber)]">
-                Next irreversible To-Do Calendar item: {next.title}
-                {next.due ? ` · locks ${next.due}` : ""} · verify status on VULMS
+                Next irreversible To-Do Calendar item: {asTxt(next.title)}
+                {next.due ? ` · locks ${asTxt(next.due)}` : ""} · verify status on VULMS
               </p>
             ) : null}
             <p className="mt-2 text-sm leading-relaxed text-[var(--hp-muted)]">{rx.motivation}</p>
@@ -504,18 +507,22 @@ export function Today() {
                         </span>
                         {b.due ? (
                           <span className="text-[10px] font-semibold text-[var(--hp-amber)]">
-                            due {b.due}
+                            due {asTxt(b.due)}
                           </span>
                         ) : null}
                         {b.room ? (
-                          <span className="text-[10px] font-semibold text-[var(--hp-muted)]">{b.room}</span>
+                          <span className="text-[10px] font-semibold text-[var(--hp-muted)]">
+                            {asTxt(b.room)}
+                          </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-[var(--hp-ink)]">{b.label}</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--hp-ink)]">
+                        {asTxt(b.label)}
+                      </div>
                       <div className="text-xs text-[var(--hp-muted)]">
-                        {b.courseCode} · {b.minutes}m suggested
+                        {asTxt(b.courseCode)} · {b.minutes}m suggested
                         {courses.find((c) => c.code === b.courseCode)?.requirementType
-                          ? ` · ${courses.find((c) => c.code === b.courseCode)?.requirementType}`
+                          ? ` · ${asTxt(courses.find((c) => c.code === b.courseCode)?.requirementType)}`
                           : ""}
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-2 text-[11px]">

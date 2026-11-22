@@ -124,6 +124,17 @@ describe("Personal store write-path normalize guards", () => {
     expect(timetableUi).toMatch(/\{asTxt\(b\.label\)\}/);
     expect(opsBoards).toMatch(/asText\(row\.title\)/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(stop\.name\)\}/);
+    const tasksUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Tasks.tsx"),
+      "utf8",
+    );
+    expect(tasksUi).toMatch(/\{asText\(t\.title\)\}/);
+    const todayUi = readFileSync(
+      resolve(process.cwd(), "src/personal/components/Today.tsx"),
+      "utf8",
+    );
+    expect(todayUi).toMatch(/\{asTxt\(next\.title\)\}/);
+    expect(todayUi).toMatch(/\{asTxt\(b\.label\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);

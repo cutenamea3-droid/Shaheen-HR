@@ -193,7 +193,7 @@ export function Analytics() {
               return (
                 <li key={row.code}>
                   <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-semibold">{row.code}</span>
+                    <span className="font-semibold">{asTxt(row.code)}</span>
                     <span className="tabular-nums text-[var(--hp-muted)]">{row.minutes}m</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[var(--hp-border)]">
@@ -259,7 +259,7 @@ export function Analytics() {
             >
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code} ({c.creditHours ?? "?"} CH)
+                  {asTxt(c.code)} ({c.creditHours ?? "?"} CH)
                 </option>
               ))}
             </select>
@@ -345,7 +345,7 @@ export function Analytics() {
             <select className="hp-field" value={gCourseId} onChange={(e) => setGCourseId(e.target.value)}>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.code}
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>

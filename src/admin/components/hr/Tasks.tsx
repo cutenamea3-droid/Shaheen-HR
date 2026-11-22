@@ -5,6 +5,8 @@ import { normalizeTasks, taskDoneDays } from "@/admin/lib/normalize-tasks";
 import type { Task } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const yesterday = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
@@ -51,7 +53,7 @@ export function TaskGate() {
           {over.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4">
               <div>
-                <p className="text-xl font-bold">{t.title}</p>
+                <p className="text-xl font-bold">{asText(t.title)}</p>
                 <p className="text-sm font-semibold text-destructive">Was due {prettyDate(t.due)}</p>
               </div>
               <button className="btn-primary px-5 py-3 text-base" onClick={() => finish(t.id)}>Mark complete</button>
@@ -60,7 +62,7 @@ export function TaskGate() {
           {missed.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4">
               <div>
-                <p className="text-xl font-bold">{t.title}</p>
+                <p className="text-xl font-bold">{asText(t.title)}</p>
                 <p className="text-sm font-semibold text-destructive">Daily task missed on {prettyDate(y)}</p>
               </div>
               <button className="btn-primary px-5 py-3 text-base" onClick={() => finish(t.id, y)}>Mark complete</button>
@@ -86,7 +88,7 @@ export function Tasks() {
       <SectionTitle title="My tasks" sub="Dated tasks lock the dashboard once overdue. Daily tasks repeat every day." />
       {missed.length > 0 && (
         <div className="panel mb-4 border-destructive/40 text-sm text-destructive">
-          Missed yesterday: {missed.map((t) => t.title).join(", ")}
+          Missed yesterday: {missed.map((t) => asText(t.title)).join(", ")}
         </div>
       )}
       <form
@@ -117,7 +119,9 @@ export function Tasks() {
             <div key={t.id} className="panel flex items-center justify-between gap-3 py-3">
               <label className="flex items-center gap-3">
                 <input type="checkbox" className="h-5 w-5 accent-primary" checked={done} onChange={() => toggleTask(t.id, today)} />
-                <span className={done ? "text-muted-foreground line-through" : "font-semibold"}>{t.title}</span>
+                <span className={done ? "text-muted-foreground line-through" : "font-semibold"}>
+                  {asText(t.title)}
+                </span>
               </label>
               <span className="flex items-center gap-3 text-xs text-muted-foreground">
                 {t.kind === "daily" ? "Every day" : prettyDate(t.due)}
