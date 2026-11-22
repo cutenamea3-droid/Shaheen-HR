@@ -12,11 +12,11 @@ describe("portal-local email coerce guards", () => {
     expect(src).not.toMatch(/a\.email\.toLowerCase\(\)/);
   });
 
-  it("Admin addEmployee coerces joinMonth before slice", () => {
+  it("Admin addEmployee coerces joinMonth via normalizeEmployee", () => {
     const src = readFileSync(resolve(process.cwd(), "src/admin/lib/store.ts"), "utf8");
-    expect(src).toMatch(/const joinRaw =/);
-    expect(src).toMatch(/\/\^\\d\{4\}-\\d\{2\}\/\.test\(joinRaw\)/);
-    expect(src).toMatch(/const effectiveFrom = `\$\{joinMonth\}-01`/);
+    expect(src).toMatch(/export function normalizeEmployee\(/);
+    expect(src).toMatch(/const base = normalizeEmployee\(\{ \.\.\.e, id \}\)/);
+    expect(src).toMatch(/const effectiveFrom = `\$\{base\.joinMonth\}-01`/);
     expect(src).not.toMatch(/\$\{\(e\.joinMonth \|\| new Date\(\)\.toISOString\(\)\.slice\(0,\s*7\)\)\}-01/);
   });
 });

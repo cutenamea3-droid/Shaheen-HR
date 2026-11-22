@@ -53,6 +53,42 @@ type State = {
 const arrOf = <T,>(v: unknown, fallback: T[] = []): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
 const objOf = <T extends object>(v: unknown, fallback: T): T =>
   v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+/** Coerce employee scalars from corrupt cloud/local persist before UI `.name` / joinMonth use. */
+export function normalizeEmployee(raw: Partial<Employee> & Pick<Employee, "id">): Employee {
+  const joinRaw = asText(raw.joinMonth);
+  const joinMonth = /^\d{4}-\d{2}/.test(joinRaw)
+    ? joinRaw.slice(0, 7)
+    : new Date().toISOString().slice(0, 7);
+  const opening =
+    typeof raw.openingLeave === "number" && Number.isFinite(raw.openingLeave)
+      ? raw.openingLeave
+      : Number.isFinite(Number(raw.openingLeave))
+        ? Number(raw.openingLeave)
+        : 0;
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    deptId: asText(raw.deptId),
+    afterHours: Boolean(raw.afterHours),
+    joinMonth,
+    openingLeave: opening,
+    ...(Array.isArray(raw.deptAssignments) ? { deptAssignments: raw.deptAssignments } : {}),
+  };
+}
+
+/** Coerce team ACL row scalars before email/name compares. */
+export function normalizeTeamMember(raw: Partial<TeamMember> & Pick<TeamMember, "id">): TeamMember {
+  const role = raw.role === "admin" || raw.role === "standard" ? raw.role : "standard";
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    email: asText(raw.email).trim().toLowerCase(),
+    role,
+    active: raw.active !== false,
+  };
+}
 
 export const useApp = create<State>()(
   persist(
@@ -69,10 +105,11 @@ export const useApp = create<State>()(
       upsertMember: (m) =>
         set((s) => {
           const team = arrOf<TeamMember>(s.team);
+          const next = normalizeTeamMember(m);
           return {
-            team: team.some((x) => x.id === m.id)
-              ? team.map((x) => (x.id === m.id ? m : x))
-              : [...team, m],
+            team: team.some((x) => x.id === next.id)
+              ? team.map((x) => (x.id === next.id ? next : x))
+              : [...team, next],
           };
         }),
       removeMember: (id) => set((s) => ({ team: arrOf<TeamMember>(s.team).filter((m) => m.id !== id) })),
@@ -100,22 +137,14 @@ export const useApp = create<State>()(
       addEmployee: (e) =>
         set((s) => {
           const id = uid();
-          const joinRaw =
-            e.joinMonth == null
-              ? ""
-              : typeof e.joinMonth === "string"
-                ? e.joinMonth
-                : String(e.joinMonth);
-          const joinMonth =
-            /^\d{4}-\d{2}/.test(joinRaw) ? joinRaw.slice(0, 7) : new Date().toISOString().slice(0, 7);
-          const effectiveFrom = `${joinMonth}-01`;
+          const base = normalizeEmployee({ ...e, id });
+          const effectiveFrom = `${base.joinMonth}-01`;
           const emp: Employee = {
-            ...e,
-            id,
+            ...base,
             deptAssignments:
               Array.isArray(e.deptAssignments) && e.deptAssignments.length
                 ? e.deptAssignments
-                : [{ deptId: e.deptId, effectiveFrom }],
+                : [{ deptId: base.deptId, effectiveFrom }],
           };
           return { employees: [...arrOf<Employee>(s.employees), emp] };
         }),
@@ -129,10 +158,10 @@ export const useApp = create<State>()(
                 typeof deptEffectiveFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deptEffectiveFrom)
                   ? deptEffectiveFrom
                   : new Date().toISOString().slice(0, 10);
-              const hist = appendDeptAssignment(e, rest.deptId, effectiveFrom);
-              return { ...e, ...rest, ...hist };
+              const hist = appendDeptAssignment(e, asText(rest.deptId), effectiveFrom);
+              return normalizeEmployee({ ...e, ...rest, ...hist, id: e.id });
             }
-            return { ...e, ...rest };
+            return normalizeEmployee({ ...e, ...rest, id: e.id });
           }),
         })),
       removeEmployee: (id) =>
@@ -206,8 +235,12 @@ export const useApp = create<State>()(
           ...current,
           ...p,
           tasks: normalizeTasks(arr(p.tasks, current.tasks)),
-          employees: arr(p.employees, current.employees),
-          team: arr(p.team, current.team),
+          employees: arr(p.employees, current.employees)
+            .filter((e): e is Employee => !!e && typeof e === "object" && !Array.isArray(e))
+            .map((e) => normalizeEmployee(e as Employee)),
+          team: arr(p.team, current.team)
+            .filter((m): m is TeamMember => !!m && typeof m === "object" && !Array.isArray(m))
+            .map((m) => normalizeTeamMember(m as TeamMember)),
           depts: arr(p.depts, current.depts),
           logs: arr(p.logs, current.logs),
           records: obj(p.records, current.records),
