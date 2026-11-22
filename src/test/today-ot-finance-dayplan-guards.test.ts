@@ -43,6 +43,50 @@ describe("Today / dayPlans / OT approval / finance mock guards", () => {
     ).toEqual({ minutes: 0, days: 0 });
   });
 
+  it("approvedMinutesForEmployee and PayrollVerify coerce non-string date before startsWith", () => {
+    expect(() =>
+      approvedMinutesForEmployee(
+        {
+          bad: {
+            id: "x",
+            employeeId: "e1",
+            date: 20261101 as unknown as string,
+            kind: "overtime",
+            minutes: 15,
+            status: "approved",
+            note: "",
+            decidedAt: null,
+          },
+        },
+        "e1",
+        "2026-11",
+        "overtime",
+      ),
+    ).not.toThrow();
+    expect(
+      approvedMinutesForEmployee(
+        {
+          ok: {
+            id: "y",
+            employeeId: "e1",
+            date: "2026-11-02",
+            kind: "overtime",
+            minutes: 20,
+            status: "approved",
+            note: "",
+            decidedAt: null,
+          },
+        },
+        "e1",
+        "2026-11",
+        "overtime",
+      ),
+    ).toEqual({ minutes: 20, days: 1 });
+    const src = readFileSync(resolve(process.cwd(), "src/admin/components/hr/PayrollVerify.tsx"), "utf8");
+    expect(src).toMatch(/asDate\(a\.date\)\.startsWith\(monthKey\)/);
+    expect(src).not.toMatch(/a\.date\.startsWith\(month\)/);
+  });
+
   it("employee-finance-mock banking/payments tolerate non-arrays", () => {
     useEmployeeFinanceMock.setState({
       banking: null as unknown as [],

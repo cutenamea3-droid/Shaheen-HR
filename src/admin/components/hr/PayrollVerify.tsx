@@ -55,8 +55,10 @@ export function PayrollVerify() {
       const payment = payments.find((p) => p.employeeId === employeeId && p.month === month);
       const bonus = bonuses.find((b) => b.employeeId === employeeId && b.month === month);
       // Skip empty employees with no payment / approvals / bonus
+      const asDate = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      const monthKey = asDate(month);
       const hasApproval = Object.values(approvals).some(
-        (a) => a.employeeId === employeeId && a.date.startsWith(month),
+        (a) => a.employeeId === employeeId && asDate(a.date).startsWith(monthKey),
       );
       if (!payment && !bonus && !hasApproval) continue;
       const verifyInput: Parameters<typeof buildPayrollVerifyRow>[0] = {

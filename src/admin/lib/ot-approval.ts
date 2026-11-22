@@ -177,9 +177,11 @@ export function approvedMinutesForEmployee(
 ): { minutes: number; days: number } {
   let minutes = 0;
   let days = 0;
+  const asDate = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const monthKey = asDate(month);
   for (const r of Object.values(rowsOf(rows))) {
     if (r.employeeId !== employeeId) continue;
-    if (!r.date.startsWith(month)) continue;
+    if (!asDate(r.date).startsWith(monthKey)) continue;
     if (r.kind !== kind) continue;
     if (r.status !== "approved") continue;
     minutes += r.minutes;
