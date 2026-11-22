@@ -126,6 +126,52 @@ export function healDispatchCommunication(raw: DispatchCommunication): DispatchC
   };
 }
 
+/** Heal stop name/address fields before UI `{stop.name}` render. */
+export function healLoadStop(raw: LoadStop): LoadStop {
+  return {
+    ...raw,
+    name: asText(raw.name),
+    address: asText(raw.address),
+    city: asText(raw.city),
+    state: asText(raw.state),
+    postal_code: asText(raw.postal_code),
+    notes: asText(raw.notes),
+    planned_at: asNullableText(raw.planned_at),
+    actual_at: asNullableText(raw.actual_at),
+  };
+}
+
+/** Heal load scalars heavily rendered as React children. */
+export function healDispatchLoad(raw: DispatchLoad): DispatchLoad {
+  return {
+    ...raw,
+    load_number: asText(raw.load_number),
+    customer_name: asNullableText(raw.customer_name),
+    commodity: asNullableText(raw.commodity),
+    equipment: asNullableText(raw.equipment),
+    notes: asNullableText(raw.notes),
+    assigned_driver_name: asNullableText(raw.assigned_driver_name),
+    external_ref_label: asNullableText(raw.external_ref_label),
+    external_ref_url: asNullableText(raw.external_ref_url),
+    last_manual_location: asNullableText(raw.last_manual_location),
+    cancel_reason: asNullableText(raw.cancel_reason),
+    reschedule_note: asNullableText(raw.reschedule_note),
+    closeout_note: asNullableText(raw.closeout_note),
+    reopen_reason: asNullableText(raw.reopen_reason),
+    ...(Array.isArray(raw.stops) ? { stops: raw.stops.map(healLoadStop) } : {}),
+  };
+}
+
+/** Heal accessorial description/free_time_note before UI render. */
+export function healDispatchAccessorial(raw: DispatchAccessorial): DispatchAccessorial {
+  return {
+    ...raw,
+    description: asText(raw.description),
+    free_time_note: asNullableText(raw.free_time_note),
+    currency: asText(raw.currency) || "USD",
+  };
+}
+
 /** Only real stop arrays may round-trip — never truthy string `.length`. */
 function arrayStops(stops: unknown): LoadStop[] | undefined {
   return Array.isArray(stops) ? (stops as LoadStop[]) : undefined;
@@ -204,9 +250,9 @@ export async function upsertRosterDriver(
 
 export async function listLoads(): Promise<DispatchLoad[]> {
   if (isDispatchPreviewMode()) {
-    return [...asRows<DispatchLoad>(mem().loads)].sort((a, b) =>
-      asText(b.updated_at).localeCompare(asText(a.updated_at)),
-    );
+    return [...asRows<DispatchLoad>(mem().loads)]
+      .map(healDispatchLoad)
+      .sort((a, b) => asText(b.updated_at).localeCompare(asText(a.updated_at)));
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_loads")
@@ -215,7 +261,7 @@ export async function listLoads(): Promise<DispatchLoad[]> {
   if (error) throw error;
   const loads = asRows<DispatchLoad>(data);
   const ids = loads.map((l) => l.id);
-  if (!ids.length) return loads;
+  if (!ids.length) return loads.map(healDispatchLoad);
   const { data: stops, error: stopError } = await dispatchSupabase
     .from("dispatch_load_stops")
     .select("*")
@@ -225,10 +271,10 @@ export async function listLoads(): Promise<DispatchLoad[]> {
   const byLoad = new Map<string, LoadStop[]>();
   for (const stop of asRows<LoadStop>(stops)) {
     const list = byLoad.get(stop.load_id!) ?? [];
-    list.push(stop);
+    list.push(healLoadStop(stop));
     byLoad.set(stop.load_id!, list);
   }
-  return loads.map((l) => ({ ...l, stops: byLoad.get(l.id) ?? [] }));
+  return loads.map((l) => healDispatchLoad({ ...l, stops: byLoad.get(l.id) ?? [] }));
 }
 
 export async function getLoad(id: string): Promise<DispatchLoad | null> {
@@ -277,6 +323,21 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
     const err = validateCancel(input.cancel_reason ?? "");
     if (err) throw new Error(err);
   }
+  const load_number = asText(input.load_number).trim();
+  const customer_name = asNullableText(input.customer_name);
+  const commodity = asNullableText(input.commodity);
+  const equipment = asNullableText(input.equipment);
+  const notes = asNullableText(input.notes);
+  const assigned_driver_name = asNullableText(input.assigned_driver_name);
+  const external_ref_label = asNullableText(input.external_ref_label);
+  const external_ref_url = asNullableText(input.external_ref_url);
+  const last_manual_location = asNullableText(input.last_manual_location);
+  const cancel_reason = asNullableText(input.cancel_reason);
+  const reschedule_note = asNullableText(input.reschedule_note);
+  const closeout_note = asNullableText(input.closeout_note);
+  const reopen_reason = asNullableText(input.reopen_reason);
+  const healedStops = (arrayStops(input.stops) ?? []).map(healLoadStop);
+
   if (isDispatchPreviewMode()) {
     const idx = mem().loads.findIndex((l) => l.id === input.id);
     const base: DispatchLoad =
@@ -284,7 +345,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
         ? mem().loads[idx]
         : {
             id: newId(),
-            load_number: input.load_number,
+            load_number,
             customer_name: null,
             commodity: null,
             equipment: null,
@@ -318,23 +379,31 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
             updated_at: now,
             stops: [],
           };
-    const next: DispatchLoad = {
+    const next: DispatchLoad = healDispatchLoad({
       ...base,
       ...input,
-      load_number: input.load_number,
+      load_number,
+      customer_name: customer_name ?? base.customer_name,
+      commodity: commodity ?? base.commodity,
+      equipment: equipment ?? base.equipment,
+      notes: notes ?? base.notes,
+      assigned_driver_name: assigned_driver_name ?? base.assigned_driver_name,
+      external_ref_label: external_ref_label ?? base.external_ref_label,
+      external_ref_url: external_ref_url ?? base.external_ref_url,
+      last_manual_location: last_manual_location ?? base.last_manual_location,
       cancel_reason:
         input.status === "cancelled"
-          ? (input.cancel_reason ?? base.cancel_reason)
-          : (input.cancel_reason ?? base.cancel_reason),
-      reschedule_note: input.reschedule_note ?? base.reschedule_note,
-      closeout_note: input.closeout_note ?? base.closeout_note,
+          ? (cancel_reason ?? base.cancel_reason)
+          : (cancel_reason ?? base.cancel_reason),
+      reschedule_note: reschedule_note ?? base.reschedule_note,
+      closeout_note: closeout_note ?? base.closeout_note,
       closed_at: input.closed_at ?? base.closed_at,
-      reopen_reason: input.reopen_reason ?? base.reopen_reason,
+      reopen_reason: reopen_reason ?? base.reopen_reason,
       reopened_at: input.reopened_at ?? base.reopened_at,
       payment_status: input.payment_status ?? base.payment_status ?? "unpaid",
       updated_at: now,
-      stops: arrayStops(input.stops) ?? arrayStops(base.stops) ?? [],
-    };
+      stops: healedStops.length ? healedStops : arrayStops(base.stops)?.map(healLoadStop) ?? [],
+    });
     if (idx >= 0) mem().loads[idx] = next;
     else mem().loads.unshift(next);
     return next;
@@ -342,30 +411,30 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
 
   const row = {
     id: input.id,
-    load_number: asText(input.load_number).trim(),
-    customer_name: input.customer_name ?? null,
-    commodity: input.commodity ?? null,
-    equipment: input.equipment ?? null,
-    notes: input.notes ?? null,
+    load_number,
+    customer_name,
+    commodity,
+    equipment,
+    notes,
     status: input.status ?? "planned",
     exception_open: input.exception_open ?? false,
     bol_status: input.bol_status ?? "missing",
     pod_status: input.pod_status ?? "missing",
     assigned_driver_id: input.assigned_driver_id ?? null,
-    assigned_driver_name: input.assigned_driver_name ?? null,
-    external_ref_label: input.external_ref_label ?? null,
-    external_ref_url: input.external_ref_url ?? null,
+    assigned_driver_name,
+    external_ref_label,
+    external_ref_url,
     planned_pickup_at: input.planned_pickup_at ?? null,
     actual_pickup_at: input.actual_pickup_at ?? null,
     planned_delivery_at: input.planned_delivery_at ?? null,
     actual_delivery_at: input.actual_delivery_at ?? null,
-    last_manual_location: input.last_manual_location ?? null,
+    last_manual_location,
     last_manual_location_at: input.last_manual_location_at ?? null,
-    cancel_reason: input.cancel_reason ?? null,
-    reschedule_note: input.reschedule_note ?? null,
-    closeout_note: input.closeout_note ?? null,
+    cancel_reason,
+    reschedule_note,
+    closeout_note,
     closed_at: input.closed_at ?? null,
-    reopen_reason: input.reopen_reason ?? null,
+    reopen_reason,
     reopened_at: input.reopened_at ?? null,
     payment_status: input.payment_status ?? "unpaid",
     stale_after_minutes: input.stale_after_minutes ?? 180,
@@ -376,7 +445,7 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   if (error) throw error;
   const load = data as DispatchLoad;
 
-  const nextStops = arrayStops(input.stops);
+  const nextStops = arrayStops(input.stops)?.map(healLoadStop);
   if (nextStops) {
     await dispatchSupabase.from("dispatch_load_stops").delete().eq("load_id", load.id);
     if (nextStops.length) {
@@ -399,10 +468,11 @@ export async function saveLoad(input: LoadWriteInput): Promise<DispatchLoad> {
   }
 
   return (
-    (await getLoad(load.id)) ?? {
+    (await getLoad(load.id)) ??
+    healDispatchLoad({
       ...load,
       stops: Array.isArray(nextStops) ? nextStops : [],
-    }
+    })
   );
 }
 
@@ -947,7 +1017,7 @@ export async function setLoadPaymentStatus(
 
 export async function listAccessorials(loadId?: string): Promise<DispatchAccessorial[]> {
   if (isDispatchPreviewMode()) {
-    const rows = asRows<DispatchAccessorial>(mem().accessorials);
+    const rows = asRows<DispatchAccessorial>(mem().accessorials).map(healDispatchAccessorial);
     return (loadId ? rows.filter((a) => a.load_id === loadId) : [...rows]).sort((a, b) =>
       asText(b.updated_at).localeCompare(asText(a.updated_at)),
     );
@@ -956,7 +1026,7 @@ export async function listAccessorials(loadId?: string): Promise<DispatchAccesso
   if (loadId) q = q.eq("load_id", loadId);
   const { data, error } = await q;
   if (error) throw error;
-  return asRows<DispatchAccessorial>(data);
+  return asRows<DispatchAccessorial>(data).map(healDispatchAccessorial);
 }
 
 export async function saveAccessorial(
@@ -966,9 +1036,12 @@ export async function saveAccessorial(
     description: string;
   },
 ): Promise<DispatchAccessorial> {
+  const description = asText(input.description).trim();
+  const free_time_note = asNullableText(input.free_time_note);
+  const currency = asText(input.currency) || "USD";
   const err = validateAccessorialInput({
     kind: input.kind,
-    description: input.description,
+    description,
     amount_manual: input.amount_manual ?? null,
     hours_manual: input.hours_manual ?? null,
   });
@@ -978,27 +1051,29 @@ export async function saveAccessorial(
     const existing = mem().accessorials.find((a) => a.id === input.id);
     if (existing) {
       Object.assign(existing, input, {
-        description: asText(input.description).trim(),
+        description,
+        free_time_note,
+        currency,
         updated_at: now,
       });
-      return existing;
+      return healDispatchAccessorial(existing);
     }
     const row: DispatchAccessorial = {
       id: newId(),
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: asText(input.description).trim(),
+      description,
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
-      free_time_note: input.free_time_note ?? null,
-      currency: input.currency ?? "USD",
+      free_time_note,
+      currency,
       created_by: input.created_by ?? null,
       created_at: now,
       updated_at: now,
     };
     mem().accessorials.unshift(row);
-    return row;
+    return healDispatchAccessorial(row);
   }
   const { data, error } = await dispatchSupabase
     .from("dispatch_accessorials")
@@ -1007,16 +1082,16 @@ export async function saveAccessorial(
       load_id: input.load_id,
       kind: input.kind,
       status: input.status ?? "draft",
-      description: asText(input.description).trim(),
+      description,
       amount_manual: input.amount_manual ?? null,
       hours_manual: input.hours_manual ?? null,
-      free_time_note: input.free_time_note ?? null,
-      currency: input.currency ?? "USD",
+      free_time_note,
+      currency,
     })
     .select("*")
     .single();
   if (error) throw error;
-  return data as DispatchAccessorial;
+  return healDispatchAccessorial(data as DispatchAccessorial);
 }
 
 export async function listCommunications(loadId?: string): Promise<DispatchCommunication[]> {
