@@ -46,6 +46,18 @@ describe("Admin report / HR today / weekly stats roster guards", () => {
     expect(leaveRoster(null as unknown as [], {}, "2026-11-01")).toEqual([]);
   });
 
+  it("buildHrToday coerces object employee names for React-safe issue rows", () => {
+    const summary = buildHrToday({
+      date: "2026-11-01",
+      employees: [{ id: "e1", name: { n: "A" } as unknown as string, deptId: "d1", joinDate: "2020-01-01" }] as never,
+      depts: [],
+      records: {},
+      settings: emptySettings,
+    });
+    expect(summary.issues.every((i) => typeof i.name === "string")).toBe(true);
+    expect(summary.issues[0]?.name).toContain("object");
+  });
+
   it("buildWeeklyStats coerces sessions/discipline/assessments", () => {
     expect(() =>
       buildWeeklyStats(

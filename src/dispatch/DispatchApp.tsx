@@ -160,6 +160,11 @@ function asDtLocal(v: unknown): string {
   return s.slice(0, 16);
 }
 
+/** LoadEditor form scalars — corrupt cloud load text must never reach `.trim()`. */
+function asFormText(v: unknown): string {
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
 /** Parse editor datetime to ISO — never call `Invalid Date#toISOString`. */
 function toIsoOrNull(v: unknown): string | null {
   const s = v == null ? "" : typeof v === "string" ? v : String(v);
@@ -1101,27 +1106,27 @@ function LoadEditor({
 }) {
   const [form, setForm] = useState(() => ({
     id: load?.id,
-    load_number: load?.load_number ?? "",
-    customer_name: load?.customer_name ?? "",
-    commodity: load?.commodity ?? "",
-    equipment: load?.equipment ?? "",
-    notes: load?.notes ?? "",
+    load_number: asFormText(load?.load_number),
+    customer_name: asFormText(load?.customer_name),
+    commodity: asFormText(load?.commodity),
+    equipment: asFormText(load?.equipment),
+    notes: asFormText(load?.notes),
     status: (load?.status ?? "planned") as LoadStatus,
     exception_open: load?.exception_open ?? false,
     bol_status: (load?.bol_status ?? "missing") as DocStatus,
     pod_status: (load?.pod_status ?? "missing") as DocStatus,
-    assigned_driver_id: load?.assigned_driver_id ?? "",
-    external_ref_label: load?.external_ref_label ?? "",
-    external_ref_url: load?.external_ref_url ?? "",
+    assigned_driver_id: asFormText(load?.assigned_driver_id),
+    external_ref_label: asFormText(load?.external_ref_label),
+    external_ref_url: asFormText(load?.external_ref_url),
     planned_pickup_at: asDtLocal(load?.planned_pickup_at),
     actual_pickup_at: asDtLocal(load?.actual_pickup_at),
     planned_delivery_at: asDtLocal(load?.planned_delivery_at),
     actual_delivery_at: asDtLocal(load?.actual_delivery_at),
-    last_manual_location: load?.last_manual_location ?? "",
-    cancel_reason: load?.cancel_reason ?? "",
-    reschedule_note: load?.reschedule_note ?? "",
-    closeout_note: load?.closeout_note ?? "",
-    reopen_reason: load?.reopen_reason ?? "",
+    last_manual_location: asFormText(load?.last_manual_location),
+    cancel_reason: asFormText(load?.cancel_reason),
+    reschedule_note: asFormText(load?.reschedule_note),
+    closeout_note: asFormText(load?.closeout_note),
+    reopen_reason: asFormText(load?.reopen_reason),
     payment_status: (load?.payment_status ?? "unpaid") as PaymentStatus,
     stale_after_minutes: load?.stale_after_minutes ?? 180,
     stops: Array.isArray(load?.stops) ? structuredClone(stopsOf(load.stops)) : blankStops(),

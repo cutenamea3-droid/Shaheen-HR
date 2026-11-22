@@ -15,4 +15,15 @@ describe("Dispatch datetime-local slice coerce", () => {
     expect(src).not.toMatch(/planned_pickup_at\?\.slice\(0,\s*16\)/);
     expect(src).not.toMatch(/stop\.planned_at\?\.slice\(0,\s*16\)/);
   });
+
+  it("LoadEditor coerces load text fields with asFormText before form.trim", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/dispatch/DispatchApp.tsx"), "utf8");
+    expect(src).toMatch(/function asFormText\(v: unknown\): string/);
+    expect(src).toMatch(/load_number: asFormText\(load\?\.load_number\)/);
+    expect(src).toMatch(/cancel_reason: asFormText\(load\?\.cancel_reason\)/);
+    expect(src).toMatch(/reschedule_note: asFormText\(load\?\.reschedule_note\)/);
+    expect(src).toMatch(/closeout_note: asFormText\(load\?\.closeout_note\)/);
+    expect(src).toMatch(/reopen_reason: asFormText\(load\?\.reopen_reason\)/);
+    expect(src).not.toMatch(/cancel_reason: load\?\.cancel_reason \?\? ""/);
+  });
 });
