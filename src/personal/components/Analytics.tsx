@@ -8,6 +8,22 @@ import {
   usePersonal,
 } from "@/personal/lib/store";
 import {
+  normalizeAssessment,
+  normalizeBacklogItem,
+  normalizeCourse,
+  normalizeCourseGrade,
+  normalizeFocusSession,
+  normalizeGradeEntry,
+} from "@/personal/lib/assessment-phases";
+import type {
+  Assessment,
+  BacklogItem,
+  Course,
+  CourseGrade,
+  FocusSession,
+  GradeEntry,
+} from "@/personal/lib/types";
+import {
   VU_LETTER_CHOICES,
   VU_WEIGHT_BANDS,
   estimateCgpa,
@@ -20,6 +36,8 @@ import {
   weekStartMonday,
 } from "@/personal/lib/weekly-review";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function Analytics() {
   const sessionsRaw = usePersonal((s) => s.sessions);
   const backlogRaw = usePersonal((s) => s.backlog);
@@ -30,15 +48,36 @@ export function Analytics() {
   const gradeEntriesRaw = usePersonal((s) => s.gradeEntries);
   const courseGradesRaw = usePersonal((s) => s.courseGrades);
   const weeklyReviewsRaw = usePersonal((s) => s.weeklyReviews);
-  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
-  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
-  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = (Array.isArray(sessionsRaw) ? sessionsRaw : [])
+    .map((s) => normalizeFocusSession(s as Partial<FocusSession> & Pick<FocusSession, "id">))
+    .filter((s) => !!s.id);
+  const backlog = (Array.isArray(backlogRaw) ? backlogRaw : [])
+    .map((b) => normalizeBacklogItem(b as Partial<BacklogItem> & Pick<BacklogItem, "id">))
+    .filter((b) => !!b.id);
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
   const dayPlans =
     dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
-  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
-  const discipline = Array.isArray(disciplineRaw) ? disciplineRaw : [];
-  const gradeEntries = Array.isArray(gradeEntriesRaw) ? gradeEntriesRaw : [];
-  const courseGrades = Array.isArray(courseGradesRaw) ? courseGradesRaw : [];
+  const assessments = (Array.isArray(assessmentsRaw) ? assessmentsRaw : [])
+    .map((a) =>
+      normalizeAssessment(a as Partial<Assessment> & Pick<Assessment, "id" | "title">),
+    )
+    .filter((a) => !!a.id);
+  const discipline = (Array.isArray(disciplineRaw) ? disciplineRaw : []).map((d) => ({
+    ...d,
+    id: asTxt(d?.id),
+    label: asTxt(d?.label),
+    doneDates: Array.isArray(d?.doneDates)
+      ? d.doneDates.map((x) => asTxt(x)).filter(Boolean)
+      : [],
+  }));
+  const gradeEntries = (Array.isArray(gradeEntriesRaw) ? gradeEntriesRaw : [])
+    .map((g) => normalizeGradeEntry(g as Partial<GradeEntry> & Pick<GradeEntry, "id">))
+    .filter((g) => !!g.id);
+  const courseGrades = (Array.isArray(courseGradesRaw) ? courseGradesRaw : [])
+    .map((g) => normalizeCourseGrade(g as Partial<CourseGrade> & Pick<CourseGrade, "id">))
+    .filter((g) => !!g.id);
   const weeklyReviews =
     weeklyReviewsRaw && typeof weeklyReviewsRaw === "object" && !Array.isArray(weeklyReviewsRaw)
       ? weeklyReviewsRaw
@@ -250,12 +289,12 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                if (!letter.trim()) return;
+                if (!asTxt(letter).trim()) return;
                 const course = courses.find((c) => c.id === letterCourseId);
                 upsertCourseGrade({
                   id: `cg-${letterCourseId}`,
                   courseId: letterCourseId,
-                  letter: letter.trim(),
+                  letter: asTxt(letter).trim(),
                   creditHours: course?.creditHours ?? null,
                   provenance: letterProv,
                   notes: "",
@@ -274,8 +313,9 @@ export function Analytics() {
             {courseGrades.map((g) => (
               <li key={g.id} className="flex justify-between gap-2 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === g.courseId)?.code ?? g.courseId} · {g.letter} ·{" "}
-                  <span className="text-[var(--hp-muted)]">{g.provenance}</span>
+                  {asTxt(courses.find((c) => c.id === g.courseId)?.code) || asTxt(g.courseId)} ·{" "}
+                  {asTxt(g.letter)} ·{" "}
+                  <span className="text-[var(--hp-muted)]">{asTxt(g.provenance)}</span>
                 </span>
                 <Btn variant="danger" className="!py-1" onClick={() => removeCourseGrade(g.id)}>
                   Remove
@@ -345,10 +385,12 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                const nextGLabel = (gLabel.trim() || gLabelRef.current?.value || "").trim();
+                const nextGLabel = (asTxt(gLabel).trim() || gLabelRef.current?.value || "").trim();
                 if (!nextGLabel) return;
-                const scoreRaw = (gScore === "" ? gScoreRef.current?.value ?? "" : gScore).trim();
-                const maxRaw = (gMax === "" ? gMaxRef.current?.value ?? "" : gMax).trim();
+                const scoreRaw = asTxt(
+                  gScore === "" ? gScoreRef.current?.value ?? "" : gScore,
+                ).trim();
+                const maxRaw = asTxt(gMax === "" ? gMaxRef.current?.value ?? "" : gMax).trim();
                 const score = scoreRaw === "" ? null : Number(scoreRaw);
                 const maxScore = maxRaw === "" ? null : Number(maxRaw);
                 if (looksLikeProjectedDefault(score, "D") && gProv === "owner_whatif") {
@@ -384,9 +426,9 @@ export function Analytics() {
             {gradeEntries.map((g) => (
               <li key={g.id} className="flex justify-between gap-2 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === g.courseId)?.code} · {g.label} ·{" "}
+                  {asTxt(courses.find((c) => c.id === g.courseId)?.code)} · {asTxt(g.label)} ·{" "}
                   {g.score ?? "—"}/{g.maxScore ?? "—"} ·{" "}
-                  <span className="text-[var(--hp-muted)]">{g.provenance}</span>
+                  <span className="text-[var(--hp-muted)]">{asTxt(g.provenance)}</span>
                 </span>
                 <Btn variant="danger" className="!py-1" onClick={() => removeGradeEntry(g.id)}>
                   Remove

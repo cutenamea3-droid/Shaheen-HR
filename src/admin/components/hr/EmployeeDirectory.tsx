@@ -98,11 +98,12 @@ export function EmployeeDirectory() {
   const bankStatus = (id: string): BankProfileCompleteness =>
     currentBanking(id) ? "complete" : "missing";
 
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
   const filtered = rows.filter((r) => {
     const st = meta[r.id]?.status ?? "active";
     if (statusFilter !== "all" && st !== statusFilter) return false;
     if (bankFilter !== "all" && bankStatus(r.id) !== bankFilter) return false;
-    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const needle = asText(q).trim().toLowerCase();
     if (needle) {
       const hay = `${asText(r.name)} ${asText(r.deptLabel)} ${asText(r.id)} ${asText(meta[r.id]?.designation)}`.toLowerCase();
@@ -192,7 +193,7 @@ export function EmployeeDirectory() {
                 className={`admin-emp-card grid gap-2 md:grid-cols-[1fr_auto_auto] md:items-center ${selectedId === r.id ? "ring-2 ring-primary/40" : ""}`}
               >
                 <button type="button" className="text-left" onClick={() => setSelectedId(r.id)}>
-                  <div className="font-bold tracking-tight">{r.name}</div>
+                  <div className="font-bold tracking-tight">{asText(r.name)}</div>
                   <div className="text-sm text-muted-foreground">
                     {r.deptLabel} · ID {r.id}
                     {r.source === "mock" ? " · synthetic" : ""}
@@ -253,10 +254,10 @@ export function EmployeeDirectory() {
           {selected ? (
             <>
               <div className="admin-emp-card space-y-3">
-                <h3 className="font-display text-lg font-extrabold tracking-tight">{selected.name}</h3>
+                <h3 className="font-display text-lg font-extrabold tracking-tight">{asText(selected.name)}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Dept: {selected.deptLabel}
-                  {tenure ? ` · Tenure ${tenure.label}` : ""}
+                  Dept: {asText(selected.deptLabel)}
+                  {tenure ? ` · Tenure ${asText(tenure.label)}` : ""}
                 </p>
                 <label>
                   <span className="lbl">Joining / hire date (date only)</span>
