@@ -204,7 +204,7 @@ export function Performance() {
                       {facts.map((f, i) => (
                         <li key={`${f.kind}-${i}`}>
                           <Tone tone="red">
-                            {f.kind}: {f.detail}
+                            {asText(f.kind)}: {asText(f.detail)}
                           </Tone>
                         </li>
                       ))}
@@ -219,8 +219,8 @@ export function Performance() {
                     <ul className="space-y-1 text-sm">
                       {statements.map((st, i) => (
                         <li key={`${st.source}-${i}`}>
-                          <span className="text-muted-foreground">[{st.source}] </span>
-                          {st.text}
+                          <span className="text-muted-foreground">[{asText(st.source)}] </span>
+                          {asText(st.text)}
                         </li>
                       ))}
                     </ul>
@@ -254,7 +254,11 @@ export function Performance() {
                 <div>
                   <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">{PERF_LAYER_LABEL.assessment}</p>
                   <p className="text-sm">
-                    {assessment.rating ? <Tone tone={tone}>{assessment.ratingLabel}</Tone> : <span className="text-muted-foreground">Not assessed</span>}
+                    {assessment.rating ? (
+                      <Tone tone={tone}>{asText(assessment.ratingLabel)}</Tone>
+                    ) : (
+                      <span className="text-muted-foreground">Not assessed</span>
+                    )}
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">Assessment is never auto-filled from facts.</p>
                 </div>
@@ -264,11 +268,11 @@ export function Performance() {
                 className="field h-16 py-2"
                 placeholder="Performance note (statement layer)"
                 disabled={closed}
-                value={p.note}
+                value={asText(p.note)}
                 onChange={(ev) => setPerf(date, e.id, { note: ev.target.value })}
                 onInput={(ev) => setPerf(date, e.id, { note: (ev.target as HTMLInputElement).value })}
               />
-              {auto && !p.note && !closed && (
+              {auto && !asText(p.note) && !closed && (
                 <button className="mt-1 text-xs font-semibold text-primary underline" onClick={() => setPerf(date, e.id, { note: auto })}>
                   Use auto note as statement
                 </button>

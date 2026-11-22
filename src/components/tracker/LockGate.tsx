@@ -5,6 +5,7 @@ import logo from "@/assets/logo.jpg.asset.json";
 import { isSupabaseConfigured, supabase } from "@/integrations/supabase/client";
 import {
   getPortalAccount,
+  healPortalAccount,
   PORTAL_EMAIL,
   signInPortalAccount,
   updatePortalProfile,
@@ -100,7 +101,7 @@ export function LockGate({ children }: { children: ReactNode }) {
           setError("This account is not active in Driver Compliance.");
           await supabase.auth.signOut();
         } else {
-          setAccount(next);
+          setAccount(healPortalAccount(next));
           setError("");
         }
       } catch (e) {
@@ -209,7 +210,7 @@ export function LockGate({ children }: { children: ReactNode }) {
               const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
               const nextPassword = (password || passwordRef.current?.value || "").trim();
               const { account: next, created } = await signInPortalAccount(nextEmail, nextPassword);
-              setAccount(next);
+              setAccount(healPortalAccount(next));
               setPassword("");
               // Seat probes must refresh after ACL is ready — auth events can race ahead.
               window.dispatchEvent(new Event("shaheen-portal-ready"));

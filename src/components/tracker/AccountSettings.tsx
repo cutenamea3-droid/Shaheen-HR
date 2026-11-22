@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { KeyRound, ShieldCheck, UserRound } from "lucide-react";
-import { PORTAL_EMAIL, updatePortalPassword } from "@/lib/cloud";
+import { healPortalAccount, PORTAL_EMAIL, updatePortalPassword } from "@/lib/cloud";
 import {
   ensureLocalOwner,
   hasLocalPassword,
@@ -11,9 +11,12 @@ import {
 } from "@/lib/portal-local";
 import { usePortalAccount } from "./LockGate";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function AccountSettings() {
-  const { account, updateDisplayName } = usePortalAccount();
-  const [name, setName] = useState(account.display_name);
+  const { account: accountRaw, updateDisplayName } = usePortalAccount();
+  const account = healPortalAccount(accountRaw);
+  const [name, setName] = useState(asText(account.display_name));
   const nameRef = useRef<HTMLInputElement>(null);
   const [displayMessage, setDisplayMessage] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -66,7 +69,7 @@ export function AccountSettings() {
             <UserRound className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold">{account.email}</p>
+            <p className="truncate font-semibold">{asText(account.email)}</p>
             <p className="text-xs text-muted-foreground">Signed in · {account.role === "admin" ? "Admin" : "Standard"}</p>
           </div>
           <span className="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2.5 py-1 text-xs font-semibold text-ok">
@@ -83,7 +86,7 @@ export function AccountSettings() {
           className="mt-1 h-11 w-full rounded-xl border bg-card px-3"
           ref={nameRef}
           data-testid="compliance-display-name"
-          value={name}
+          value={asText(name)}
           onChange={(event) => setName(event.target.value)}
           onInput={(event) => setName((event.target as HTMLInputElement).value)}
         />

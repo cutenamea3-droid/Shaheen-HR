@@ -451,7 +451,7 @@ export function Attendance() {
                         <input
                           className="field mt-3"
                           placeholder="Half day reason"
-                          value={r.halfReason}
+                          value={asText(r.halfReason)}
                           onChange={(ev) => set({ halfReason: ev.target.value })}
                           onInput={(ev) => set({ halfReason: (ev.target as HTMLInputElement).value })}
                         />
@@ -462,7 +462,7 @@ export function Attendance() {
                   <textarea
                     className="field mt-3 h-16 py-2"
                     placeholder="Note / reason (e.g. informed HR about late arrival)"
-                    value={r.note}
+                    value={asText(r.note)}
                     onChange={(ev) => set({ note: ev.target.value })}
                     onInput={(ev) => set({ note: (ev.target as HTMLTextAreaElement).value })}
                   />

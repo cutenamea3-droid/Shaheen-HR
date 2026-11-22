@@ -625,8 +625,8 @@ export function Today() {
                     {i + 1}
                   </span>
                   <div>
-                    <div className="text-sm font-semibold text-[var(--hp-ink)]">{step.title}</div>
-                    <div className="text-xs leading-relaxed text-[var(--hp-muted)]">{step.blurb}</div>
+                    <div className="text-sm font-semibold text-[var(--hp-ink)]">{asTxt(step.title)}</div>
+                    <div className="text-xs leading-relaxed text-[var(--hp-muted)]">{asTxt(step.blurb)}</div>
                   </div>
                 </li>
               ))}
@@ -715,7 +715,8 @@ export function Today() {
                   </>
                 ) : activeBlock ? (
                   <>
-                    Focus now: <strong className="text-[var(--hp-ink)]">{activeBlock.label}</strong>.
+                    Focus now:{" "}
+                    <strong className="text-[var(--hp-ink)]">{asTxt(activeBlock.label)}</strong>.
                   </>
                 ) : streak > 0 ? (
                   <>

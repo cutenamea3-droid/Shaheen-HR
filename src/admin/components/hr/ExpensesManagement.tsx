@@ -762,8 +762,8 @@ export function ExpensesManagement() {
             <ul className="space-y-2 text-sm">
               {auditFor(auditId).map((a) => (
                 <li key={a.id} className="border-b border-border/50 pb-2">
-                  <div className="font-semibold">{a.action}</div>
-                  <div className="text-muted-foreground">{a.detail}</div>
+                  <div className="font-semibold">{asText(a.action)}</div>
+                  <div className="text-muted-foreground">{asText(a.detail)}</div>
                   <div className="text-xs text-muted-foreground">{new Date(a.at).toLocaleString()}</div>
                 </li>
               ))}

@@ -449,7 +449,7 @@ export function EmployeeDirectory() {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       From {h.effectiveFrom}
-                      {h.note ? ` · ${h.note}` : ""}
+                      {h.note ? ` · ${asText(h.note)}` : ""}
                     </div>
                     <button type="button" className="btn-ghost mt-1 h-7 px-2 text-xs" onClick={() => toggleReveal(h.id)}>
                       {revealAccountIds.has(h.id) ? "Hide" : "Reveal"}

@@ -284,7 +284,7 @@ export function SalaryPayments() {
                             · {ev.eventType}
                             {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
                             {ev.statusAfter ? ` → ${ev.statusAfter}` : ""}
-                            {ev.note ? ` · ${ev.note}` : ""}
+                            {ev.note ? ` · ${asText(ev.note)}` : ""}
                           </li>
                         ))}
                         {events.length === 0 && <li>No events yet.</li>}
