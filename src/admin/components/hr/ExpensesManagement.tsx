@@ -21,6 +21,8 @@ import {
 import { formatPkr } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const emptyForm = (): ExpenseUpsertInput => ({
   title: "",
   categoryId: "office",
@@ -79,15 +81,15 @@ export function ExpensesManagement() {
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const e of liveEmployees) m.set(e.id, e.name);
-    for (const e of SYNTHETIC_EMPLOYEES) m.set(e.id, e.name);
+    for (const e of liveEmployees) m.set(asText(e.id), asText(e.name));
+    for (const e of SYNTHETIC_EMPLOYEES) m.set(asText(e.id), asText(e.name));
     return m;
   }, [liveEmployees]);
 
   const roster = useMemo(
     () => [
-      ...liveEmployees.map((e) => ({ id: e.id, name: e.name })),
-      ...SYNTHETIC_EMPLOYEES.map((e) => ({ id: e.id, name: e.name })),
+      ...liveEmployees.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
+      ...SYNTHETIC_EMPLOYEES.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
     ],
     [liveEmployees],
   );
@@ -95,7 +97,6 @@ export function ExpensesManagement() {
   const activeCats = categories.filter((c) => !c.archived);
 
   const filtered = useMemo(() => {
-    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const monthKey = asText(month);
     return expenses.filter((e) => {
       if (showDeleted ? !e.deletedAt : !!e.deletedAt) return false;
@@ -113,7 +114,6 @@ export function ExpensesManagement() {
   }, [expenses, showDeleted, month, statusFilter, scopeFilter, categoryFilter, q, nameById]);
 
   const monthActive = expenses.filter((e) => {
-    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return !e.deletedAt && asText(e.expenseDate).startsWith(asText(month));
   });
   const summary = summarizeExpenses(monthActive);
@@ -203,7 +203,7 @@ export function ExpensesManagement() {
     setEmpPick([...(Array.isArray(draft.employeeIds) ? draft.employeeIds : [])]);
     setEditId(null);
     setFormOpen(true);
-    setMsg(`Filled from template “${t.name}” — not auto-created. Review and Save.`);
+    setMsg(`Filled from template “${asText(t.name)}” — not auto-created. Review and Save.`);
   };
 
   const exportCsv = () => {
@@ -345,7 +345,7 @@ export function ExpensesManagement() {
           <option value="all">All categories</option>
           {activeCats.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {asText(c.name)}
             </option>
           ))}
         </select>
@@ -383,7 +383,7 @@ export function ExpensesManagement() {
             <select className="field" value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
               {activeCats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {asText(c.name)}
                   {c.custom ? " (custom)" : ""}
                 </option>
               ))}
@@ -462,7 +462,7 @@ export function ExpensesManagement() {
                         else setEmpPick((prev) => (on ? prev.filter((x) => x !== e.id) : [...prev, e.id]));
                       }}
                     >
-                      {e.name}
+                      {asText(e.name)}
                     </button>
                   );
                 })}
@@ -536,18 +536,20 @@ export function ExpensesManagement() {
             {filtered.map((e) => (
               <tr key={e.id} className={`border-t border-border ${e.deletedAt ? "opacity-60" : ""}`}>
                 <td className="p-3 font-semibold">
-                  {e.title}
+                  {asText(e.title)}
                   <div className="text-xs font-normal text-muted-foreground">
                     {e.scope === "all"
                       ? "Company total (not split)"
                       : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
-                          .map((id) => nameById.get(id) ?? id)
+                          .map((id) => asText(nameById.get(id) ?? id))
                           .join(", ")}
                   </div>
                 </td>
-                <td className="p-3">{activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId}</td>
+                <td className="p-3">
+                  {asText(activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId)}
+                </td>
                 <td className="p-3 tabular-nums">{formatPkr(e.amountPkr)}</td>
-                <td className="p-3">{e.expenseDate}</td>
+                <td className="p-3">{asText(e.expenseDate)}</td>
                 <td className="p-3">{EXPENSE_SCOPE_LABEL[e.scope]}</td>
                 <td className="p-3">
                   {e.deletedAt ? (
@@ -613,7 +615,7 @@ export function ExpensesManagement() {
           <ul className="text-sm">
             {activeCats.map((c) => (
               <li key={c.id} className="border-b border-border/50 py-1">
-                {c.name}
+                {asText(c.name)}
                 {c.custom ? " · custom" : ""}
               </li>
             ))}
@@ -654,7 +656,7 @@ export function ExpensesManagement() {
           {templates.map((t) => (
             <div key={t.id} className="flex items-center justify-between gap-2 border-b border-border/50 py-2 text-sm">
               <div>
-                <div className="font-semibold">{t.name}</div>
+                <div className="font-semibold">{asText(t.name)}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatPkr(t.amountPkr)} · {t.cadence} · {EXPENSE_SCOPE_LABEL[t.scope]}
                 </div>
@@ -698,7 +700,7 @@ export function ExpensesManagement() {
             <select className="field" value={budgetCat} onChange={(e) => setBudgetCat(e.target.value)}>
               {activeCats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {asText(c.name)}
                 </option>
               ))}
             </select>
@@ -741,13 +743,13 @@ export function ExpensesManagement() {
             <option value="">Select employee…</option>
             {roster.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.name}
+                {asText(e.name)}
               </option>
             ))}
           </select>
           {finEmpId && (
             <p className="text-sm font-semibold">
-              {nameById.get(finEmpId)} · {month}: {formatPkr(finTotal)}
+              {asText(nameById.get(finEmpId))} · {asText(month)}: {formatPkr(finTotal)}
             </p>
           )}
         </div>

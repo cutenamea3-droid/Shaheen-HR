@@ -16,6 +16,8 @@ import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing"
 import { SectionTitle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /**
  * Performance & Follow-Ups — facts ≠ statements ≠ assessment.
  * Facts come only from attendance calc; assessment is HR rating; statements are recorded text.
@@ -103,7 +105,7 @@ export function Performance() {
             <option value="">Employee</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.name}
+                {asText(e.name)}
               </option>
             ))}
           </select>
@@ -126,7 +128,7 @@ export function Performance() {
           {openFu.map((f) => (
             <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
               <span>
-                <strong>{f.employeeName}</strong> — {f.title} · due {f.due}
+                <strong>{asText(f.employeeName)}</strong> — {asText(f.title)} · due {asText(f.due)}
               </span>
               <button
                 type="button"
@@ -176,14 +178,14 @@ export function Performance() {
               <div className="admin-emp-head">
                 <span className="font-bold tracking-tight">
                   <span className="mr-2 text-muted-foreground">{employees.indexOf(e) + 1}.</span>
-                  {e.name}
+                  {asText(e.name)}
                 </span>
                 <select
                   className="field w-auto"
                   value={p.rating}
                   disabled={closed}
                   onChange={(ev) => setPerf(date, e.id, { rating: ev.target.value as Rating })}
-                  aria-label={`${e.name} assessment rating`}
+                  aria-label={`${asText(e.name)} assessment rating`}
                 >
                   <option value="">Select assessment</option>
                   {(Object.keys(RATING_LABEL) as Rating[]).map((r) => (

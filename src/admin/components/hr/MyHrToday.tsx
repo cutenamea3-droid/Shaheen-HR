@@ -11,6 +11,8 @@ import { usePerfFollowUps } from "@/admin/lib/perf-followups";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const KIND_LABEL: Record<HrTodayIssueKind, string> = {
   missing: "Missing attendance",
   leave: "On leave",
@@ -202,7 +204,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             <option value="">Optional employee</option>
             {employees.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.name}
+                {asText(e.name)}
               </option>
             ))}
           </select>
@@ -212,11 +214,12 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             onClick={() => {
               const emp = employees.find((e) => e.id === remEmp);
               const nextTitle = (remTitle.trim() || remTitleRef.current?.value || "").trim();
+              const empName = emp ? asText(emp.name) : "";
               const r = addReminder({
                 title: nextTitle,
                 due: remDue,
                 ...(remEmp ? { employeeId: remEmp } : {}),
-                ...(emp?.name ? { employeeName: emp.name } : {}),
+                ...(empName ? { employeeName: empName } : {}),
               });
               if ("error" in r) {
                 setRemMsg(r.error);
@@ -244,8 +247,8 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
           {dueReminders.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-2">
               <span>
-                <strong>{r.title}</strong>
-                {r.employeeName ? ` · ${r.employeeName}` : ""} · due {r.due}
+                <strong>{asText(r.title)}</strong>
+                {r.employeeName ? ` · ${asText(r.employeeName)}` : ""} · due {asText(r.due)}
               </span>
               <button
                 type="button"
@@ -296,10 +299,10 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
           {issues.map((issue, idx) => (
             <article key={`${issue.kind}-${issue.employeeId}-${idx}`} className="admin-emp-card flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-semibold">{issue.name}</p>
+                <p className="font-semibold">{asText(issue.name)}</p>
                 <p className="text-sm text-muted-foreground">
                   <span className="chip mr-2 bg-muted/70">{KIND_LABEL[issue.kind]}</span>
-                  {issue.detail}
+                  {asText(issue.detail)}
                 </p>
               </div>
               <button

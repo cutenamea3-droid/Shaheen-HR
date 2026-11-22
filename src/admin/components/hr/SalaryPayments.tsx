@@ -14,6 +14,8 @@ import { maskPkIban } from "@/admin/lib/pk-iban";
 import { formatPkr, salaryPaymentsCsv, summarizePayments } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function SalaryPayments() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
@@ -157,7 +159,7 @@ export function SalaryPayments() {
           {[...SYNTHETIC_EMPLOYEES].map((e) => (
             <div key={e.id} className="grid gap-2 md:grid-cols-[1fr_160px] md:items-end">
               <div>
-                <div className="text-sm font-semibold">{e.name}</div>
+                <div className="text-sm font-semibold">{asText(e.name)}</div>
                 <div className="text-xs text-muted-foreground">{EMP_STATUS(meta[e.id]?.status)}</div>
               </div>
               <label>
