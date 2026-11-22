@@ -126,7 +126,9 @@ export function ExpensesManagement() {
   const save = (andAnother: boolean) => {
     setErr("");
     setMsg("");
-    const nextTitle = (form.title.trim() || titleRef.current?.value || "").trim();
+    const titleText =
+      form.title == null ? "" : typeof form.title === "string" ? form.title : String(form.title);
+    const nextTitle = (titleText.trim() || titleRef.current?.value || "").trim();
     const amountRaw = form.amountPkr || Number(amountRef.current?.value || 0);
     const input: ExpenseUpsertInput = {
       ...form,

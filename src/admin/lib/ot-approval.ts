@@ -11,6 +11,8 @@ import { create } from "zustand";
 import type { DayRec, Dept, Employee, Settings } from "./types";
 import { calcDay, monthDays } from "./calc";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export type OtApprovalKind = "overtime" | "additional_day";
 /** Bonus is a separate compensation line — never stored as OT/addl approval. */
 export type CompensationKind = OtApprovalKind | "bonus";
@@ -79,7 +81,7 @@ export function collectOtCandidates(input: {
           date: d,
           kind: "overtime",
           minutes: c.overtimeMin,
-          note: r.note ?? "",
+          note: asText(r.note),
         });
       }
       if (c.extraDay) {
@@ -88,7 +90,7 @@ export function collectOtCandidates(input: {
           date: d,
           kind: "additional_day",
           minutes: c.extraDayMin,
-          note: r.note ?? "",
+          note: asText(r.note),
         });
       }
     }
@@ -125,7 +127,11 @@ export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
       set({
         rows: {
           ...rows,
-          [id]: { ...existing, minutes: c.minutes, note: c.note ?? existing.note },
+          [id]: {
+            ...existing,
+            minutes: c.minutes,
+            note: c.note != null ? asText(c.note) : asText(existing.note),
+          },
         },
       });
       return;
@@ -135,12 +141,12 @@ export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
         ...rows,
         [id]: {
           id,
-          employeeId: c.employeeId,
-          date: c.date,
+          employeeId: asText(c.employeeId),
+          date: asText(c.date),
           kind: c.kind,
           minutes: c.minutes,
           status: "pending",
-          note: c.note ?? "",
+          note: asText(c.note),
           decidedAt: null,
         },
       },
@@ -157,7 +163,7 @@ export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
         [id]: {
           ...row,
           status,
-          note: note != null ? note : row.note,
+          note: note != null ? asText(note) : asText(row.note),
           decidedAt: Date.now(),
         },
       },

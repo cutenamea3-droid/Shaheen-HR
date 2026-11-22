@@ -75,6 +75,17 @@ describe("history / merge / backup corrupt guards", () => {
     ]);
     expect(rosterHistoryOf(data, id)).toEqual([{ at, from: "new", to: "roster" }]);
     expect(() => buildComplianceHistory(data, { driverId: id, limit: 20 })).not.toThrow();
+
+    const after = applyDriverClass(data, id, "owner_operator");
+    // No-op when already OO; force a flip so write-path heal runs.
+    const flipped =
+      after.sections.dmv.rows.find((r) => r.driverId === id)?.driverClass === "owner_operator"
+        ? applyDriverClass(after, id, "company")
+        : after;
+    const hist = flipped.sections.dmv.rows.find((r) => r.driverId === id)!.classHistory!;
+    expect(hist.every((h) => h && typeof h === "object" && !Array.isArray(h))).toBe(true);
+    expect(hist).not.toContain(null);
+    expect(hist.every((h) => typeof h.at === "number")).toBe(true);
   });
 
   it("Dispatch complete history + awaitingCloseout tolerate missing arrays", () => {

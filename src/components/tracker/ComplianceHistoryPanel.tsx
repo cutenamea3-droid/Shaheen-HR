@@ -43,11 +43,13 @@ export function ComplianceHistoryPanel() {
   }, []);
 
   const drivers = useMemo(() => {
+    const asId = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const map = new Map<string, string>();
     for (const def of SECTIONS) {
       for (const r of rowsOf(data.sections[def.id])) {
+        const id = asId(r.driverId).trim();
         const n = (cellsOf(r)[0] ?? "").trim();
-        if (n && !map.has(r.driverId)) map.set(r.driverId, n);
+        if (id && n && !map.has(id)) map.set(id, n);
       }
     }
     const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
@@ -141,6 +143,12 @@ export function ComplianceHistoryPanel() {
 }
 
 function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const title = asText(event.title);
+  const detail = asText(event.detail);
+  const atLabel = asText(event.atLabel);
+  const actor = asText(event.actor);
+  const sectionId = asText(event.sectionId);
   return (
     <li className="relative mb-4 pl-6">
       <span className="absolute top-2 -left-[7px] size-3 rounded-full border-2 border-primary bg-card" />
@@ -150,16 +158,16 @@ function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
             {historySourceLabel(event.source)}
           </span>
           <time className="text-xs font-semibold text-muted-foreground" dateTime={historyAtIso(event.at)}>
-            {event.atLabel}
+            {atLabel}
           </time>
         </div>
-        <p className="mt-1 font-extrabold">{event.title}</p>
-        <p className="text-sm text-muted-foreground">{event.detail}</p>
-        {(event.actor || event.sectionId) && (
+        <p className="mt-1 font-extrabold">{title}</p>
+        <p className="text-sm text-muted-foreground">{detail}</p>
+        {(actor || sectionId) && (
           <p className={cn("mt-1 text-xs font-semibold text-muted-foreground")}>
-            {event.actor ? `Actor: ${event.actor}` : ""}
-            {event.actor && event.sectionId ? " · " : ""}
-            {event.sectionId ? `Section: ${event.sectionId}` : ""}
+            {actor ? `Actor: ${actor}` : ""}
+            {actor && sectionId ? " · " : ""}
+            {sectionId ? `Section: ${sectionId}` : ""}
           </p>
         )}
       </div>

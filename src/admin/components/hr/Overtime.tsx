@@ -63,7 +63,7 @@ export function Overtime() {
             d,
             kind: "overtime",
             min: c.overtimeMin,
-            note: r.note ?? "",
+            note: r.note == null ? "" : typeof r.note === "string" ? r.note : String(r.note),
             status: ap?.status ?? "pending",
             id,
           });
@@ -75,7 +75,7 @@ export function Overtime() {
             d,
             kind: "additional_day",
             min: c.extraDayMin,
-            note: r.note ?? "",
+            note: r.note == null ? "" : typeof r.note === "string" ? r.note : String(r.note),
             status: ap?.status ?? "pending",
             id,
           });

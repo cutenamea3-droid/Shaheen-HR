@@ -176,7 +176,8 @@ export function applyDriverClass(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: ClassHistoryEntry = { at, from: prev, to: next };
-    const classHistory = [...(Array.isArray(r.classHistory) ? r.classHistory : []), entry];
+    // Heal prior slots so null/corrupt cloud history is not re-persisted.
+    const classHistory = [...healHistoryList(r.classHistory, healClassHistoryEntry), entry];
     return { ...r, driverClass: next, classHistory };
   });
 }
@@ -191,7 +192,7 @@ export function applyRosterKind(
   if (prev === next) return data;
   return mapDriverRows(data, driverId, (r) => {
     const entry: RosterHistoryEntry = { at, from: prev, to: next };
-    const rosterHistory = [...(Array.isArray(r.rosterHistory) ? r.rosterHistory : []), entry];
+    const rosterHistory = [...healHistoryList(r.rosterHistory, healRosterHistoryEntry), entry];
     return { ...r, rosterKind: next, rosterHistory };
   });
 }

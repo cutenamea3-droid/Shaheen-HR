@@ -43,6 +43,22 @@ describe("Today / dayPlans / OT approval / finance mock guards", () => {
     ).toEqual({ minutes: 0, days: 0 });
   });
 
+  it("ensureCandidate coerces object notes to strings for OT UI", () => {
+    useOtApprovalStore.setState({ rows: {} });
+    useOtApprovalStore.getState().ensureCandidate({
+      employeeId: "e1",
+      date: "2026-11-01",
+      kind: "overtime",
+      minutes: 45,
+      note: { text: "late truck" } as unknown as string,
+    });
+    const row = useOtApprovalStore.getState().rows["e1|2026-11-01|overtime"];
+    expect(typeof row?.note).toBe("string");
+    expect(row?.note).toContain("object");
+    const src = readFileSync(resolve(process.cwd(), "src/admin/lib/ot-approval.ts"), "utf8");
+    expect(src).toMatch(/note: asText\(r\.note\)/);
+  });
+
   it("approvedMinutesForEmployee and PayrollVerify coerce non-string date before startsWith", () => {
     expect(() =>
       approvedMinutesForEmployee(
