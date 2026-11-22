@@ -11,6 +11,8 @@ import { useMonthClosing } from "@/admin/lib/month-closing";
 import { useHrAuditHistory } from "@/admin/lib/hr-audit-history";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function Card({ title, sub, make, name }: { title: string; sub: string; make: () => Table[]; name: string }) {
   const company = useApp((s) => s.settings.company);
   return (
@@ -247,7 +249,7 @@ export function Reports() {
                 <option value="">Select employee</option>
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.name}
+                    {asText(e.name)}
                   </option>
                 ))}
               </select>

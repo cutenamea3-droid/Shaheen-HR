@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
-import { useApp } from "@/admin/lib/store";
+import { useMemo, useRef, useState } from "react";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { fmtTime, leaveBalance } from "@/admin/lib/calc";
 import { normalizeAssignments } from "@/admin/lib/shift-assignment";
+import type { Dept, Employee } from "@/admin/lib/types";
 import { SectionTitle, Toggle, todayStr } from "./common";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Team() {
   const {
@@ -14,8 +17,20 @@ export function Team() {
     removeEmployee,
     moveEmployee,
   } = useApp();
-  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
-  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
   const records =
     recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const [name, setName] = useState("");
@@ -63,7 +78,7 @@ export function Team() {
           <select className="field" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
             {depts.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name} ({fmtTime(d.start)}–{fmtTime(d.end)})
+                {asText(d.name)} ({fmtTime(d.start)}–{fmtTime(d.end)})
               </option>
             ))}
           </select>
@@ -112,7 +127,7 @@ export function Team() {
                   <input
                     className="field"
                     data-testid={`admin-emp-name-${e.id}`}
-                    value={e.name}
+                    value={asText(e.name)}
                     onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })}
                     onInput={(ev) => updateEmployee(e.id, { name: (ev.target as HTMLInputElement).value })}
                   />
@@ -121,7 +136,7 @@ export function Team() {
                   <span className="lbl">Department (shift)</span>
                   <select
                     className="field"
-                    value={e.deptId}
+                    value={asText(e.deptId)}
                     onChange={(ev) =>
                       updateEmployee(e.id, {
                         deptId: ev.target.value,
@@ -131,7 +146,7 @@ export function Team() {
                   >
                     {depts.map((d) => (
                       <option key={d.id} value={d.id}>
-                        {d.name}
+                        {asText(d.name)}
                       </option>
                     ))}
                   </select>
@@ -146,7 +161,7 @@ export function Team() {
                   <input
                     type="month"
                     className="field"
-                    value={e.joinMonth}
+                    value={asText(e.joinMonth)}
                     onChange={(ev) => ev.target.value && updateEmployee(e.id, { joinMonth: ev.target.value })}
                   />
                 </label>
@@ -183,7 +198,7 @@ export function Team() {
                   <button
                     type="button"
                     className="btn-danger px-3"
-                    onClick={() => confirm(`Remove ${e.name}?`) && removeEmployee(e.id)}
+                    onClick={() => confirm(`Remove ${asText(e.name)}?`) && removeEmployee(e.id)}
                     aria-label="Remove"
                   >
                     ✕
@@ -194,7 +209,9 @@ export function Team() {
                 <span>
                   Current shift:{" "}
                   <strong className="text-foreground">
-                    {dept ? `${dept.name} ${fmtTime(dept.start)}–${fmtTime(dept.end)}` : "Not configured"}
+                    {dept
+                      ? `${asText(dept.name)} ${fmtTime(dept.start)}–${fmtTime(dept.end)}`
+                      : "Not configured"}
                   </strong>
                 </span>
                 <span>

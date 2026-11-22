@@ -14,6 +14,8 @@ import {
 } from "@/lib/compliance-history";
 import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function ComplianceHistoryPanel() {
   const data = useData();
   const [q, setQ] = useState("");
@@ -110,7 +112,7 @@ export function ComplianceHistoryPanel() {
             <option value="">All drivers</option>
             {drivers.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name}
+                {asText(d.name)}
               </option>
             ))}
           </select>
@@ -143,7 +145,6 @@ export function ComplianceHistoryPanel() {
 }
 
 function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
-  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const title = asText(event.title);
   const detail = asText(event.detail);
   const atLabel = asText(event.atLabel);

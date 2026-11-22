@@ -92,6 +92,28 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(perfUi).toMatch(/\{asText\(e\.name\)\}/);
+    const reportsUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Reports.tsx"),
+      "utf8",
+    );
+    expect(reportsUi).toMatch(/\{asText\(e\.name\)\}/);
+    const teamEmpUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Team.tsx"),
+      "utf8",
+    );
+    expect(teamEmpUi).toMatch(/normalizeEmployee\(/);
+    expect(teamEmpUi).toMatch(/value=\{asText\(e\.name\)\}/);
+    const settingsUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Settings.tsx"),
+      "utf8",
+    );
+    expect(settingsUi).toMatch(/normalizeDept\(/);
+    expect(settingsUi).toMatch(/value=\{asText\(d\.name\)\}/);
+    const histUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/ComplianceHistoryPanel.tsx"),
+      "utf8",
+    );
+    expect(histUi).toMatch(/\{asText\(d\.name\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);
     expect(src).toMatch(/normalizeCourseGrade\(g\)/);
