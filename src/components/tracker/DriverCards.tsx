@@ -44,7 +44,7 @@ import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { DensityToggle } from "./DensityToggle";
 import { ExpirationFilter } from "./ExpirationFilter";
 import { FilterGroup, FilterRack } from "./FilterRack";
-import { FuturePlanSuggest } from "./FuturePlanSuggest";
+import { FuturePlanCell } from "./FuturePlanCell";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DriverManageControls } from "./DriverManageControls";
@@ -674,34 +674,30 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
               <EditableText value={v} onSave={save} boxed tone={tone} />
             )}
             {t === "secret" && <EditableText value={v} onSave={save} mask boxed tone={tone} />}
-            {(t === "note" || t === "plan" || t === "tempnote") && (
-              <div>
-                <EditableText
-                  value={v}
-                  onSave={save}
-                  boxed
-                  tone={tone}
-                  placeholder={
-                    t === "plan"
-                      ? "Add future plan"
-                      : t === "tempnote"
-                        ? "Add temporary reminder (never highlights)"
-                        : "Add note"
-                  }
-                />
-                {t === "plan" && (
-                  <div className="mt-2">
-                    <FuturePlanSuggest
-                      suggestion={planSuggestion}
-                      existingPlan={v}
-                      sectionId={sectionId}
-                      rowId={row.id}
-                      planCol={i}
-                      compact
-                    />
-                  </div>
-                )}
-              </div>
+            {t === "plan" && (
+              <FuturePlanCell
+                sectionId={sectionId}
+                rowId={row.id}
+                planCol={i}
+                value={v}
+                onSave={save}
+                tone={tone}
+                suggestion={planSuggestion}
+                compact
+              />
+            )}
+            {(t === "note" || t === "tempnote") && (
+              <EditableText
+                value={v}
+                onSave={save}
+                boxed
+                tone={tone}
+                placeholder={
+                  t === "tempnote"
+                    ? "Add temporary reminder (never highlights)"
+                    : "Add note"
+                }
+              />
             )}
             {t === "date" && (
               <DateCell
