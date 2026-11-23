@@ -270,60 +270,114 @@
 }
 
 
-/* ---------- Dark Mode (light mode above is untouched) ---------- */
+/* ---------- Dark Mode (Driver Compliance work theme; light tokens above untouched) ---------- */
+/* Cool charcoal canvas, readable ink, brand orange as accent only — no orange/red surface wash. */
 .dark {
-  --background: #161c24;
-  --foreground: #eef2f6;
-  --card: #1c2430;
-  --card-foreground: #eef2f6;
-  --popover: #222b38;
-  --popover-foreground: #eef2f6;
-  --primary: #F08A1A;
-  --primary-foreground: #1a1208;
-  --secondary: #2a3340;
-  --secondary-foreground: #e8edf3;
-  --muted: #252e3a;
-  --muted-foreground: #a8b3c2;
-  --accent: color-mix(in srgb, var(--brand-orange) 28%, #252e3a);
-  --accent-foreground: #ffe8cc;
-  --border: #334155;
-  --input: #3b4658;
-  --ring: #F08A1A;
-  --destructive: #E85A63;
-  --ok-soft: color-mix(in srgb, var(--brand-green) 28%, #1c2430);
-  --ok: #3DB888;
-  --warn-soft: color-mix(in srgb, #B45309 28%, #1c2430);
-  --warn: #F0B060;
-  --danger: #E85A63;
-  --danger-soft: color-mix(in srgb, var(--brand-red) 28%, #1c2430);
-  --danger-row: color-mix(in srgb, var(--brand-red) 18%, #1c2430);
-  --info-soft: color-mix(in srgb, var(--brand-blue) 28%, #1c2430);
-  --info: #6B8FF5;
+  --background: #0f1419;
+  --foreground: #e8eef4;
+  --card: #171d25;
+  --card-foreground: #e8eef4;
+  --popover: #1c2430;
+  --popover-foreground: #e8eef4;
+  --primary: #e8943a;
+  --primary-foreground: #14100a;
+  --secondary: #232a35;
+  --secondary-foreground: #dce3ec;
+  --muted: #1e2530;
+  --muted-foreground: #9aa6b5;
+  /* Neutral hover — tiny brand hint, not an orange flood */
+  --accent: #243040;
+  --accent-foreground: #f0f4f8;
+  --border: #2c3542;
+  --input: #323c4c;
+  --ring: #e8943a;
+  --destructive: #f07178;
+  --destructive-foreground: #1a1010;
+  /* Low-chroma status chips for long daily scan */
+  --ok: #4adea8;
+  --ok-soft: color-mix(in srgb, #4adea8 14%, #171d25);
+  --warn: #e8b86d;
+  --warn-soft: color-mix(in srgb, #e8b86d 12%, #171d25);
+  --danger: #f07178;
+  --danger-soft: color-mix(in srgb, #f07178 12%, #171d25);
+  --danger-row: color-mix(in srgb, #f07178 7%, #171d25);
+  --info: #7ba3f5;
+  --info-soft: color-mix(in srgb, #7ba3f5 12%, #171d25);
   /* Temp notes stay neutral in dark mode too */
-  --note-soft: color-mix(in srgb, #94a3b8 18%, #1c2430);
-  --note: #cbd5e1;
-  --sign-soft: color-mix(in srgb, #A21CAF 28%, #1c2430);
-  --sign: #E879F9;
-  --ink: #121820;
-  --sidebar: #121820;
-  --sidebar-border: #2a3340;
-  --sidebar-accent: #252e3a;
-  --gradient-brand: linear-gradient(120deg, #B85F00, #E87500 55%, #F0A040);
+  --note: #c5d0dc;
+  --note-soft: color-mix(in srgb, #94a3b8 10%, #171d25);
+  --sign: #e879f9;
+  --sign-soft: color-mix(in srgb, #e879f9 12%, #171d25);
+  --eagle: #3db888;
+  --gold: #e8b86d;
+  --ink: #0c1016;
+  --ink-foreground: #f8fafc;
+  --ink-muted: #8b97a8;
+  --sidebar: #0c1016;
+  --sidebar-foreground: #e8eef4;
+  --sidebar-primary: #e8943a;
+  --sidebar-primary-foreground: #14100a;
+  --sidebar-accent: #1a222d;
+  --sidebar-accent-foreground: #f0f4f8;
+  --sidebar-border: #222a35;
+  --sidebar-ring: #e8943a;
+  --gradient-brand: linear-gradient(120deg, #c46a08, #e87500 55%, #eba04a);
+  --gradient-header: linear-gradient(100deg, #0c1016, #171d25);
   --gradient-sky: linear-gradient(var(--background), var(--background));
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.45), 0 8px 24px -14px rgb(0 0 0 / 0.55);
+  --shadow-pop: 0 18px 50px -16px rgb(0 0 0 / 0.65);
   color-scheme: dark;
 }
 .dark tbody td { padding-top: 0.55rem; padding-bottom: 0.55rem; }
-.dark table td, .dark table th { border-color: oklch(1 0 0 / 0.1) !important; }
-.dark thead th { border-bottom: 2px solid oklch(0.7 0.12 60 / 0.6); }
+.dark table td, .dark table th { border-color: color-mix(in oklab, var(--foreground) 12%, transparent) !important; }
+.dark thead th { border-bottom: 2px solid color-mix(in srgb, var(--primary) 45%, transparent); }
 .dark tbody td.ring-danger { box-shadow: none; }
 .dark td .border-danger { border-color: transparent; }
-.dark [data-driver-name] { color: oklch(0.95 0.015 85); font-weight: 800; }
+.dark [data-driver-name] { color: #f1f5f9; font-weight: 800; }
 .dark td .bg-ok { background-color: var(--ok-soft); color: var(--ok); }
 .dark td .bg-danger { background-color: var(--danger-soft); color: var(--danger); }
 .dark td .bg-sign { background-color: var(--sign-soft); color: var(--sign); }
 .dark td .bg-info { background-color: var(--info-soft); color: var(--info); }
 .dark td .bg-warn { background-color: var(--warn-soft); color: var(--warn); }
+/* Scannable alert rows: first-cell accent only — no full red wash */
+.dark tr:has(> td.bg-danger-row) > td:first-child {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--danger) 75%, transparent);
+}
+.dark tr.row-selected:has(> td.bg-danger-row) > td:first-child {
+  /* keep Excel selection bar; danger cue stays via soft --danger-row fill */
+  box-shadow: inset 0 2.5px 0 var(--sel-line), inset 0 -2.5px 0 var(--sel-line);
+}
+/* Inputs / selects stay readable on charcoal */
+.dark .tracker-search,
+.dark .tracker-filter-group,
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+.dark select,
+.dark textarea {
+  background-color: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.dark .tracker-search:focus,
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: color-mix(in srgb, var(--primary) 65%, var(--border));
+}
+.dark .tracker-filter-btn:hover:not(:disabled) {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+.dark .tracker-alert-item:hover {
+  background-color: var(--accent);
+  border-color: color-mix(in srgb, var(--primary) 28%, transparent);
+}
+.dark .tracker-profile-section-h {
+  background-color: color-mix(in oklab, var(--muted) 90%, var(--card));
+}
+.dark .tracker-manage-panel {
+  border-color: var(--border);
+  background-color: var(--card);
+}
 
 /* Excel-style selected row */
 tr.row-selected {
@@ -608,8 +662,24 @@ body:has(.maintenance-banner) .with-switcher .overflow-auto .sticky.top-0 {
   background-blend-mode: normal;
   color: var(--primary-foreground);
 }
+/* Dark tables: slate sticky header + brand underline (no orange wash) */
 .dark .tracker-table-wrap thead.sticky th {
-  background-color: #B85F00;
+  background-color: #1a222d;
+  background-image: none;
+  color: #e8eef4;
+  border-bottom: 2px solid color-mix(in srgb, var(--primary) 55%, transparent);
+}
+.dark .tracker-table-wrap thead.sticky,
+.dark .tracker-table-wrap thead.sticky tr {
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--foreground) 8%, transparent),
+    0 10px 18px -16px rgb(0 0 0 / 0.55);
+}
+.dark .tracker-table-wrap td {
+  border-color: color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+.dark .tracker-table-wrap td.tracker-cell-flag {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--danger) 35%, transparent);
 }
 .tracker-table-wrap tbody > tr {
   content-visibility: auto;
@@ -1241,16 +1311,16 @@ textarea {
 .text-note {
   color: var(--note);
 }
-.bg-danger,
-.text-danger,
-.bg-danger-soft,
-.bg-danger-row {
-  /* Ensure alert red maps to brand red token */
+/* Light mode only — dark keeps softer --danger tokens for long-session scan */
+html:not(.dark) .bg-danger,
+html:not(.dark) .text-danger,
+html:not(.dark) .bg-danger-soft,
+html:not(.dark) .bg-danger-row {
   --danger: var(--brand-red, #CF3540);
 }
-/* Subtle page canvas for Driver (soft white) without changing layout */
+/* Driver page canvas follows theme tokens (light soft-white / dark charcoal) */
 body:not(:has(.admin-theme)):not(:has(.cv-theme)) {
-  background-color: var(--brand-soft-white, #F7F8FA);
+  background-color: var(--background);
 }
 
 /* Dispatch Operations — navy/orange premium desk UI (14–16px) */
