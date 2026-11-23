@@ -24,7 +24,10 @@ describe("portal login polish (SHRP-138)", () => {
 
   it("both portals use PasswordField + Forgot password + friendly copy", () => {
     const lock = readFileSync(resolve(process.cwd(), "src/components/tracker/LockGate.tsx"), "utf8");
-    const admin = readFileSync(resolve(process.cwd(), "src/admin/AdminApp.tsx"), "utf8");
+    const admin = readFileSync(
+      resolve(process.cwd(), "src/admin/components/AdminLockGate.tsx"),
+      "utf8",
+    );
     for (const src of [lock, admin]) {
       expect(src).toMatch(/PasswordField/);
       expect(src).toMatch(/ForgotPasswordLink/);
@@ -42,5 +45,22 @@ describe("portal login polish (SHRP-138)", () => {
     );
     expect(card).toMatch(/bg-transparent object-contain/);
     expect(card).not.toMatch(/logo.*rounded-xl/);
+  });
+
+  it("Admin lock rem scale matches Compliance (16px only outside portal-login-shell)", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(css).toMatch(
+      /html:has\(\.admin-theme\):not\(:has\(\.portal-login-shell\)\)\s*\{\s*font-size:\s*16px;/,
+    );
+    expect(css).not.toMatch(/html:has\(\.admin-theme\)\s*\{\s*font-size:\s*16px;/);
+    const shell = readFileSync(
+      resolve(process.cwd(), "src/components/portal-login/PortalLoginShell.tsx"),
+      "utf8",
+    );
+    expect(shell).toMatch(/portal-login-shell/);
+    expect(shell).toMatch(/max-w-md/);
+    expect(shell).toMatch(/h-36/);
+    const adminApp = readFileSync(resolve(process.cwd(), "src/admin/AdminApp.tsx"), "utf8");
+    expect(adminApp).toMatch(/AdminLockGate/);
   });
 });

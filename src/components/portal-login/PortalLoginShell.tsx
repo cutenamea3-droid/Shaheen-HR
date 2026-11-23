@@ -3,8 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { BadgeCheck } from "lucide-react";
 
 /**
- * Shared Compliance + Admin sign-in shell: tall split layout, transparent logo
- * area on the form side, Made by HR / YOUSAF in the footer (not the hero).
+ * Shared Compliance (`LockGate`) + Admin (`AdminLockGate`) sign-in shell:
+ * tall split layout, transparent logo area on the form side, Made by HR /
+ * YOUSAF in the footer (not the hero). Keep `.portal-login-shell` on the root —
+ * CSS pins rem scale to Driver 13px while Admin dashboard uses 16px.
  */
 export function PortalLoginShell({
   children,

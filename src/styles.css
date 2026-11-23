@@ -923,7 +923,9 @@ body:has(.maintenance-banner) .with-switcher .overflow-auto .sticky.top-0 {
   --color-success: var(--success);
   --color-warning: var(--warning);
 }
-html:has(.admin-theme) { font-size: 16px; }
+/* Admin dashboard keeps 16px; shared lock screens stay on Driver 13px rem so
+   PortalLoginCard width/padding/logo/type match Compliance (SHRP-147). */
+html:has(.admin-theme):not(:has(.portal-login-shell)) { font-size: 16px; }
 body:has(.admin-theme) { background-color: var(--brand-soft-white, #F7F8FA); }
 .admin-theme {
   /* Admin keeps its own token scope; brand hex aligned (not merged with Driver logic). */
