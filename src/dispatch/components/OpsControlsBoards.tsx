@@ -140,7 +140,7 @@ function DocList({
             <li key={load.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
               <div>
                 <p className="text-sm font-semibold">
-                  {load.load_number}{" "}
+                  {asText(load.load_number)}{" "}
                   <span className="font-normal text-[color:var(--dispatch-muted)]">
                     · {statusLabel(load.status)}
                   </span>
@@ -239,7 +239,7 @@ export function FollowUpsBoard({
           <option value="">No load link</option>
           {safeLoads.map((l) => (
             <option key={l.id} value={l.id}>
-              {l.load_number}
+              {asText(l.load_number)}
             </option>
           ))}
         </select>
@@ -414,7 +414,7 @@ export function EquipmentBoard({
                         {active.map((l) => (
                           <li key={l.id} className="flex flex-wrap items-center gap-2 text-xs">
                             <span>
-                              {l.load_number} · {statusLabel(l.status)}
+                              {asText(l.load_number)} · {statusLabel(l.status)}
                               {l.equipment ? ` · ${l.equipment}` : ""}
                             </span>
                             <button type="button" className="dispatch-btn-ghost" onClick={() => onOpen(l.id)}>

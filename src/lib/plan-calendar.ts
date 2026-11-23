@@ -104,7 +104,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
       if (!suggestion.available || !suggestion.reminderDate) continue;
       // Skip if Applied (status-check only — preserve Applied DMV behavior)
       if (suggestion.suppressReapply) continue;
-      const saved = (row.cells[rule.planCol] ?? "").trim();
+      const saved = String(row.cells[rule.planCol] ?? "").trim();
       // If a saved plan already has a parseable date, collectPlans covers it
       if (saved) continue;
       const iso = toIso(suggestion.reminderDate);
@@ -117,7 +117,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
         dateIso: iso,
         kind: "suggestion",
         tone: toneForDate(suggestion.reminderDate),
-        driver: row.cells[0] ?? "",
+        driver: String(row.cells[0] ?? ""),
         driverId: row.driverId,
         title: `${rule.docLabel} reminder`,
         detail: suggestion.text,

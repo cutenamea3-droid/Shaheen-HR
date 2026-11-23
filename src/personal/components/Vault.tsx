@@ -125,7 +125,11 @@ export function Vault() {
               min={20}
               max={480}
               data-testid="personal-weekday-minutes"
-              value={settings.weekdayMinutes}
+              value={
+                typeof settings.weekdayMinutes === "number" && Number.isFinite(settings.weekdayMinutes)
+                  ? settings.weekdayMinutes
+                  : 120
+              }
               onChange={(e) => setSettings({ weekdayMinutes: Number(e.target.value) || 120 })}
               onInput={(e) =>
                 setSettings({ weekdayMinutes: Number((e.target as HTMLInputElement).value) || 120 })
@@ -139,7 +143,11 @@ export function Vault() {
               min={20}
               max={600}
               data-testid="personal-sunday-minutes"
-              value={settings.sundayMinutes}
+              value={
+                typeof settings.sundayMinutes === "number" && Number.isFinite(settings.sundayMinutes)
+                  ? settings.sundayMinutes
+                  : 270
+              }
               onChange={(e) => setSettings({ sundayMinutes: Number(e.target.value) || 270 })}
               onInput={(e) =>
                 setSettings({ sundayMinutes: Number((e.target as HTMLInputElement).value) || 270 })
@@ -152,7 +160,11 @@ export function Vault() {
               type="number"
               min={5}
               max={90}
-              value={settings.pomodoroFocus}
+              value={
+                typeof settings.pomodoroFocus === "number" && Number.isFinite(settings.pomodoroFocus)
+                  ? settings.pomodoroFocus
+                  : 25
+              }
               onChange={(e) => setSettings({ pomodoroFocus: Number(e.target.value) || 25 })}
               onInput={(e) =>
                 setSettings({ pomodoroFocus: Number((e.target as HTMLInputElement).value) || 25 })
@@ -165,7 +177,11 @@ export function Vault() {
               type="number"
               min={1}
               max={30}
-              value={settings.pomodoroBreak}
+              value={
+                typeof settings.pomodoroBreak === "number" && Number.isFinite(settings.pomodoroBreak)
+                  ? settings.pomodoroBreak
+                  : 5
+              }
               onChange={(e) => setSettings({ pomodoroBreak: Number(e.target.value) || 5 })}
               onInput={(e) =>
                 setSettings({ pomodoroBreak: Number((e.target as HTMLInputElement).value) || 5 })
@@ -178,7 +194,11 @@ export function Vault() {
               type="number"
               min={20}
               max={120}
-              value={settings.deepFocus}
+              value={
+                typeof settings.deepFocus === "number" && Number.isFinite(settings.deepFocus)
+                  ? settings.deepFocus
+                  : 50
+              }
               onChange={(e) => setSettings({ deepFocus: Number(e.target.value) || 50 })}
               onInput={(e) =>
                 setSettings({ deepFocus: Number((e.target as HTMLInputElement).value) || 50 })
@@ -191,7 +211,11 @@ export function Vault() {
               type="number"
               min={1}
               max={30}
-              value={settings.deepBreak}
+              value={
+                typeof settings.deepBreak === "number" && Number.isFinite(settings.deepBreak)
+                  ? settings.deepBreak
+                  : 10
+              }
               onChange={(e) => setSettings({ deepBreak: Number(e.target.value) || 10 })}
               onInput={(e) =>
                 setSettings({ deepBreak: Number((e.target as HTMLInputElement).value) || 10 })

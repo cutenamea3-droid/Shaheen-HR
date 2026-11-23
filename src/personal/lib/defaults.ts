@@ -119,14 +119,24 @@ export function migrateSettings(raw: Partial<PersonalSettings> | undefined): Per
       : typeof raw.dailyTargetMinutes === "number"
         ? raw.dailyTargetMinutes
         : base.weekdayMinutes;
+  const asNum = (v: unknown, fb: number) =>
+    typeof v === "number" && Number.isFinite(v) ? v : fb;
   return {
     ...base,
     ...raw,
     weekdayMinutes: weekday,
-    sundayMinutes: typeof raw.sundayMinutes === "number" ? raw.sundayMinutes : base.sundayMinutes,
+    sundayMinutes: asNum(raw.sundayMinutes, base.sundayMinutes),
     dailyTargetMinutes: weekday,
-    deepFocus: typeof raw.deepFocus === "number" ? raw.deepFocus : base.deepFocus,
-    deepBreak: typeof raw.deepBreak === "number" ? raw.deepBreak : base.deepBreak,
+    deepFocus: asNum(raw.deepFocus, base.deepFocus),
+    deepBreak: asNum(raw.deepBreak, base.deepBreak),
+    pomodoroFocus: asNum(
+      (raw as { pomodoroFocus?: unknown }).pomodoroFocus,
+      base.pomodoroFocus,
+    ),
+    pomodoroBreak: asNum(
+      (raw as { pomodoroBreak?: unknown }).pomodoroBreak,
+      base.pomodoroBreak,
+    ),
   };
 }
 

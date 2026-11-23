@@ -83,7 +83,8 @@ export function AccessorialsBoard({
             <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
               {safeLoads.map((l) => (
                 <option key={l.id} value={l.id}>
-                  {l.load_number} · {statusLabel(l.status)} · pay {paymentStatusLabel(l.payment_status)}
+                  {asText(l.load_number)} · {statusLabel(l.status)} · pay{" "}
+                  {paymentStatusLabel(l.payment_status)}
                 </option>
               ))}
             </select>

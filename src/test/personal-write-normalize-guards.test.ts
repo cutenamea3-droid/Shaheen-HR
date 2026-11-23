@@ -272,6 +272,19 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(dispatchCloud).toMatch(/Cannot cancel a \$\{asText\(load\.status\)\}/);
+    expect(opsBoards).toMatch(/\{asText\(l\.load_number\)\}/);
+    expect(opsBoards).toMatch(/\{asText\(load\.load_number\)\}/);
+    const closeoutBoards = readFileSync(
+      resolve(process.cwd(), "src/dispatch/components/CloseoutBoards.tsx"),
+      "utf8",
+    );
+    expect(closeoutBoards).toMatch(/\{asText\(l\.load_number\)\}/);
+    const defaultsLib = readFileSync(
+      resolve(process.cwd(), "src/personal/lib/defaults.ts"),
+      "utf8",
+    );
+    expect(defaultsLib).toMatch(/pomodoroFocus: asNum\(/);
+    expect(vaultUi).toMatch(/Number\.isFinite\(settings\.weekdayMinutes\)/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",
