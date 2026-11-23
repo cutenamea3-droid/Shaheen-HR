@@ -35,7 +35,7 @@ export const EXPERIENCE = [
     bullets: [
       "Own day-to-day attendance tracking and employee record accuracy across the fleet HR desk.",
       "Maintain driver CDL, medical, and compliance files with clear renewal visibility.",
-      "Run fleet HOS logging in ReguLog ELD and Rawen; keep compliance readiness visible to operations.",
+      "Run fleet HOS logging in ReguLog ELD and Rawen; surface expiry gaps before they block ops.",
     ],
     current: true,
   },
@@ -117,21 +117,21 @@ export const EDUCATION = [
     place: "Virtual University of Pakistan",
     note: "Enrolled · 2026",
     detail:
-      "Undergraduate IT program covering systems, databases, and applied computing — studying alongside full-time HR and compliance work.",
+      "Undergraduate IT program covering systems, databases, networks, and applied computing — pursued alongside full-time HR and fleet compliance work at Shaheen Transport.",
   },
   {
     title: "Intermediate in Computer Science (ICS)",
     place: "Islamiya Higher Secondary College",
     note: "Grade C+",
     detail:
-      "Higher-secondary computer science stream with programming fundamentals, mathematics, and core IT subjects.",
+      "Higher-secondary computer science stream with programming fundamentals, mathematics, and core IT subjects that set up later product and automation work.",
   },
   {
     title: "Matriculation in Computer Science",
     place: "Al-Nasir High School",
     note: "Grade B+",
     detail:
-      "Secondary education with a computer science focus — early grounding in computing and problem-solving.",
+      "Secondary education with a computer science focus — early grounding in computing, logic, and structured problem-solving.",
   },
 ] as const;
 

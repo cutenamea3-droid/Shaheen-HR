@@ -1,8 +1,6 @@
 /**
- * Separate A4 résumé builder (ATS-friendly) — not a web screenshot.
- * Dense two-column layout filled with real content (no empty cream bands).
- * Body ~11–12pt · Headings 11.5–12pt · Name ~24pt · Margins 14mm
- * Metrics excluded while METRICS_PUBLIC is false.
+ * Separate A4 résumé — two-column, body 11.5–12.5pt, fills to ~0.5" of footer.
+ * No empty cream bands. Metrics excluded while METRICS_PUBLIC is false.
  */
 import { jsPDF } from "jspdf";
 import {
@@ -45,192 +43,187 @@ function colTitle(d: Doc, title: string, x: number, y: number, colW: number): nu
   d.text(title.toUpperCase(), x, y);
   d.setDrawColor(...VIOLET);
   d.setLineWidth(0.5);
-  d.line(x, y + 1.9, x + 14, y + 1.9);
+  d.line(x, y + 1.8, x + 14, y + 1.8);
   d.setDrawColor(...LINE);
   d.setLineWidth(0.22);
-  d.line(x + 16, y + 1.9, x + colW, y + 1.9);
-  return y + 7.2;
-}
-
-/** Flow skill labels with colored dots across the column width */
-function drawSkillsFlow(d: Doc, group: (typeof SKILL_GROUPS)[number], x: number, y: number, colW: number): number {
-  d.setFont("helvetica", "bold");
-  d.setFontSize(10.2);
-  d.setTextColor(...VIOLET);
-  d.text(group.label.toUpperCase(), x, y);
-  y += 5;
-
-  let cx = x;
-  const rowH = 5.4;
-  d.setFont("helvetica", "normal");
-  d.setFontSize(10.5);
-  for (let i = 0; i < group.items.length; i++) {
-    const item = group.items[i]!;
-    const rgb = TONE_RGB[item.tone];
-    const label = item.label;
-    const w = d.getTextWidth(label) + 4.5 + (i < group.items.length - 1 ? 3.2 : 0);
-    if (cx + w > x + colW && cx > x) {
-      cx = x;
-      y += rowH;
-    }
-    d.setFillColor(rgb[0], rgb[1], rgb[2]);
-    d.circle(cx + 1.2, y - 1.15, 1.1, "F");
-    d.setTextColor(...INK);
-    d.text(label, cx + 3.5, y);
-    cx += w;
-  }
-  return y + rowH + 1.6;
+  d.line(x + 16, y + 1.8, x + colW, y + 1.8);
+  return y + 6.8;
 }
 
 export function buildResumePdf(): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as Doc;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 14;
+  const margin = 11;
   const contentW = pageW - margin * 2;
-  const gutter = 6.5;
+  const gutter = 5.5;
   const colW = (contentW - gutter) / 2;
   const leftX = margin;
   const rightX = margin + colW + gutter;
-  const footerY = pageH - 9;
-  const maxY = footerY - 8;
+  const footerY = pageH - 8;
+  const maxY = footerY - 11; // ~0.43"
 
   let y = margin;
   doc.setTextColor(...INK);
   doc.setFont("times", "bold");
-  doc.setFontSize(23);
+  doc.setFontSize(22);
   doc.text(PROFILE.fullName, margin, y);
-  y += 6.2;
+  y += 5.8;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(11.5);
   doc.setTextColor(...VIOLET);
   doc.text(`${PROFILE.role}  ·  ${PROFILE.company}`, margin, y);
-  y += 4.8;
+  y += 4.6;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10.6);
+  doc.setFontSize(11);
   doc.setTextColor(...MUTED);
   doc.text(`${PROFILE.location}  ·  ${PROFILE.phone}  ·  ${PROFILE.email}`, margin, y);
-  y += 3.8;
+  y += 3.6;
   doc.setDrawColor(...INK);
-  doc.setLineWidth(0.55);
+  doc.setLineWidth(0.5);
   doc.line(margin, y, pageW - margin, y);
-  y += 5;
+  y += 4.6;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(...INK);
   doc.text("PROFILE", margin, y);
-  y += 1.9;
+  y += 1.8;
   doc.setDrawColor(...VIOLET);
   doc.setLineWidth(0.5);
   doc.line(margin, y, margin + 14, y);
   doc.setDrawColor(...LINE);
   doc.setLineWidth(0.22);
   doc.line(margin + 16, y, pageW - margin, y);
-  y += 5.2;
+  y += 5;
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(11.2);
+  doc.setFontSize(11.8);
   doc.setTextColor(...MUTED);
   const summary = wrap(doc, PROFILE.summary, contentW);
   doc.text(summary, margin, y);
-  y += summary.length * 4.6 + 2.8;
+  y += summary.length * 4.9 + 2.4;
 
   if (METRICS_PUBLIC) {
     for (const m of METRICS) {
-      doc.setFontSize(10.5);
       doc.text(`•  ${m.value} — ${m.caption}`, margin, y);
       y += 4.6;
     }
-    y += 2;
   }
 
   let yL = y;
   let yR = y;
 
-  // LEFT — Skills (flowing, larger)
+  // LEFT Skills — flowing chips at 11.5pt
   yL = colTitle(doc, "Skills", leftX, yL, colW);
   for (const group of SKILL_GROUPS) {
-    yL = drawSkillsFlow(doc, group, leftX, yL, colW);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.8);
+    doc.setTextColor(...VIOLET);
+    doc.text(group.label.toUpperCase(), leftX, yL);
+    yL += 4.8;
+    let cx = leftX;
+    const rowH = 5.5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11.5);
+    for (let i = 0; i < group.items.length; i++) {
+      const item = group.items[i]!;
+      const rgb = TONE_RGB[item.tone];
+      const w = doc.getTextWidth(item.label) + 4.6 + (i < group.items.length - 1 ? 3 : 0);
+      if (cx + w > leftX + colW && cx > leftX) {
+        cx = leftX;
+        yL += rowH;
+      }
+      doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+      doc.circle(cx + 1.2, yL - 1.15, 1.1, "F");
+      doc.setTextColor(...INK);
+      doc.text(item.label, cx + 3.5, yL);
+      cx += w;
+    }
+    yL += rowH + 1.8;
   }
 
-  // LEFT — Education (detailed but compact enough for interests)
+  // LEFT Education
   yL = colTitle(doc, "Education", leftX, yL, colW);
   for (const ed of EDUCATION) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.8);
+    doc.setFontSize(11.5);
     doc.setTextColor(...INK);
-    const titleLines = wrap(doc, ed.title, colW);
-    doc.text(titleLines, leftX, yL);
-    yL += titleLines.length * 4.3 + 0.5;
+    const titles = wrap(doc, ed.title, colW);
+    doc.text(titles, leftX, yL);
+    yL += titles.length * 4.5 + 0.4;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.3);
+    doc.setFontSize(11);
     doc.setTextColor(...VIOLET);
     doc.text(`${ed.place}  ·  ${ed.note}`, leftX, yL);
-    yL += 4.2;
+    yL += 4.3;
     doc.setTextColor(...MUTED);
-    doc.setFontSize(10.3);
+    doc.setFontSize(11.2);
     const detail = wrap(doc, ed.detail, colW);
     doc.text(detail, leftX, yL);
-    yL += detail.length * 4.05 + 2.6;
+    yL += detail.length * 4.5 + 2.6;
   }
 
-  // LEFT — Languages (tight inline)
+  // LEFT Languages
   yL = colTitle(doc, "Languages", leftX, yL, colW);
   for (const lang of LANGUAGES) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.8);
+    doc.setFontSize(11.5);
     doc.setTextColor(...INK);
     doc.text(`${lang.name} · ${lang.level}`, leftX, yL);
-    yL += 5.2;
+    yL += 5.4;
   }
 
-  // LEFT — Interests (always both entries; keep readable)
-  yL += 0.5;
+  // LEFT Interests — both entries, compact blurbs
+  yL += 0.6;
   yL = colTitle(doc, "Interests", leftX, yL, colW);
-  for (const interest of INTERESTS) {
+  for (const [title, text] of [
+    ["Video editing & content", "Anime edits with beat syncing in CapCut and VN Editor."],
+    ["Tech exploration", "Web apps and AI tools: Lovable, Vercel, GitHub, Termux, Gemini CLI."],
+  ] as const) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10.6);
+    doc.setFontSize(11.5);
     doc.setTextColor(...INK);
-    doc.text(interest.title, leftX, yL);
+    doc.text(title, leftX, yL);
     yL += 4.2;
-    const body = wrap(doc, interest.text, colW);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.2);
+    doc.setFontSize(11.2);
     doc.setTextColor(...MUTED);
+    const body = wrap(doc, text, colW);
     doc.text(body, leftX, yL);
-    yL += body.length * 4.05 + 2.2;
+    yL += body.length * 4.4 + 1.8;
   }
 
-  // RIGHT — Experience (rich bullets on current role; concise earlier roles)
+  // RIGHT Experience — 11.5–12pt bullets
   yR = colTitle(doc, "Experience", rightX, yR, colW);
   for (const job of EXPERIENCE) {
-    if (yR + 18 > maxY) break;
+    if (yR + 16 > maxY - 40) break; // reserve projects
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(11.5);
     doc.setTextColor(...INK);
-    const roleLines = wrap(doc, job.role, colW);
-    doc.text(roleLines, rightX, yR);
-    yR += roleLines.length * 4.4;
-    doc.setFontSize(10.2);
+    const roles = wrap(doc, job.role, colW);
+    doc.text(roles, rightX, yR);
+    yR += roles.length * 4.5;
+    doc.setFontSize(10.8);
     doc.setTextColor(...VIOLET);
     doc.text(`${job.time}  ·  ${job.company}`, rightX, yR);
-    yR += 4.6;
-
+    yR += 4.5;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.6);
+    doc.setFontSize(11.5);
     doc.setTextColor(...MUTED);
     for (const bullet of job.bullets) {
       const lines = wrap(doc, `•  ${bullet}`, colW);
+      if (yR + lines.length * 4.6 > maxY - 38) break;
       doc.text(lines, rightX, yR);
-      yR += lines.length * 4.2 + 0.7;
+      yR += lines.length * 4.6 + 0.55;
     }
-    yR += 2.0;
+    yR += 2.2;
   }
 
-  // RIGHT — Projects (readable summaries + outcomes) — fill toward footer
-  const projectBlurbs: Record<string, string> = {
+  // RIGHT Projects
+  const blurbs: Record<string, string> = {
     compliance:
       "Fleet compliance workspace for driver documents, medical cards, drug tests, and renewal plans with expiry-aware alerts.",
     admin:
@@ -238,54 +231,88 @@ export function buildResumePdf(): jsPDF {
   };
   yR = colTitle(doc, "Selected projects", rightX, yR, colW);
   for (const project of PROJECTS) {
+    if (yR + 18 > maxY) break;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFontSize(11.8);
     doc.setTextColor(...INK);
     doc.text(project.name, rightX, yR);
-    yR += 4.4;
+    yR += 4.6;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.5);
+    doc.setFontSize(11.5);
     doc.setTextColor(...MUTED);
-    const blurb = projectBlurbs[project.id] ?? project.summary;
-    const summaryLines = wrap(doc, blurb, colW);
-    doc.text(summaryLines, rightX, yR);
-    yR += summaryLines.length * 4.2 + 1;
+    const body = wrap(doc, blurbs[project.id] ?? project.summary, colW);
+    doc.text(body, rightX, yR);
+    yR += body.length * 4.6 + 1;
     for (const outcome of project.outcomes) {
       const lines = wrap(doc, `•  ${outcome}`, colW);
+      if (yR + lines.length * 4.5 > maxY - 5) break;
       doc.text(lines, rightX, yR);
-      yR += lines.length * 4.05 + 0.45;
+      yR += lines.length * 4.5 + 0.5;
     }
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.6);
+    doc.setFontSize(10.5);
     doc.setTextColor(...VIOLET);
-    doc.text(project.stack.join(" · "), rightX, yR);
-    yR += 3.8;
+    if (yR + 4 <= maxY) {
+      doc.text(project.stack.join(" · "), rightX, yR);
+      yR += 4.8;
+    }
   }
 
-  // Balance shorter column with contact (never leave a void under one side)
-  const paintContact = (x: number, startY: number) => {
-    let cy = startY + 1.2;
-    if (cy + 20 > maxY) return startY;
+  // Fill shorter column with contact until ~maxY
+  const fillContact = (x: number, start: number) => {
+    let cy = start + 1;
+    if (cy + 14 > maxY) return start;
     cy = colTitle(doc, "Contact", x, cy, colW);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10.6);
+    doc.setFontSize(11.2);
     doc.setTextColor(...MUTED);
     for (const line of [
-      PROFILE.location,
-      `${PROFILE.phone}  ·  ${PROFILE.email}`,
-      "Interactive portfolio at /cv.",
-      "References available on request.",
+      `${PROFILE.location}  ·  ${PROFILE.phone}`,
+      PROFILE.email,
+      "Interactive portfolio at /cv (separate surface).",
+      "References available on request after owner confirmation.",
+      "Open to HR operations, compliance tooling, and sales-adjacent roles.",
     ]) {
-      const wrapped = wrap(doc, line, colW);
-      if (cy + wrapped.length * 4.4 > maxY) break;
-      doc.text(wrapped, x, cy);
-      cy += wrapped.length * 4.4 + 1.2;
+      const w = wrap(doc, line, colW);
+      if (cy + w.length * 4.6 > maxY) break;
+      doc.text(w, x, cy);
+      cy += w.length * 4.6 + 1.2;
     }
     return cy;
   };
 
-  if (yL < maxY - 18 && yL <= yR) yL = paintContact(leftX, yL);
-  else if (yR < maxY - 18) yR = paintContact(rightX, yR);
+  // Prefer filling the shorter column first so heights stay balanced
+  if (yL <= yR) {
+    yL = fillContact(leftX, yL);
+    if (yR < maxY - 14) yR = fillContact(rightX, yR);
+  } else {
+    yR = fillContact(rightX, yR);
+    if (yL < maxY - 14) yL = fillContact(leftX, yL);
+  }
+
+  const fillNotes = (x: number, start: number) => {
+    let cy = start + 0.8;
+    if (cy + 12 > maxY) return start;
+    cy = colTitle(doc, "Notes", x, cy, colW);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(...MUTED);
+    for (const line of [
+      "A4 résumé for applications — facts only from confirmed CV content.",
+      "Verified metrics remain gated until owner confirmation.",
+    ]) {
+      const w = wrap(doc, line, colW);
+      if (cy + w.length * 4.5 > maxY) break;
+      doc.text(w, x, cy);
+      cy += w.length * 4.5 + 1.1;
+    }
+    return cy;
+  };
+  // Pad whichever column is still short
+  if (yL < yR - 8 && yL < maxY - 14) yL = fillNotes(leftX, yL);
+  if (yR < yL - 8 && yR < maxY - 14) yR = fillNotes(rightX, yR);
+  if (yL < maxY - 14) yL = fillNotes(leftX, yL);
+  if (yR < maxY - 14) yR = fillNotes(rightX, yR);
 
   doc.setDrawColor(...LINE);
   doc.setLineWidth(0.25);
@@ -298,8 +325,6 @@ export function buildResumePdf(): jsPDF {
   doc.text("A4 résumé", pageW - margin, footerY, { align: "right" });
 
   doc.__y = Math.max(yL, yR);
-  // Soft overflow protection: if content exceeded page, still return 1 page
-  // (layout is designed to fit; callers expect 1–2 pages)
   return doc;
 }
 

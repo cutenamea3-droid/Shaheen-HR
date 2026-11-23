@@ -15,8 +15,9 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     const css = readFileSync(resolve(process.cwd(), "src/cv/cv-portfolio.css"), "utf8");
     expect(tsx).not.toMatch(/cv-stage|cv-stage-mono|cv-portrait/);
     expect(css).not.toMatch(/cv-stage-mono|cv-portrait/);
-    expect(css).toMatch(/clamp\(3\.6rem,\s*7\.2vw,\s*5\.5rem\)/);
-    expect(css).toMatch(/min\(1260px|min\(1280px/);
+    expect(css).toMatch(/clamp\(3\.6em,\s*7\.2vw,\s*5\.5em\)/);
+    expect(css).toMatch(/min\(1360px|min\(1400px|min\(1440px/);
+    expect(css).toMatch(/font-size:\s*23px/);
     expect(tsx).toMatch(/cv-exp-row/);
     expect(tsx).toMatch(/cv-case/);
     expect(tsx).toMatch(/cv-skill-tiles/);
@@ -30,9 +31,9 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
 
   it("A4 PDF uses ATS type scale and fills 1–2 pages", async () => {
     const pdfSrc = readFileSync(resolve(process.cwd(), "src/cv/resume-pdf.ts"), "utf8");
-    expect(pdfSrc).toMatch(/margin\s*=\s*14/);
-    expect(pdfSrc).toMatch(/setFontSize\(23\)/);
-    expect(pdfSrc).toMatch(/10\.(2|5|6|8)/);
+    expect(pdfSrc).toMatch(/margin\s*=\s*11/);
+    expect(pdfSrc).toMatch(/setFontSize\(22\)/);
+    expect(pdfSrc).toMatch(/11\.(5|2|8)|12/);
     expect(pdfSrc).not.toMatch(/roundedRect/); // no empty cream filler bands
     const { buildResumePdf } = await import("@/cv/resume-pdf");
     const pages = buildResumePdf().getNumberOfPages();
