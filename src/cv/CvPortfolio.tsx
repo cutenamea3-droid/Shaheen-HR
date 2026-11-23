@@ -1,6 +1,7 @@
 /**
- * Premium interactive WEB portfolio — full-width, Framer-quality craft.
- * Intentionally NOT a centered print sheet. PDF is a separate component (CvA4Resume).
+ * Premium interactive WEB portfolio (Framer-quality craft).
+ * Separate from A4 résumé — see CvA4Resume.
+ * No empty initials panel. Metrics gated by METRICS_PUBLIC.
  */
 import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from "react";
 import { Mail, MapPin, Phone } from "lucide-react";
@@ -10,7 +11,6 @@ import {
   FAQ,
   INTERESTS,
   LANGUAGES,
-  METRICS,
   METRICS_PUBLIC,
   NAV,
   PROFILE,
@@ -36,7 +36,7 @@ function useScrollReveal<T extends HTMLElement>() {
           io.unobserve(el);
         }
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+      { threshold: 0.1, rootMargin: "0px 0px -6% 0px" },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -48,16 +48,14 @@ function Rise({
   children,
   className = "",
   id,
-  "aria-label": ariaLabel,
 }: {
   children: React.ReactNode;
   className?: string;
   id?: string;
-  "aria-label"?: string;
 }) {
   const ref = useScrollReveal<HTMLDivElement>();
   return (
-    <div id={id} ref={ref} className={`cv-rise ${className}`.trim()} aria-label={ariaLabel}>
+    <div id={id} ref={ref} className={`cv-rise ${className}`.trim()}>
       {children}
     </div>
   );
@@ -72,7 +70,7 @@ export function CvPortfolio() {
   const onScrollSpy = useEffectEvent(() => {
     const ids = NAV.map((n) => n.id);
     const nearBottom =
-      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 48;
+      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 64;
     if (nearBottom) {
       setActiveNav(ids[ids.length - 1] ?? "contact");
       return;
@@ -81,7 +79,7 @@ export function CvPortfolio() {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el) continue;
-      if (el.getBoundingClientRect().top <= 120) current = id;
+      if (el.getBoundingClientRect().top <= 130) current = id;
     }
     setActiveNav(current);
   });
@@ -98,21 +96,21 @@ export function CvPortfolio() {
     const name = String(data.get("name") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const message = String(data.get("message") ?? "").trim();
-    const subject = encodeURIComponent(`CV inquiry from ${name || "visitor"}`);
+    const subject = encodeURIComponent(`Portfolio inquiry from ${name || "visitor"}`);
     const body = encodeURIComponent(`${message}\n\n— ${name}\n${email}`);
     window.location.href = `${PROFILE.emailHref}?subject=${subject}&body=${body}`;
     setFormSent(true);
   }
 
+  // Metrics intentionally unused while METRICS_PUBLIC is false
+  void METRICS_PUBLIC;
+
   return (
     <div className="cv-theme">
-      <div className="cv-shell pb-2">
+      <div className="cv-shell">
         <nav aria-label="Portfolio sections" className="cv-nav cv-no-print">
           <a href="#home" className="cv-nav-brand">
-            <span className="cv-nav-mono">{PROFILE.monogram}</span>
-            <span>
-              {PROFILE.brand} <span className="accent">{PROFILE.brandAccent}</span>
-            </span>
+            {PROFILE.brand} <span className="accent">{PROFILE.brandAccent}</span>
           </a>
           <div className="cv-nav-links">
             {NAV.map((item) => (
@@ -136,6 +134,9 @@ export function CvPortfolio() {
               <br />
               <span className="italic">Shahzad</span>
             </h1>
+            <p className="cv-role-line">
+              {PROFILE.role} <span>· {PROFILE.company}</span>
+            </p>
             <div className="cv-pills" aria-label="Focus areas">
               {PROFILE.tags.map((tag) => (
                 <span key={tag} className="cv-pill">
@@ -146,100 +147,97 @@ export function CvPortfolio() {
             <p className="cv-bio">{PROFILE.summary}</p>
             <div className="cv-meta">
               <span className="inline-flex items-center gap-2">
-                <MapPin className="size-4 text-[var(--cv-accent)]" aria-hidden />
+                <MapPin className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
                 {PROFILE.location}
               </span>
               <a href={PROFILE.phoneHref} className="inline-flex items-center gap-2">
-                <Phone className="size-4 text-[var(--cv-accent)]" aria-hidden />
+                <Phone className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
                 {PROFILE.phone}
               </a>
               <a href={PROFILE.emailHref} className="inline-flex items-center gap-2">
-                <Mail className="size-4 text-[var(--cv-accent)]" aria-hidden />
+                <Mail className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
                 {PROFILE.email}
               </a>
             </div>
-            <div className="cv-hero-actions cv-no-print" style={{ justifyContent: "flex-start" }}>
+            <div className="cv-hero-actions cv-no-print">
               <CvA4Resume />
-              <a href="#contact" className="cv-btn cv-btn-ghost">
-                Get in touch
+              <a href="#projects" className="cv-btn cv-btn-ghost">
+                View projects
               </a>
             </div>
           </Rise>
 
-          <Rise className="cv-stage" aria-label="Typographic portrait">
-            <div className="cv-stage-inner">
-              <div className="cv-stage-mono">{PROFILE.monogram}</div>
-              <p className="cv-stage-role">
-                {PROFILE.role}
-                <br />
-                {PROFILE.company}
+          <Rise className="cv-now" aria-label="Current focus">
+            <div className="cv-now-inner">
+              <p className="cv-now-kicker">Currently</p>
+              <h2>
+                Leading HR &amp; safety compliance for a growing fleet operation.
+              </h2>
+              <p>
+                Building the systems I use daily — driver compliance and admin attendance —
+                while keeping records audit-ready.
               </p>
+              <ul className="cv-now-list">
+                <li>Driver document &amp; HOS oversight</li>
+                <li>Attendance &amp; workforce operations</li>
+                <li>Internal product design &amp; shipping</li>
+              </ul>
             </div>
           </Rise>
         </header>
-
-        {METRICS_PUBLIC ? (
-          <Rise className="cv-section" aria-label="Highlights">
-            <div className="cv-section-head">
-              <h2>Highlights</h2>
-            </div>
-            <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {METRICS.map((m) => (
-                <li key={m.caption} className="cv-card">
-                  <h3 className="text-[var(--cv-accent)]">{m.value}</h3>
-                  <p>{m.caption}</p>
-                </li>
-              ))}
-            </ul>
-          </Rise>
-        ) : null}
 
         <Rise id="experience" className="cv-section">
           <section aria-labelledby="experience-heading">
             <div className="cv-section-head">
               <h2 id="experience-heading">Experience</h2>
-              <p>Operations, compliance, and sales — newest first.</p>
+              <p>Editorial timeline — operations, compliance, and sales.</p>
             </div>
-            <ol className="cv-timeline">
+            <div className="cv-exp-list">
               {EXPERIENCE.map((job) => (
-                <li key={`${job.company}-${job.time}`} className="cv-job" data-current={job.current}>
-                  <div className="cv-job-top">
+                <article key={`${job.company}-${job.time}`} className="cv-exp-row">
+                  <p className="cv-exp-when">{job.time}</p>
+                  <div className="cv-exp-main">
                     <h3>{job.role}</h3>
-                    <span className="cv-job-time">{job.time}</span>
+                    <p className="co">{job.company}</p>
+                    <p className="body">{job.text}</p>
                   </div>
-                  <p className="cv-job-co">{job.company}</p>
-                  <p>{job.text}</p>
-                </li>
+                  <p className="cv-exp-status" data-current={job.current}>
+                    {job.current ? "Current" : "Past"}
+                  </p>
+                </article>
               ))}
-            </ol>
+            </div>
           </section>
         </Rise>
 
         <Rise id="projects" className="cv-section">
           <section aria-labelledby="projects-heading">
             <div className="cv-section-head">
-              <h2 id="projects-heading">Projects</h2>
-              <p>Sanitized case studies — no internal credentials or prod wiring.</p>
+              <h2 id="projects-heading">Selected work</h2>
+              <p>Sanitized product case studies — no credentials, schemas, or prod IDs.</p>
             </div>
-            <div className="cv-projects">
-              {PROJECTS.map((project) => (
-                <article key={project.id} className="cv-project">
-                  <p className="cv-project-eyebrow">{project.eyebrow}</p>
+            {PROJECTS.map((project, index) => (
+              <article key={project.id} className="cv-case">
+                <div className="cv-case-index" aria-hidden>
+                  {String(index + 1).padStart(2, "0")}
+                </div>
+                <div>
+                  <p className="cv-case-eyebrow">{project.eyebrow}</p>
                   <h3>{project.name}</h3>
-                  <p>{project.summary}</p>
-                  <ul>
+                  <p className="cv-case-lead">{project.summary}</p>
+                  <ul className="cv-case-points">
                     {project.outcomes.map((o) => (
                       <li key={o}>{o}</li>
                     ))}
                   </ul>
-                  <div className="cv-stack">
+                  <div className="cv-case-stack">
                     {project.stack.map((s) => (
                       <span key={s}>{s}</span>
                     ))}
                   </div>
-                </article>
-              ))}
-            </div>
+                </div>
+              </article>
+            ))}
           </section>
         </Rise>
 
@@ -247,7 +245,7 @@ export function CvPortfolio() {
           <section aria-labelledby="skills-heading">
             <div className="cv-section-head">
               <h2 id="skills-heading">Skills</h2>
-              <p>Category tabs with tools and methods used weekly.</p>
+              <p>Refined category lists — tools and methods used weekly.</p>
             </div>
             <div className="cv-skills">
               <div className="cv-skill-tabs" role="tablist" aria-label="Skill categories">
@@ -264,12 +262,20 @@ export function CvPortfolio() {
                   </button>
                 ))}
               </div>
-              <div className="cv-skill-grid" role="tabpanel" aria-label={skillGroup?.label ?? "Skills"}>
-                {(skillGroup?.items ?? []).map((item) => (
-                  <div key={item} className="cv-skill-chip">
-                    {item}
-                  </div>
-                ))}
+              <div
+                className="cv-skill-panel"
+                role="tabpanel"
+                aria-label={skillGroup?.label ?? "Skills"}
+              >
+                <h3>{skillGroup?.label}</h3>
+                <div className="cv-skill-flow">
+                  {(skillGroup?.items ?? []).map((item, i, arr) => (
+                    <span key={item}>
+                      {item}
+                      {i < arr.length - 1 ? <span className="sep"> · </span> : null}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -278,30 +284,30 @@ export function CvPortfolio() {
         <Rise id="education" className="cv-section">
           <section aria-labelledby="education-heading">
             <div className="cv-section-head">
-              <h2 id="education-heading">Education &amp; more</h2>
+              <h2 id="education-heading">Education &amp; languages</h2>
             </div>
             <div className="cv-edu-grid">
-              <div className="cv-edu-list">
+              <div>
                 {EDUCATION.map((ed) => (
-                  <div key={ed.title} className="cv-card">
+                  <div key={ed.title} className="cv-edu-item">
                     <h3>{ed.title}</h3>
-                    <p>{ed.place}</p>
-                    <p className="note">{ed.note}</p>
+                    <p>
+                      {ed.place} · <span className="note">{ed.note}</span>
+                    </p>
                   </div>
                 ))}
               </div>
-              <div className="cv-side-list">
-                <div className="cv-card">
-                  <h3>Languages</h3>
+              <div>
+                <ul className="cv-lang-list">
                   {LANGUAGES.map((lang) => (
-                    <div key={lang.name} className="cv-lang-row">
-                      <span className="font-bold text-[var(--cv-ink)]">{lang.name}</span>
-                      <span className="text-sm text-[var(--cv-muted)]">{lang.level}</span>
-                    </div>
+                    <li key={lang.name}>
+                      <strong>{lang.name}</strong>
+                      <span>{lang.level}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
                 {INTERESTS.map((interest) => (
-                  <div key={interest.title} className="cv-card">
+                  <div key={interest.title} className="cv-interest">
                     <h3>{interest.title}</h3>
                     <p>{interest.text}</p>
                   </div>
@@ -315,7 +321,7 @@ export function CvPortfolio() {
           <section aria-labelledby="faq-heading">
             <div className="cv-section-head">
               <h2 id="faq-heading">FAQ</h2>
-              <p>Quick answers for recruiters and collaborators.</p>
+              <p>Short answers for recruiters and collaborators.</p>
             </div>
             <div className="cv-faq">
               {FAQ.map((item) => (
@@ -333,63 +339,43 @@ export function CvPortfolio() {
             <div>
               <p className="cv-kicker">Contact</p>
               <h3 id="contact-heading">
-                Let’s talk <span className="italic">compliance,</span> systems, or sales.
+                Let’s talk compliance, systems, or sales.
               </h3>
-              <p>
-                Prefer email or phone? Details below — the form opens your mail client with a drafted
-                message. For applications, download the separate A4 résumé PDF.
+              <p className="lead">
+                Prefer email or phone? Use the details below. For applications, download the
+                separate A4 résumé — it is not a screenshot of this page.
               </p>
               <div className="cv-meta">
                 <a href={PROFILE.emailHref} className="inline-flex items-center gap-2">
-                  <Mail className="size-4 text-[var(--cv-accent)]" aria-hidden />
+                  <Mail className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
                   {PROFILE.email}
                 </a>
                 <a href={PROFILE.phoneHref} className="inline-flex items-center gap-2">
-                  <Phone className="size-4 text-[var(--cv-accent)]" aria-hidden />
+                  <Phone className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
                   {PROFILE.phone}
                 </a>
               </div>
-              <div className="mt-5 cv-no-print">
+              <div className="mt-6 cv-no-print">
                 <CvA4Resume variant="ghost" />
               </div>
             </div>
-            <form
-              className="cv-card grid gap-3"
-              style={{ padding: "1.35rem" }}
-              onSubmit={onContactSubmit}
-            >
-              <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-[var(--cv-muted)]">
+            <form className="cv-form" onSubmit={onContactSubmit}>
+              <label>
                 Name
-                <input
-                  name="name"
-                  required
-                  autoComplete="name"
-                  className="rounded-xl border border-[var(--cv-line)] bg-white px-3 py-2.5 text-base font-medium normal-case tracking-normal text-[var(--cv-ink)]"
-                />
+                <input name="name" type="text" autoComplete="name" required />
               </label>
-              <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-[var(--cv-muted)]">
+              <label>
                 Email
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  className="rounded-xl border border-[var(--cv-line)] bg-white px-3 py-2.5 text-base font-medium normal-case tracking-normal text-[var(--cv-ink)]"
-                />
+                <input name="email" type="email" autoComplete="email" required />
               </label>
-              <label className="grid gap-1 text-xs font-bold uppercase tracking-wide text-[var(--cv-muted)]">
+              <label>
                 Message
-                <textarea
-                  name="message"
-                  required
-                  rows={4}
-                  className="rounded-xl border border-[var(--cv-line)] bg-white px-3 py-2.5 text-base font-medium normal-case tracking-normal text-[var(--cv-ink)]"
-                />
+                <textarea name="message" required />
               </label>
               <button type="submit" className="cv-btn cv-btn-primary w-fit">
                 Send message
               </button>
-              <p className="m-0 text-sm text-[var(--cv-muted)]">
+              <p className="cv-form-note">
                 {formSent
                   ? "Mail client opened — if nothing appeared, email me directly."
                   : "Opens mailto: — no server storage."}
