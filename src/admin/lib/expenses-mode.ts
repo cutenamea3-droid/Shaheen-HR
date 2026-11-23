@@ -14,10 +14,9 @@ export function getExpensesMode(): ExpensesMode {
   return "local";
 }
 
+/** Short user-facing label — no migration / PR jargon. */
 export function expensesModeLabel(mode: ExpensesMode = getExpensesMode()): string {
-  return mode === "secure"
-    ? "Secure Admin expenses tables (flag on — requires applied migration)"
-    : "Browser-local expenses store — not in app_state; cloud gated on migration + Attendance sync (#19)";
+  return mode === "secure" ? "Cloud expenses" : "Saved on this device";
 }
 
 /** Persist key — must never be added to HR_SYNC_KEYS / attendance backup. */
