@@ -2,6 +2,11 @@ import { useRef, useState } from "react";
 import { Lock, ShieldCheck } from "lucide-react";
 import { AboutPanel } from "@/admin/components/hr/AboutPanel";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
+import {
+  ensureHrAuthPersisted,
+  writeHrCloudEmailHint,
+  type HrPersistedSession,
+} from "@/admin/lib/hr-auth-persist";
 import { HR_OWNER_EMAIL } from "@/admin/lib/hr-access";
 import { supabase } from "@/admin/integrations/supabase/client";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -66,9 +71,23 @@ export function AdminLockGate({
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
 
+            const signedRef: { current: HrPersistedSession | null } = { current: null };
+
             const result = await attemptHrLogin(mailRaw, passRaw, {
               signInWithPassword: async (creds) => {
-                const { error } = await supabase.auth.signInWithPassword(creds);
+                const { data, error } = await supabase.auth.signInWithPassword(creds);
+                if (!error && data.session?.access_token && data.session.refresh_token) {
+                  signedRef.current = {
+                    access_token: data.session.access_token,
+                    refresh_token: data.session.refresh_token,
+                    expires_at: data.session.expires_at ?? null,
+                    expires_in: data.session.expires_in ?? null,
+                    token_type: data.session.token_type ?? "bearer",
+                    user: data.session.user
+                      ? { id: data.session.user.id, email: data.session.user.email ?? null }
+                      : null,
+                  };
+                }
                 return {
                   error: error
                     ? {
@@ -98,20 +117,38 @@ export function AdminLockGate({
                 // Keep busy until parent swaps to the dashboard (local path).
                 return;
               }
+              const signedSession = signedRef.current;
+              // Opera/VPN: dual-write session so soft refresh keeps Cloud Saved.
+              if (signedSession) {
+                await ensureHrAuthPersisted(signedSession, {
+                  setSession: async (s) => {
+                    const { error } = await supabase.auth.setSession(s);
+                    return { error };
+                  },
+                });
+              } else {
+                writeHrCloudEmailHint(normalized);
+              }
+              if (isStale()) return;
               // Open dashboard from the session now — do not wait solely on onAuthStateChange
               // (that race left the form briefly interactive and sometimes showed a stale error).
               const { data } = await supabase.auth.getSession();
               if (isStale()) return;
-              const uid = data.session?.user.id;
+              const uid = data.session?.user?.id ?? signedSession?.user?.id ?? null;
               if (uid) {
                 {
-                  const sessMail = data.session?.user.email;
+                  const sessMail =
+                    data.session?.user?.email ??
+                    (typeof signedSession?.user?.email === "string"
+                      ? signedSession.user.email
+                      : null);
                   const mail =
                     sessMail == null
                       ? ""
                       : (typeof sessMail === "string" ? sessMail : String(sessMail))
                           .trim()
                           .toLowerCase();
+                  writeHrCloudEmailHint(mail || normalized);
                   onCloudAuth(mail || normalized, uid);
                 }
                 return;
