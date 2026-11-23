@@ -13,7 +13,7 @@ type Props = {
 
 export function CvA4Resume({
   className = "",
-  label = "Download A4 résumé",
+  label = "Download Resume",
   variant = "primary",
 }: Props) {
   const base =
@@ -28,9 +28,9 @@ export function CvA4Resume({
       type="button"
       className={`${base} ${className}`.trim()}
       onClick={downloadResumePdf}
-      aria-label="Download A4 résumé PDF"
+      aria-label="Download Resume"
     >
-      <Download className="size-4" aria-hidden />
+      <Download className="cv-ico" aria-hidden />
       {label}
     </button>
   );
