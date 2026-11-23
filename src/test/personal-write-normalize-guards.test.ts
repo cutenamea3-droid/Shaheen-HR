@@ -506,6 +506,30 @@ describe("Personal store write-path normalize guards", () => {
     expect(dispatchLogin).toMatch(/asText\(email\)\.trim\(\)/);
     expect(dispatchLogin).toMatch(/value=\{asText\(email\)\}/);
     expect(dqUi).toMatch(/value=\{asText\(q\)\}/);
+    expect(coursesUi).toMatch(/value=\{asTxt\(codeV\)\}/);
+    expect(coursesUi).toMatch(/value=\{asTxt\(titleV\)\}/);
+    expect(assessmentsUi).toMatch(/value=\{asTxt\(prepKind\)\}/);
+    expect(assessmentsUi).toMatch(/value=\{asTxt\(kind\)\}/);
+    expect(focusUi).toMatch(/value=\{asTxt\(activityKind\)\}/);
+    expect(focusUi).toMatch(/value=\{asTxt\(mode\)\}/);
+    expect(vaultUi).toMatch(/value=\{asTxt\(pw\)\}/);
+    expect(vaultUi).toMatch(/asTxt\(pw\) \|\| pwRef/);
+    expect(analyticsUi).toMatch(/value=\{asTxt\(letter\)\}/);
+    expect(analyticsUi).toMatch(/value=\{asTxt\(gProv\)\}/);
+    const acctSettingsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/AccountSettings.tsx"),
+      "utf8",
+    );
+    expect(acctSettingsUi).toMatch(/asText\(name\)\.trim\(\)/);
+    expect(acctSettingsUi).toMatch(/value=\{asText\(currentPassword\)\}/);
+    expect(alertsUi).toMatch(/value=\{asText\(search\)\}/);
+    expect(tasksUi).toMatch(/value=\{asText\(kind\)\}/);
+    const myAccountUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/MyAccount.tsx"),
+      "utf8",
+    );
+    expect(myAccountUi).toMatch(/value=\{asText\(current\)\}/);
+    expect(myAccountUi).toMatch(/value=\{asText\(pass\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

@@ -104,7 +104,7 @@ export function Tasks() {
         <label><span className="lbl">Task</span><input ref={titleRef} data-testid="admin-task-title" className="field" value={asText(title)} onChange={(e) => setTitle(e.target.value)} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} /></label>
         <label>
           <span className="lbl">Type</span>
-          <select className="field" value={kind} onChange={(e) => setKind(e.target.value as Task["kind"])}>
+          <select className="field" value={asText(kind)} onChange={(e) => setKind(e.target.value as Task["kind"])}>
             <option value="dated">Due date</option>
             <option value="daily">Every day</option>
           </select>

@@ -43,7 +43,7 @@ export function AccountSettings() {
           setBusy(true);
           setDisplayMessage("");
           try {
-            const nextName = (name.trim() || nameRef.current?.value || "").trim();
+            const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
             try {
               await updateDisplayName(nextName);
             } catch {
@@ -106,9 +106,9 @@ export function AccountSettings() {
           event.preventDefault();
           setPasswordMessage("");
           setPasswordOk(false);
-          const nextCurrent = (currentPassword || currentPasswordRef.current?.value || "").trim();
-          const nextPassword = (password || passwordRef.current?.value || "").trim();
-          const nextConfirm = (confirmPassword || confirmPasswordRef.current?.value || "").trim();
+          const nextCurrent = (asText(currentPassword) || currentPasswordRef.current?.value || "").trim();
+          const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
+          const nextConfirm = (asText(confirmPassword) || confirmPasswordRef.current?.value || "").trim();
           if (!nextCurrent) return setPasswordMessage("Enter your current password.");
           if (nextPassword.length < 8) return setPasswordMessage("Password must be at least 8 characters.");
           if (nextPassword !== nextConfirm) return setPasswordMessage("Passwords do not match.");
@@ -172,7 +172,7 @@ export function AccountSettings() {
           className="h-11 w-full rounded-xl border bg-card px-3"
           ref={currentPasswordRef}
           data-testid="compliance-current-password"
-          value={currentPassword}
+          value={asText(currentPassword)}
           onChange={(event) => setCurrentPassword(event.target.value)}
           onInput={(event) => setCurrentPassword((event.target as HTMLInputElement).value)}
         />
@@ -188,7 +188,7 @@ export function AccountSettings() {
           className="h-11 w-full rounded-xl border bg-card px-3"
           ref={passwordRef}
           data-testid="compliance-new-password"
-          value={password}
+          value={asText(password)}
           onChange={(event) => setPassword(event.target.value)}
           onInput={(event) => setPassword((event.target as HTMLInputElement).value)}
         />
@@ -204,7 +204,7 @@ export function AccountSettings() {
           className="h-11 w-full rounded-xl border bg-card px-3"
           ref={confirmPasswordRef}
           data-testid="compliance-confirm-password"
-          value={confirmPassword}
+          value={asText(confirmPassword)}
           onChange={(event) => setConfirmPassword(event.target.value)}
           onInput={(event) => setConfirmPassword((event.target as HTMLInputElement).value)}
         />

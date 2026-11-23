@@ -269,10 +269,10 @@ export function Analytics() {
             </select>
           </Field>
           <Field label="Letter">
-            <select className="hp-field" value={letter} onChange={(e) => setLetter(e.target.value)}>
+            <select className="hp-field" value={asTxt(letter)} onChange={(e) => setLetter(e.target.value)}>
               <option value="">— unset —</option>
               {VU_LETTER_CHOICES.map((L) => (
-                <option key={L} value={L}>
+                <option key={asTxt(L)} value={asTxt(L)}>
                   {L}
                 </option>
               ))}
@@ -281,7 +281,7 @@ export function Analytics() {
           <Field label="Provenance">
             <select
               className="hp-field"
-              value={letterProv}
+              value={asTxt(letterProv)}
               onChange={(e) =>
                 setLetterProv(e.target.value as "owner_recorded" | "owner_whatif")
               }
@@ -379,7 +379,7 @@ export function Analytics() {
           <Field label="Provenance">
             <select
               className="hp-field"
-              value={gProv}
+              value={asTxt(gProv)}
               onChange={(e) => setGProv(e.target.value as "owner_recorded" | "owner_whatif")}
             >
               <option value="owner_recorded">Recorded</option>

@@ -271,7 +271,7 @@ export function Assessments() {
           <Field label="Exam kind">
             <select
               className="hp-field"
-              value={prepKind}
+              value={asTxt(prepKind)}
               onChange={(e) => setPrepKind(e.target.value as ExamPrepTask["examKind"])}
             >
               <option value="midterm">Midterm</option>
@@ -394,9 +394,9 @@ export function Assessments() {
             />
           </Field>
           <Field label="Kind">
-            <select className="hp-field" value={kind} onChange={(e) => setKind(e.target.value as AssessmentKind)}>
+            <select className="hp-field" value={asTxt(kind)} onChange={(e) => setKind(e.target.value as AssessmentKind)}>
               {KINDS.map((k) => (
-                <option key={k} value={k}>
+                <option key={asTxt(k)} value={asTxt(k)}>
                   {k === "gdb" ? "GDB" : k}
                 </option>
               ))}

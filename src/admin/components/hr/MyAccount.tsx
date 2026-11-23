@@ -4,6 +4,8 @@ import { supabase } from "@/admin/integrations/supabase/client";
 import { useApp } from "@/admin/lib/store";
 import { hasHrLocalPassword, setHrLocalPassword, verifyHrLocalPassword } from "@/admin/lib/hr-auth-local";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean }) {
   const addLog = useApp((s) => s.addLog);
   const [current, setCurrent] = useState("");
@@ -39,9 +41,9 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
           e.preventDefault();
           setMsg(null);
           const fd = new FormData(e.currentTarget);
-          const cur = String(fd.get("admin-current-password") ?? current) || current;
-          const next = String(fd.get("admin-new-password") ?? pass) || pass;
-          const conf = String(fd.get("admin-confirm-password") ?? confirm) || confirm;
+          const cur = String(fd.get("admin-current-password") ?? current) || asText(current);
+          const next = String(fd.get("admin-new-password") ?? pass) || asText(pass);
+          const conf = String(fd.get("admin-confirm-password") ?? confirm) || asText(confirm);
           setCurrent(cur);
           setPass(next);
           setConfirm(conf);
@@ -100,7 +102,7 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
             className="field"
             name="admin-current-password"
             data-testid="admin-current-password"
-            value={current}
+            value={asText(current)}
             onChange={(e) => setCurrent(e.target.value)}
             onInput={(e) => setCurrent((e.target as HTMLInputElement).value)}
             autoComplete="current-password"
@@ -114,7 +116,7 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
             className="field"
             name="admin-new-password"
             data-testid="admin-new-password"
-            value={pass}
+            value={asText(pass)}
             onChange={(e) => setPass(e.target.value)}
             onInput={(e) => setPass((e.target as HTMLInputElement).value)}
             autoComplete="new-password"
@@ -129,7 +131,7 @@ export function MyAccount({ email, isAdmin }: { email: string; isAdmin: boolean 
             className="field"
             name="admin-confirm-password"
             data-testid="admin-confirm-password"
-            value={confirm}
+            value={asText(confirm)}
             onChange={(e) => setConfirm(e.target.value)}
             onInput={(e) => setConfirm((e.target as HTMLInputElement).value)}
             autoComplete="new-password"
