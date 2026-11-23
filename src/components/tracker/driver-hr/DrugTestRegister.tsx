@@ -227,10 +227,12 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                   toast.error(resolution.message);
                   return;
                 }
+                const asDrugText = (v: unknown) =>
+                  v == null ? "" : typeof v === "string" ? v : String(v);
                 const testingEventId =
                   resolution.status === "attach"
-                    ? resolution.testingEventId
-                    : draft.testingEventId.trim() || newTestingEventId();
+                    ? asDrugText(resolution.testingEventId)
+                    : asDrugText(draft.testingEventId).trim() || newTestingEventId();
                 try {
                   await addDrugTestEvent({ ...draft, driverId, testingEventId }, actor);
                   clearPairingFeedback();

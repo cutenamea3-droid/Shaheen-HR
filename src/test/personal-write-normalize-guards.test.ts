@@ -147,6 +147,8 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(payrollUi).toMatch(/\{asText\(line\.label\)\}/);
+    expect(payrollUi).toMatch(/asText\(line\.gate\.message\)/);
+    expect(payrollUi).toMatch(/asText\(line\.detail\)/);
     const directoryUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/EmployeeDirectory.tsx"),
       "utf8",
@@ -340,6 +342,24 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(dashUi).toMatch(/\{asText\(i\.label\)\}/);
     expect(dashUi).toMatch(/\{asText\(def\.title\)\}/);
+    expect(dashUi).toMatch(/typeof raw === "string" \? raw : String\(raw\)\)\.trim\(\)/);
+    const drugFormUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestForm.tsx"),
+      "utf8",
+    );
+    expect(drugFormUi).toMatch(/const asDrugText = /);
+    expect(drugFormUi).toMatch(/useState\(asDrugText\(initial\?\.specimenId\)\)/);
+    expect(drugFormUi).toMatch(/testingEventId: asDrugText\(testingEventId\)/);
+    const drugRegUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestRegister.tsx"),
+      "utf8",
+    );
+    expect(drugRegUi).toMatch(/asDrugText\(draft\.testingEventId\)\.trim\(\)/);
+    const rosterLib = readFileSync(
+      resolve(process.cwd(), "src/lib/driver-hr/roster-drivers.ts"),
+      "utf8",
+    );
+    expect(rosterLib).toMatch(/typeof r\.driverId === "string"/);
     expect(dispatchApp).toMatch(/\{asFormText\(load\.load_number\)\}/);
     expect(src).toMatch(/normalizeFocusSession\(\{/);
     expect(src).toMatch(/normalizeGradeEntry\(g\)/);

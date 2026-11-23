@@ -455,7 +455,11 @@ function dedupe(issues: Issue[]) {
 }
 function noteText(def: SectionDef, cells: string[]) {
   return def.types
-    .map((t, i) => (t === "note" ? cells[i]?.trim() : ""))
+    .map((t, i) => {
+      if (t !== "note") return "";
+      const raw = cells[i];
+      return (raw == null ? "" : typeof raw === "string" ? raw : String(raw)).trim();
+    })
     .filter(Boolean)
     .join(" · ");
 }

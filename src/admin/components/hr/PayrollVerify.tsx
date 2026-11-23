@@ -224,7 +224,9 @@ export function PayrollVerify() {
                             : "—"}
                       </td>
                       <td className="text-sm text-muted-foreground">
-                        {line.gate && !line.gate.ok ? line.gate.message : line.detail}
+                        {line.gate && !line.gate.ok
+                          ? asText(line.gate.message)
+                          : asText(line.detail)}
                       </td>
                     </tr>
                   ))}

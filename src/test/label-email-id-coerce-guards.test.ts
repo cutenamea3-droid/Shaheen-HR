@@ -23,7 +23,7 @@ describe("label / email / id coerce guards", () => {
       resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestForm.tsx"),
       "utf8",
     );
-    expect(src).toMatch(/asLab\(c\.label\)\.toLowerCase\(\)\.includes\(q\)/);
+    expect(src).toMatch(/asDrugText\(c\.label\)\.toLowerCase\(\)\.includes\(q\)/);
     expect(src).not.toMatch(/c\.label\.toLowerCase\(\)/);
   });
 

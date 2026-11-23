@@ -16,7 +16,12 @@ export function listRosterDrivers(data: AppData): RosterDriverRef[] {
     const sec = data.sections[def.id];
     if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
-      const id = r.driverId;
+      const id =
+        r.driverId == null
+          ? ""
+          : typeof r.driverId === "string"
+            ? r.driverId.trim()
+            : String(r.driverId).trim();
       if (!id) continue;
       const name = (cellsOf(r)[0] ?? "").trim();
       const prev = map.get(id);
