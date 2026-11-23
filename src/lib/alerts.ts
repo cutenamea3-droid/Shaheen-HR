@@ -237,7 +237,9 @@ function statusIssue(v: string, col: number, header: unknown, expiryRaw?: string
     const view = expiryRaw != null ? appliedExpiryView(expiryRaw) : null;
     if (view) {
       // Tone follows the expiration axis; Application stays Applied in the label.
-      return { tone: view.tone, label: `${hdr.trim()}: ${view.label}`, col };
+      const viewLabel =
+        view.label == null ? "" : typeof view.label === "string" ? view.label : String(view.label);
+      return { tone: view.tone, label: `${hdr.trim()}: ${viewLabel}`, col };
     }
     return { tone: "info", label: `${hdr.trim()}: Applied`, col };
   }

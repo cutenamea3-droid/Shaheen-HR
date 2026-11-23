@@ -191,7 +191,7 @@ export function Analytics() {
               const max = Math.max(1, ...byCourse.map((r) => r.minutes));
               const w = Math.round((row.minutes / max) * 100);
               return (
-                <li key={row.code}>
+                <li key={asTxt(row.code)}>
                   <div className="mb-1 flex justify-between text-sm">
                     <span className="font-semibold">{asTxt(row.code)}</span>
                     <span className="tabular-nums text-[var(--hp-muted)]">{row.minutes}m</span>

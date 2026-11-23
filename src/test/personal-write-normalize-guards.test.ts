@@ -260,6 +260,18 @@ describe("Personal store write-path normalize guards", () => {
     expect(empPdf).toMatch(/asText\(emp\.employee\.name\)/);
     const quickFind = readFileSync(resolve(process.cwd(), "src/lib/quick-find.ts"), "utf8");
     expect(quickFind).toMatch(/asN\(d\.name\)/);
+    const personalStore = readFileSync(
+      resolve(process.cwd(), "src/personal/lib/store.ts"),
+      "utf8",
+    );
+    expect(personalStore).toMatch(/Study block · \$\{asText\(c\.code\)\}/);
+    const vuPlan = readFileSync(resolve(process.cwd(), "src/personal/lib/vu-plan.ts"), "utf8");
+    expect(vuPlan).toMatch(/const title = asText\(t\.title\)/);
+    const dispatchCloud = readFileSync(
+      resolve(process.cwd(), "src/dispatch/lib/cloud.ts"),
+      "utf8",
+    );
+    expect(dispatchCloud).toMatch(/Cannot cancel a \$\{asText\(load\.status\)\}/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",

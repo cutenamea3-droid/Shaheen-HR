@@ -31,8 +31,10 @@ export type VuStudyPlan = typeof planFixture;
 
 export const VU_STUDY_PLAN = planFixture as VuStudyPlan;
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function courseIdFromCode(code: unknown): string {
-  return (code == null ? "" : typeof code === "string" ? code : String(code)).trim().toLowerCase();
+  return asText(code).trim().toLowerCase();
 }
 
 export function formatMinutes(total: number): string {
@@ -297,31 +299,33 @@ export function buildTodayPrescription(
       t.kind === "assignment" ? assumptions.assignmentMinutes : assumptions.quizMinutes;
     const slice = Math.min(need, recoveryLeft, 55);
     const noun = activityNoun(t);
+    const courseCode = asText(t.courseCode) || "GEN";
+    const title = asText(t.title);
     blocks.push({
-      id: `rec-${t.courseCode}-${t.title}`,
+      id: `rec-${courseCode}-${title}`,
       kind: "recovery",
-      courseCode: t.courseCode || "GEN",
+      courseCode,
       label:
         t.statusAsOf === "window_ended"
-          ? `Verify on VULMS · ${noun} · ${t.title}`
-          : `Submit on VULMS · ${noun} · ${t.title}`,
+          ? `Verify on VULMS · ${noun} · ${title}`
+          : `Submit on VULMS · ${noun} · ${title}`,
       minutes: slice,
       clock: minutesToClock(cursor),
       room: null,
-      todoTitle: t.title,
+      todoTitle: title,
       priority: 0,
       due: t.due,
     });
     if (prepCount < 3) {
       blocks.push({
-        id: `prep-${t.courseCode}-${t.title}`,
+        id: `prep-${courseCode}-${title}`,
         kind: "prep",
-        courseCode: t.courseCode || "GEN",
-        label: `Prep only (≠ submit) · ${t.courseCode} · ${noun}`,
+        courseCode,
+        label: `Prep only (≠ submit) · ${courseCode} · ${noun}`,
         minutes: 20,
         clock: minutesToClock(cursor + slice + 5),
         room: null,
-        todoTitle: t.title,
+        todoTitle: title,
         priority: 1,
         due: t.due,
       });

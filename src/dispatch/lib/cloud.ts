@@ -737,7 +737,7 @@ export async function cancelLoad(
   reason: string,
 ): Promise<DispatchLoad> {
   if (!canCancelLoad(load.status)) {
-    throw new Error(`Cannot cancel a ${load.status} load.`);
+    throw new Error(`Cannot cancel a ${asText(load.status)} load.`);
   }
   const err = validateCancel(reason);
   if (err) throw new Error(err);

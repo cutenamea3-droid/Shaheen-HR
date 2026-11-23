@@ -6,6 +6,8 @@ import {
   type VuTodo,
 } from "./vu-plan";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function kindFromTodo(t: VuTodo): AssessmentKind {
   if (t.kind === "assignment") return "assignment";
   if (t.kind === "quiz") return "quiz";
@@ -14,7 +16,6 @@ function kindFromTodo(t: VuTodo): AssessmentKind {
 }
 
 function assessmentId(t: VuTodo): string {
-  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const raw = `${asText(t.courseCode) || "gen"}-${asText(t.title)}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-");
@@ -89,9 +90,9 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
       id: assessmentId(t),
       courseId: t.courseCode ? courseIdFromCode(t.courseCode) : "general",
       kind: kindFromTodo(t),
-      title: t.title,
+      title: asText(t.title),
       dueDate: t.due as string,
-      notes: `VULMS window ${t.start || "?"} → ${t.due}. Completion unknown in export — prep ≠ submit; confirm attempt/upload on VULMS.`,
+      notes: `VULMS window ${asText(t.start) || "?"} → ${asText(t.due)}. Completion unknown in export — prep ≠ submit; confirm attempt/upload on VULMS.`,
       prepDone: false,
       submitted: false,
       done: false,
@@ -110,8 +111,8 @@ export function buildVuSeed(plan: VuStudyPlan = VU_STUDY_PLAN): {
     courseId: t.courseCode ? courseIdFromCode(t.courseCode) : "general",
     label:
       (t as VuTodo).statusAsOf === "window_ended"
-        ? `Verify · ${t.title}`
-        : `Clear · ${t.title}`,
+        ? `Verify · ${asText(t.title)}`
+        : `Clear · ${asText(t.title)}`,
     estimatedMinutes: t.kind === "assignment" ? 90 : 45,
     done: false,
     createdAt: now + i,

@@ -152,30 +152,32 @@ function buildBlocks(
   const blocks: DayPlan["blocks"] = [];
   let left = budget;
 
+  const asText = (v: unknown, fb = "") =>
+    v == null ? fb : typeof v === "string" ? v : String(v);
   for (const item of open) {
     if (left <= 0) break;
     const mins = Math.min(item.estimatedMinutes || 20, left);
     blocks.push({
       id: uid(),
-      courseId: item.courseId,
+      courseId: asText(item.courseId, "general") || "general",
       minutes: mins,
-      label: item.label,
+      label: asText(item.label),
       done: false,
     });
     left -= mins;
   }
 
   if (left > 0 && blocks.length === 0) {
-    const active = courseList.filter((c) => !c.isTbd || c.code !== "TBD");
+    const active = courseList.filter((c) => !c.isTbd || asText(c.code) !== "TBD");
     const slice = Math.max(15, Math.floor(budget / Math.max(1, Math.min(3, active.length))));
     for (const c of active.slice(0, 3)) {
       if (left <= 0) break;
       const mins = Math.min(slice, left);
       blocks.push({
         id: uid(),
-        courseId: c.id,
+        courseId: asText(c.id),
         minutes: mins,
-        label: `Study block · ${c.code}`,
+        label: `Study block · ${asText(c.code)}`,
         done: false,
       });
       left -= mins;
