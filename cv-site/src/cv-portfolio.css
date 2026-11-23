@@ -284,27 +284,31 @@
   margin-top: 2rem;
 }
 
-/* Hero portrait — sophisticated frame; PDF stays photo-free */
+/* Hero portrait — 4:5 frame, violet border/shadow; PDF stays photo-free */
 .cv-theme .cv-portrait-wrap {
   justify-self: center;
-  width: min(100%, 22rem);
+  width: min(100%, 18.5rem);
+}
+@media (min-width: 768px) {
+  .cv-theme .cv-portrait-wrap { width: min(100%, 20.5rem); }
 }
 @media (min-width: 1024px) {
   .cv-theme .cv-portrait-wrap {
-    width: min(100%, 26rem);
+    width: min(100%, 22.5rem);
     justify-self: end;
   }
 }
 .cv-theme .cv-portrait {
   margin: 0;
   position: relative;
-  border-radius: 1.35rem;
+  border-radius: 1.25rem;
   overflow: hidden;
-  aspect-ratio: 1 / 1;
-  background: color-mix(in srgb, var(--cv-violet-soft) 55%, #fff);
+  aspect-ratio: 4 / 5;
+  background: color-mix(in srgb, var(--cv-violet-soft) 50%, #fff);
+  border: 2px solid color-mix(in srgb, var(--cv-violet-mid) 42%, transparent);
   box-shadow:
-    0 22px 50px -28px rgba(26, 23, 20, 0.45),
-    0 0 0 1px color-mix(in srgb, var(--cv-violet-mid) 16%, transparent);
+    0 24px 52px -26px rgba(76, 29, 149, 0.38),
+    0 10px 28px -22px rgba(26, 23, 20, 0.35);
 }
 .cv-theme .cv-portrait::after {
   content: "";
@@ -312,14 +316,14 @@
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 40%, transparent);
 }
 .cv-theme .cv-portrait img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 18%;
+  object-position: center 12%;
 }
 
 /* —— Section chrome —— */

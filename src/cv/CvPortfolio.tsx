@@ -264,8 +264,8 @@ export function CvPortfolio() {
                 <img
                   src="/cv/portrait.jpg"
                   alt="Portrait of Muhammad Yousaf Shahzad"
-                  width={840}
-                  height={840}
+                  width={800}
+                  height={1000}
                   decoding="async"
                   fetchPriority="high"
                 />
