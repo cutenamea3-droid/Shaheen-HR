@@ -23,6 +23,13 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     expect(tsx).toMatch(/cv-skill-tiles/);
     expect(tsx).toMatch(/cv-nav-chrome/);
     expect(css).toMatch(/background:\s*#ffffff/);
+    expect(css).toMatch(/backdrop-filter/);
+    expect(tsx).toMatch(/Download Resume/);
+    expect(tsx).not.toMatch(/label=\{?"A4 PDF"?\}|label=\{?"Download CV"?\}/);
+    expect(tsx).toMatch(/cv-faq-trigger/);
+    expect(tsx).toMatch(/layoutId="cv-nav-pill"/);
+    // Exactly one Contact download + nav CTA; no footer download
+    expect(tsx).not.toMatch(/cv-footer[\s\S]*CvA4Resume/);
   });
 
   it("keeps metrics off public surfaces", () => {
