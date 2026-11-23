@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { BadgeCheck } from "lucide-react";
+import { ArrowUpRight, Sparkles } from "lucide-react";
 
 /**
  * Shared Compliance (`LockGate`) + Admin (`AdminLockGate`) sign-in shell:
- * tall split layout, transparent logo area on the form side, Made by HR /
- * YOUSAF in the footer (not the hero). Keep `.portal-login-shell` on the root —
- * CSS pins rem scale to Driver 13px while Admin dashboard uses 16px.
+ * tall split layout, transparent logo area on the form side, Meet the Creator
+ * | View CV capsule in the footer (not the hero). Keep `.portal-login-shell`
+ * on the root — CSS pins rem scale to Driver 13px while Admin dashboard uses 16px.
  */
 export function PortalLoginShell({
   children,
@@ -31,15 +31,22 @@ export function PortalLoginShell({
         </div>
       </div>
       <footer className="border-t border-border/60 bg-card/40 px-4 py-4">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 text-center sm:flex-row sm:text-left">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
           <Link
             to="/cv"
             preload="intent"
-            title="View Yousaf's CV"
-            className="ui-press inline-flex items-center gap-2 text-sm font-bold text-primary"
+            title="Meet the Creator — View Yousaf's CV"
+            aria-label="Meet the Creator, View CV"
+            className="meet-creator-cta"
           >
-            <BadgeCheck className="size-4" /> Made by HR{" "}
-            <span className="font-semibold opacity-70">· View CV →</span>
+            <span className="meet-creator-cta__meet">
+              <Sparkles className="meet-creator-cta__icon" aria-hidden />
+              Meet the Creator
+            </span>
+            <span className="meet-creator-cta__cv" aria-hidden>
+              View CV
+              <ArrowUpRight className="meet-creator-cta__arrow" />
+            </span>
           </Link>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {footerRole}

@@ -1190,10 +1190,110 @@ body:has(.admin-theme) { background-color: var(--brand-soft-white, #F7F8FA); }
   }
 }
 
+/* Meet the Creator | View CV — portal login footer capsule (single link to /cv) */
+.meet-creator-cta {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--primary) 42%, var(--border));
+  background: color-mix(in oklab, var(--card) 92%, white);
+  box-shadow:
+    0 1px 2px oklch(0.35 0.04 50 / 0.06),
+    0 6px 18px -10px color-mix(in oklab, var(--primary) 38%, transparent);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease;
+}
+.meet-creator-cta__meet,
+.meet-creator-cta__cv {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8125rem; /* 13px @ 16rem; ~13–14px in portal shell */
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.meet-creator-cta__meet {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--card) 88%, white);
+}
+.meet-creator-cta__cv {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  padding-inline: 0.85rem 0.75rem;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 28%, transparent);
+}
+.meet-creator-cta__icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  color: var(--primary);
+}
+.meet-creator-cta__arrow {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dark .meet-creator-cta {
+  background: color-mix(in oklab, var(--card) 88%, var(--primary) 6%);
+  border-color: color-mix(in oklab, var(--primary) 48%, var(--border));
+  box-shadow:
+    0 1px 2px oklch(0.1 0.02 50 / 0.35),
+    0 8px 22px -12px color-mix(in oklab, var(--primary) 45%, transparent);
+}
+.dark .meet-creator-cta__meet {
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+  color: var(--foreground);
+}
+@keyframes meet-creator-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .meet-creator-cta {
+    animation: meet-creator-enter 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .meet-creator-cta:hover,
+  .meet-creator-cta:focus-visible {
+    transform: translateY(-2px);
+    border-color: color-mix(in oklab, var(--primary) 62%, var(--border));
+    box-shadow:
+      0 2px 4px oklch(0.35 0.05 50 / 0.08),
+      0 14px 32px -12px color-mix(in oklab, var(--primary) 55%, transparent),
+      0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent);
+  }
+  .meet-creator-cta:hover .meet-creator-cta__arrow,
+  .meet-creator-cta:focus-visible .meet-creator-cta__arrow {
+    transform: translate(2px, -2px);
+  }
+  .meet-creator-cta:active {
+    transform: translateY(0);
+  }
+}
+
 /* Personal CV portfolio tokens live in src/cv/cv-portfolio.css (scoped .cv-theme).
    Keep reduced-motion safety for shared dashboard motion utilities here. */
 @media (prefers-reduced-motion: reduce) {
   .ui-enter { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .meet-creator-cta { animation: none !important; transition: none !important; }
+  .meet-creator-cta:hover,
+  .meet-creator-cta:focus-visible { transform: none !important; }
+  .meet-creator-cta__arrow { transition: none !important; transform: none !important; }
   .ui-lift, .ui-press, .panel, .btn, .btn-primary, .btn-ghost, .btn-danger, .shadow-card { transition: none !important; }
   .ui-lift:hover, .ui-press:hover, .panel:hover, .btn:hover, .btn-primary:hover, .shadow-card:hover { transform: none !important; }
   .ui-glow::before, .panel::before { display: none !important; }

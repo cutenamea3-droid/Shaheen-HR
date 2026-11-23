@@ -3,13 +3,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 describe("portal login polish (SHRP-138)", () => {
-  it("shared shell has footer Made by HR / YOUSAF, not hero AboutPanel", () => {
+  it("shared shell has Meet the Creator | View CV capsule to /cv, not hero AboutPanel", () => {
     const shell = readFileSync(
       resolve(process.cwd(), "src/components/portal-login/PortalLoginShell.tsx"),
       "utf8",
     );
-    expect(shell).toMatch(/Made by HR/);
+    expect(shell).toMatch(/Meet the Creator/);
+    expect(shell).toMatch(/View CV/);
+    expect(shell).toMatch(/meet-creator-cta/);
+    expect(shell).toMatch(/to="\/cv"/);
     expect(shell).toMatch(/footerRole/);
+    expect(shell).not.toMatch(/Made by HR/);
     const complianceAbout = readFileSync(
       resolve(process.cwd(), "src/components/tracker/AboutPanel.tsx"),
       "utf8",
@@ -18,6 +22,8 @@ describe("portal login polish (SHRP-138)", () => {
       resolve(process.cwd(), "src/admin/components/hr/AboutPanel.tsx"),
       "utf8",
     );
+    expect(complianceAbout).not.toMatch(/Meet the Creator/);
+    expect(adminAbout).not.toMatch(/Meet the Creator/);
     expect(complianceAbout).not.toMatch(/Made by HR/);
     expect(adminAbout).not.toMatch(/Made by HR/);
   });
