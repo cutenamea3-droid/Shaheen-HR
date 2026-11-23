@@ -451,6 +451,26 @@ describe("Personal store write-path normalize guards", () => {
     expect(leaveUi).toMatch(/value=\{asText\(month\)\}/);
     expect(reportsUi).toMatch(/value=\{asText\(month\)\}/);
     expect(reportsUi).toMatch(/value=\{asText\(from\)\}/);
+    expect(attendanceUi).toMatch(/value=\{asText\(date\)\}/);
+    expect(attendanceUi).toMatch(/value=\{asText\(rangeFrom\)\}/);
+    expect(attendanceUi).toMatch(/value=\{asText\(rangeTo\)\}/);
+    expect(payrollUi).toMatch(/value=\{asText\(month\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(q\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(instQuery\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(customCat\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(finEmpId\)\}/);
+    expect(expensesUi).toMatch(/asText\(budgetLimit\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(statusFilter\)\}/);
+    expect(closeoutUi).toMatch(/value=\{asText\(kind\)\}/);
+    expect(teamEmpUi).toMatch(/Number\.isFinite\(e\.openingLeave\)/);
+    const overviewUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/Overview.tsx"),
+      "utf8",
+    );
+    expect(overviewUi).toMatch(/value=\{asText\(date\)\}/);
+    expect(auditHistUi).toMatch(/value=\{asText\(month\)\}/);
+    expect(drugRegUi).toMatch(/value=\{asDrugText\(q\)\}/);
+    expect(drugRegUi).toMatch(/value=\{asDrugText\(statusFilter\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

@@ -2759,7 +2759,7 @@ function ReportsBoard({ loads, drivers }: { loads: DispatchLoad[]; drivers: Rost
         Status filter
         <select
           className="dispatch-field"
-          value={statusFilter}
+          value={asFormText(statusFilter)}
           onChange={(e) => setStatusFilter(e.target.value as "all" | LoadStatus)}
         >
           <option value="all">All</option>

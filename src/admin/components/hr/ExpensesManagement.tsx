@@ -639,7 +639,7 @@ export function ExpensesManagement() {
               name="admin-custom-category"
               data-testid="admin-custom-category"
               placeholder="Custom category"
-              value={customCat}
+              value={asText(customCat)}
               onChange={(e) => setCustomCat(e.target.value)}
               onInput={(e) => setCustomCat((e.target as HTMLInputElement).value)}
             />
@@ -711,7 +711,7 @@ export function ExpensesManagement() {
               className="field w-28"
               data-testid="admin-budget-limit"
               placeholder="Limit PKR"
-              value={budgetLimit}
+              value={asText(budgetLimit)}
               onChange={(e) => setBudgetLimit(e.target.value)}
               onInput={(e) => setBudgetLimit((e.target as HTMLInputElement).value)}
             />
@@ -721,7 +721,7 @@ export function ExpensesManagement() {
               onClick={(e) => {
                 const dom =
                   (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
-                const limit = Number((budgetLimit.trim() || dom || "0"));
+                const limit = Number((asText(budgetLimit).trim() || dom || "0"));
                 const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: limit, note: "" });
                 setMsg(r.ok ? "Budget saved." : r.error ?? "Failed");
               }}
@@ -739,7 +739,7 @@ export function ExpensesManagement() {
           <p className="text-xs text-muted-foreground">
             Personal totals exclude company-wide (All) expenses so aggregates are never double-counted.
           </p>
-          <select className="field" value={finEmpId} onChange={(e) => setFinEmpId(e.target.value)}>
+          <select className="field" value={asText(finEmpId)} onChange={(e) => setFinEmpId(e.target.value)}>
             <option value="">Select employee…</option>
             {roster.map((e) => (
               <option key={asText(e.id)} value={asText(e.id)}>

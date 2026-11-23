@@ -91,7 +91,7 @@ export function AccessorialsBoard({
           </label>
           <label className="grid gap-1 text-xs">
             Kind
-            <select className="dispatch-field" value={kind} onChange={(e) => setKind(e.target.value as AccessorialKind)}>
+            <select className="dispatch-field" value={asText(kind)} onChange={(e) => setKind(e.target.value as AccessorialKind)}>
               {KINDS.map((k) => (
                 <option key={k} value={k}>
                   {ACCESSORIAL_KIND_LABELS[k]}

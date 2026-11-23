@@ -39,7 +39,7 @@ export function AuditHistory() {
         sub="Operator actions for PDFs, month closing/reopen, performance follow-ups, and HR reminders. Closing ≠ Paid."
         right={
           <div className="admin-toolbar gap-2">
-            <input type="month" className="field w-auto" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label="Audit month filter" />
+            <input type="month" className="field w-auto" value={asText(month)} onChange={(e) => e.target.value && setMonth(e.target.value)} aria-label="Audit month filter" />
           </div>
         }
       />

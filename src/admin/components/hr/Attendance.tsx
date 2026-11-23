@@ -208,7 +208,7 @@ export function Attendance() {
               type="date"
               className="field w-auto"
               aria-label="Attendance date"
-              value={date}
+              value={asText(date)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
             />
             <input
@@ -216,7 +216,7 @@ export function Attendance() {
               className="field w-auto"
               title="Payroll range from"
               aria-label="Payroll range from"
-              value={rangeFrom}
+              value={asText(rangeFrom)}
               onChange={(e) => e.target.value && setRangeFrom(e.target.value)}
             />
             <span className="self-center text-sm text-muted-foreground" aria-hidden>
@@ -227,7 +227,7 @@ export function Attendance() {
               className="field w-auto"
               title="Payroll range to"
               aria-label="Payroll range to"
-              value={rangeTo}
+              value={asText(rangeTo)}
               onChange={(e) => e.target.value && setRangeTo(e.target.value)}
             />
             <button

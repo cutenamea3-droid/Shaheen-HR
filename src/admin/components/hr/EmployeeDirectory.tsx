@@ -155,7 +155,7 @@ export function EmployeeDirectory() {
         <input
           className="field w-48"
           placeholder="Search name / dept / designation"
-          value={q}
+          value={asText(q)}
           onChange={(e) => setQ(e.target.value)}
           aria-label="Filter employees"
         />
@@ -347,7 +347,7 @@ export function EmployeeDirectory() {
                     <span className="lbl">Search institution</span>
                     <input
                       className="field"
-                      value={instQuery}
+                      value={asText(instQuery)}
                       onChange={(e) => setInstQuery(e.target.value)}
                       onInput={(e) => setInstQuery((e.target as HTMLInputElement).value)}
                       placeholder="HBL, Meezan, JazzCash…"

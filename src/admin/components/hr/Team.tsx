@@ -171,7 +171,7 @@ export function Team() {
                     type="number"
                     min={0}
                     className="field"
-                    value={e.openingLeave}
+                    value={Number.isFinite(e.openingLeave) ? e.openingLeave : ""}
                     onChange={(ev) => updateEmployee(e.id, { openingLeave: +ev.target.value })}
                     onInput={(ev) => updateEmployee(e.id, { openingLeave: +(ev.target as HTMLInputElement).value })}
                   />

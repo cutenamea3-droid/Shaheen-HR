@@ -120,7 +120,7 @@ export function PayrollVerify() {
             type="month"
             className="field w-auto"
             aria-label="Verify month"
-            value={month}
+            value={asText(month)}
             onChange={(e) => e.target.value && setMonth(e.target.value)}
           />
         }

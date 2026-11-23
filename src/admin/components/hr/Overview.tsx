@@ -8,6 +8,8 @@ import type { DayRec, Dept, Employee, Settings } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
 import { missedDaily } from "./Tasks";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /** Day rollup from existing attendance records only — no new persistence. */
 function dayRollup(
   employees: Employee[],
@@ -111,11 +113,11 @@ export function Overview() {
             >
               {density === "compact" ? "Compact" : "Comfortable"}
             </button>
-            <input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
+            <input type="date" className="field w-auto" value={asText(date)} onChange={(e) => e.target.value && setDate(e.target.value)} />
           </div>
         }
       />
-      {missed.length > 0 && <div className="panel mb-1 text-sm font-semibold text-destructive">Daily tasks missed yesterday: {missed.map((t) => t.title).join(", ")}</div>}
+      {missed.length > 0 && <div className="panel mb-1 text-sm font-semibold text-destructive">Daily tasks missed yesterday: {missed.map((t) => asText(t.title)).join(", ")}</div>}
 
       <section className="panel space-y-2" aria-label="HR daily summary">
         <div>
