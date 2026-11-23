@@ -15,6 +15,7 @@ import { useHydrated } from "../lib/use-hydrated";
 import { Toaster } from "@/components/ui/sonner";
 import { LockGate } from "@/components/tracker/LockGate";
 import { AppSwitcher } from "@/components/AppSwitcher";
+import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 import { ModuleRedirector, useHomePathAfterProbe } from "@/components/ModuleRedirector";
 import { useRouterState } from "@tanstack/react-router";
 
@@ -147,6 +148,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <MaintenanceBanner />
       <AppSwitcher />
       <ModuleRedirector />
       <div className="with-switcher">
