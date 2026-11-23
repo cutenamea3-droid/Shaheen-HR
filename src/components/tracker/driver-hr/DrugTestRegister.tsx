@@ -21,6 +21,7 @@ import {
 import { resolvePairing, type MatchCandidate } from "@/lib/driver-hr/drug-test-matching";
 import {
   DRUG_PAIR_STATUS_LABEL,
+  DRUG_PAIR_STATUS_PRIMARY,
   filterDrugPairs,
   formatDrugDocKind,
   newTestingEventId,
@@ -129,11 +130,11 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
       {open && (
         <div className="space-y-3 border-t border-foreground/10 px-4 py-4">
           <p className="text-xs text-muted-foreground">
-            Records only (no PDF). FD/MR link by testing event id (then specimen + reason + collection).
-            Matched means documents line up — not Negative, clearance, or approval. Other Documents /
-            medical / duty stay untouched. Incomplete entries stay editable. Remove is soft-delete
-            (recoverable) — history is not permanently erased. Same records as the Drug Test Records
-            sidebar page.
+            Records only (no PDF). CCF/MRO link by testing event id, then unique specimen + reason
+            (collection vs MRO review dates/sites may differ). Matched means documents line up — not
+            Negative, clearance, or approval. Other Documents / medical / duty stay untouched.
+            Incomplete entries stay editable. Remove is soft-delete (recoverable). Same logic as the
+            Drug Test Records sidebar page.
           </p>
 
           {(blocked || loadError) && (
@@ -157,7 +158,7 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
               aria-label="Status filter"
             >
               <option value="all">All statuses</option>
-              {(Object.keys(DRUG_PAIR_STATUS_LABEL) as DrugPairStatus[]).map((s) => (
+              {DRUG_PAIR_STATUS_PRIMARY.map((s) => (
                 <option key={s} value={s}>
                   {DRUG_PAIR_STATUS_LABEL[s]}
                 </option>

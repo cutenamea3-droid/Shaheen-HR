@@ -133,6 +133,51 @@ export async function restoreDrugTestEvent(id: string, actor: string): Promise<D
   return ev;
 }
 
+/**
+ * Persist a manual CCF↔MRO link by moving `movingEventId` onto `targetTestingEventId`.
+ * Uses existing update RPC only — no schema change, no delete. Staff audit recorded.
+ */
+export async function linkDrugTestEvents(opts: {
+  movingEventId: string;
+  targetTestingEventId: string;
+  driverId: string;
+  actor: string;
+}): Promise<DrugTestEvent | null> {
+  assertPersistable();
+  const tid = asDrugText(opts.targetTestingEventId).trim();
+  if (!tid) throw new Error("Target testing event id required to link.");
+  const ev = await secureUpdateDrugTest(opts.movingEventId, { testingEventId: tid });
+  recordSensitiveAudit({
+    actor: opts.actor,
+    action: "drug_test_link",
+    driverId: opts.driverId,
+    detail: `moved=${opts.movingEventId} → te=${tid}`,
+  });
+  notifyDriverHrRefresh();
+  return ev;
+}
+
+/**
+ * Unlink one side into its own testing event (preserves both docs; does not delete).
+ */
+export async function unlinkDrugTestEvent(opts: {
+  eventId: string;
+  driverId: string;
+  actor: string;
+}): Promise<DrugTestEvent | null> {
+  assertPersistable();
+  const newTe = newTestingEventId();
+  const ev = await secureUpdateDrugTest(opts.eventId, { testingEventId: newTe });
+  recordSensitiveAudit({
+    actor: opts.actor,
+    action: "drug_test_unlink",
+    driverId: opts.driverId,
+    detail: `id=${opts.eventId} → te=${newTe}`,
+  });
+  notifyDriverHrRefresh();
+  return ev;
+}
+
 /** Secure refresh bus (+ leftover mock subscribe for unit harness isolation). */
 export function subscribeDrugTestMock(listener: () => void): () => void {
   const a = useDrugTestMock.subscribe(listener);

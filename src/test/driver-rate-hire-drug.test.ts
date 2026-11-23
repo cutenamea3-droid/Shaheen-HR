@@ -137,7 +137,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(rows[0]!.status).toBe("matched");
   });
 
-  it("6. Missing FD / Missing MR for partial pairs", () => {
+  it("6. Missing CCF / Missing MRO for partial pairs", () => {
     const onlyFd = pairDrugTestEvents([
       ev({ id: "f1", kind: "federal_drug", specimenId: "X", reason: "Random", collectionContext: "C1" }),
     ]);
@@ -148,7 +148,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
     expect(onlyMr[0]!.status).toBe("missing_fd");
   });
 
-  it("7. Specimen Mismatch and Reason Mismatch", () => {
+  it("7. Specimen / reason conflicts surface as Review Needed", () => {
     const reason = pairDrugTestEvents([
       ev({ id: "f1", kind: "federal_drug", specimenId: "S1", reason: "Random", collectionContext: "C" }),
       ev({
@@ -159,7 +159,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
         collectionContext: "C",
       }),
     ]);
-    expect(reason[0]!.status).toBe("reason_mismatch");
+    expect(reason[0]!.status).toBe("review_needed");
     const specimen = pairDrugTestEvents([
       ev({ id: "f1", kind: "federal_drug", specimenId: "AAA", reason: "Random", collectionContext: "C" }),
       ev({
@@ -170,7 +170,7 @@ describe("Driver rate / hire / drug tests (1–10)", () => {
         collectionContext: "C",
       }),
     ]);
-    expect(specimen[0]!.status).toBe("specimen_mismatch");
+    expect(specimen[0]!.status).toBe("review_needed");
   });
 
   it("8. Leading zeros preserved; 01234 ≠ 1234; multi Random/Follow-up 1:1", () => {

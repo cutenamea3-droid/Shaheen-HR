@@ -291,17 +291,25 @@ describe("Smart Hybrid CCF/MRO matching (cases 1–14)", () => {
     expect(ok.status).toBe("create_new");
   });
 
-  it("11. Compatible dates/details: blank OK; both set must agree", () => {
+  it("11. Compatible dates/details: collection vs review / site vs lab allowed; strict opt-in", () => {
     expect(
       datesDetailsCompatible(
         { eventDate: "2024-01-10", collectionContext: "" },
         { eventDate: "", collectionContext: "Lab A" },
       ),
     ).toBe(true);
+    // Default: CCF collection date ≠ MRO review date is OK
+    expect(
+      datesDetailsCompatible(
+        { eventDate: "2024-01-10", collectionContext: "Lab A" },
+        { eventDate: "2024-01-11", collectionContext: "Lab B" },
+      ),
+    ).toBe(true);
     expect(
       datesDetailsCompatible(
         { eventDate: "2024-01-10", collectionContext: "Lab A" },
         { eventDate: "2024-01-11", collectionContext: "Lab A" },
+        { strict: true },
       ),
     ).toBe(false);
   });

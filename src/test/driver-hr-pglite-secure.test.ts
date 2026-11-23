@@ -417,7 +417,7 @@ describe("Isolated PGlite Driver Rate/Drug SQL (admin + ordinary)", () => {
       })),
     );
     expect(pairs.some((p) => p.status === "missing_mr" && p.testingEventId === teMiss)).toBe(true);
-    expect(pairs.some((p) => p.status === "specimen_mismatch" && p.testingEventId === teSpec)).toBe(true);
+    expect(pairs.some((p) => p.status === "review_needed" && p.testingEventId === teSpec)).toBe(true);
     expect(pairs.filter((p) => p.status === "matched" && (p.testingEventId === teR1 || p.testingEventId === teR2))).toHaveLength(
       2,
     );

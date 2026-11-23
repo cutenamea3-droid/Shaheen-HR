@@ -4,11 +4,16 @@
  * Matched = same testing-event paperwork (FD↔MR), NOT Negative/Cleared/Approved.
  * Attach uses existing testing_event_id via driver_drug_test_add (no bulk merge).
  * Soft-deleted rows must be filtered out before calling.
+ *
+ * Collection date (CCF) vs MRO review date may differ — do not require equal dates.
+ * Collection site vs lab context may differ. Match on permanent driverId + specimen
+ * (string, keep leading zeros) + controlled reason. No cross-driver match.
  */
 import {
   DRUG_DOC_KIND_SHORT,
   asDrugText,
-  normalizeCollectionContext,
+  collectionVsReviewDateCompatibility,
+  normalizeDrugReason,
   normalizeSpecimenId,
   type DrugDocKind,
   type DrugTestEvent,
@@ -27,6 +32,8 @@ export type MatchCandidate = {
   /** True when this testing event already has the incoming doc kind (active). */
   hasIncomingKind: boolean;
   label: string;
+  /** Date-role ambiguity (review before collection). */
+  dateAmbiguous?: boolean;
 };
 
 export type IncomingDoc = {
@@ -75,22 +82,43 @@ export type PairingResolution =
       message: string;
     };
 
-function normReason(s: unknown): string {
-  return asDrugText(s).trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-/** Dates/details compatible when both set and equal, or either blank. */
+/**
+ * Dates/details for CCF↔MRO auto-pairing.
+ *
+ * Collection site (CCF) vs lab (MRO) contexts are allowed to differ.
+ * Dates: either blank/equal OK; collection ≤ review OK; review-before-collection
+ * is still a candidate but marked ambiguous (UI → Review Needed / confirm).
+ *
+ * Legacy callers that expect strict equality can pass `{ strict: true }`.
+ */
 export function datesDetailsCompatible(
   a: { eventDate: string; collectionContext: string },
   b: { eventDate: string; collectionContext: string },
+  opts?: { strict?: boolean; incomingKind?: DrugDocKind | "" },
 ): boolean {
-  const ad = asDrugText(a.eventDate).trim();
-  const bd = asDrugText(b.eventDate).trim();
-  if (ad && bd && ad !== bd) return false;
-  const ac = normalizeCollectionContext(a.collectionContext);
-  const bc = normalizeCollectionContext(b.collectionContext);
-  if (ac && bc && ac !== bc) return false;
+  if (opts?.strict) {
+    const ad = asDrugText(a.eventDate).trim();
+    const bd = asDrugText(b.eventDate).trim();
+    if (ad && bd && ad !== bd) return false;
+    return true;
+  }
+  // Non-strict (default): collection vs review / site vs lab differences allowed.
+  void a;
+  void b;
+  void opts;
   return true;
+}
+
+/** True when pairing these two dates would be date-role ambiguous. */
+export function isDateRoleAmbiguous(
+  incoming: IncomingDoc,
+  existing: { eventDate: string; existingKind: DrugDocKind },
+): boolean {
+  if (!incoming.kind) return false;
+  const incomingIsCcf = incoming.kind === "federal_drug";
+  const collection = incomingIsCcf ? incoming.eventDate : existing.eventDate;
+  const review = incomingIsCcf ? existing.eventDate : incoming.eventDate;
+  return collectionVsReviewDateCompatibility(collection, review) === "ambiguous";
 }
 
 export function oppositeKind(kind: DrugDocKind): DrugDocKind {
@@ -138,7 +166,11 @@ function groupActiveEvents(events: DrugTestEvent[]): EventGroup[] {
   return [...map.values()];
 }
 
-function candidateFromGroup(g: EventGroup, incomingKind: DrugDocKind): MatchCandidate {
+function candidateFromGroup(
+  g: EventGroup,
+  incomingKind: DrugDocKind,
+  incoming?: IncomingDoc,
+): MatchCandidate {
   const existing = incomingKind === "federal_drug" ? g.medical : g.federal;
   const existingKind: DrugDocKind =
     existing?.kind === "federal_drug" || existing?.kind === "medical_review"
@@ -152,6 +184,9 @@ function candidateFromGroup(g: EventGroup, incomingKind: DrugDocKind): MatchCand
       ? "missing CCF"
       : "missing MRO";
   const short = DRUG_DOC_KIND_SHORT[existingKind];
+  const dateAmbiguous = incoming
+    ? isDateRoleAmbiguous(incoming, { eventDate: g.eventDate, existingKind })
+    : false;
   return {
     testingEventId: g.testingEventId,
     existingKind,
@@ -160,18 +195,19 @@ function candidateFromGroup(g: EventGroup, incomingKind: DrugDocKind): MatchCand
     eventDate: g.eventDate,
     collectionContext: g.collectionContext,
     hasIncomingKind,
+    dateAmbiguous,
     label: `${short} · ${g.specimenId || "no specimen"} · ${g.reason || "—"} · ${
       g.eventDate || g.collectionContext || "no date"
-    } · ${missing}`,
+    } · ${missing}${dateAmbiguous ? " · date review" : ""}`,
   };
 }
 
-/** Core key match: same specimen + same reason (both required non-empty). */
+/** Core key match: same specimen + controlled reason (both required non-empty). */
 export function specimenReasonMatch(incoming: IncomingDoc, group: EventGroup): boolean {
   const is = normalizeSpecimenId(incoming.specimenId);
   const gs = normalizeSpecimenId(group.specimenId);
-  const ir = normReason(incoming.reason);
-  const gr = normReason(group.reason);
+  const ir = normalizeDrugReason(incoming.reason);
+  const gr = normalizeDrugReason(group.reason);
   if (!is || !gs || is !== gs) return false;
   if (!ir || !gr || ir !== gr) return false;
   return true;
@@ -196,8 +232,9 @@ export function findAttachCandidates(
     const hasOpposite = kind === "federal_drug" ? Boolean(g.medical) : Boolean(g.federal);
     if (!hasOpposite) continue;
     if (!specimenReasonMatch(incoming, g)) continue;
-    if (!datesDetailsCompatible(incoming, g)) continue;
-    out.push(candidateFromGroup(g, kind));
+    // Collection vs review dates / site vs lab: allowed (not blocked).
+    if (!datesDetailsCompatible(incoming, g, { incomingKind: kind })) continue;
+    out.push(candidateFromGroup(g, kind, incoming));
   }
   return out;
 }
@@ -215,8 +252,8 @@ export function findConflictCandidates(
     const hasIncoming = kind === "federal_drug" ? Boolean(g.federal) : Boolean(g.medical);
     if (!hasIncoming) continue;
     if (!specimenReasonMatch(incoming, g)) continue;
-    if (!datesDetailsCompatible(incoming, g)) continue;
-    out.push(candidateFromGroup(g, kind));
+    if (!datesDetailsCompatible(incoming, g, { incomingKind: kind })) continue;
+    out.push(candidateFromGroup(g, kind, incoming));
   }
   return out;
 }
@@ -232,17 +269,17 @@ export function findSimilarEvents(
   if (!incoming.kind) return [];
   const kind = incoming.kind;
   const is = normalizeSpecimenId(incoming.specimenId);
-  const ir = normReason(incoming.reason);
+  const ir = normalizeDrugReason(incoming.reason);
   const groups = groupActiveEvents(existingEvents).filter((g) => g.driverId === incoming.driverId);
   const out: MatchCandidate[] = [];
   for (const g of groups) {
     const gs = normalizeSpecimenId(g.specimenId);
-    const gr = normReason(g.reason);
+    const gr = normalizeDrugReason(g.reason);
     const sameSpecimen = Boolean(is && gs && is === gs);
-    const sameReasonDate =
-      Boolean(ir && gr && ir === gr) && datesDetailsCompatible(incoming, g);
-    if (!sameSpecimen && !sameReasonDate) continue;
-    out.push(candidateFromGroup(g, kind));
+    const sameReason =
+      Boolean(ir && gr && ir === gr) && datesDetailsCompatible(incoming, g, { incomingKind: kind });
+    if (!sameSpecimen && !sameReason) continue;
+    out.push(candidateFromGroup(g, kind, incoming));
   }
   return out;
 }
@@ -362,11 +399,31 @@ export function resolvePairing(opts: {
 
   if (candidates.length === 1) {
     const c = candidates[0]!;
+    // Date-role ambiguous (review before collection): do not silent-auto-attach
+    if (c.dateAmbiguous && !asDrugText(opts.selectedTestingEventId).trim()) {
+      return {
+        status: "ambiguous",
+        candidates: [c],
+        message:
+          "Possible match found, but dates look like MRO review before CCF collection — confirm to link, or use Manual / Separate.",
+      };
+    }
+    const selected = asDrugText(opts.selectedTestingEventId).trim();
+    if (c.dateAmbiguous && selected && selected !== c.testingEventId) {
+      return {
+        status: "ambiguous",
+        candidates: [c],
+        message:
+          "Possible match found, but dates look like MRO review before CCF collection — confirm to link, or use Manual / Separate.",
+      };
+    }
     return {
       status: "attach",
       testingEventId: c.testingEventId,
       candidate: c,
-      message: `Automatically matched to existing event (${asDrugText(c.label)}).`,
+      message: c.dateAmbiguous
+        ? `Linked after date-role confirm (${asDrugText(c.label)}).`
+        : `Automatically matched to existing event (${asDrugText(c.label)}).`,
     };
   }
 
@@ -384,7 +441,7 @@ export function resolvePairing(opts: {
     return {
       status: "ambiguous",
       candidates,
-      message: "Multiple matching events found — select which testing event to attach to.",
+      message: "Multiple matching events found — select which testing event to attach to (no multi-match).",
     };
   }
 

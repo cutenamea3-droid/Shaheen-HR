@@ -23,8 +23,10 @@ export const DRUG_STATUS_TONE: Record<DrugPairStatus, string> = {
   matched: "bg-ok-soft text-ok",
   missing_fd: "bg-warn-soft text-warn",
   missing_mr: "bg-warn-soft text-warn",
-  specimen_mismatch: "bg-danger-soft text-danger",
-  reason_mismatch: "bg-danger-soft text-danger",
+  review_needed: "bg-warn-soft text-warn",
+  duplicate_review: "bg-danger-soft text-danger",
+  specimen_mismatch: "bg-warn-soft text-warn",
+  reason_mismatch: "bg-warn-soft text-warn",
   incomplete: "bg-muted text-muted-foreground",
 };
 
