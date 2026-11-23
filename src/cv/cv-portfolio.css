@@ -572,11 +572,20 @@
   min-height: 3.4rem;
   padding: 0.7rem 0.6rem;
   border-radius: 0.85rem;
+  border: 1px solid transparent;
   background: var(--cv-fill);
   font-size: 0.82rem;
   font-weight: 650;
   color: var(--cv-ink);
   line-height: 1.25;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cv-theme .cv-skill-chip:hover {
+    border-color: color-mix(in srgb, var(--cv-accent) 45%, transparent);
+    background: var(--cv-accent-soft);
+  }
 }
 
 .cv-theme .cv-edu-grid {
@@ -654,12 +663,21 @@
 .cv-theme .cv-faq summary::after {
   content: "+";
   float: right;
+  width: 1.45rem;
+  height: 1.45rem;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
   color: var(--cv-accent);
   font-weight: 700;
+  background: transparent;
+  line-height: 1;
 }
 
 .cv-theme .cv-faq details[open] summary::after {
-  content: "–";
+  content: "×";
+  color: var(--cv-accent-ink);
+  background: var(--cv-accent);
 }
 
 .cv-theme .cv-faq details p {
