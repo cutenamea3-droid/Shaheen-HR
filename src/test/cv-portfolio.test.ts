@@ -42,6 +42,10 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     expect(pdfSrc).toMatch(/setFontSize\(22\)/);
     expect(pdfSrc).toMatch(/11\.(5|2|8)|12/);
     expect(pdfSrc).not.toMatch(/roundedRect/); // no empty cream filler bands
+    expect(pdfSrc).toMatch(/PROFILE\.fullName/);
+    expect(pdfSrc).not.toMatch(/Curriculum Vitae/);
+    expect(pdfSrc).not.toMatch(/"A4 résumé"/);
+    expect(pdfSrc).toMatch(/Page \$\{p\} of \$\{pageCount\}/);
     const { buildResumePdf } = await import("@/cv/resume-pdf");
     const pages = buildResumePdf().getNumberOfPages();
     expect(pages).toBeGreaterThanOrEqual(1);
