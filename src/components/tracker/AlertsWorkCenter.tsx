@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import {
   WORK_CENTER_FILTERS,
   collectWorkCenterItems,
@@ -48,26 +47,35 @@ const TOOL_TABS: { id: Exclude<WorkCenterTab, "today">; label: string }[] = [
   { id: "completeness", label: "File Completeness" },
 ];
 
-/** Quiet left accent — avoids full red card frames. */
-const TONE_ACCENT: Record<Tone, string> = {
-  danger: "border-l-danger",
-  warn: "border-l-warn",
-  info: "border-l-info",
-  note: "border-l-gold",
-  ok: "border-l-ok",
-  sign: "border-l-sign",
-  muted: "border-l-border",
+/** Severity as text for dark-mode scan — avoid colored card chrome. */
+const TONE_LABEL: Record<Tone, string> = {
+  danger: "Urgent",
+  warn: "Soon",
+  info: "Info",
+  note: "Note",
+  ok: "OK",
+  sign: "Sign",
+  muted: "",
 };
 
-const TONE_DOT: Record<Tone, string> = {
-  danger: "bg-danger",
-  warn: "bg-warn",
-  info: "bg-info",
-  note: "bg-gold",
-  ok: "bg-ok",
-  sign: "bg-sign",
-  muted: "bg-muted-foreground",
-};
+/** Medical first (owner scan path), then other sections alphabetically. */
+function sectionSortKey(section: string): string {
+  const s = section.trim().toLowerCase();
+  if (s === "medical" || s.startsWith("medical")) return `0-${s}`;
+  return `1-${s}`;
+}
+
+function groupItemsBySection(items: WorkCenterItem[]): { section: string; items: WorkCenterItem[] }[] {
+  const map = new Map<string, WorkCenterItem[]>();
+  for (const item of items) {
+    const section = asText(item.sectionTitle) || asText(item.docType) || "Other";
+    if (!map.has(section)) map.set(section, []);
+    map.get(section)!.push(item);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => sectionSortKey(a).localeCompare(sectionSortKey(b)))
+    .map(([section, sectionItems]) => ({ section, items: sectionItems }));
+}
 
 function safeSave(
   sectionId: string,
@@ -221,140 +229,110 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
   );
 }
 
+/**
+ * Dark-mode friendly scan block:
+ * Driver heading → section groups (Medical, DMV, …) → next driver.
+ * Minimal chrome — no nested colored cards.
+ */
 function DriverCard({
   driverId,
   driver,
   isNew,
   items,
-  defaultOpen,
 }: {
   driverId: string;
   driver: string;
   isNew: boolean;
   items: WorkCenterItem[];
-  defaultOpen: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const worst = items[0]?.tone ?? "muted";
+  const [open, setOpen] = useState(true);
+  const sections = useMemo(() => groupItemsBySection(items), [items]);
 
   return (
-    <article
-      className={cn(
-        "rounded-lg border border-border border-l-4 bg-card",
-        TONE_ACCENT[worst],
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/40"
-        aria-expanded={open}
-      >
-        <span className="mt-0.5 text-muted-foreground">
-          {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <h2 className="text-base font-bold text-foreground">{driver}</h2>
-            {isNew && (
-              <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                New
-              </span>
-            )}
-            <span className="text-sm text-muted-foreground">
-              {items.length} issue{items.length === 1 ? "" : "s"}
+    <section className="compliance-today-driver border-b border-border/70 pb-5 last:border-b-0">
+      <header className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex min-w-0 items-baseline gap-2 text-left"
+          aria-expanded={open}
+        >
+          <span className="text-muted-foreground">
+            {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+          </span>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">{driver}</h2>
+          {isNew && (
+            <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+              New
             </span>
-          </div>
-          {!open && (
-            <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
-              {items.slice(0, 3).map((i) => (
-                <li key={i.key} className="truncate">
-                  <span className="font-medium text-foreground">{i.docType}</span>
-                  {" — "}
-                  {i.details}
-                </li>
-              ))}
-              {items.length > 3 && <li>+{items.length - 3} more</li>}
-            </ul>
           )}
-        </div>
+          <span className="text-sm text-muted-foreground">
+            {items.length} issue{items.length === 1 ? "" : "s"}
+          </span>
+        </button>
         <Link
           to="/drivers"
           search={{ driver: driverId }}
-          onClick={(e) => e.stopPropagation()}
           className="shrink-0 text-sm font-semibold text-primary underline-offset-2 hover:underline"
         >
           Full record
         </Link>
-      </button>
+      </header>
 
       {open && (
-        <div className="space-y-2 border-t border-border px-3 py-2.5">
-          {items.map((item) => (
-            <div
-              key={item.key}
-              className={cn(
-                "rounded-md border border-border border-l-4 bg-background/60 p-3",
-                TONE_ACCENT[item.tone],
-              )}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={cn("inline-block size-2 shrink-0 rounded-full", TONE_DOT[item.tone])}
-                      aria-hidden
-                    />
-                    <span className="font-semibold text-foreground">{item.docType}</span>
-                    <span className="text-xs text-muted-foreground">{item.sectionTitle}</span>
-                  </div>
-                  <p className="mt-1.5 text-[15px] text-foreground">{item.details}</p>
-                  <dl className="mt-2 grid gap-0.5 text-sm text-muted-foreground sm:grid-cols-2">
-                    <div>
-                      <span className="font-medium text-foreground">Status: </span>
-                      {item.statusLabel}
-                      {item.dmvApplied ? " (DMV Applied)" : ""}
-                    </div>
-                    <div>
-                      <span className="font-medium text-foreground">Expiry / due: </span>
-                      {item.expiryDisplay}
-                    </div>
-                    <div>
-                      <span className="font-medium text-foreground">Days: </span>
-                      {item.daysLabel}
-                    </div>
-                    <div className="sm:col-span-2">
-                      <span className="font-medium text-foreground">Needed action: </span>
-                      {item.neededAction}
-                    </div>
-                    {item.planSuggestion?.leadDays != null && item.kind === "plan" && (
-                      <div className="sm:col-span-2">
-                        Lead {item.planSuggestion.leadDays}d · Reminder{" "}
-                        {item.planSuggestion.reminderLabel ?? "—"}
+        <div className="space-y-4 pl-1 sm:pl-6">
+          {sections.map(({ section, items: sectionItems }) => (
+            <div key={section} className="space-y-2">
+              <h3 className="text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">
+                {section}
+              </h3>
+              <ul className="divide-y divide-border/60 border-t border-border/60">
+                {sectionItems.map((item) => (
+                  <li key={item.key} className="py-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="font-semibold text-foreground">{item.docType}</span>
+                          {TONE_LABEL[item.tone] ? (
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {TONE_LABEL[item.tone]}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-[15px] leading-snug text-foreground/90">{item.details}</p>
+                        <p className="mt-1.5 text-sm text-muted-foreground">
+                          <span className="text-foreground/80">{item.statusLabel}</span>
+                          {item.dmvApplied ? " · DMV Applied" : ""}
+                          {" · "}
+                          {item.expiryDisplay}
+                          {" · "}
+                          {item.daysLabel}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground/80">Action: </span>
+                          {item.neededAction}
+                        </p>
                       </div>
-                    )}
-                  </dl>
-                </div>
-                <Link
-                  to="/s/$sectionId"
-                  params={{ sectionId: item.sectionId }}
-                  search={{ row: item.rowId }}
-                  className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
-                >
-                  View in section
-                </Link>
-              </div>
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Edit / Update
-                </div>
-                <ItemEditor item={item} />
-              </div>
+                      <Link
+                        to="/s/$sectionId"
+                        params={{ sectionId: item.sectionId }}
+                        search={{ row: item.rowId }}
+                        className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                    <div className="mt-3">
+                      <ItemEditor item={item} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           ))}
         </div>
       )}
-    </article>
+    </section>
   );
 }
 
@@ -370,7 +348,7 @@ export function AlertsWorkCenter() {
   const counts = useMemo(() => workCenterCounts(items), [items]);
 
   return (
-    <div className="w-full min-w-0 max-w-none space-y-3 text-[15px]">
+    <div className="compliance-today-page w-full min-w-0 max-w-none space-y-4 text-[15px] text-foreground">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <Link
@@ -380,9 +358,9 @@ export function AlertsWorkCenter() {
             <ArrowLeft className="size-4" />
             Dashboard
           </Link>
-          <h1 className="text-lg font-bold tracking-tight text-foreground">My Compliance Today</h1>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">My Compliance Today</h1>
           <p className="text-sm text-muted-foreground">
-            {counts.drivers} drivers · {counts.all} alerts
+            {counts.drivers} drivers · {counts.all} alerts · scan by driver
           </p>
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -441,22 +419,21 @@ export function AlertsWorkCenter() {
           </div>
 
           {!groups.length ? (
-            <div className="rounded-lg border border-border px-4 py-6 text-center">
+            <div className="border-y border-border/70 px-1 py-8 text-center">
               <p className="font-semibold text-foreground">All clear for this filter</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 No drivers need attention here. Try All or clear search.
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {groups.map((g, idx) => (
+            <div className="compliance-today-scan space-y-1 pt-1">
+              {groups.map((g) => (
                 <DriverCard
                   key={g.driverId}
                   driverId={g.driverId}
                   driver={g.driver}
                   isNew={g.isNew}
                   items={g.items}
-                  defaultOpen={idx < 3 || g.items.length <= 2}
                 />
               ))}
             </div>
