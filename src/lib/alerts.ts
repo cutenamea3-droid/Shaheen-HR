@@ -272,10 +272,10 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
   switch (def.id) {
     case "dmv": {
       // Applied keeps expiry visible — never treat Applied as Valid/Renewed.
+      // Future Plan reminder highlight is NOT an analyzeRow issue (see plan-dates
+      // computeFuturePlanHighlight) — keeps pink rows / Only Issues = document status only.
       push(statusIssue(c[2], 2, "DMV Pull Notice", c[3]));
-      const di = dateIssue(c[3], dmvDays(c[8]), 3, "DMV");
-      push(di);
-      if (di) issues.push({ tone: di.tone, label: "Future plan: apply now", col: 7 });
+      push(dateIssue(c[3], dmvDays(c[8]), 3, "DMV"));
       const rep = (c[4] ?? "").trim().toUpperCase();
       if (rep && rep !== "NONE" && normStatus(c[4]) !== "Applied") push({ tone: "note", label: `Report: ${(c[4] ?? "").trim()}`, col: 4 });
       else if (normStatus(c[4]) === "Applied") push({ tone: "info", label: "Report: Applied", col: 4 });
@@ -283,31 +283,25 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
       break;
     }
     case "medical": {
+      // Amber expiry window stays 15d; Future Plan reminder uses 17d via plan-dates only.
       push(statusIssue(c[1], 1, "Medical"));
       push(dateIssue(c[2], 15, 2, "Medical"));
-      const d = parseISO(c[2]);
-      if (d && !isOldExpiry(c[2]) && daysUntil(d) <= 17) push({ tone: daysUntil(d) < 0 ? "danger" : "warn", label: "Future plan: call driver", col: 6 });
       noteIssues();
       break;
     }
     case "queries": {
       // Annual (cols 1–2) and Pre-Employment (cols 3–4) evaluated independently.
+      // Plan columns are not mirrored here — empty plan ≠ highlight / pink row.
       push(statusIssue(c[1], 1, "Annual Query", c[2]));
-      const qa = dateIssue(c[2], 14, 2, "Annual Query");
-      push(qa);
+      push(dateIssue(c[2], 14, 2, "Annual Query"));
       push(statusIssue(c[3], 3, "Pre-Employment Query", c[4]));
-      const qp = dateIssue(c[4], 14, 4, "Pre-Emp Query");
-      push(qp);
-      if (qa) issues.push({ tone: qa.tone, label: "Annual future plan: apply now", col: 6 });
-      if (qp) issues.push({ tone: qp.tone, label: "Pre-Emp future plan: apply now", col: 7 });
+      push(dateIssue(c[4], 14, 4, "Pre-Emp Query"));
       noteIssues();
       break;
     }
     case "ssccdl": {
       push(statusIssue(c[2], 2, "CDL"));
-      const cd = dateIssue(c[3], 30, 3, "CDL");
-      push(cd);
-      if (cd) issues.push({ tone: cd.tone, label: "Future plan: CDL renewal", col: 7 });
+      push(dateIssue(c[3], 30, 3, "CDL"));
       push(statusIssue(c[4], 4, "SSC"));
       if (normStatus(c[5]) === "Missing") push({ tone: "danger", label: "SSN missing", col: 5 });
       noteIssues();

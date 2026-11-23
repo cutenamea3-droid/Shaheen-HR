@@ -706,8 +706,8 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
                 planCol={i}
                 value={v}
                 onSave={save}
-                tone={tone}
                 suggestion={planSuggestion}
+                row={safeRow}
                 compact
               />
             )}

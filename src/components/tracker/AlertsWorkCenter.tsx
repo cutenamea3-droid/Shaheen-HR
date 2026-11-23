@@ -14,7 +14,7 @@ import {
 } from "@/lib/alerts-work-center";
 import { setCell, useData } from "@/lib/store";
 import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
-import { suggestPlanForCell } from "@/lib/plan-dates";
+import { futurePlanHighlightForCell, suggestPlanForCell } from "@/lib/plan-dates";
 import { cn } from "@/lib/utils";
 import type { Tone } from "@/lib/alerts";
 import { Chip, DateCell, EditableText, StatusToggle } from "./cells";
@@ -129,6 +129,8 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
     item.planCol != null
       ? suggestPlanForCell(item.sectionId, item.planCol, row)
       : item.planSuggestion;
+  const planHighlight =
+    item.planCol != null ? futurePlanHighlightForCell(item.sectionId, item.planCol, row) : null;
 
   if (item.linkOnly && item.kind !== "new_driver") {
     return (
@@ -240,6 +242,8 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
               sectionId={item.sectionId}
               rowId={item.rowId}
               planCol={item.planCol}
+              reminderActionable={Boolean(planHighlight?.actionable)}
+              suggestionTone={planHighlight?.suggestionTone ?? null}
               compact
             />
           </div>
