@@ -79,11 +79,11 @@ export function Records() {
 
   const people = useMemo(() => {
     const rows = Array.isArray(data.sections[tab]?.rows) ? data.sections[tab]!.rows : [];
-    const needle = q.trim().toLowerCase();
+    const needle = asText(q).trim().toLowerCase();
     const filtered = !needle
       ? rows
       : rows.filter((r) =>
-          cellsOf(r).some((c) => (c ?? "").toLowerCase().includes(needle)),
+          cellsOf(r).some((c) => asText(c).toLowerCase().includes(needle)),
         );
     const grouped = groupByPerson(filtered);
     if (!ownersTab || activeFilter === "all") return grouped;
@@ -91,8 +91,8 @@ export function Records() {
   }, [data.sections, tab, q, ownersTab, activeFilter]);
 
   const add = () => {
-    const nextName = (name.trim() || nameRef.current?.value || "").trim();
-    const nextDoc = (doc.trim() || docRef.current?.value || "").trim();
+    const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
+    const nextDoc = (asText(doc).trim() || docRef.current?.value || "").trim();
     if (!nextName) return;
     addRecord(tab, [nextName, nextDoc, "Valid", "", "", "Active"]);
     setDoc("");
@@ -103,14 +103,14 @@ export function Records() {
   const toggle = (key: string) => {
     const id = cardId(key);
     setOpen((o) => {
-      const currently = id in o ? !!o[id] : !!q.trim();
+      const currently = id in o ? !!o[id] : !!asText(q).trim();
       return { ...o, [id]: !currently };
     });
   };
   const isOpen = (key: string) => {
     const id = cardId(key);
     if (id in open) return !!open[id];
-    return !!q.trim();
+    return !!asText(q).trim();
   };
 
   const shiftCategory = (personName: string, toId: string) => {
@@ -153,7 +153,7 @@ export function Records() {
         <div className="relative w-full max-w-xs min-w-48">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={q}
+            value={asText(q)}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search…"
             className="tracker-search"
@@ -186,7 +186,7 @@ export function Records() {
             <input
               ref={nameRef}
               data-testid="records-person-name"
-              value={name}
+              value={asText(name)}
               onChange={(e) => setName(e.target.value)}
               onInput={(e) => setName((e.target as HTMLInputElement).value)}
               placeholder={`${cur.who} name`}
@@ -195,7 +195,7 @@ export function Records() {
             <input
               ref={docRef}
               data-testid="records-doc-name"
-              value={doc}
+              value={asText(doc)}
               onChange={(e) => setDoc(e.target.value)}
               onInput={(e) => setDoc((e.target as HTMLInputElement).value)}
               placeholder="Document (e.g. TWIC card)"
@@ -203,7 +203,7 @@ export function Records() {
             />
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!asText(name).trim()}
               className="ui-press inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-4 font-bold text-primary-foreground disabled:opacity-50"
             >
               <Plus className="size-4" /> Add record
@@ -270,7 +270,7 @@ export function Records() {
                     <select
                       aria-label={`Move ${asText(p.name)} to another category`}
                       className="ui-press h-9 max-w-[14rem] rounded-xl border bg-card px-2 font-semibold text-foreground"
-                      value={tab}
+                      value={asText(tab)}
                       onChange={(e) => shiftCategory(asText(p.name), e.target.value)}
                     >
                       {RECORD_TABS.map((t) => (

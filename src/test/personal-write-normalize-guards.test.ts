@@ -481,6 +481,18 @@ describe("Personal store write-path normalize guards", () => {
     expect(teamUi).toMatch(/asText\(name\)\.trim\(\)/);
     expect(teamUi).toMatch(/value=\{asText\(name\)\}/);
     expect(teamUi).toMatch(/value=\{asText\(role\)\}/);
+    expect(userAdmin).toMatch(/asText\(displayName\)\.trim\(\)/);
+    expect(userAdmin).toMatch(/value=\{asText\(displayName\)\}/);
+    expect(userAdmin).toMatch(/value=\{asText\(role\)\}/);
+    expect(recordsUi).toMatch(/asText\(name\)\.trim\(\)/);
+    expect(recordsUi).toMatch(/value=\{asText\(q\)\}/);
+    expect(recordsUi).toMatch(/value=\{asText\(name\)\}/);
+    expect(recordsUi).toMatch(/value=\{asText\(doc\)\}/);
+    expect(followUpUi).toMatch(/value=\{asText\(search\)\}/);
+    expect(complianceTeam).toMatch(/asText\(name\)\.trim\(\)/);
+    expect(complianceTeam).toMatch(/value=\{asText\(name\)\}/);
+    expect(lockGate).toMatch(/asText\(email\)\.trim\(\)/);
+    expect(lockGate).toMatch(/value=\{asText\(email\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

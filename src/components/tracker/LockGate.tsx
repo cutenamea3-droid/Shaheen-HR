@@ -16,6 +16,8 @@ import { AboutPanel } from "./AboutPanel";
 
 export { isPreviewIsolated } from "@/lib/preview-isolated";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const PortalAccountContext = createContext<{
   account: PortalAccount;
   updateDisplayName: (name: string) => Promise<void>;
@@ -168,7 +170,7 @@ export function LockGate({ children }: { children: ReactNode }) {
   const updateDisplayName = async (name: string) => {
     if (isPreviewIsolated()) {
       setAccount((current) =>
-        current ? { ...current, display_name: name.trim() || current.display_name } : current,
+        current ? { ...current, display_name: asText(name).trim() || current.display_name } : current,
       );
       return;
     }
@@ -207,8 +209,8 @@ export function LockGate({ children }: { children: ReactNode }) {
             setBusy(true);
             setError("");
             try {
-              const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
-              const nextPassword = (password || passwordRef.current?.value || "").trim();
+              const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
+              const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
               const { account: next, created } = await signInPortalAccount(nextEmail, nextPassword);
               setAccount(healPortalAccount(next));
               setPassword("");
@@ -261,7 +263,7 @@ export function LockGate({ children }: { children: ReactNode }) {
             autoComplete="username"
             required
             ref={emailRef}
-            value={email}
+            value={asText(email)}
             onChange={(event) => setEmail(event.target.value)}
             onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
             className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground"
@@ -276,7 +278,7 @@ export function LockGate({ children }: { children: ReactNode }) {
             autoComplete="current-password"
             required
             ref={passwordRef}
-            value={password}
+            value={asText(password)}
             onChange={(event) => setPassword(event.target.value)}
             onInput={(event) => setPassword((event.target as HTMLInputElement).value)}
             className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"

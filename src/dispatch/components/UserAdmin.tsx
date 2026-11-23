@@ -49,9 +49,12 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          const nextName = String(fd.get("dispatch-invite-name") ?? displayName).trim() || displayName.trim();
-          const nextEmail = String(fd.get("dispatch-invite-email") ?? email).trim() || email.trim();
-          const nextPassword = String(fd.get("dispatch-invite-password") ?? password) || password;
+          const nextName =
+            String(fd.get("dispatch-invite-name") ?? displayName).trim() || asText(displayName).trim();
+          const nextEmail =
+            String(fd.get("dispatch-invite-email") ?? email).trim() || asText(email).trim();
+          const nextPassword =
+            String(fd.get("dispatch-invite-password") ?? password) || asText(password);
           setDisplayName(nextName);
           setEmail(nextEmail);
           setPassword(nextPassword);
@@ -76,7 +79,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
             className="dispatch-field"
             name="dispatch-invite-name"
             data-testid="dispatch-invite-name"
-            value={displayName}
+            value={asText(displayName)}
             onChange={(e) => setDisplayName(e.target.value)}
             onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
             required
@@ -89,7 +92,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
             type="email"
             name="dispatch-invite-email"
             data-testid="dispatch-invite-email"
-            value={email}
+            value={asText(email)}
             onChange={(e) => setEmail(e.target.value)}
             onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
             required
@@ -102,7 +105,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
             type="password"
             name="dispatch-invite-password"
             data-testid="dispatch-invite-password"
-            value={password}
+            value={asText(password)}
             onChange={(e) => setPassword(e.target.value)}
             onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
             required
@@ -111,7 +114,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
         </label>
         <label className="grid gap-1 text-sm">
           <span>Role</span>
-          <select className="dispatch-field" value={role} onChange={(e) => setRole(e.target.value as DispatchRole)}>
+          <select className="dispatch-field" value={asText(role)} onChange={(e) => setRole(e.target.value as DispatchRole)}>
             <option value="dispatcher">Dispatcher</option>
             <option value="admin">Admin</option>
           </select>
