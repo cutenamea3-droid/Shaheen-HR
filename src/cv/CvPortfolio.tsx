@@ -3,8 +3,18 @@
  * Separate from A4 résumé — see CvA4Resume.
  * No empty initials panel. Metrics gated by METRICS_PUBLIC.
  */
-import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from "react";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent } from "react";
+import {
+  Building2,
+  Calendar,
+  GraduationCap,
+  Mail,
+  MapPin,
+  Minus,
+  Phone,
+  Plus,
+} from "lucide-react";
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "motion/react";
 import {
   EDUCATION,
   EXPERIENCE,
@@ -19,6 +29,8 @@ import {
 } from "./content";
 import { CvA4Resume } from "./CvA4Resume";
 import "./cv-portfolio.css";
+
+const NAV_OFFSET = 112;
 
 function useScrollReveal<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -61,16 +73,55 @@ function Rise({
   );
 }
 
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const reduce = useReducedMotion();
+
+  return (
+    <div className="cv-faq-item">
+      <button
+        type="button"
+        className="cv-faq-trigger"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="cv-faq-q">{q}</span>
+        <span className="cv-faq-icon" aria-hidden>
+          {open ? <Minus className="cv-ico" strokeWidth={2.25} /> : <Plus className="cv-ico" strokeWidth={2.25} />}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            id={panelId}
+            key="panel"
+            className="cv-faq-panel"
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: reduce ? 1 : 0 }}
+            transition={{ duration: reduce ? 0 : 0.26, ease: [0.2, 0.7, 0.2, 1] }}
+          >
+            <p>{a}</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function CvPortfolio() {
   const [skillId, setSkillId] = useState(SKILL_GROUPS[0]?.id ?? "hr");
   const [activeNav, setActiveNav] = useState("home");
   const [formSent, setFormSent] = useState(false);
+  const reduce = useReducedMotion();
   const skillGroup = SKILL_GROUPS.find((g) => g.id === skillId) ?? SKILL_GROUPS[0];
 
   const onScrollSpy = useEffectEvent(() => {
     const ids = NAV.map((n) => n.id);
     const nearBottom =
-      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 64;
+      window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 72;
     if (nearBottom) {
       setActiveNav(ids[ids.length - 1] ?? "contact");
       return;
@@ -79,7 +130,7 @@ export function CvPortfolio() {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (!el) continue;
-      if (el.getBoundingClientRect().top <= 130) current = id;
+      if (el.getBoundingClientRect().top <= NAV_OFFSET) current = id;
     }
     setActiveNav(current);
   });
@@ -87,8 +138,22 @@ export function CvPortfolio() {
   useEffect(() => {
     onScrollSpy();
     window.addEventListener("scroll", onScrollSpy, { passive: true });
-    return () => window.removeEventListener("scroll", onScrollSpy);
+    window.addEventListener("hashchange", onScrollSpy);
+    return () => {
+      window.removeEventListener("scroll", onScrollSpy);
+      window.removeEventListener("hashchange", onScrollSpy);
+    };
   }, [onScrollSpy]);
+
+  function onNavClick(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    e.preventDefault();
+    const y = el.getBoundingClientRect().top + window.scrollY - (NAV_OFFSET - 24);
+    window.history.pushState(null, "", `#${id}`);
+    window.scrollTo({ top: y, behavior: reduce ? "auto" : "smooth" });
+    setActiveNav(id);
+  }
 
   function onContactSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -102,7 +167,6 @@ export function CvPortfolio() {
     setFormSent(true);
   }
 
-  // Metrics intentionally unused while METRICS_PUBLIC is false
   void METRICS_PUBLIC;
 
   return (
@@ -110,21 +174,42 @@ export function CvPortfolio() {
       <div className="cv-nav-chrome cv-no-print">
         <div className="cv-shell">
           <nav aria-label="Portfolio sections" className="cv-nav">
-            <a href="#home" className="cv-nav-brand">
+            <a
+              href="#home"
+              className="cv-nav-brand"
+              onClick={(e) => onNavClick(e, "home")}
+            >
               {PROFILE.brand} <span className="accent">{PROFILE.brandAccent}</span>
             </a>
-            <div className="cv-nav-links">
-              {NAV.map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  aria-current={activeNav === item.id ? "true" : undefined}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-            <CvA4Resume label="Download CV" />
+            <LayoutGroup id="cv-nav-tabs">
+              <div className="cv-nav-links">
+                {NAV.map((item) => {
+                  const active = activeNav === item.id;
+                  return (
+                    <a
+                      key={item.id}
+                      href={`#${item.id}`}
+                      aria-current={active ? "true" : undefined}
+                      onClick={(e) => onNavClick(e, item.id)}
+                    >
+                      {active ? (
+                        <motion.span
+                          layoutId="cv-nav-pill"
+                          className="cv-nav-pill"
+                          transition={
+                            reduce
+                              ? { duration: 0 }
+                              : { type: "spring", stiffness: 420, damping: 36, mass: 0.7 }
+                          }
+                        />
+                      ) : null}
+                      <span className="cv-nav-label">{item.label}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </LayoutGroup>
+            <CvA4Resume label="Download Resume" />
           </nav>
         </div>
       </div>
@@ -149,23 +234,25 @@ export function CvPortfolio() {
             </div>
             <p className="cv-bio">{PROFILE.summary}</p>
             <div className="cv-meta">
-              <span className="inline-flex items-center gap-2">
-                <MapPin className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
+              <span className="cv-meta-row">
+                <MapPin className="cv-ico" aria-hidden />
                 {PROFILE.location}
               </span>
-              <a href={PROFILE.phoneHref} className="inline-flex items-center gap-2">
-                <Phone className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
+              <a href={PROFILE.phoneHref} className="cv-meta-row">
+                <Phone className="cv-ico" aria-hidden />
                 {PROFILE.phone}
               </a>
-              <a href={PROFILE.emailHref} className="inline-flex items-center gap-2">
-                <Mail className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
+              <a href={PROFILE.emailHref} className="cv-meta-row">
+                <Mail className="cv-ico" aria-hidden />
                 {PROFILE.email}
               </a>
             </div>
             <div className="cv-hero-actions cv-no-print">
-              <CvA4Resume />
-              <a href="#projects" className="cv-btn cv-btn-ghost">
+              <a href="#projects" className="cv-btn cv-btn-ghost" onClick={(e) => onNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, "projects")}>
                 View projects
+              </a>
+              <a href="#contact" className="cv-btn cv-btn-primary" onClick={(e) => onNavClick(e as unknown as React.MouseEvent<HTMLAnchorElement>, "contact")}>
+                Contact
               </a>
             </div>
           </Rise>
@@ -198,10 +285,16 @@ export function CvPortfolio() {
             <div className="cv-exp-list">
               {EXPERIENCE.map((job) => (
                 <article key={`${job.company}-${job.time}`} className="cv-exp-row">
-                  <p className="cv-exp-when">{job.time}</p>
+                  <p className="cv-exp-when">
+                    <Calendar className="cv-ico" aria-hidden />
+                    {job.time}
+                  </p>
                   <div className="cv-exp-main">
                     <h3>{job.role}</h3>
-                    <p className="co">{job.company}</p>
+                    <p className="co">
+                      <Building2 className="cv-ico" aria-hidden />
+                      {job.company}
+                    </p>
                     <p className="body">{job.text}</p>
                   </div>
                   <p className="cv-exp-status" data-current={job.current}>
@@ -296,7 +389,10 @@ export function CvPortfolio() {
                 <p className="cv-edu-col-label">Education</p>
                 {EDUCATION.map((ed) => (
                   <div key={ed.title} className="cv-edu-item">
-                    <h3>{ed.title}</h3>
+                    <h3>
+                      <GraduationCap className="cv-ico cv-ico-inline" aria-hidden />
+                      {ed.title}
+                    </h3>
                     <p className="cv-edu-meta">
                       {ed.place} · <span className="note">{ed.note}</span>
                     </p>
@@ -333,10 +429,7 @@ export function CvPortfolio() {
             </div>
             <div className="cv-faq">
               {FAQ.map((item) => (
-                <details key={item.q}>
-                  <summary>{item.q}</summary>
-                  <p>{item.a}</p>
-                </details>
+                <FaqItem key={item.q} q={item.q} a={item.a} />
               ))}
             </div>
           </section>
@@ -351,20 +444,20 @@ export function CvPortfolio() {
               </h3>
               <p className="lead">
                 Prefer email or phone? Use the details below. For applications, download the
-                separate A4 résumé — it is not a screenshot of this page.
+                resume — a separate A4 PDF, not a screenshot of this page.
               </p>
               <div className="cv-meta">
-                <a href={PROFILE.emailHref} className="inline-flex items-center gap-2">
-                  <Mail className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
+                <a href={PROFILE.emailHref} className="cv-meta-row">
+                  <Mail className="cv-ico" aria-hidden />
                   {PROFILE.email}
                 </a>
-                <a href={PROFILE.phoneHref} className="inline-flex items-center gap-2">
-                  <Phone className="size-4 text-[var(--cv-violet-mid)]" aria-hidden />
+                <a href={PROFILE.phoneHref} className="cv-meta-row">
+                  <Phone className="cv-ico" aria-hidden />
                   {PROFILE.phone}
                 </a>
               </div>
-              <div className="mt-6 cv-no-print">
-                <CvA4Resume variant="ghost" />
+              <div className="cv-contact-dl cv-no-print">
+                <CvA4Resume label="Download Resume" />
               </div>
             </div>
             <form className="cv-form" onSubmit={onContactSubmit}>
@@ -394,10 +487,9 @@ export function CvPortfolio() {
 
         <footer className="cv-footer">
           <p>
-            © {new Date().getFullYear()} {PROFILE.shortName}. Interactive portfolio — A4 résumé is a
-            separate download.
+            © {new Date().getFullYear()} {PROFILE.shortName}. Interactive portfolio — resume download
+            is available under Contact.
           </p>
-          <CvA4Resume variant="ghost" label="A4 PDF" className="cv-no-print" />
         </footer>
       </div>
     </div>
