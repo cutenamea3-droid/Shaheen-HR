@@ -56,6 +56,14 @@ import {
   shouldAutoPreferCloud,
 } from "@/admin/lib/hr-sync-protect";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
+import {
+  clearHrAuthPersistArtifacts,
+  ensureHrAuthPersisted,
+  recoverHrAuthSession,
+  resolveHrReconnectEmail,
+  writeHrCloudEmailHint,
+  type HrPersistedSession,
+} from "@/admin/lib/hr-auth-persist";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
 
@@ -202,15 +210,22 @@ function CloudReconnectBanner({
   email: string;
   onConnected: (mail: string, uid: string) => void;
 }) {
+  const prefill = (email || HR_OWNER_EMAIL).trim().toLowerCase() || HR_OWNER_EMAIL;
+  const [mail, setMail] = useState(prefill);
   const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const busyRef = useRef(false);
+  const reconnectEmailRef = useRef<HTMLInputElement>(null);
   const reconnectPassRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // One-click path: focus password so Enter / Sign In completes cloud reconnect.
+    setMail(prefill);
+  }, [prefill]);
+
+  useEffect(() => {
+    // One-click path: email is pre-filled — focus password so Enter / Sign In completes reconnect.
     reconnectPassRef.current?.focus();
   }, []);
 
@@ -221,9 +236,9 @@ function CloudReconnectBanner({
       data-testid="admin-cloud-reconnect"
     >
       <p className="font-semibold text-warn">
-        Sign In Required — this browser is on a local session (cloud sync paused). Sign in once with
-        the same Admin password to enable Cloud Saved. Soft refresh will keep the cloud session
-        after that. Empty local attendance prefers cloud automatically (nothing overwritten
+        Sign In Required — this browser is on a local session (cloud sync paused). Enter the Admin
+        password once (email pre-filled) to enable Cloud Saved. Soft refresh keeps the cloud session
+        after that — empty local attendance prefers cloud automatically (nothing overwritten
         silently when both sides have real edits).
       </p>
       <form
@@ -243,10 +258,32 @@ function CloudReconnectBanner({
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
 
+            const nextMail = (
+              mail ||
+              reconnectEmailRef.current?.value ||
+              prefill ||
+              HR_OWNER_EMAIL
+            )
+              .trim()
+              .toLowerCase();
             const nextPass = (pass || reconnectPassRef.current?.value || "").trim();
-            const result = await attemptHrLogin(email, nextPass, {
+            const signedRef: { current: HrPersistedSession | null } = { current: null };
+
+            const result = await attemptHrLogin(nextMail, nextPass, {
               signInWithPassword: async (creds) => {
-                const { error } = await supabase.auth.signInWithPassword(creds);
+                const { data, error } = await supabase.auth.signInWithPassword(creds);
+                if (!error && data.session?.access_token && data.session.refresh_token) {
+                  signedRef.current = {
+                    access_token: data.session.access_token,
+                    refresh_token: data.session.refresh_token,
+                    expires_at: data.session.expires_at ?? null,
+                    expires_in: data.session.expires_in ?? null,
+                    token_type: data.session.token_type ?? "bearer",
+                    user: data.session.user
+                      ? { id: data.session.user.id, email: data.session.user.email ?? null }
+                      : null,
+                  };
+                }
                 return {
                   error: error
                     ? {
@@ -277,21 +314,63 @@ function CloudReconnectBanner({
               );
               return;
             }
+
+            const signedSession = signedRef.current;
+            const signedUid = signedSession?.user?.id ?? null;
+            const signedMail =
+              typeof signedSession?.user?.email === "string" ? signedSession.user.email : null;
+
+            // Opera/VPN: dual-write + setSession so soft refresh keeps Cloud Saved.
+            if (signedSession) {
+              await ensureHrAuthPersisted(signedSession, {
+                setSession: async (s) => {
+                  const { error } = await supabase.auth.setSession(s);
+                  return { error };
+                },
+              });
+            } else {
+              writeHrCloudEmailHint(nextMail);
+            }
+
             const { data } = await supabase.auth.getSession();
-            const uid = data.session?.user.id;
+            let uid = data.session?.user?.id ?? signedUid;
+            let sessMail = data.session?.user?.email ?? signedMail;
             if (!uid) {
-              setErr("Couldn't reach the server. Try again.");
+              const recovered = await recoverHrAuthSession({
+                getSession: async () => {
+                  const r = await supabase.auth.getSession();
+                  return { data: { session: r.data.session } };
+                },
+                setSession: async (s) => {
+                  const r = await supabase.auth.setSession(s);
+                  return { data: { session: r.data.session }, error: r.error };
+                },
+                refreshSession: async () => {
+                  const r = await supabase.auth.refreshSession();
+                  return { data: { session: r.data.session }, error: r.error };
+                },
+                getUser: async () => {
+                  const r = await supabase.auth.getUser();
+                  return { data: { user: r.data.user } };
+                },
+              });
+              uid = recovered?.user?.id ?? null;
+              sessMail =
+                typeof recovered?.user?.email === "string" ? recovered.user.email : sessMail;
+            }
+            if (!uid) {
+              // Keep local session so attendance is not stranded if Auth storage failed.
+              writeHrLocalSession(nextMail);
+              setErr("Couldn't persist cloud session on this browser. Try Sign In again.");
               return;
             }
+            const connectedMail =
+              sessMail == null
+                ? ""
+                : (typeof sessMail === "string" ? sessMail : String(sessMail)).trim().toLowerCase();
+            writeHrCloudEmailHint(connectedMail || nextMail);
             setMsg("Signed in — syncing from cloud when this browser looks empty…");
-            {
-              const sessMail = data.session?.user.email;
-              const mail =
-                sessMail == null
-                  ? ""
-                  : (typeof sessMail === "string" ? sessMail : String(sessMail)).trim().toLowerCase();
-              onConnected(mail || email, uid);
-            }
+            onConnected(connectedMail || nextMail, uid);
           } catch {
             setErr("Couldn't reach the server. Try again.");
           } finally {
@@ -300,8 +379,25 @@ function CloudReconnectBanner({
           }
         }}
       >
+        <label className="block min-w-[12rem] sm:max-w-[16rem]">
+          <span className="lbl">Email</span>
+          <input
+            ref={reconnectEmailRef}
+            data-testid="admin-cloud-reconnect-email"
+            type="email"
+            className="field"
+            value={mail}
+            onChange={(e) => {
+              setMail(e.target.value);
+              if (err) setErr("");
+            }}
+            autoComplete="username"
+            readOnly
+            aria-readonly="true"
+          />
+        </label>
         <label className="block min-w-0 flex-1">
-          <span className="lbl">Password for {email}</span>
+          <span className="lbl">Password</span>
           <input
             ref={reconnectPassRef}
             data-testid="admin-cloud-reconnect-password"
@@ -429,6 +525,7 @@ export function AdminApp() {
       }
       stopSync();
       stopLocalOnlyGuard();
+      clearHrAuthPersistArtifacts();
       void import("@/admin/lib/hr-auth-local")
         .then((m) => m.clearHrLocalSession())
         .catch(() => undefined);
@@ -464,7 +561,7 @@ export function AdminApp() {
     let cloudUid: string | null = null;
     /** Monotonic apply generation — late local-only resolves must not clobber a newer cloud apply. */
     let applyGen = 0;
-    const apply = async (uid: string | null, mail: string) => {
+    const apply = async (uid: string | null, mail: string, opts?: { forceSignOut?: boolean }) => {
       if (cancelled) return;
       const gen = ++applyGen;
       if (uid) {
@@ -478,17 +575,26 @@ export function AdminApp() {
         setEmail(mail);
         setAuthedState(true);
       } else {
-        // Only clear cloud if this generation is still current (no newer SIGNED_IN won the race).
+        // Late null INITIAL_SESSION / TOKEN_REFRESHED must not wipe a restored cloud session
+        // (Opera soft-refresh race). Only explicit SIGNED_OUT or finished recover may clear.
+        if (cloudUid && !opts?.forceSignOut) return;
         cloudUid = null;
         stopSync();
         try {
           const { readHrLocalSessionEmail } = await import("@/admin/lib/hr-auth-local");
+          const { readHrCloudEmailHint } = await import("@/admin/lib/hr-auth-persist");
           if (cancelled || gen !== applyGen || cloudUid) return;
-          const localMail = readHrLocalSessionEmail();
+          // Prefer cloud Auth path; if Auth is gone (Opera storage quirk) keep reconnect UX
+          // via local session or prior cloud email hint — never strand empty-looking local.
+          const reconnectMail = resolveHrReconnectEmail({
+            localSessionEmail: readHrLocalSessionEmail(),
+            cloudHintEmail: readHrCloudEmailHint(),
+            fallbackEmail: "",
+          });
           if (cancelled || gen !== applyGen || cloudUid) return;
-          if (localMail) {
+          if (reconnectMail) {
             setLocalOnly(true);
-            setEmail(localMail);
+            setEmail(reconnectMail);
             setAuthedState(true);
             void startLocalOnlyGuard();
           } else {
@@ -507,37 +613,47 @@ export function AdminApp() {
       }
       if (!cancelled && gen === applyGen) setReady(true);
     };
-    // Soft refresh: restore Supabase session first. Also listen for INITIAL_SESSION /
-    // TOKEN_REFRESHED — ignoring those left a local-only badge when getSession raced.
-    void supabase.auth.getSession().then(async ({ data }) => {
-      let session = data.session;
-      if (!session) {
-        // One recovery tick: storage/refresh can lag the first getSession on soft refresh.
-        const { data: again } = await supabase.auth.getSession();
-        session = again.session;
-      }
-      if (!session) {
-        try {
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData.user) {
-            const { data: after } = await supabase.auth.getSession();
-            session = after.session;
-          }
-        } catch {
-          /* stay signed out / local-only */
-        }
-      }
+    // Soft refresh: recover Auth (incl. Opera backup) before any local-only fallback.
+    // Also listen for INITIAL_SESSION / TOKEN_REFRESHED — ignoring those left a local-only badge.
+    void (async () => {
+      const session = await recoverHrAuthSession({
+        getSession: async () => {
+          const r = await supabase.auth.getSession();
+          return { data: { session: r.data.session } };
+        },
+        setSession: async (s) => {
+          const r = await supabase.auth.setSession(s);
+          return { data: { session: r.data.session }, error: r.error };
+        },
+        refreshSession: async () => {
+          const r = await supabase.auth.refreshSession();
+          return { data: { session: r.data.session }, error: r.error };
+        },
+        getUser: async () => {
+          const r = await supabase.auth.getUser();
+          return { data: { user: r.data.user } };
+        },
+      });
       if (cancelled) return;
-      await apply(session?.user.id ?? null, session?.user.email ?? "");
-    });
+      // forceSignOut when recover found nothing — allow local-only / lock screen.
+      await apply(session?.user?.id ?? null, session?.user?.email ?? "", {
+        forceSignOut: !session?.user?.id,
+      });
+    })();
     const { data: sub } = supabase.auth.onAuthStateChange((ev, session) => {
-      if (
-        ev === "SIGNED_IN" ||
-        ev === "SIGNED_OUT" ||
-        ev === "INITIAL_SESSION" ||
-        ev === "TOKEN_REFRESHED" ||
-        ev === "USER_UPDATED"
-      ) {
+      if (ev === "INITIAL_SESSION") {
+        // Non-null: apply cloud early. Null: recoverHrAuthSession owns boot fallback
+        // (avoids racing local-only over a backup restore still in flight).
+        if (session?.user?.id) {
+          void apply(session.user.id, session.user.email ?? "");
+        }
+        return;
+      }
+      if (ev === "SIGNED_OUT") {
+        void apply(null, "", { forceSignOut: true });
+        return;
+      }
+      if (ev === "SIGNED_IN" || ev === "TOKEN_REFRESHED" || ev === "USER_UPDATED") {
         void apply(session?.user.id ?? null, session?.user.email ?? "");
       }
     });
