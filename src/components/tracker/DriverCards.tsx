@@ -52,6 +52,8 @@ import { DrugTestRegister } from "./driver-hr/DrugTestRegister";
 import { HireDateField } from "./driver-hr/HireDateField";
 import { RateCardPanel } from "./driver-hr/RateCardPanel";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 // The cards read and write the exact same rows as the sections — no copies.
 const CARD_SECTIONS = SECTIONS.filter((s) => s.id !== "inactive");
 
@@ -212,7 +214,9 @@ export function DriverCards({
         // Temp notes filter is UI-only — never an issue/alert category.
         .filter((d) => !tempNotesOnly || countTempNotes(data, d.driverId) > 0)
         .filter((d) =>
-          (d.name + " " + d.cdl + " " + d.phone).toLowerCase().includes(q.trim().toLowerCase()),
+          `${asText(d.name)} ${asText(d.cdl)} ${asText(d.phone)}`
+            .toLowerCase()
+            .includes(asText(q).trim().toLowerCase()),
         )
     );
   }, [allDrivers, data, q, statusFilter, listScope, exp, tempNotesOnly]);
@@ -252,7 +256,7 @@ export function DriverCards({
         <div className="relative max-w-md min-w-56 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={q}
+            value={asText(q)}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search driver, CDL or phone…"
             className="tracker-search"

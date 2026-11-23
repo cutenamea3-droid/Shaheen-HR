@@ -35,7 +35,7 @@ export function DataQualityReview() {
   const findings = useMemo(() => collectDataQualityFindings(data), [data]);
   const counts = useMemo(() => dataQualityCounts(findings), [findings]);
   const filtered = useMemo(
-    () => filterDataQualityFindings(findings, { severity, q }),
+    () => filterDataQualityFindings(findings, { severity, q: asText(q) }),
     [findings, severity, q],
   );
 
@@ -79,7 +79,7 @@ export function DataQualityReview() {
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
-          value={q}
+          value={asText(q)}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search findings…"
           className="w-full rounded-lg border-2 border-border bg-card py-2 pr-3 pl-10 text-[15px] font-semibold outline-none focus:border-primary"

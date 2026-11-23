@@ -168,7 +168,7 @@ export function Dashboard() {
         <div className="relative min-w-72 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={q}
+            value={asText(q)}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search a driver across every alert…"
             className="tracker-search h-12"
@@ -317,8 +317,8 @@ function SectionAlerts({
       .filter((x) => x.issues.length)
       .filter(
         (x) =>
-          !q.trim() ||
-          (cellsOf(x.row)[0] ?? "").toLowerCase().includes(q.toLowerCase()),
+          !asText(q).trim() ||
+          asText(cellsOf(x.row)[0]).toLowerCase().includes(asText(q).toLowerCase()),
       );
   }, [sec, def, data, af, q, exp]);
   const catMatch = (c: Cat) => CATS.find((k) => k.id === c)?.match;
@@ -338,8 +338,8 @@ function SectionAlerts({
       .map((x) => ({ x, iss: x.issues.filter(m) }))
       .filter((y) => y.iss.length)
       .map(({ x, iss }) => [
-        (cellsOf(x.row)[0] ?? "").trim(),
-        iss.map((i) => i.label).join("\n"),
+        asText(cellsOf(x.row)[0]).trim(),
+        iss.map((i) => asText(i.label)).join("\n"),
         noteText(def, cellsOf(x.row)),
       ]);
     const label =

@@ -167,9 +167,9 @@ export function DataTable({
         if (a.issues.length) keepRef.current.add(a.row.id);
         else if (!keepRef.current.has(a.row.id)) return false;
       }
-      if (q.trim()) {
-        const s = q.toLowerCase();
-        return cellsOf(a.row).some((c) => (c ?? "").toLowerCase().includes(s));
+      if (asText(q).trim()) {
+        const s = asText(q).toLowerCase();
+        return cellsOf(a.row).some((c) => asText(c).toLowerCase().includes(s));
       }
       return true;
     })
@@ -330,7 +330,7 @@ export function DataTable({
         <div className="relative min-w-72 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={q}
+            value={asText(q)}
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${asText(def.title)}…`}
             className="tracker-search"

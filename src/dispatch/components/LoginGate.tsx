@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import { isDispatchPreviewMode, signInDispatch } from "@/dispatch/lib/auth";
 import type { DispatchAccount } from "@/dispatch/lib/types";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccount) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,8 +18,8 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
     setBusy(true);
     setError(null);
     try {
-      const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
-      const nextPassword = (password || passwordRef.current?.value || "").trim();
+      const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
+      const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
       const account = await signInDispatch(nextEmail, nextPassword);
       onSignedIn(account);
     } catch (err) {
@@ -67,7 +69,7 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
               data-testid="dispatch-email"
               type="email"
               autoComplete="username"
-              value={email}
+              value={asText(email)}
               onChange={(e) => setEmail(e.target.value)}
               onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               required={!preview}
@@ -82,7 +84,7 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
               data-testid="dispatch-password"
               type="password"
               autoComplete="current-password"
-              value={password}
+              value={asText(password)}
               onChange={(e) => setPassword(e.target.value)}
               onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
               required={!preview}
