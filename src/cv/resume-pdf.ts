@@ -314,15 +314,21 @@ export function buildResumePdf(): jsPDF {
   if (yL < maxY - 14) yL = fillNotes(leftX, yL);
   if (yR < maxY - 14) yR = fillNotes(rightX, yR);
 
-  doc.setDrawColor(...LINE);
-  doc.setLineWidth(0.25);
-  doc.line(margin, footerY - 3, pageW - margin, footerY - 3);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(...MUTED);
-  doc.text("Muhammad Yousaf Shahzad — Curriculum Vitae", margin, footerY);
-  doc.setTextColor(...VIOLET);
-  doc.text("A4 résumé", pageW - margin, footerY, { align: "right" });
+  // Footer on every page: name left; "Page X of Y" right only when multi-page
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.25);
+    doc.line(margin, footerY - 3, pageW - margin, footerY - 3);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(...MUTED);
+    doc.text(PROFILE.fullName, margin, footerY);
+    if (pageCount > 1) {
+      doc.text(`Page ${p} of ${pageCount}`, pageW - margin, footerY, { align: "right" });
+    }
+  }
 
   doc.__y = Math.max(yL, yR);
   return doc;
