@@ -56,11 +56,12 @@ export function Attendance() {
     resetRec,
     resetDay,
   } = useApp();
+  // Soft-deleted (inactive) stay in app_state for history, but not in daily punch entry.
   const employees = useMemo(
     () =>
       (Array.isArray(employeesRaw) ? employeesRaw : [])
         .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
-        .filter((e) => !!e.id),
+        .filter((e) => !!e.id && !e.inactive),
     [employeesRaw],
   );
   const depts = useMemo(

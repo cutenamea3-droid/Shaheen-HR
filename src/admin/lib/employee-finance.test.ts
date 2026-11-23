@@ -13,7 +13,9 @@ import {
   employeeFinancePersistenceGuard,
   useEmployeeFinanceMock,
 } from "./employee-finance-mock";
-import { getEmployeeFinanceMode } from "./employee-finance-mode";
+import { getEmployeeFinanceMode, shouldShowFinanceMockUi } from "./employee-finance-mode";
+import { normalizeEmployee } from "./store";
+import { decideHrSync, isHrPayloadEmpty, refuseSeedOrEmptyPush } from "./hr-sync-protect";
 import { tenureFromJoiningDate } from "./employee-finance-types";
 import { HR_SYNC_KEYS } from "./hr-sync-protect";
 
@@ -67,8 +69,49 @@ describe("pk-payment-institutions", () => {
 });
 
 describe("employee-finance-mode", () => {
-  it("defaults to mock (secure requires explicit flag + applied migration)", () => {
-    expect(getEmployeeFinanceMode()).toBe("mock");
+  it("defaults to live Team roster; secure requires explicit flag + applied migration", () => {
+    // Vitest runs in DEV; preview-isolated is off; secure flag unset → live.
+    expect(getEmployeeFinanceMode()).toBe("live");
+  });
+
+  it("keeps mock chrome off by default (live roster; never auto-replace)", () => {
+    // Opt-in only via VITE_SHOW_FINANCE_MOCK or preview-isolated.
+    expect(shouldShowFinanceMockUi()).toBe(false);
+  });
+});
+
+describe("directory soft-delete + sync safety", () => {
+  it("normalizeEmployee keeps inactive soft-delete without dropping id", () => {
+    const e = normalizeEmployee({
+      id: "emp-live-1",
+      name: "Sara",
+      deptId: "d1",
+      afterHours: false,
+      joinMonth: "2024-01",
+      openingLeave: 0,
+      inactive: true,
+    });
+    expect(e.id).toBe("emp-live-1");
+    expect(e.inactive).toBe(true);
+    const cleared = normalizeEmployee({ ...e, inactive: false });
+    expect(cleared.inactive).toBeUndefined();
+  });
+
+  it("never applies empty cloud over meaningful local employees/records", () => {
+    const local = {
+      depts: [{ id: "d1", name: "Ops", start: 540, end: 1140 }],
+      employees: [{ id: "e1", name: "Sara", deptId: "d1", afterHours: false, joinMonth: "2024-01", openingLeave: 0 }],
+      records: { "2026-11-01": { e1: { status: "present" } } },
+      perf: {},
+      tasks: [],
+      settings: {},
+      team: [],
+      logs: [],
+    };
+    const empty = { employees: [], records: {} };
+    expect(isHrPayloadEmpty(empty)).toBe(true);
+    expect(decideHrSync(local, empty)).toBe("push_local");
+    expect(refuseSeedOrEmptyPush(empty, local)).toBe(true);
   });
 });
 

@@ -74,6 +74,7 @@ export function normalizeEmployee(raw: Partial<Employee> & Pick<Employee, "id">)
     afterHours: Boolean(raw.afterHours),
     joinMonth,
     openingLeave: opening,
+    ...(raw.inactive === true ? { inactive: true } : {}),
     ...(Array.isArray(raw.deptAssignments) ? { deptAssignments: raw.deptAssignments } : {}),
   };
 }

@@ -11,7 +11,11 @@ import {
   type BankProfileCompleteness,
   type EmploymentStatus,
 } from "@/admin/lib/employee-finance-types";
-import { employeeFinanceModeLabel, getEmployeeFinanceMode } from "@/admin/lib/employee-finance-mode";
+import {
+  employeeFinanceModeLabel,
+  getEmployeeFinanceMode,
+  shouldShowFinanceMockUi,
+} from "@/admin/lib/employee-finance-mode";
 import {
   PK_INSTITUTION_OTHER_ID,
   PK_PAYMENT_INSTITUTIONS,
@@ -39,8 +43,13 @@ type DirectoryRow = {
 export function EmployeeDirectory() {
   const liveEmployeesRaw = useApp((s) => s.employees);
   const deptsRaw = useApp((s) => s.depts);
+  const updateEmployee = useApp((s) => s.updateEmployee);
   const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const liveById = useMemo(() => {
+    const m = new Map(liveEmployees.map((e) => [e.id, e]));
+    return m;
+  }, [liveEmployees]);
   const meta = useEmployeeFinanceMock((s) => s.meta);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const setStatus = useEmployeeFinanceMock((s) => s.setStatus);
@@ -54,12 +63,14 @@ export function EmployeeDirectory() {
   const setDesignation = useEmployeeFinanceMock((s) => s.setDesignation);
   const resetMockSeed = useEmployeeFinanceMock((s) => s.resetMockSeed);
   const financeMode = getEmployeeFinanceMode();
+  const showMockUi = shouldShowFinanceMockUi();
 
-  const [statusFilter, setStatusFilter] = useState<"all" | EmploymentStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | EmploymentStatus>("active");
   const [bankFilter, setBankFilter] = useState<"all" | BankProfileCompleteness>("all");
   const [q, setQ] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(SYNTHETIC_EMPLOYEES[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showDeactivateId, setShowDeactivateId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DirectoryRow | null>(null);
   const [bankErr, setBankErr] = useState("");
   const [instQuery, setInstQuery] = useState("");
   const accountTitleRef = useRef<HTMLInputElement>(null);
@@ -79,17 +90,23 @@ export function EmployeeDirectory() {
       id: e.id,
       name: e.name,
       deptLabel: depts.find((d) => d.id === e.deptId)?.name ?? "—",
-      source: "live",
+      source: "live" as const,
     }));
+    // Synthetic MOCK rows only when mock chrome is allowed (preview/dev).
+    if (!showMockUi) return live;
     const mock: DirectoryRow[] = SYNTHETIC_EMPLOYEES.map((e) => ({
       id: e.id,
       name: e.name,
       deptLabel: e.deptLabel,
-      source: "mock",
+      source: "mock" as const,
     }));
-    // Prefer listing live roster + synthetic demo rows (mock IDs never collide with random live ids in practice).
     return [...live, ...mock];
-  }, [liveEmployees, depts]);
+  }, [liveEmployees, depts, showMockUi]);
+
+  useEffect(() => {
+    if (selectedId && rows.some((r) => r.id === selectedId)) return;
+    setSelectedId(rows[0]?.id ?? null);
+  }, [rows, selectedId]);
 
   useEffect(() => {
     for (const r of rows) ensureMeta(r.id);
@@ -100,8 +117,15 @@ export function EmployeeDirectory() {
 
   const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
+  /** Durable Team soft when present; finance-meta status for mock/session chrome. */
+  const statusOf = (id: string): EmploymentStatus => {
+    const live = liveById.get(id);
+    if (live?.inactive) return "inactive";
+    return meta[id]?.status ?? "active";
+  };
+
   const filtered = rows.filter((r) => {
-    const st = meta[r.id]?.status ?? "active";
+    const st = statusOf(r.id);
     if (statusFilter !== "all" && st !== statusFilter) return false;
     if (bankFilter !== "all" && bankStatus(r.id) !== bankFilter) return false;
     const needle = asText(q).trim().toLowerCase();
@@ -120,35 +144,80 @@ export function EmployeeDirectory() {
 
   const counts = {
     all: rows.length,
-    active: rows.filter((r) => (meta[r.id]?.status ?? "active") === "active").length,
-    inactive: rows.filter((r) => meta[r.id]?.status === "inactive").length,
-    leave: rows.filter((r) => meta[r.id]?.status === "leave").length,
+    active: rows.filter((r) => statusOf(r.id) === "active").length,
+    inactive: rows.filter((r) => statusOf(r.id) === "inactive").length,
+    leave: rows.filter((r) => statusOf(r.id) === "leave").length,
     bankComplete: rows.filter((r) => bankStatus(r.id) === "complete").length,
     bankMissing: rows.filter((r) => bankStatus(r.id) === "missing").length,
+  };
+
+  /**
+   * Soft-delete (durable): mark live Team employee inactive in employees/app_state.
+   * Never remove the row or touch records/perf/tasks — safe refresh + no empty wipe.
+   * Mock synthetics only get session meta inactive.
+   */
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const { id, source } = deleteTarget;
+    if (source === "live") {
+      updateEmployee(id, { inactive: true });
+    }
+    setStatus(id, "inactive", true);
+    if (selectedId === id) setSelectedId(null);
+    setDeleteTarget(null);
+  };
+
+  const reactivateEmployee = (id: string) => {
+    if (liveById.has(id)) {
+      updateEmployee(id, { inactive: false });
+    }
+    setStatus(id, "active");
   };
 
   return (
     <div className="space-y-4">
       <SectionTitle
         title="Employee directory"
-        sub="Reuse Team employee IDs. Banking never writes to localStorage or app_state. Joining date is date-only finance meta — it does not overwrite Team leave-accrual joinMonth."
+        sub={
+          showMockUi
+            ? "Reuse Team employee IDs. Banking never writes to localStorage or app_state. Joining date is date-only finance meta — it does not overwrite Team leave-accrual joinMonth."
+            : "Live Team roster from Admin cloud. Delete confirms before soft-remove from Directory — attendance and other modules stay intact."
+        }
         right={
-          <button type="button" className="btn-ghost" onClick={() => resetMockSeed()}>
-            Reset mock seed
-          </button>
+          showMockUi ? (
+            <button type="button" className="btn-ghost" onClick={() => resetMockSeed()}>
+              Reset mock seed
+            </button>
+          ) : undefined
         }
       />
 
-      <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
-        Mode: {employeeFinanceModeLabel(financeMode)}. Synthetic MOCK banking for UI tests.
-        Institution list ref {PK_PAYMENT_INSTITUTIONS_REF_DATE} (incl. Easypaisa, JazzCash, SadaPay, NayaPay wallets).
-        Migration SQL is in-repo awaiting separate production apply approval. Gate release behind Attendance sync (PR #19)
-        verified — do not claim live cloud persistence from mock alone.
-      </div>
+      {showMockUi ? (
+        <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
+          Mode: {employeeFinanceModeLabel(financeMode)}. Synthetic MOCK banking for UI tests.
+          Institution list ref {PK_PAYMENT_INSTITUTIONS_REF_DATE} (incl. Easypaisa, JazzCash, SadaPay, NayaPay wallets).
+          Migration SQL is in-repo awaiting separate production apply approval. Gate release behind Attendance sync (PR #19)
+          verified — do not claim live cloud persistence from mock alone.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-foreground" role="status">
+          Mode: {employeeFinanceModeLabel(financeMode)}. Roster synced with Admin Team / attendance.
+          Delete asks for confirmation and soft-removes from this Directory without wiping unrelated cloud data.
+        </div>
+      )}
 
       <p className="text-sm text-muted-foreground">
-        Help: Bank profiles show <strong>Complete</strong> when a current masked account exists, otherwise{" "}
-        <strong>Missing</strong>. Reveal is session-only and audited in secure mode. Exports never include full IBAN.
+        {showMockUi ? (
+          <>
+            Help: Bank profiles show <strong>Complete</strong> when a current masked account exists, otherwise{" "}
+            <strong>Missing</strong>. Reveal is session-only and audited in secure mode. Exports never include full IBAN.
+          </>
+        ) : (
+          <>
+            Help: Status filter defaults to Active. Use Delete to soft-remove someone from the Team Directory after
+            confirm. Banking vault stays off until secure finance migration is approved.
+          </>
+        )}
       </p>
 
       <div className="admin-toolbar flex-wrap gap-2">
@@ -186,7 +255,7 @@ export function EmployeeDirectory() {
       <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
         <div className="space-y-2">
           {filtered.map((r) => {
-            const st = meta[r.id]?.status ?? "active";
+            const st = statusOf(r.id);
             return (
               <div
                 key={r.id}
@@ -227,7 +296,7 @@ export function EmployeeDirectory() {
                     <button
                       type="button"
                       className="btn-primary px-3"
-                      onClick={() => setStatus(r.id, "active")}
+                      onClick={() => reactivateEmployee(r.id)}
                       title="Reactivate same employee ID (no duplicate)"
                     >
                       Reactivate
@@ -239,10 +308,18 @@ export function EmployeeDirectory() {
                     </button>
                   )}
                   {st !== "inactive" && (
-                    <button type="button" className="btn-danger px-3" onClick={() => setShowDeactivateId(r.id)}>
+                    <button type="button" className="btn-ghost px-3" onClick={() => setShowDeactivateId(r.id)}>
                       Deactivate
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="btn-danger px-3"
+                    onClick={() => setDeleteTarget(r)}
+                    title="Soft-delete from Directory (confirm required)"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             );
@@ -297,11 +374,18 @@ export function EmployeeDirectory() {
                     ))}
                   </select>
                 </label>
-                <p className="text-sm text-muted-foreground">
-                  Bank: <strong>{BANK_PROFILE_LABEL[bankStatus(selected.id)]}</strong>. Holder, provider, IBAN/account —
-                  masked by default. History is append-only. Full numbers never go in URLs, logs, or public exports.
-                </p>
-                {current ? (
+                {showMockUi ? (
+                  <p className="text-sm text-muted-foreground">
+                    Bank: <strong>{BANK_PROFILE_LABEL[bankStatus(selected.id)]}</strong>. Holder, provider, IBAN/account —
+                    masked by default. History is append-only. Full numbers never go in URLs, logs, or public exports.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Banking vault is off in production until secure finance migration is approved. Soft-delete uses the
+                    live Team <code>inactive</code> flag (survives refresh + cloud sync).
+                  </p>
+                )}
+                {showMockUi && current ? (
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-sm">
                     <div className="font-semibold">{institutionDisplayLabel(current.institutionId, current.otherLabel)}</div>
                     <div>{current.accountTitle}</div>
@@ -312,10 +396,12 @@ export function EmployeeDirectory() {
                       {revealAccountIds.has(current.id) ? "Hide" : "Reveal"} account
                     </button>
                   </div>
-                ) : (
+                ) : null}
+                {showMockUi && !current ? (
                   <p className="text-sm text-muted-foreground">No current account — add one below (session mock only).</p>
-                )}
+                ) : null}
 
+                {showMockUi ? (
                 <form
                   className="grid gap-2"
                   onSubmit={(e) => {
@@ -437,41 +523,48 @@ export function EmployeeDirectory() {
                     Save as new account (keep history)
                   </button>
                 </form>
+                ) : null}
               </div>
 
-              <div className="admin-emp-card space-y-2">
-                <h4 className="font-bold">Account change history</h4>
-                {hist.length === 0 && <p className="text-sm text-muted-foreground">No history yet.</p>}
-                {hist.map((h) => (
-                  <div key={h.id} className="border-b border-border/60 py-2 text-sm last:border-0">
-                    <div className="font-semibold">
-                      {institutionDisplayLabel(h.institutionId, h.otherLabel)}
-                      {h.supersededAt ? (
-                        <span className="ml-2 text-xs font-normal text-muted-foreground">superseded {h.supersededAt}</span>
-                      ) : (
-                        <span className="ml-2 text-xs font-bold text-success">current</span>
-                      )}
-                    </div>
-                    <div className="font-mono text-xs">
-                      {maskedRef(h, revealAccountIds.has(h.id) ? getRevealedPlaintext(h.id) : undefined)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      From {h.effectiveFrom}
-                      {h.note ? ` · ${asText(h.note)}` : ""}
-                    </div>
-                    <button type="button" className="btn-ghost mt-1 h-7 px-2 text-xs" onClick={() => toggleReveal(h.id)}>
-                      {revealAccountIds.has(h.id) ? "Hide" : "Reveal"}
-                    </button>
+              {showMockUi ? (
+                <>
+                  <div className="admin-emp-card space-y-2">
+                    <h4 className="font-bold">Account change history</h4>
+                    {hist.length === 0 && <p className="text-sm text-muted-foreground">No history yet.</p>}
+                    {hist.map((h) => (
+                      <div key={h.id} className="border-b border-border/60 py-2 text-sm last:border-0">
+                        <div className="font-semibold">
+                          {institutionDisplayLabel(h.institutionId, h.otherLabel)}
+                          {h.supersededAt ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">superseded {h.supersededAt}</span>
+                          ) : (
+                            <span className="ml-2 text-xs font-bold text-success">current</span>
+                          )}
+                        </div>
+                        <div className="font-mono text-xs">
+                          {maskedRef(h, revealAccountIds.has(h.id) ? getRevealedPlaintext(h.id) : undefined)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          From {h.effectiveFrom}
+                          {h.note ? ` · ${asText(h.note)}` : ""}
+                        </div>
+                        <button type="button" className="btn-ghost mt-1 h-7 px-2 text-xs" onClick={() => toggleReveal(h.id)}>
+                          {revealAccountIds.has(h.id) ? "Hide" : "Reveal"}
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div className="admin-emp-card text-xs text-muted-foreground">
-                Directory lists {PK_PAYMENT_INSTITUTIONS.length} institutions (ref {PK_PAYMENT_INSTITUTIONS_REF_DATE}). EMI/PSP entries are labelled wallets — not banks.
-              </div>
+                  <div className="admin-emp-card text-xs text-muted-foreground">
+                    Directory lists {PK_PAYMENT_INSTITUTIONS.length} institutions (ref {PK_PAYMENT_INSTITUTIONS_REF_DATE}). EMI/PSP entries are labelled wallets — not banks.
+                  </div>
+                </>
+              ) : null}
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">Select an employee to manage banking.</p>
+            <p className="text-sm text-muted-foreground">
+              {showMockUi ? "Select an employee to manage banking." : "Select an employee to view Directory details."}
+            </p>
           )}
         </div>
       </div>
@@ -498,6 +591,34 @@ export function EmployeeDirectory() {
                 }}
               >
                 Deactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-title"
+        >
+          <div className="admin-emp-card max-w-md space-y-3 bg-background shadow-lg">
+            <h3 id="delete-title" className="font-display text-lg font-extrabold">
+              Remove {asText(deleteTarget.name)}?
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {deleteTarget.source === "live"
+                ? "Soft-delete: marks them inactive on the live Team roster (synced via localStorage + Admin cloud). Same employee ID is kept — attendance, performance, and other app_state keys are not wiped. Use Reactivate to restore."
+                : "Soft-delete: marks this synthetic mock employee inactive in-session. Attendance and other cloud modules are not wiped."}
+            </p>
+            <div className="admin-toolbar justify-end">
+              <button type="button" className="btn-ghost" onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn-danger" onClick={confirmDelete}>
+                Confirm delete
               </button>
             </div>
           </div>

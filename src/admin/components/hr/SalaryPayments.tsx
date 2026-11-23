@@ -8,7 +8,11 @@ import {
   SALARY_PAYMENT_STATUS_LABEL,
   type SalaryPaymentStatus,
 } from "@/admin/lib/employee-finance-types";
-import { employeeFinanceModeLabel, getEmployeeFinanceMode } from "@/admin/lib/employee-finance-mode";
+import {
+  employeeFinanceModeLabel,
+  getEmployeeFinanceMode,
+  shouldShowFinanceMockUi,
+} from "@/admin/lib/employee-finance-mode";
 import { institutionDisplayLabel } from "@/admin/lib/pk-payment-institutions";
 import { maskPkIban } from "@/admin/lib/pk-iban";
 import { formatPkr, salaryPaymentsCsv, summarizePayments } from "@/admin/lib/salary-payments";
@@ -30,6 +34,7 @@ export function SalaryPayments() {
   const setPaymentStatus = useEmployeeFinanceMock((s) => s.setPaymentStatus);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const financeMode = getEmployeeFinanceMode();
+  const showMockUi = shouldShowFinanceMockUi();
 
   const [month, setMonth] = useState("2026-10");
   const [statusFilter, setStatusFilter] = useState<"all" | SalaryPaymentStatus>("all");
@@ -41,17 +46,27 @@ export function SalaryPayments() {
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of liveEmployees) m.set(e.id, e.name);
-    for (const e of SYNTHETIC_EMPLOYEES) m.set(e.id, e.name);
+    if (showMockUi) {
+      for (const e of SYNTHETIC_EMPLOYEES) m.set(e.id, e.name);
+    }
     return m;
-  }, [liveEmployees]);
+  }, [liveEmployees, showMockUi]);
 
   const monthRows = useMemo(() => {
     return payments
       .filter((p) => p.month === month)
-      .filter((p) => (statusFilter === "all" ? true : p.status === statusFilter));
-  }, [payments, month, statusFilter]);
+      .filter((p) => (statusFilter === "all" ? true : p.status === statusFilter))
+      .filter((p) => (showMockUi ? true : liveEmployees.some((e) => e.id === p.employeeId)));
+  }, [payments, month, statusFilter, showMockUi, liveEmployees]);
 
-  const summary = useMemo(() => summarizePayments(payments.filter((p) => p.month === month)), [payments, month]);
+  const summary = useMemo(() => {
+    const scoped = payments.filter((p) => {
+      if (p.month !== month) return false;
+      if (!showMockUi && !liveEmployees.some((e) => e.id === p.employeeId)) return false;
+      return true;
+    });
+    return summarizePayments(scoped);
+  }, [payments, month, showMockUi, liveEmployees]);
 
   const bankById = useMemo(() => {
     const m = new Map(banking.map((b) => [b.id, b]));
@@ -60,7 +75,10 @@ export function SalaryPayments() {
 
   const ensureRowsForRoster = () => {
     setErr("");
-    const ids = [...liveEmployees.map((e) => e.id), ...SYNTHETIC_EMPLOYEES.map((e) => e.id)];
+    const ids = [
+      ...liveEmployees.map((e) => e.id),
+      ...(showMockUi ? SYNTHETIC_EMPLOYEES.map((e) => e.id) : []),
+    ];
     for (const id of ids) {
       ensureMeta(id);
       const dom =
@@ -127,12 +145,19 @@ export function SalaryPayments() {
         }
       />
 
-      <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
-        Mode: {employeeFinanceModeLabel(financeMode)}. Actual Paid ≠ Payable. Recording a payment does not move money or change
-        attendance payroll calc. Basic salary paid here is <strong>not</strong> an expense (see Expenses — no double-count).
-        Secure RPCs stay off until migration apply + VITE_HR_FINANCE_SECURE=1. Gate behind Attendance sync (PR #19). Oct 2026
-        seed rows are historical and locked against due rewrite.
-      </div>
+      {showMockUi ? (
+        <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm font-semibold text-warn" role="status">
+          Mode: {employeeFinanceModeLabel(financeMode)}. Actual Paid ≠ Payable. Recording a payment does not move money or change
+          attendance payroll calc. Basic salary paid here is <strong>not</strong> an expense (see Expenses — no double-count).
+          Secure RPCs stay off until migration apply + VITE_HR_FINANCE_SECURE=1. Gate behind Attendance sync (PR #19). Oct 2026
+          seed rows are historical and locked against due rewrite.
+        </div>
+      ) : (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-foreground" role="status">
+          Mode: {employeeFinanceModeLabel(financeMode)}. Payments UI scoped to the live Team roster.
+          Actual Paid ≠ Payable. Secure banking vault stays off until migration + VITE_HR_FINANCE_SECURE=1.
+        </div>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryTile label="Due" value={formatPkr(summary.duePkr)} />
