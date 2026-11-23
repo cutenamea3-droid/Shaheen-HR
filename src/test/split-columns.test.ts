@@ -76,7 +76,7 @@ test("old expiry skips amber/red; annual & pre-emp independent", () => {
   expect(cellTone[9]).toBeUndefined(); // Temporary Note never highlights
   expect(issues.some((i) => i.col === 9)).toBe(false);
 
-  // Independent: only annual near expiry → only annual plan highlighted
+  // Independent: only annual near expiry → date issue only (plan is NOT an analyzeRow issue)
   const near = {
     ...row,
     cells: [
@@ -94,7 +94,9 @@ test("old expiry skips amber/red; annual & pre-emp independent", () => {
   };
   const a = analyzeRow(def, headers, near);
   expect(a.issues.some((i) => i.col === 2)).toBe(true);
-  expect(a.issues.some((i) => i.col === 6)).toBe(true);
+  // Empty Future Plan must not create analyzeRow / pink-row issues
+  expect(a.issues.some((i) => i.col === 6 || i.col === 7)).toBe(false);
+  expect(a.cellTone[6]).toBeUndefined();
   expect(a.issues.some((i) => i.col === 4 || i.col === 7)).toBe(false);
 });
 

@@ -132,6 +132,23 @@ describe("FuturePlanSuggest standalone", () => {
     expect(screen.getByText("Apply Suggestion")).toBeTruthy();
   });
 
+  test("reminder-due cue highlights suggestion control only", () => {
+    render(
+      <FuturePlanSuggest
+        suggestion={suggestion()}
+        existingPlan=""
+        sectionId="dmv"
+        rowId="wc1"
+        planCol={7}
+        reminderActionable
+        suggestionTone="warn"
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: /Reminder due/i });
+    expect(toggle).toHaveAttribute("data-reminder-due", "1");
+    expect(toggle.className).toMatch(/bg-warn-soft/);
+  });
+
   test("confirm before replacing a different saved plan", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(

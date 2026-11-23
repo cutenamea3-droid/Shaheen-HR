@@ -346,3 +346,116 @@ export function suggestionMatchesToday(suggestion: FuturePlanSuggestion): boolea
     r.getDate() === t.getDate()
   );
 }
+
+/**
+ * Future Plan reminder highlight — section/document-specific lead rules only.
+ *
+ * Separate from document-status issues (Expired / Missing / amber expiry):
+ * those stay on status/date columns and drive pink rows / Only Issues.
+ *
+ * Actionable only when:
+ * - expiry is parseable (not Missing / invalid / Old),
+ * - document is not yet expired (expired ≠ Future Plan reminder),
+ * - today is on/after the reminder date (expiry − leadDays) and on/before expiry,
+ * - Application status is not Applied (in-progress / completed path).
+ *
+ * Empty saved plan never creates a highlight by itself — callers keep
+ * "My Saved Future Plan" neutral; only the suggestion affordance may cue.
+ */
+export type FuturePlanHighlight = {
+  /** Reminder is due under this document's lead rule. */
+  actionable: boolean;
+  /** Soft cue tone for the suggestion control (never for empty saved-plan text). */
+  suggestionTone: "warn" | "danger" | null;
+  leadDays: number | null;
+  daysToExpiry: number | null;
+  daysToReminder: number | null;
+  reason: string;
+  sectionId: string;
+  planCol: number;
+  docLabel: string;
+};
+
+export function computeFuturePlanHighlight(
+  rule: PlanLeadRule,
+  row: Row,
+  suggestion?: FuturePlanSuggestion | null,
+): FuturePlanHighlight {
+  const s = suggestion ?? buildFuturePlanSuggestion(rule, row);
+  const base = {
+    leadDays: s.leadDays,
+    sectionId: rule.sectionId,
+    planCol: rule.planCol,
+    docLabel: rule.docLabel,
+  };
+
+  if (s.suppressReapply) {
+    return {
+      ...base,
+      actionable: false,
+      suggestionTone: null,
+      daysToExpiry: s.expiryDate ? daysUntil(s.expiryDate) : null,
+      daysToReminder: null,
+      reason: s.suppressReason ?? "Applied — status-check, not a Future Plan reminder",
+    };
+  }
+
+  if (!s.available || !s.reminderDate || !s.expiryDate || s.leadDays == null) {
+    return {
+      ...base,
+      actionable: false,
+      suggestionTone: null,
+      daysToExpiry: null,
+      daysToReminder: null,
+      reason: "No valid expiry — no Future Plan reminder highlight",
+    };
+  }
+
+  const daysToExpiry = daysUntil(s.expiryDate);
+  const daysToReminder = daysUntil(s.reminderDate);
+
+  // Expired document = compliance issue on the date column, not a plan reminder.
+  if (daysToExpiry < 0) {
+    return {
+      ...base,
+      actionable: false,
+      suggestionTone: null,
+      daysToExpiry,
+      daysToReminder,
+      reason: "Document expired — separate from Future Plan reminder",
+    };
+  }
+
+  // Reminder not due yet (today is before expiry − leadDays).
+  if (daysToReminder > 0) {
+    return {
+      ...base,
+      actionable: false,
+      suggestionTone: null,
+      daysToExpiry,
+      daysToReminder,
+      reason: `Reminder not due yet (${daysToReminder}d until reminder)`,
+    };
+  }
+
+  // Due today or overdue reminder, still before/on expiry day.
+  return {
+    ...base,
+    actionable: true,
+    suggestionTone: daysToReminder < 0 ? "danger" : "warn",
+    daysToExpiry,
+    daysToReminder,
+    reason: daysToReminder < 0 ? "Reminder overdue" : "Reminder due today",
+  };
+}
+
+/** Highlight state for one plan cell (null when section has no lead rule). */
+export function futurePlanHighlightForCell(
+  sectionId: string,
+  planCol: number,
+  row: Row,
+): FuturePlanHighlight | null {
+  const rule = planRuleFor(sectionId, planCol);
+  if (!rule) return null;
+  return computeFuturePlanHighlight(rule, row);
+}

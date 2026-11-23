@@ -766,8 +766,8 @@ export function DataTable({
                               planCol={ci}
                               value={v}
                               onSave={save}
-                              tone={tone}
                               suggestion={suggestPlanForCell(sectionId, ci, row)}
+                              row={row}
                               compact
                             />
                           )}

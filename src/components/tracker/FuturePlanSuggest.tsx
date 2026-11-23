@@ -19,6 +19,8 @@ export function FuturePlanSuggest({
   rowId,
   planCol,
   compact,
+  reminderActionable,
+  suggestionTone,
 }: {
   suggestion: FuturePlanSuggestion | null;
   existingPlan: string;
@@ -26,6 +28,12 @@ export function FuturePlanSuggest({
   rowId: string;
   planCol: number | null;
   compact?: boolean;
+  /**
+   * True only when section lead rules say the reminder is due (not merely that a
+   * suggestion text exists). Drives the suggestion-control highlight — never pink rows.
+   */
+  reminderActionable?: boolean;
+  suggestionTone?: "warn" | "danger" | null;
 }) {
   const key =
     planCol != null ? futurePlanExpandKey(sectionId, rowId, planCol) : `${sectionId}:${rowId}:plan`;
@@ -40,7 +48,9 @@ export function FuturePlanSuggest({
     savedTrim === suggestionTrim &&
     suggestion.available &&
     !suggestion.suppressReapply;
+  // Apply is allowed whenever a suggestion exists; highlight only when reminder is due.
   const suggestionActionable = Boolean(suggestion.available && !suggestion.suppressReapply);
+  const due = Boolean(reminderActionable);
 
   const apply = () => {
     if (!suggestion.available || suggestion.suppressReapply) return;
@@ -123,12 +133,20 @@ export function FuturePlanSuggest({
         onClick={toggle}
         aria-expanded={open}
         data-future-plan-suggest-toggle
+        data-reminder-due={due ? "1" : "0"}
         className={cn(
-          "ui-press flex w-full max-w-full items-center gap-1.5 rounded-md border border-foreground/15 bg-card px-2 py-1 text-left text-sm font-bold text-foreground hover:bg-muted/40",
+          "ui-press flex w-full max-w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left text-sm font-bold hover:bg-muted/40",
           compact && "py-0.5 text-[13px]",
+          due && suggestionTone === "danger"
+            ? "border-danger/40 bg-danger-soft text-danger"
+            : due
+              ? "border-warn/40 bg-warn-soft text-warn"
+              : "border-foreground/15 bg-card text-foreground",
         )}
       >
-        <span className="min-w-0 flex-1">View Automatic Suggestion</span>
+        <span className="min-w-0 flex-1">
+          {due ? "Reminder due — View Automatic Suggestion" : "View Automatic Suggestion"}
+        </span>
         <ChevronDown
           className={cn("size-4 shrink-0 text-muted-foreground transition", open && "rotate-180")}
           aria-hidden
