@@ -25,7 +25,6 @@ import {
   analyzeRow,
   complianceScore,
   matchesExpFilter,
-  normStatus,
   rowAlertsMuted,
   rowDriverStatus,
   rowIsActive,
@@ -36,11 +35,19 @@ import { suggestPlanForCell } from "@/lib/plan-dates";
 import { countTempNotes, listScopeOf, matchesListScope, type ListScope } from "@/lib/driver-meta";
 import { dateOfHireOf, formatHireDateDisplay, lengthOfService } from "@/lib/driver-hr/hire-date";
 import { printDriverDossier } from "@/lib/driver-dossier";
+import {
+  buildDriverProfileCompletion,
+  findDuplicateDriverWarnings,
+  duplicateWarningForDriver,
+  type DriverProfileCompletion,
+  type DuplicateDriverWarning,
+} from "@/lib/driver-profile-completion";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useDensity } from "@/lib/density";
 import { loadDriverCardsPrefs, saveDriverCardsPrefs } from "@/lib/uiprefs";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
+import { CompletionDetails } from "./CompletionDetails";
 import { DensityToggle } from "./DensityToggle";
 import { ExpirationFilter } from "./ExpirationFilter";
 import { FilterGroup, FilterRack } from "./FilterRack";
@@ -66,8 +73,8 @@ interface Driver {
   phone: string;
   cdl: string;
   state: string;
-  valid: number;
-  total: number;
+  /** Profile completion from saved section records (single reliable calc). */
+  completion: DriverProfileCompletion;
   scope: ListScope;
   /** Section/row/col to write employment status from the cards list. */
   statusTarget?: { sectionId: string; rowId: string; col: number };
@@ -141,6 +148,8 @@ export function DriverCards({
     if (initialTempNotes != null) setTempNotesOnlyState(initialTempNotes);
   }, [initialScope, initialExp, initialTempNotes]);
 
+  const duplicateWarnings = useMemo(() => findDuplicateDriverWarnings(data), [data]);
+
   const allDrivers = useMemo(() => {
     const asName = (v: unknown) =>
       (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
@@ -161,8 +170,7 @@ export function DriverCards({
             phone: "",
             cdl: "",
             state: "",
-            valid: 0,
-            total: 0,
+            completion: buildDriverProfileCompletion(data, r.driverId),
             scope: listScopeOf(data, r.driverId),
           };
           map.set(r.driverId, d);
@@ -179,15 +187,15 @@ export function DriverCards({
         if (aidx >= 0 && !d.statusTarget)
           d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
         def.types.forEach((t, i) => {
-          if (t === "status") {
-            d.total++;
-            if (normStatus(r.cells[i] ?? "") === "Valid") d.valid++;
-          }
           if (t === "state" && !d.state) d.state = asName(r.cells[i]).trim();
         });
         if (def.id === "info") d.phone = asName(r.cells[1]).trim();
         if (def.id === "ssccdl") d.cdl = asName(r.cells[1]).trim();
       }
+    }
+    // Refresh completion once per driver from full saved data (not mid-loop partial).
+    for (const d of map.values()) {
+      d.completion = buildDriverProfileCompletion(data, d.driverId);
     }
     return [...map.values()].sort((a, b) =>
       asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
@@ -331,13 +339,14 @@ export function DriverCards({
               <th className={th}>Status</th>
               <th className={th}>CDL</th>
               <th className={th}>Hire</th>
-              <th className={th}>Documents</th>
+              <th className={th}>Profile</th>
               <th className={cn(th, "tracker-no-print")}>Action</th>
             </tr>
           </thead>
           <tbody>
             {drivers.map((d) => {
-              const pct = d.total ? Math.round((d.valid / d.total) * 100) : 0;
+              const pct = d.completion.percent;
+              const dup = duplicateWarningForDriver(duplicateWarnings, d.driverId);
               const mute = alertsMuteBanner(d.status);
               return (
                 <tr
@@ -456,17 +465,27 @@ export function DriverCards({
                     })()}
                   </td>
                   <td className="w-64 px-4 py-3">
-                    <div className="font-bold">{pct}% complete</div>
+                    <div className="font-bold">{pct}% profile</div>
                     <div
                       className="tracker-doc-bar mt-1"
                       role="progressbar"
                       aria-valuenow={pct}
                       aria-valuemin={0}
                       aria-valuemax={100}
-                      aria-label="Documents complete"
+                      aria-label="Profile completion"
                     >
                       <div className="tracker-doc-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
+                    {d.completion.otherDocsStatusPercent != null && (
+                      <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                        Other Docs status {d.completion.otherDocsStatusPercent}% (Valid÷12)
+                      </div>
+                    )}
+                    {dup && (
+                      <div className="mt-1 text-[11px] font-bold text-warn" title={dup.detail}>
+                        {dup.label} — review IDs (no auto-merge)
+                      </div>
+                    )}
                     <div
                       className={cn("mt-1 text-sm font-bold", d.issues ? "text-danger" : "text-ok")}
                     >
@@ -518,18 +537,43 @@ export function DriverCards({
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          {open && <DriverFile driverId={open.driverId} name={open.name} cdl={open.cdl} />}
+          {open && (
+            <DriverFile
+              driverId={open.driverId}
+              name={open.name}
+              cdl={open.cdl}
+              completion={open.completion}
+              duplicate={duplicateWarningForDriver(duplicateWarnings, open.driverId) ?? null}
+            />
+          )}
         </SheetContent>
       </Sheet>
     </div>
   );
 }
 
-function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; cdl: string }) {
+function DriverFile({
+  driverId,
+  name,
+  cdl,
+  completion,
+  duplicate,
+}: {
+  driverId: string;
+  name: string;
+  cdl: string;
+  completion: DriverProfileCompletion;
+  duplicate: DuplicateDriverWarning | null;
+}) {
   const safeName = name == null ? "" : typeof name === "string" ? name : String(name);
   const safeCdl = cdl == null ? "" : typeof cdl === "string" ? cdl : String(cdl);
   const data = useData();
   const view = useViewMode();
+  const liveCompletion = useMemo(
+    () => buildDriverProfileCompletion(data, driverId),
+    [data, driverId],
+  );
+  const shown = liveCompletion.driverId === completion.driverId ? liveCompletion : completion;
   const statusInfo = useMemo(() => {
     for (const def of CARD_SECTIONS) {
       const sec = data.sections[def.id];
@@ -611,6 +655,12 @@ function DriverFile({ driverId, name, cdl }: { driverId: string; name: string; c
         </div>
       )}
       <div className="space-y-4 px-6 py-5">
+        <section className="tracker-profile-section">
+          <h3 className="tracker-profile-section-h">Completion Details</h3>
+          <div className="p-4">
+            <CompletionDetails completion={shown} duplicate={duplicate} />
+          </div>
+        </section>
         <HireDateField driverId={driverId} />
         <RateCardPanel driverId={driverId} />
         <DrugTestRegister driverId={driverId} driverName={safeName} />
@@ -730,7 +780,12 @@ function SectionFields({ sectionId, row }: { sectionId: string; row: Row }) {
             )}
             {t === "active" && <ActiveToggle value={v} onSave={save} />}
             {t === "score" && (
-              <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>
+              <div>
+                <div className="font-display text-lg font-extrabold">{complianceScore(row)}%</div>
+                <div className="mt-0.5 text-[11px] font-semibold text-muted-foreground">
+                  Other Docs status (Valid÷12) — not profile completion
+                </div>
+              </div>
             )}
           </div>
         );
