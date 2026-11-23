@@ -162,8 +162,8 @@ export function Attendance() {
       result.cloud
         ? `✓ Filled ${targets.length} · ${prettyDate(date)} — Cloud Saved`
         : result.ok
-          ? `Filled ${targets.length} on this browser — ${result.message}`
-          : `Filled ${targets.length} locally — ${result.message || "sync failed, try Save"}`,
+          ? `Filled ${targets.length} on this browser — ${asText(result.message)}`
+          : `Filled ${targets.length} locally — ${asText(result.message) || "sync failed, try Save"}`,
     );
     if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };

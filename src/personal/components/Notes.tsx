@@ -80,7 +80,7 @@ export function Notes() {
               >
                 <div>
                   <div className="text-sm font-semibold text-[var(--hp-ink)]">
-                    {s.courseCode}{" "}
+                    {asTxt(s.courseCode)}{" "}
                     <span
                       className={`ml-1 text-[10px] font-bold uppercase tracking-wide ${
                         s.urgency === "high"
@@ -90,10 +90,10 @@ export function Notes() {
                             : "text-[var(--hp-muted)]"
                       }`}
                     >
-                      {s.urgency}
+                      {asTxt(s.urgency)}
                     </span>
                   </div>
-                  <div className="text-xs text-[var(--hp-muted)]">{s.reason}</div>
+                  <div className="text-xs text-[var(--hp-muted)]">{asTxt(s.reason)}</div>
                 </div>
                 <Btn
                   variant="ghost"
@@ -101,7 +101,7 @@ export function Notes() {
                   onClick={() => {
                     setCourseId(s.courseId === "general" ? "general" : s.courseId);
                     setTagDraft("revision");
-                    setTitle(`${s.courseCode} revision`);
+                    setTitle(`${asTxt(s.courseCode)} revision`);
                   }}
                 >
                   Draft note

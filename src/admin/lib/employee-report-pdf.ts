@@ -89,7 +89,7 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   const chrome = {
     company: opts.company,
     monthLabel: opts.monthLabel,
-    employeeName: emp.employee.name,
+    employeeName: asText(emp.employee.name),
     generatedAt: opts.generatedAt,
     logo: opts.logo,
     page: 1,
@@ -101,8 +101,8 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   doc.setTextColor(...PDF_THEME.charcoal);
   doc.setFont("helvetica", "normal").setFontSize(10.5);
   const lines = [
-    `Name: ${emp.employee.name}`,
-    `Department: ${emp.deptName}`,
+    `Name: ${asText(emp.employee.name)}`,
+    `Department: ${asText(emp.deptName)}`,
     `Working days: ${emp.workingDays}`,
     `Hours: ${fmtHours(emp.hoursMin)}`,
     `Late / Grace / Over break / Miss punch: ${emp.lateCount} / ${emp.graceCount} / ${emp.overBreakCount} / ${emp.missPunchCount}`,
@@ -121,7 +121,7 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
     head: [["Date", "Status", "Hours", "Late", "Break", "OT", "Note"]],
     body: days.map((d) => [
       shortDate(d.date),
-      d.rec.status,
+      asText(d.rec.status),
       d.rec.status === "present" || d.rec.status === "half" ? fmtHours(d.c.worked ?? 0) : "—",
       d.c.lateLevel === "late" ? `${d.c.lateMin}m` : d.c.lateLevel === "grace" ? `g ${d.c.lateMin}m` : "—",
       d.c.breakLevel === "over" ? `${d.c.overBreak}m` : "—",

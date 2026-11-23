@@ -297,7 +297,10 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
 
         <div className="space-y-2">
           {issues.map((issue, idx) => (
-            <article key={`${issue.kind}-${issue.employeeId}-${idx}`} className="admin-emp-card flex flex-wrap items-center justify-between gap-3">
+            <article
+              key={`${asText(issue.kind)}-${asText(issue.employeeId)}-${idx}`}
+              className="admin-emp-card flex flex-wrap items-center justify-between gap-3"
+            >
               <div className="min-w-0">
                 <p className="font-semibold">{asText(issue.name)}</p>
                 <p className="text-sm text-muted-foreground">

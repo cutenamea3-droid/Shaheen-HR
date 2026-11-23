@@ -120,7 +120,13 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
 
     const uniqueNames = [...new Set([...names.values()].map((n) => normName(n.name)).filter(Boolean))];
     if (uniqueNames.length > 1) {
-      const sample = [...names.values()].map((n) => `${n.sectionId}: “${n.name}”`).join("; ");
+      const sample = [...names.values()]
+        .map((n) => {
+          const sid = n.sectionId == null ? "" : typeof n.sectionId === "string" ? n.sectionId : String(n.sectionId);
+          const nm = n.name == null ? "" : typeof n.name === "string" ? n.name : String(n.name);
+          return `${sid}: “${nm}”`;
+        })
+        .join("; ");
       push({
         id: `name_mismatch:${driverId}`,
         kind: "name_mismatch",

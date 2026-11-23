@@ -136,7 +136,8 @@ export function HireDateField({ driverId }: { driverId: string }) {
       </button>
       {los && (
         <p className="mt-1.5 text-xs font-semibold text-muted-foreground">
-          Length of service: {los.label}
+          Length of service:{" "}
+          {los.label == null ? "" : typeof los.label === "string" ? los.label : String(los.label)}
         </p>
       )}
     </div>

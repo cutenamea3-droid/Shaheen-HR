@@ -144,5 +144,6 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
 
 /** cmdk value string — name, CDL, and stable driver ID. */
 export function finderSearchValue(d: FinderDriver): string {
-  return `${d.name} ${d.cdl} ${d.driverId}`;
+  const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return `${asN(d.name)} ${asN(d.cdl)} ${asN(d.driverId)}`;
 }

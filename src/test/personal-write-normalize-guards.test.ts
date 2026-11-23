@@ -251,6 +251,15 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(expensesStore).toMatch(/asText\(row\.title\)/);
+    expect(notesUi).toMatch(/\{asTxt\(s\.reason\)\}/);
+    expect(notesUi).toMatch(/\{asTxt\(s\.courseCode\)\}/);
+    const empPdf = readFileSync(
+      resolve(process.cwd(), "src/admin/lib/employee-report-pdf.ts"),
+      "utf8",
+    );
+    expect(empPdf).toMatch(/asText\(emp\.employee\.name\)/);
+    const quickFind = readFileSync(resolve(process.cwd(), "src/lib/quick-find.ts"), "utf8");
+    expect(quickFind).toMatch(/asN\(d\.name\)/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",

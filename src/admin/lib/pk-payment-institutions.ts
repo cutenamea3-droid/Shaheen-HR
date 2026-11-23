@@ -130,7 +130,9 @@ export function institutionDisplayLabel(id: string, otherLabel?: unknown): strin
   const inst = findPkInstitution(id);
   if (!inst) return other || "Unknown institution";
   const kind = pkInstitutionKindLabel(inst.kind);
-  return inst.isBank ? `${inst.name}` : `${inst.name} (${kind})`;
+  const name =
+    inst.name == null ? "" : typeof inst.name === "string" ? inst.name : String(inst.name);
+  return inst.isBank ? `${name}` : `${name} (${kind})`;
 }
 
 export function countInstitutionsByKind(): Record<PkInstitutionKind, number> {
