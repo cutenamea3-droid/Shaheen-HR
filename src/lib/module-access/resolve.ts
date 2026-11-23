@@ -3,16 +3,18 @@ import { EMPTY_GRANTS, type ModuleGrants, type ResolvedAccess } from "./types";
 import { resolveAccess } from "./policy";
 
 /**
- * Resolve module grants by probing each auth boundary independently.
- * Never copies JWTs between Driver / Admin / Personal clients.
+ * Resolve module grants by probing Compliance + Admin auth boundaries only.
+ * Personal / Dispatch are not probed in this Compliance + Attendance app
+ * (avoids false Access Denied races from retired-module seats).
+ * Never copies JWTs between Driver / Admin clients.
  */
 export async function probeModuleGrants(): Promise<ModuleGrants> {
   if (isPreviewIsolated()) {
     return {
       compliance: "admin",
       "admin-hr": "admin",
-      personal: "owner",
-      dispatch: "admin",
+      personal: null,
+      dispatch: null,
     };
   }
 
@@ -33,8 +35,8 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
     if (user) {
       const { getPortalAccount } = await import("@/lib/cloud");
       // LockGate already finished ACL bootstrap before the toast; a single immediate
-      // probe can still race. Retry briefly so Personal/Dispatch seats do not trigger
-      // a false Access Denied on /drug-tests.
+      // probe can still race. Retry briefly so a lagging ACL does not trigger a false
+      // Access Denied on /drug-tests.
       let account = null as Awaited<ReturnType<typeof getPortalAccount>>;
       for (let i = 0; i < 4; i++) {
         try {
@@ -49,23 +51,6 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
     }
   } catch {
     /* Driver probe optional when env missing */
-  }
-
-  // --- Dispatch (same Driver project URL by default, dedicated storage + ACL) ---
-  try {
-    const { isDispatchSupabaseConfigured, dispatchSupabase } =
-      await import("@/dispatch/integrations/supabase/client");
-    if (isDispatchSupabaseConfigured()) {
-      const { data } = await dispatchSupabase.auth.getSession();
-      const user = data.session?.user;
-      if (user) {
-        const { getDispatchAccount } = await import("@/dispatch/lib/auth");
-        const account = await getDispatchAccount();
-        if (account?.active) grants.dispatch = account.role;
-      }
-    }
-  } catch {
-    /* Dispatch optional until shell/SQL ready */
   }
 
   // --- Admin Lovable Cloud (separate project — never Driver JWT) ---
@@ -91,13 +76,7 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
     /* Admin probe optional */
   }
 
-  // --- Personal (separate project; shell only until #16 approved) ---
-  try {
-    const { probePersonalOwnerSeat } = await import("@/personal/lib/auth-probe");
-    if (await probePersonalOwnerSeat()) grants.personal = "owner";
-  } catch {
-    /* Personal optional */
-  }
+  // Personal + Dispatch intentionally not probed in this app.
 
   return grants;
 }

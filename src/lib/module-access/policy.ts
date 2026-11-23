@@ -17,8 +17,7 @@ function activeModules(grants: ModuleGrants): ModuleId[] {
   const out: ModuleId[] = [];
   if (g.compliance) out.push("compliance");
   if (g["admin-hr"]) out.push("admin-hr");
-  if (g.personal) out.push("personal");
-  if (g.dispatch) out.push("dispatch");
+  // personal / dispatch seats are ignored in this Compliance + Attendance app
   return out;
 }
 
@@ -39,33 +38,25 @@ export function hasPrivilege(grants: ModuleGrants, privilege: Privilege): boolea
   return privilegesFor(grants).includes(privilege);
 }
 
-export function isDispatchOnly(grants: ModuleGrants): boolean {
-  const g = asGrants(grants);
-  return Boolean(g.dispatch) && !g.compliance && !g["admin-hr"] && !g.personal;
+/** @deprecated Dispatch portal removed from this app — always false. */
+export function isDispatchOnly(_grants: ModuleGrants): boolean {
+  return false;
 }
 
 /**
- * Modules shown in the company AppSwitcher.
- * Personal is never advertised on company routes (privacy) — only while already on /personal.
+ * Modules shown in the company AppSwitcher (Compliance + Admin only).
  */
 export function selectableModulesFor(
   grants: ModuleGrants,
-  opts: { pathname: string },
+  _opts: { pathname: string },
 ): ModuleId[] {
-  const g = asGrants(grants);
-  const modules: ModuleId[] = activeModules(g).filter((m) => m !== "personal");
-  const onPersonal = opts.pathname === "/personal" || opts.pathname.startsWith("/personal/");
-  if (onPersonal && g.personal) modules.push("personal");
-  return modules;
+  return activeModules(grants);
 }
 
 export function homePathFor(grants: ModuleGrants): string {
   const g = asGrants(grants);
-  if (isDispatchOnly(g)) return "/dispatch";
   if (g.compliance) return "/";
   if (g["admin-hr"]) return "/admin";
-  if (g.dispatch) return "/dispatch";
-  if (g.personal) return "/personal";
   return "/access-denied";
 }
 
@@ -73,6 +64,7 @@ export function moduleForPath(pathname: string): ModuleId | "public" | "access-d
   if (pathname === "/cv" || pathname.startsWith("/cv/")) return "public";
   if (pathname === "/access-denied" || pathname.startsWith("/access-denied/")) return "access-denied";
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return "admin-hr";
+  // Soft-landing routes remain classified so ModuleRedirector can skip denial.
   if (pathname === "/personal" || pathname.startsWith("/personal/")) return "personal";
   if (pathname === "/dispatch" || pathname.startsWith("/dispatch/")) return "dispatch";
   // Driver Compliance owns remaining app routes (/, /drivers, /s/*, …)
@@ -95,14 +87,16 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
   if (mod === "public" || mod === "access-denied") return true;
   if (!mod) return false;
+  // Retired portals: soft landing is always reachable (no seat required).
+  if (mod === "personal" || mod === "dispatch") return true;
   return Boolean(asGrants(grants)[mod]);
 }
 
 /**
- * Admin, Personal, and Dispatch each have their own LoginGate + auth storage.
- * Missing a seat for those modules must NOT mean Access Denied — the user still
- * needs to reach the login page to authenticate for that project.
- * Compliance is different: seats without Compliance are bounced off Driver URLs.
+ * Admin keeps its own LoginGate + auth storage.
+ * Missing an Admin seat must NOT mean Access Denied — the user still needs
+ * `/admin` login. Compliance is different: seats without Compliance are bounced
+ * off Driver URLs. Personal/Dispatch soft landings are never hard-denied.
  */
 export function isIndependentLoginModule(mod: ModuleId | "public" | "access-denied" | null): boolean {
   return mod === "admin-hr" || mod === "personal" || mod === "dispatch";
@@ -115,28 +109,24 @@ export function isIndependentLoginModule(mod: ModuleId | "public" | "access-deni
 export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
   if (mod === "public" || mod === "access-denied" || !mod) return false;
-  // Independent portals: never hard-deny; LoginGate / ACL inside the module decide.
+  // Independent portals / soft landings: never hard-deny.
   if (isIndependentLoginModule(mod)) return false;
 
   const g = asGrants(grants);
-  const hasAnySeat = Boolean(g.compliance || g["admin-hr"] || g.personal || g.dispatch);
+  const hasAnySeat = Boolean(g.compliance || g["admin-hr"]);
   if (!hasAnySeat) return false;
 
-  // Compliance URLs only: Admin-only / Dispatch-only / Personal-only without a
-  // Compliance seat → Access Denied (legitimate cross-module ACL).
+  // Compliance URLs only: Admin-only without a Compliance seat → Access Denied.
   return !canAccessPath(grants, pathname);
 }
 
 /**
  * Company AppSwitcher links after seats resolve.
- * Dispatch-only: only Dispatch (must not advertise Compliance/Admin).
- * Everyone else: keep Compliance + Admin + Dispatch as login surfaces so
- * independent LoginGates remain reachable even when that module's seat is
- * not probed yet. Personal stays privacy-gated separately.
+ * Always keep Compliance + Admin as login surfaces so independent Admin
+ * LoginGate remains reachable even when that module's seat is not probed yet.
  */
-export function companySwitcherModules(grants: ModuleGrants): ModuleId[] {
-  if (isDispatchOnly(asGrants(grants))) return ["dispatch"];
-  return ["compliance", "admin-hr", "dispatch"];
+export function companySwitcherModules(_grants: ModuleGrants): ModuleId[] {
+  return ["compliance", "admin-hr"];
 }
 
 export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAccess {
@@ -144,7 +134,7 @@ export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAcc
   return {
     grants: normalized,
     privileges: privilegesFor(normalized),
-    dispatchOnly: isDispatchOnly(normalized),
+    dispatchOnly: false,
     selectableModules: selectableModulesFor(normalized, { pathname }),
     homePath: homePathFor(normalized),
   };
@@ -168,11 +158,8 @@ export function seatsToGrants(
       grants.compliance = seat.role;
     } else if (seat.module === "admin-hr" && (seat.role === "admin" || seat.role === "standard")) {
       grants["admin-hr"] = seat.role;
-    } else if (seat.module === "personal" && seat.role === "owner") {
-      grants.personal = "owner";
-    } else if (seat.module === "dispatch" && (seat.role === "admin" || seat.role === "dispatcher")) {
-      grants.dispatch = seat.role;
     }
+    // personal / dispatch seats ignored in this app
   }
   return grants;
 }

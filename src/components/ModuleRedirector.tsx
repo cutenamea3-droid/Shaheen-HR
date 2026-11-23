@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   homePathFor,
-  isDispatchOnly,
   moduleForPath,
   probeModuleGrants,
   shouldDenyModulePath,
@@ -12,9 +11,8 @@ import {
 
 /**
  * After sessions settle, bounce users away from Compliance URLs they lack seats for.
- * Admin / Personal / Dispatch keep their own LoginGates — never Access-Deny those
- * paths just because another module's seat (e.g. Compliance) is already probed.
- * Dispatch-only accounts auto-land on /dispatch when they hit Compliance URLs.
+ * Admin keeps its own LoginGate — never Access-Deny `/admin` just because Compliance
+ * was already probed. Personal/Dispatch are retired from this app (soft landing routes).
  */
 export function ModuleRedirector() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -67,15 +65,11 @@ export function ModuleRedirector() {
     if (!ready) return;
     const mod = moduleForPath(pathname);
     if (mod === "public" || mod === "access-denied" || !mod) return;
+    // Soft-landing routes for retired portals — do not Access-Deny them.
+    if (mod === "personal" || mod === "dispatch") return;
 
-    // Dispatch-only: never keep them on Compliance LockGate URLs.
-    if (isDispatchOnly(grants) && mod === "compliance") {
-      void navigate({ to: "/dispatch", replace: true });
-      return;
-    }
-
-    // Compliance-only denial (Admin-only / Personal-only on Driver URLs).
-    // Independent LoginGate modules are never hard-denied here.
+    // Compliance-only denial (Admin-only on Driver URLs).
+    // Admin LoginGate is never hard-denied here.
     if (!shouldDenyModulePath(grants, pathname)) return;
 
     let alive = true;

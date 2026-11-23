@@ -11,9 +11,6 @@ import { homePathFor, canAccessPath, shouldDenyModulePath } from "@/lib/module-a
  * Trigger: Admin-HR soft/local seat without Compliance grant + visit `/`
  * (ModuleRedirector). Broken follow-up: AccessDenied defaulted homePath to `/`,
  * which re-entered the deny loop; Production F5 on /access-denied also threw #418.
- *
- * Separate false-deny: Compliance seat + open /admin|/personal|/dispatch used to
- * Access-Deny before LoginGate — shouldDenyModulePath must stay false there.
  */
 describe("access-denied home path (auth race / sticky loop)", () => {
   it("admin-hr-only cannot open Compliance and homes on /admin", () => {
@@ -30,16 +27,15 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(homePathFor(grants)).toBe("/admin");
   });
 
-  it("dispatch-only cannot open Compliance and homes on /dispatch", () => {
+  it("retired dispatch seats do not home to /dispatch in this app", () => {
     const grants = {
       compliance: null,
       "admin-hr": null,
       personal: null,
       dispatch: "dispatcher" as const,
     };
-    expect(canAccessPath(grants, "/")).toBe(false);
-    expect(shouldDenyModulePath(grants, "/")).toBe(true);
-    expect(homePathFor(grants)).toBe("/dispatch");
+    expect(homePathFor(grants)).toBe("/access-denied");
+    expect(shouldDenyModulePath(grants, "/")).toBe(false);
   });
 
   it("AccessDenied route resolves home via probe + homePathFor (not hardcoded /)", () => {
@@ -75,6 +71,8 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     const src = readFileSync(resolve(process.cwd(), "src/lib/module-access/resolve.ts"), "utf8");
     expect(src).toMatch(/getUser\(\)/);
     expect(src).toMatch(/for \(let i = 0; i < 4; i\+\+\)/);
+    expect(src).not.toMatch(/probePersonalOwnerSeat/);
+    expect(src).not.toMatch(/getDispatchAccount/);
   });
 
   it("AccessDenied page leaves after Compliance seat arrives", () => {
@@ -95,7 +93,7 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(denied).toMatch(/requires a Driver Compliance admin account/);
   });
 
-  it("compliance seat still reaches independent LoginGate URLs", () => {
+  it("compliance seat still reaches Admin LoginGate URL", () => {
     const grants = {
       compliance: "admin" as const,
       "admin-hr": null,

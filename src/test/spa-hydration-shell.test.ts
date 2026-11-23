@@ -10,8 +10,7 @@ import { routeTree } from "@/routeTree.gen";
  * (vite.config tanstackStart.spa). Root shell path-dependent UI must defer until
  * after hydration or React 19 throws #418 on refresh of non-Driver deep links.
  *
- * Production refresh matrix (2026-11-13): #418 on F5 for /admin /personal /dispatch
- * /access-denied /cv; clean on / and other Driver LockGate routes. Preview #41: 0× #418.
+ * This app serves Compliance + Admin only; /personal and /dispatch are soft landings.
  */
 describe("SPA hydration shell safety", () => {
   /** Paths that skip Driver LockGate after hydration — must not structurally differ on first paint. */
@@ -59,14 +58,13 @@ describe("SPA hydration shell safety", () => {
     const sw = readFileSync(resolve(process.cwd(), "src/components/AppSwitcher.tsx"), "utf8");
     expect(sw).toMatch(/setReady\(false\)/);
     expect(sw).toMatch(/probeModuleGrants/);
-    // While !ready, company LoginGate surfaces stay reachable.
-    expect(sw).toMatch(/\["compliance",\s*"admin-hr",\s*"dispatch"\]/);
+    // While !ready, company LoginGate surfaces stay reachable (Compliance + Admin only).
+    expect(sw).toMatch(/\["compliance",\s*"admin-hr"\]/);
+    expect(sw).not.toMatch(/to="\/dispatch"/);
+    expect(sw).not.toMatch(/to="\/personal"/);
   });
 
   it("pins the Production #418 mismatched shell components", () => {
-    // Owner console: Minified React error #418 on index-CfkCmF_H.js (638cf53).
-    // Mismatch: prerendered `/` shell (Driver aria-current + LockGate tree) vs
-    // first client paint on /admin|/personal|/dispatch (Admin/… active, no LockGate).
     const root = readFileSync(resolve(process.cwd(), "src/routes/__root.tsx"), "utf8");
     const sw = readFileSync(resolve(process.cwd(), "src/components/AppSwitcher.tsx"), "utf8");
     expect(root).toMatch(/useDriverLock/);
@@ -75,11 +73,16 @@ describe("SPA hydration shell safety", () => {
     expect(sw).toContain("prerendered for `/`");
   });
 
-  it("isolates Admin / Personal / Dispatch route errors from the root shell", () => {
-    for (const file of ["admin.tsx", "personal.tsx", "dispatch.tsx"] as const) {
+  it("isolates Admin route errors; Personal/Dispatch are soft landings", () => {
+    const admin = readFileSync(resolve(process.cwd(), "src/routes/admin.tsx"), "utf8");
+    expect(admin).toMatch(/errorComponent:/);
+    expect(admin).toMatch(/ModuleErrorPanel/);
+    for (const file of ["personal.tsx", "dispatch.tsx"] as const) {
       const src = readFileSync(resolve(process.cwd(), `src/routes/${file}`), "utf8");
-      expect(src).toMatch(/errorComponent:/);
-      expect(src).toMatch(/ModuleErrorPanel/);
+      expect(src).toMatch(/not in this app/i);
+      expect(src).not.toMatch(/from ["']@\/personal\/PersonalApp["']/);
+      expect(src).not.toMatch(/from ["']@\/dispatch\/DispatchApp["']/);
+      expect(src).not.toMatch(/<\s*PersonalApp|<\s*DispatchApp/);
     }
   });
 
@@ -92,8 +95,7 @@ describe("SPA hydration shell safety", () => {
     }
   });
 
-  it("encodes the Production refresh failure path classes (reproduce original #418 set)", () => {
-    // Paths that threw React #418 on Production F5 (SPA shell = Driver LockGate + Driver-active).
+  it("encodes LockGate skip paths for Admin + retired soft landings", () => {
     expect([...lockGateSkipPaths]).toEqual([
       "/admin",
       "/personal",
@@ -103,11 +105,9 @@ describe("SPA hydration shell safety", () => {
     ]);
     const root = readFileSync(resolve(process.cwd(), "src/routes/__root.tsx"), "utf8");
     expect(root).toContain('pathname.startsWith("/admin")');
-    expect(root).toContain('pathname.startsWith("/dispatch")');
-    expect(root).toContain('pathname.startsWith("/personal")');
+    expect(root).toMatch(/isRetiredPortal|startsWith\("\/dispatch"\)|startsWith\("\/personal"\)/);
     expect(root).toContain('pathname.startsWith("/access-denied")');
     expect(root).toMatch(/pathname\s*===\s*"\/cv"/);
-    // First paint must not apply LockGate until hydrated (matches prerender shell).
     expect(root).toMatch(/useDriverLock\s*=\s*[\s\S]*hydrated/);
   });
 });

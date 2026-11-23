@@ -137,14 +137,14 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hydrated = useHydrated();
   const isAdmin = pathname.startsWith("/admin");
-  const isDispatch = pathname.startsWith("/dispatch");
-  const isPersonal = pathname.startsWith("/personal");
+  const isRetiredPortal = pathname.startsWith("/dispatch") || pathname.startsWith("/personal");
   const isDenied = pathname.startsWith("/access-denied");
   const isPublic = pathname === "/cv";
   // SPA shell is prerendered for `/` only. Defer LockGate until after hydration so
-  // `/admin` `/personal` `/dispatch` do not structurally mismatch the shell (React #418).
-  // Dispatch / Personal / Access Denied / Admin skip Driver LockGate (Batch 2 / #26).
-  const useDriverLock = hydrated && !(isAdmin || isDispatch || isPersonal || isDenied || isPublic);
+  // `/admin` (and retired /personal|/dispatch soft landings) do not structurally
+  // mismatch the shell (React #418). Admin / Access Denied / retired portals / CV
+  // skip Driver LockGate.
+  const useDriverLock = hydrated && !(isAdmin || isRetiredPortal || isDenied || isPublic);
 
   return (
     <QueryClientProvider client={queryClient}>
