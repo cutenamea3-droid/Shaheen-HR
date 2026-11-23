@@ -360,6 +360,37 @@ tr.row-selected > td.freeze-edge {
 /* table headers stick to their own scroll box, not the page */
 .with-switcher .overflow-auto .sticky.top-0 { top: 0; }
 
+/* Maintenance strip (VITE_MAINTENANCE=1 only — absent from DOM when off) */
+.maintenance-banner {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  background: #1e293b;
+  color: #f8fafc;
+  font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+body:has(.maintenance-banner) .with-switcher .h-screen {
+  height: calc(100vh - 44px - 2rem);
+}
+body:has(.maintenance-banner) .with-switcher .min-h-screen {
+  min-height: calc(100vh - 44px - 2rem);
+}
+body:has(.maintenance-banner) .with-switcher .sticky.top-0 {
+  top: calc(44px + 2rem);
+}
+body:has(.maintenance-banner) .with-switcher .overflow-auto .sticky.top-0 {
+  top: 0;
+}
+
 /* Enterprise shell content rhythm */
 @utility shell-main-pad {
   padding: 0.75rem 1rem 1rem;
