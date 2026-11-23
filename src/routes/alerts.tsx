@@ -33,7 +33,7 @@ export const Route = createFileRoute("/alerts")({
   component: () => (
     <AppShell
       title="My Compliance Today"
-      subtitle="Work center · Follow-ups · Calendar · Data Quality · Inspection · History · Completeness"
+      subtitle="Drivers and issues that need attention today"
     >
       <div className="w-full min-w-0 max-w-none overflow-x-hidden">
         <AlertsWorkCenter />

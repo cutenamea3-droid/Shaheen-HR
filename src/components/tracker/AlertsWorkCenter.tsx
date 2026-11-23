@@ -16,7 +16,7 @@ import {
 import { setCell, useData } from "@/lib/store";
 import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 import { suggestPlanForCell } from "@/lib/plan-dates";
-import { DateCell, EditableText, StatusToggle, Chip } from "./cells";
+import { DateCell, EditableText, StatusToggle } from "./cells";
 import { FuturePlanSuggest } from "./FuturePlanSuggest";
 import { DriverManageControls } from "./DriverManageControls";
 import { FollowUpTracker } from "./FollowUpTracker";
@@ -38,8 +38,8 @@ type WorkCenterTab =
   | "history"
   | "completeness";
 
-const TABS: { id: WorkCenterTab; label: string }[] = [
-  { id: "today", label: "My Compliance Today" },
+/** Secondary tools — not equal-weight pills competing with Today. */
+const TOOL_TABS: { id: Exclude<WorkCenterTab, "today">; label: string }[] = [
   { id: "followups", label: "Follow-Up Tracker" },
   { id: "calendar", label: "Future Plan Calendar" },
   { id: "data_quality", label: "Data Quality" },
@@ -48,14 +48,25 @@ const TABS: { id: WorkCenterTab; label: string }[] = [
   { id: "completeness", label: "File Completeness" },
 ];
 
-const TONE_BORDER: Record<Tone, string> = {
-  danger: "border-danger/50",
-  warn: "border-warn/50",
-  info: "border-info/40",
-  note: "border-gold/50",
-  ok: "border-ok/40",
-  sign: "border-sign/50",
-  muted: "border-border",
+/** Quiet left accent — avoids full red card frames. */
+const TONE_ACCENT: Record<Tone, string> = {
+  danger: "border-l-danger",
+  warn: "border-l-warn",
+  info: "border-l-info",
+  note: "border-l-gold",
+  ok: "border-l-ok",
+  sign: "border-l-sign",
+  muted: "border-l-border",
+};
+
+const TONE_DOT: Record<Tone, string> = {
+  danger: "bg-danger",
+  warn: "bg-warn",
+  info: "bg-info",
+  note: "bg-gold",
+  ok: "bg-ok",
+  sign: "bg-sign",
+  muted: "bg-muted-foreground",
 };
 
 function safeSave(
@@ -82,21 +93,20 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
   const rawRow = rowsOf(data.sections[item.sectionId]).find((r) => r.id === item.rowId);
   const row = rawRow ? { ...rawRow, cells: cellsOf(rawRow) } : undefined;
   if (!row) {
-    return <p className="text-sm font-semibold text-danger">Row missing — refresh or open full record.</p>;
+    return <p className="text-sm font-semibold text-muted-foreground">Row missing — refresh or open full record.</p>;
   }
 
   const def = SECTIONS.find((s) => s.id === item.sectionId);
   const statusOpts = sectionStatusOptions(item.sectionId);
-  // Live recompute so expiry edits instantly refresh reminder (never double-subtract lead).
   const liveSuggestion =
     item.planCol != null ? suggestPlanForCell(item.sectionId, item.planCol, row) : item.planSuggestion;
 
   if (item.linkOnly && item.kind !== "new_driver") {
     return (
-      <p className="text-sm font-semibold text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         {asText(item.linkOnly.reason)}.{" "}
         {item.linkOnly.to === "/drivers" ? (
-          <Link to="/drivers" search={{ driver: item.driverId }} className="font-bold text-primary underline">
+          <Link to="/drivers" search={{ driver: item.driverId }} className="font-semibold text-primary underline">
             {asText(item.linkOnly.label)}
           </Link>
         ) : (
@@ -104,7 +114,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
             to="/s/$sectionId"
             params={{ sectionId: item.sectionId }}
             search={{ row: item.rowId }}
-            className="font-bold text-primary underline"
+            className="font-semibold text-primary underline"
           >
             {asText(item.linkOnly.label)}
           </Link>
@@ -116,7 +126,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
   return (
     <div className="space-y-3">
       {item.kind === "new_driver" && (
-        <div className="rounded-lg border bg-card p-3">
+        <div className="rounded-md border border-border bg-card p-3">
           <DriverManageControls driverId={item.driverId} name={item.driver} />
         </div>
       )}
@@ -124,7 +134,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {item.statusCol != null && statusOpts.length > 0 && (
           <div>
-            <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">Status</div>
+            <div className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Status</div>
             <StatusToggle
               value={row.cells[item.statusCol] ?? ""}
               options={statusOpts}
@@ -137,7 +147,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
         )}
         {item.dateCol != null && def?.types[item.dateCol] === "date" && (
           <div>
-            <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+            <div className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Expiry / due
             </div>
             <DateCell
@@ -147,8 +157,8 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
               }
               appliedStatus={item.statusCol != null ? row.cells[item.statusCol] : undefined}
             />
-            <p className="mt-1 text-[12px] font-semibold text-muted-foreground">
-              Changing expiry recalculates the Future Plan suggestion instantly (saved plan unchanged).
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Changing expiry recalculates the Future Plan suggestion (saved plan unchanged).
             </p>
           </div>
         )}
@@ -156,7 +166,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
 
       {item.planCol != null && (
         <div>
-          <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+          <div className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             Future Plan (manual edit)
           </div>
           <EditableText
@@ -181,7 +191,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
 
       {item.tempnoteCol != null && (item.kind === "tempnote" || item.existingTempNote) && (
         <div>
-          <div className="mb-1 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+          <div className="mb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             Temporary Note (no due date)
           </div>
           <EditableText
@@ -203,7 +213,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
       )}
 
       {item.dmvApplied && (
-        <p className="text-sm font-semibold text-info">
+        <p className="text-sm text-muted-foreground">
           DMV Applied — expiry countdown stays visible. Do not mark Valid until the pull notice is renewed.
         </p>
       )}
@@ -228,25 +238,30 @@ function DriverCard({
   const worst = items[0]?.tone ?? "muted";
 
   return (
-    <article className={cn("rounded-xl border-2 bg-card shadow-card", TONE_BORDER[worst])}>
+    <article
+      className={cn(
+        "rounded-lg border border-border border-l-4 bg-card",
+        TONE_ACCENT[worst],
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-muted/30"
+        className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/40"
         aria-expanded={open}
       >
-        <span className="mt-1 text-muted-foreground">
-          {open ? <ChevronDown className="size-5" /> : <ChevronRight className="size-5" />}
+        <span className="mt-0.5 text-muted-foreground">
+          {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-lg font-extrabold text-foreground">{driver}</h2>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h2 className="text-base font-bold text-foreground">{driver}</h2>
             {isNew && (
-              <span className="rounded-md bg-info/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-info uppercase">
+              <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
                 New
               </span>
             )}
-            <span className="text-sm font-bold text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               {items.length} issue{items.length === 1 ? "" : "s"}
             </span>
           </div>
@@ -254,7 +269,7 @@ function DriverCard({
             <ul className="mt-1 space-y-0.5 text-sm text-muted-foreground">
               {items.slice(0, 3).map((i) => (
                 <li key={i.key} className="truncate">
-                  <span className="font-semibold text-foreground">{i.docType}</span>
+                  <span className="font-medium text-foreground">{i.docType}</span>
                   {" — "}
                   {i.details}
                 </li>
@@ -267,45 +282,53 @@ function DriverCard({
           to="/drivers"
           search={{ driver: driverId }}
           onClick={(e) => e.stopPropagation()}
-          className="shrink-0 rounded-lg border-2 border-border bg-card px-3 py-1.5 text-sm font-bold text-primary hover:border-primary"
+          className="shrink-0 text-sm font-semibold text-primary underline-offset-2 hover:underline"
         >
-          Open Full Driver Record
+          Full record
         </Link>
       </button>
 
       {open && (
-        <div className="space-y-3 border-t px-4 py-3">
+        <div className="space-y-2 border-t border-border px-3 py-2.5">
           {items.map((item) => (
-            <div key={item.key} className={cn("rounded-lg border bg-background/80 p-3", TONE_BORDER[item.tone])}>
+            <div
+              key={item.key}
+              className={cn(
+                "rounded-md border border-border border-l-4 bg-background/60 p-3",
+                TONE_ACCENT[item.tone],
+              )}
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Chip tone={item.tone}>{item.docType}</Chip>
-                    <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                      {item.sectionTitle}
-                    </span>
+                    <span
+                      className={cn("inline-block size-2 shrink-0 rounded-full", TONE_DOT[item.tone])}
+                      aria-hidden
+                    />
+                    <span className="font-semibold text-foreground">{item.docType}</span>
+                    <span className="text-xs text-muted-foreground">{item.sectionTitle}</span>
                   </div>
-                  <p className="mt-2 text-[15px] font-semibold text-foreground">{item.details}</p>
-                  <dl className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
+                  <p className="mt-1.5 text-[15px] text-foreground">{item.details}</p>
+                  <dl className="mt-2 grid gap-0.5 text-sm text-muted-foreground sm:grid-cols-2">
                     <div>
-                      <span className="font-bold">Status: </span>
+                      <span className="font-medium text-foreground">Status: </span>
                       {item.statusLabel}
                       {item.dmvApplied ? " (DMV Applied)" : ""}
                     </div>
                     <div>
-                      <span className="font-bold">Expiry / due: </span>
+                      <span className="font-medium text-foreground">Expiry / due: </span>
                       {item.expiryDisplay}
                     </div>
                     <div>
-                      <span className="font-bold">Days: </span>
+                      <span className="font-medium text-foreground">Days: </span>
                       {item.daysLabel}
                     </div>
                     <div className="sm:col-span-2">
-                      <span className="font-bold">Needed action: </span>
+                      <span className="font-medium text-foreground">Needed action: </span>
                       {item.neededAction}
                     </div>
                     {item.planSuggestion?.leadDays != null && item.kind === "plan" && (
-                      <div className="sm:col-span-2 text-muted-foreground">
+                      <div className="sm:col-span-2">
                         Lead {item.planSuggestion.leadDays}d · Reminder{" "}
                         {item.planSuggestion.reminderLabel ?? "—"}
                       </div>
@@ -316,13 +339,13 @@ function DriverCard({
                   to="/s/$sectionId"
                   params={{ sectionId: item.sectionId }}
                   search={{ row: item.rowId }}
-                  className="text-sm font-bold text-primary underline"
+                  className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
                 >
                   View in section
                 </Link>
               </div>
-              <div className="mt-3 border-t pt-3">
-                <div className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+              <div className="mt-3 border-t border-border pt-3">
+                <div className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   Edit / Update
                 </div>
                 <ItemEditor item={item} />
@@ -347,38 +370,37 @@ export function AlertsWorkCenter() {
   const counts = useMemo(() => workCenterCounts(items), [items]);
 
   return (
-    <div className="w-full min-w-0 max-w-none space-y-4 text-[15px]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to="/"
-          className="ui-press inline-flex items-center gap-2 rounded-lg border-2 border-border bg-card px-3 py-2 text-sm font-bold text-foreground hover:border-primary hover:text-primary"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Dashboard
-        </Link>
-        <p className="text-sm font-semibold text-muted-foreground">
-          {counts.drivers} drivers · {counts.all} alerts — edit and save on this page
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Compliance work center">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "ui-press rounded-lg border-2 px-4 py-2 text-sm font-extrabold",
-              tab === t.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card text-foreground hover:border-primary/60",
-            )}
+    <div className="w-full min-w-0 max-w-none space-y-3 text-[15px]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
           >
-            {t.label}
-          </button>
-        ))}
+            <ArrowLeft className="size-4" />
+            Dashboard
+          </Link>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">My Compliance Today</h1>
+          <p className="text-sm text-muted-foreground">
+            {counts.drivers} drivers · {counts.all} alerts
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="sr-only">Work center tools</span>
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value as WorkCenterTab)}
+            className="h-9 rounded-md border border-border bg-card px-2 text-sm font-medium text-foreground outline-none focus:border-primary"
+            aria-label="Work center tools"
+          >
+            <option value="today">My Compliance Today</option>
+            {TOOL_TABS.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {tab === "followups" && <FollowUpTracker />}
@@ -390,50 +412,43 @@ export function AlertsWorkCenter() {
 
       {tab === "today" && (
         <>
-          {/* Summary counters */}
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Alert summary">
-            {WORK_CENTER_FILTERS.map((f) => {
-              const n = counts[f.id];
-              const active = filter === f.id;
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setFilter(f.id)}
-                  className={cn(
-                    "ui-press rounded-lg border-2 px-3 py-1.5 text-sm font-bold tabular-nums",
-                    active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-foreground hover:border-primary/60",
-                  )}
-                >
-                  {f.label}
-                  <span className={cn("ml-2 opacity-90", active ? "" : "text-primary")}>{n}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search driver or document type…"
-              className="w-full rounded-lg border-2 border-border bg-card py-2 pr-3 pl-10 text-[15px] font-semibold outline-none focus:border-primary"
-              aria-label="Search alerts"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex min-w-[12rem] flex-1 items-center gap-2 sm:max-w-xs">
+              <span className="sr-only">Filter alerts</span>
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as WorkCenterFilter)}
+                className="h-9 w-full rounded-md border border-border bg-card px-2 text-sm font-medium text-foreground outline-none focus:border-primary"
+                aria-label="Filter alerts"
+              >
+                {WORK_CENTER_FILTERS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label} ({counts[f.id]})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="relative min-w-[12rem] flex-1 sm:max-w-md">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search driver or document…"
+                className="h-9 w-full rounded-md border border-border bg-card py-1.5 pr-3 pl-9 text-sm outline-none focus:border-primary"
+                aria-label="Search alerts"
+              />
+            </div>
           </div>
 
           {!groups.length ? (
-            <div className="rounded-xl border-2 border-ok/40 bg-ok-soft px-5 py-8 text-center">
-              <p className="font-display text-xl font-extrabold text-ok">All clear for this filter</p>
-              <p className="mt-1 text-sm font-semibold text-muted-foreground">
+            <div className="rounded-lg border border-border px-4 py-6 text-center">
+              <p className="font-semibold text-foreground">All clear for this filter</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 No drivers need attention here. Try All or clear search.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {groups.map((g, idx) => (
                 <DriverCard
                   key={g.driverId}
