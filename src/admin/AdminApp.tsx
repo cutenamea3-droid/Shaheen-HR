@@ -325,6 +325,9 @@ import { Team } from "@/admin/components/hr/Team";
 import { SettingsPanel } from "@/admin/components/hr/Settings";
 import { TaskGate, Tasks } from "@/admin/components/hr/Tasks";
 import { AboutPanel } from "@/admin/components/hr/AboutPanel";
+import { ForgotPasswordLink } from "@/components/portal-login/ForgotPasswordLink";
+import { PasswordField } from "@/components/portal-login/PasswordField";
+import { PortalLoginCard, PortalLoginShell } from "@/components/portal-login/PortalLoginShell";
 import { useAdminNav } from "@/admin/lib/admin-nav";
 import { useDensity } from "@/lib/density";
 
@@ -413,170 +416,174 @@ function Login({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
-        <div className="order-2 lg:order-1">
-          <AboutPanel />
-        </div>
-        <form
-          className="panel ui-glow order-1 mx-auto w-full max-w-sm space-y-4 lg:order-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (busyRef.current) return;
-            busyRef.current = true;
-            const attempt = ++attemptRef.current;
-            const isStale = () => attempt !== attemptRef.current;
-            setBusy(true);
-            setErr("");
+    <PortalLoginShell
+      about={<AboutPanel compact />}
+      footerRole="Yousaf · HR Operations & Administration"
+    >
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busyRef.current) return;
+          busyRef.current = true;
+          const attempt = ++attemptRef.current;
+          const isStale = () => attempt !== attemptRef.current;
+          setBusy(true);
+          setErr("");
 
-            // Prefer live DOM values so browser autofill that skipped onChange still signs in.
-            const form = e.currentTarget;
-            const fd = new FormData(form);
-            const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
-            const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
-            if (mailRaw !== email) setEmail(mailRaw);
-            if (passRaw !== pass) setPass(passRaw);
+          // Prefer live DOM values so browser autofill that skipped onChange still signs in.
+          const form = e.currentTarget;
+          const fd = new FormData(form);
+          const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
+          const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
+          if (mailRaw !== email) setEmail(mailRaw);
+          if (passRaw !== pass) setPass(passRaw);
 
-            try {
-              const {
-                hasHrLocalPassword,
-                verifyHrLocalPassword,
-                writeHrLocalSession,
-                clearHrLocalSession,
-              } = await import("@/admin/lib/hr-auth-local");
+          try {
+            const {
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+            } = await import("@/admin/lib/hr-auth-local");
 
-              const result = await attemptHrLogin(mailRaw, passRaw, {
-                signInWithPassword: async (creds) => {
-                  const { error } = await supabase.auth.signInWithPassword(creds);
-                  return {
-                    error: error
-                      ? {
-                          message: error.message,
-                          status: error.status,
-                          name: error.name,
-                          code: typeof error.code === "string" ? error.code : undefined,
-                        }
-                      : null,
-                  };
-                },
-                signOut: () => supabase.auth.signOut(),
-                hasHrLocalPassword,
-                verifyHrLocalPassword,
-                writeHrLocalSession,
-                clearHrLocalSession,
-                isStale,
-              });
+            const result = await attemptHrLogin(mailRaw, passRaw, {
+              signInWithPassword: async (creds) => {
+                const { error } = await supabase.auth.signInWithPassword(creds);
+                return {
+                  error: error
+                    ? {
+                        message: error.message,
+                        status: error.status,
+                        name: error.name,
+                        code: typeof error.code === "string" ? error.code : undefined,
+                      }
+                    : null,
+                };
+              },
+              signOut: () => supabase.auth.signOut(),
+              hasHrLocalPassword,
+              verifyHrLocalPassword,
+              writeHrLocalSession,
+              clearHrLocalSession,
+              isStale,
+            });
 
-              if (isStale()) return;
+            if (isStale()) return;
 
-              if (result.ok) {
-                setErr("");
-                const normalized = mailRaw.trim().toLowerCase();
-                if (result.mode === "local") {
-                  onLocalAuth(normalized);
-                  // Keep busy until parent swaps to the dashboard (local path).
-                  return;
-                }
-                // Open dashboard from the session now — do not wait solely on onAuthStateChange
-                // (that race left the form briefly interactive and sometimes showed a stale error).
-                const { data } = await supabase.auth.getSession();
-                if (isStale()) return;
-                const uid = data.session?.user.id;
-                if (uid) {
-                  {
-                    const sessMail = data.session?.user.email;
-                    const mail =
-                      sessMail == null
-                        ? ""
-                        : (typeof sessMail === "string" ? sessMail : String(sessMail))
-                            .trim()
-                            .toLowerCase();
-                    onCloudAuth(mail || normalized, uid);
-                  }
-                  return;
-                }
-                // Session should exist after a successful cloud sign-in; treat as network-ish failure.
-                setErr("Couldn't reach the server. Try again.");
-                busyRef.current = false;
-                setBusy(false);
+            if (result.ok) {
+              setErr("");
+              const normalized = mailRaw.trim().toLowerCase();
+              if (result.mode === "local") {
+                onLocalAuth(normalized);
+                // Keep busy until parent swaps to the dashboard (local path).
                 return;
               }
-
-              if (result.kind === "stale") return;
-              setErr(result.message);
-              busyRef.current = false;
-              setBusy(false);
-            } catch {
+              // Open dashboard from the session now — do not wait solely on onAuthStateChange
+              // (that race left the form briefly interactive and sometimes showed a stale error).
+              const { data } = await supabase.auth.getSession();
               if (isStale()) return;
+              const uid = data.session?.user.id;
+              if (uid) {
+                {
+                  const sessMail = data.session?.user.email;
+                  const mail =
+                    sessMail == null
+                      ? ""
+                      : (typeof sessMail === "string" ? sessMail : String(sessMail))
+                          .trim()
+                          .toLowerCase();
+                  onCloudAuth(mail || normalized, uid);
+                }
+                return;
+              }
+              // Session should exist after a successful cloud sign-in; treat as network-ish failure.
               setErr("Couldn't reach the server. Try again.");
               busyRef.current = false;
               setBusy(false);
+              return;
             }
-          }}
+
+            if (result.kind === "stale") return;
+            setErr(result.message);
+            busyRef.current = false;
+            setBusy(false);
+          } catch {
+            if (isStale()) return;
+            setErr("Couldn't reach the server. Try again.");
+            busyRef.current = false;
+            setBusy(false);
+          }
+        }}
+      >
+        <PortalLoginCard
+          logoSrc="/logo.jpg"
+          title="Admin & Attendance"
+          subtitle="Sign in to continue"
         >
-          <div className="text-center">
-            <img src="/logo.jpg" alt="Shaheen Transport LLC" className="mx-auto mb-2 h-24 w-auto" />
-            <h1 className="text-2xl font-bold">HR Attendance</h1>
-            <p className="text-sm text-muted-foreground">Sign in to continue</p>
-          </div>
-          <label className="block">
-            <span className="lbl">Email</span>
-            <input
-              ref={emailRef}
-              name="email"
-              type="email"
-              className="field"
-              data-testid="admin-email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                clearErrOnEdit();
-              }}
-              onInput={(e) => {
-                setEmail((e.target as HTMLInputElement).value);
-                clearErrOnEdit();
-              }}
-              autoComplete="username"
-            />
-          </label>
-          <label className="block">
-            <span className="lbl">Password</span>
-            <input
-              ref={passRef}
-              name="password"
-              type="password"
-              className="field"
-              data-testid="admin-password"
-              value={pass}
-              onChange={(e) => {
-                setPass(e.target.value);
-                clearErrOnEdit();
-              }}
-              onInput={(e) => {
-                setPass((e.target as HTMLInputElement).value);
-                clearErrOnEdit();
-              }}
-              autoFocus
-              autoComplete="current-password"
-            />
-          </label>
           {err && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="mt-4 rounded-lg bg-danger-soft p-3 text-sm font-semibold text-danger">
               {err}
             </p>
           )}
+          <label className="mt-5 block text-sm font-bold text-foreground" htmlFor="admin-email">
+            Email
+          </label>
+          <input
+            id="admin-email"
+            ref={emailRef}
+            name="email"
+            type="email"
+            className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground"
+            data-testid="admin-email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearErrOnEdit();
+            }}
+            onInput={(e) => {
+              setEmail((e.target as HTMLInputElement).value);
+              clearErrOnEdit();
+            }}
+            autoComplete="username"
+          />
+          <PasswordField
+            id="admin-password"
+            testId="admin-password"
+            value={pass}
+            onChange={(v) => {
+              setPass(v);
+              clearErrOnEdit();
+            }}
+            inputRef={passRef}
+            autoFocus
+            className="mt-1 h-11 w-full rounded-xl border bg-card px-3 pr-11 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+          <div className="mt-1 flex justify-end">
+            <ForgotPasswordLink
+              email={email}
+              resetPasswordForEmail={async (mail) => {
+                const redirectTo = `${window.location.origin}/admin`;
+                const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo });
+                return { error: error ? { message: error.message } : null };
+              }}
+            />
+          </div>
           <button
             type="submit"
-            className="btn-primary w-full"
+            className="ui-press mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-lg font-bold text-primary-foreground shadow-pop disabled:opacity-60"
             data-testid="admin-sign-in"
             disabled={busy}
             aria-busy={busy}
           >
             {busy ? "Signing in…" : "Sign in"}
           </button>
-        </form>
-      </div>
-    </div>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Use the email and password from your administrator. Your attendance data stays on this
+            browser and in Admin cloud when signed in.
+          </p>
+        </PortalLoginCard>
+      </form>
+    </PortalLoginShell>
   );
 }
 
