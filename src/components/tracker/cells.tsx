@@ -13,12 +13,12 @@ import {
 import { useViewMode } from "@/lib/viewmode";
 
 export const TONE_BOX: Record<Tone, string> = {
-  danger: "bg-danger-soft border-danger text-danger",
-  warn: "bg-warn-soft border-danger text-warn",
-  info: "bg-info-soft border-danger text-info",
-  note: "bg-note-soft border-danger text-foreground",
+  danger: "bg-danger-soft border-danger/40 text-danger",
+  warn: "bg-warn-soft border-warn/40 text-warn",
+  info: "bg-info-soft border-info/40 text-info",
+  note: "bg-note-soft border-border text-foreground",
   ok: "bg-ok-soft border-ok/40 text-ok",
-  sign: "bg-sign-soft border-danger text-sign",
+  sign: "bg-sign-soft border-sign/40 text-sign",
   muted: "bg-muted border-border text-muted-foreground",
 };
 export const TONE_SOLID: Record<Tone, string> = {
