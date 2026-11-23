@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES } from "@/admin/lib/employee-finance-mock";
+import { shouldShowFinanceMockUi } from "@/admin/lib/employee-finance-mode";
 import { expensesModeLabel, getExpensesMode } from "@/admin/lib/expenses-mode";
 import { budgetUsage, employeeExpenseTotal, summarizeExpenses, templateToExpenseDraft } from "@/admin/lib/expenses-logic";
 import {
@@ -79,19 +80,25 @@ export function ExpensesManagement() {
   const [budgetCat, setBudgetCat] = useState("office");
   const [empPick, setEmpPick] = useState<string[]>([]);
 
+  const showMockUi = shouldShowFinanceMockUi();
+
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of liveEmployees) m.set(asText(e.id), asText(e.name));
-    for (const e of SYNTHETIC_EMPLOYEES) m.set(asText(e.id), asText(e.name));
+    if (showMockUi) {
+      for (const e of SYNTHETIC_EMPLOYEES) m.set(asText(e.id), asText(e.name));
+    }
     return m;
-  }, [liveEmployees]);
+  }, [liveEmployees, showMockUi]);
 
   const roster = useMemo(
     () => [
       ...liveEmployees.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
-      ...SYNTHETIC_EMPLOYEES.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
+      ...(showMockUi
+        ? SYNTHETIC_EMPLOYEES.map((e) => ({ id: asText(e.id), name: asText(e.name) }))
+        : []),
     ],
-    [liveEmployees],
+    [liveEmployees, showMockUi],
   );
 
   const activeCats = categories.filter((c) => !c.archived);
