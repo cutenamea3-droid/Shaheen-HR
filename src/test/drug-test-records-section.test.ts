@@ -249,6 +249,7 @@ describe("Drug Test Records section", () => {
     expect(roster.length).toBeGreaterThan(0);
     const first = roster[0]!;
     expect(filterRosterDrivers(roster, first.name.slice(0, 2)).length).toBeGreaterThan(0);
+    expect(filterRosterDrivers(null as never, "x")).toEqual([]);
     expect(seed.sections.drug_tests).toBeUndefined();
   });
 

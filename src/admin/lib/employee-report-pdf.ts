@@ -14,6 +14,8 @@ export { setLogoCacheForTests };
 
 const MARGIN = { left: 40, right: 40, top: 72, bottom: 48 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export type EmployeeReportOptions = {
   company: string;
   month: string;
@@ -87,7 +89,7 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   const chrome = {
     company: opts.company,
     monthLabel: opts.monthLabel,
-    employeeName: emp.employee.name,
+    employeeName: asText(emp.employee.name),
     generatedAt: opts.generatedAt,
     logo: opts.logo,
     page: 1,
@@ -99,8 +101,8 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   doc.setTextColor(...PDF_THEME.charcoal);
   doc.setFont("helvetica", "normal").setFontSize(10.5);
   const lines = [
-    `Name: ${emp.employee.name}`,
-    `Department: ${emp.deptName}`,
+    `Name: ${asText(emp.employee.name)}`,
+    `Department: ${asText(emp.deptName)}`,
     `Working days: ${emp.workingDays}`,
     `Hours: ${fmtHours(emp.hoursMin)}`,
     `Late / Grace / Over break / Miss punch: ${emp.lateCount} / ${emp.graceCount} / ${emp.overBreakCount} / ${emp.missPunchCount}`,
@@ -113,17 +115,18 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   }
 
   y = section(doc, y + 6, "B", "Daily attendance");
+  const days = Array.isArray(emp.days) ? emp.days : [];
   autoTable(doc, {
     startY: y,
     head: [["Date", "Status", "Hours", "Late", "Break", "OT", "Note"]],
-    body: emp.days.map((d) => [
+    body: days.map((d) => [
       shortDate(d.date),
-      d.rec.status,
+      asText(d.rec.status),
       d.rec.status === "present" || d.rec.status === "half" ? fmtHours(d.c.worked ?? 0) : "—",
       d.c.lateLevel === "late" ? `${d.c.lateMin}m` : d.c.lateLevel === "grace" ? `g ${d.c.lateMin}m` : "—",
       d.c.breakLevel === "over" ? `${d.c.overBreak}m` : "—",
       d.c.overtimeMin > 0 ? fmtHours(d.c.overtimeMin) : "—",
-      (d.rec.note || "").slice(0, 80),
+      asText(d.rec.note).slice(0, 80),
     ]),
     styles: { fontSize: 9, cellPadding: 3, textColor: PDF_THEME.charcoal },
     headStyles: { fillColor: PDF_THEME.forest, textColor: PDF_THEME.white, fontStyle: "bold" },
@@ -142,9 +145,13 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   doc.setTextColor(...PDF_THEME.muted);
   doc.text("Assessment ≠ facts ≠ statements. Ratings are HR judgment; facts come from attendance calc.", MARGIN.left + 6, y);
   y += 14;
-  const ratingRows = (Object.keys(emp.ratingCounts) as Rating[])
-    .filter((r) => emp.ratingCounts[r] > 0)
-    .map((r) => [RATING_LABEL[r], String(emp.ratingCounts[r])]);
+  const ratingCounts =
+    emp.ratingCounts && typeof emp.ratingCounts === "object" && !Array.isArray(emp.ratingCounts)
+      ? emp.ratingCounts
+      : ({} as typeof emp.ratingCounts);
+  const ratingRows = (Object.keys(ratingCounts) as Rating[])
+    .filter((r) => ratingCounts[r] > 0)
+    .map((r) => [RATING_LABEL[r], String(ratingCounts[r])]);
   autoTable(doc, {
     startY: y,
     head: [["Assessment rating", "Days"]],
@@ -155,11 +162,13 @@ function renderEmployee(doc: jsPDF, emp: EmpMonth, opts: {
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 14;
 
-  const notes = emp.days
+  const notes = days
     .flatMap((d) => {
       const rows: string[][] = [];
-      if (d.rec.note?.trim()) rows.push([shortDate(d.date), "Attendance statement", d.rec.note.trim().slice(0, 120)]);
-      if (d.p?.note?.trim()) rows.push([shortDate(d.date), "Performance statement", d.p.note.trim().slice(0, 120)]);
+      const recNote = asText(d.rec.note).trim();
+      if (recNote) rows.push([shortDate(d.date), "Attendance statement", recNote.slice(0, 120)]);
+      const perfNote = asText(d.p?.note).trim();
+      if (perfNote) rows.push([shortDate(d.date), "Performance statement", perfNote.slice(0, 120)]);
       return rows;
     });
   y = section(doc, y, "D", "Statements (recorded text)");
@@ -193,17 +202,20 @@ export function buildEmployeeReportDoc(
   opts: Omit<EmployeeReportOptions, "returnBytes" | "logoDataUrl"> & { logo?: string | null },
 ): { doc: jsPDF; emp: EmpMonth | null } {
   const model = buildMonthlyReportModel(data, opts.month);
-  const emp = model.employees.find((e) => e.employee.id === opts.employeeId) ?? null;
+  const modelEmps = Array.isArray(model.employees) ? model.employees : [];
+  const emp = modelEmps.find((e) => e.employee.id === opts.employeeId) ?? null;
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const generatedAt = opts.generatedAt ?? new Date();
-  if (!emp || emp.days.length === 0) {
+  const empDays = Array.isArray(emp?.days) ? emp!.days : [];
+  if (!emp || empDays.length === 0) {
     doc.setFont("helvetica", "bold").setFontSize(14);
     doc.setTextColor(...PDF_THEME.forest);
     doc.text("No attendance records for this employee in the selected month.", MARGIN.left, MARGIN.top);
+    const roster = Array.isArray(data.employees) ? data.employees : [];
     drawChrome(doc, {
       company: opts.company,
       monthLabel: monthLabel(opts.month),
-      employeeName: data.employees.find((e) => e.id === opts.employeeId)?.name ?? "Employee",
+      employeeName: roster.find((e) => e.id === opts.employeeId)?.name ?? "Employee",
       generatedAt,
       logo: opts.logo ?? null,
       page: 1,
@@ -226,7 +238,14 @@ export async function downloadEmployeeReportPdf(
 ): Promise<Uint8Array | void> {
   const logo = opts.logoDataUrl !== undefined ? opts.logoDataUrl : await loadLogoDataUrl();
   const { doc, emp } = buildEmployeeReportDoc(data, { ...opts, logo });
-  const name = emp?.employee.name.replace(/\s+/g, "-") ?? opts.employeeId;
+  const rawName = emp?.employee?.name;
+  const name =
+    (rawName == null
+      ? ""
+      : typeof rawName === "string"
+        ? rawName
+        : String(rawName)
+    ).replace(/\s+/g, "-") || opts.employeeId;
   const filename = `Shaheen-Employee-Report-${name}-${opts.month}.pdf`;
   if (opts.returnBytes) return new Uint8Array(doc.output("arraybuffer"));
   doc.save(filename);

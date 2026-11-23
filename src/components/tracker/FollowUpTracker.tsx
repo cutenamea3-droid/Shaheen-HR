@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,8 @@ import {
 } from "@/lib/follow-ups";
 import { addFollowUp, deleteFollowUp, updateFollowUp, useData } from "@/lib/store";
 import { Chip } from "./cells";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 const FILTERS: { id: "all" | "open" | "today" | "overdue" | "snoozed" | "done"; label: string }[] = [
   { id: "all", label: "All" },
@@ -31,6 +33,9 @@ export function FollowUpTracker() {
   const [draftDriver, setDraftDriver] = useState("");
   const [draftSubject, setDraftSubject] = useState("");
   const [draftDue, setDraftDue] = useState("");
+  const draftDriverRef = useRef<HTMLInputElement>(null);
+  const draftSubjectRef = useRef<HTMLInputElement>(null);
+  const draftDueRef = useRef<HTMLInputElement>(null);
 
   const items = useMemo(() => listFollowUps(data), [data]);
   const filtered = useMemo(() => filterFollowUps(items, filter, search), [items, filter, search]);
@@ -38,16 +43,19 @@ export function FollowUpTracker() {
   const appliedSuggestions = useMemo(() => suggestAppliedFollowUps(data), [data]);
 
   function createManual() {
-    if (!draftSubject.trim()) {
+    const nextSubject = (asText(draftSubject).trim() || draftSubjectRef.current?.value || "").trim();
+    const nextDriver = (asText(draftDriver).trim() || draftDriverRef.current?.value || "").trim();
+    const nextDue = (asText(draftDue).trim() || draftDueRef.current?.value || "").trim();
+    if (!nextSubject) {
       toast.error("Subject is required");
       return;
     }
     try {
       addFollowUp({
         driverId: "",
-        driver: draftDriver.trim() || "Unassigned",
-        subject: draftSubject.trim(),
-        dueDate: draftDue.trim(),
+        driver: nextDriver || "Unassigned",
+        subject: nextSubject,
+        dueDate: nextDue,
         source: "manual",
       });
       setDraftSubject("");
@@ -91,21 +99,30 @@ export function FollowUpTracker() {
 
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
           <input
-            value={draftDriver}
+            ref={draftDriverRef}
+            data-testid="followup-driver"
+            value={asText(draftDriver)}
             onChange={(e) => setDraftDriver(e.target.value)}
+            onInput={(e) => setDraftDriver((e.target as HTMLInputElement).value)}
             placeholder="Driver name"
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold"
           />
           <input
-            value={draftSubject}
+            ref={draftSubjectRef}
+            data-testid="followup-subject"
+            value={asText(draftSubject)}
             onChange={(e) => setDraftSubject(e.target.value)}
+            onInput={(e) => setDraftSubject((e.target as HTMLInputElement).value)}
             placeholder="Subject *"
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold sm:col-span-2"
           />
           <input
+            ref={draftDueRef}
+            data-testid="followup-due"
             type="date"
-            value={draftDue}
+            value={asText(draftDue)}
             onChange={(e) => setDraftDue(e.target.value)}
+            onInput={(e) => setDraftDue((e.target as HTMLInputElement).value)}
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold"
             aria-label="Due date"
           />
@@ -135,7 +152,7 @@ export function FollowUpTracker() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
               >
                 <div className="min-w-0">
-                  <div className="font-bold">{s.driver}</div>
+                  <div className="font-bold">{asText(s.driver)}</div>
                   <div className="text-sm text-muted-foreground">
                     {s.docType} · {s.statusLabel} · expiry {s.expiryDisplay}
                   </div>
@@ -189,7 +206,7 @@ export function FollowUpTracker() {
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
-          value={search}
+          value={asText(search)}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search follow-ups…"
           className="w-full rounded-lg border-2 border-border bg-card py-2 pr-3 pl-10 text-[15px] font-semibold outline-none focus:border-primary"
@@ -207,17 +224,19 @@ export function FollowUpTracker() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Chip tone={followUpTone(fu)}>{fu.status}</Chip>
-                    <span className="font-display text-base font-extrabold">{fu.driver}</span>
+                    <Chip tone={followUpTone(fu)}>{asText(fu.status)}</Chip>
+                    <span className="font-display text-base font-extrabold">
+                      {asText(fu.driver)}
+                    </span>
                     {fu.docType && (
                       <span className="text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                        {fu.docType}
+                        {asText(fu.docType)}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-semibold">{fu.subject}</p>
+                  <p className="mt-1 font-semibold">{asText(fu.subject)}</p>
                   <p className="text-sm text-muted-foreground">{followUpDueLabel(fu)}</p>
-                  {fu.notes && <p className="mt-1 text-sm">{fu.notes}</p>}
+                  {fu.notes ? <p className="mt-1 text-sm">{asText(fu.notes)}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {fu.sectionId && (
@@ -231,7 +250,7 @@ export function FollowUpTracker() {
                     </Link>
                   )}
                   <select
-                    value={fu.status}
+                    value={asText(fu.status)}
                     onChange={(e) => {
                       updateFollowUp(fu.id, { status: e.target.value as FollowUpStatus });
                       toast.success("Follow-up updated");
@@ -245,7 +264,7 @@ export function FollowUpTracker() {
                   </select>
                   <input
                     type="date"
-                    value={fu.dueDate}
+                    value={asText(fu.dueDate)}
                     onChange={(e) => {
                       updateFollowUp(fu.id, { dueDate: e.target.value });
                       toast.success("Due date saved");

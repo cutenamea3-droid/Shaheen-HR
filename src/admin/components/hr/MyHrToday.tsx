@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useApp } from "@/admin/lib/store";
 import { getSyncStatus, subscribeSync } from "@/admin/lib/cloud-sync";
 import { prettyDate } from "@/admin/lib/calc";
@@ -10,6 +10,8 @@ import { useHrAuditHistory } from "@/admin/lib/hr-audit-history";
 import { usePerfFollowUps } from "@/admin/lib/perf-followups";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { SectionTitle, todayStr } from "./common";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 const KIND_LABEL: Record<HrTodayIssueKind, string> = {
   missing: "Missing attendance",
@@ -40,10 +42,22 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const [date, setDate] = useState(todayStr());
   const [filter, setFilter] = useState<"all" | HrTodayIssueKind>("all");
   const [remTitle, setRemTitle] = useState("");
+  const remTitleRef = useRef<HTMLInputElement>(null);
   const [remDue, setRemDue] = useState(todayStr());
   const [remEmp, setRemEmp] = useState("");
   const [remMsg, setRemMsg] = useState("");
-  const { employees, depts, records, settings, tasks } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+    tasks: tasksRaw,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const tasks = Array.isArray(tasksRaw) ? tasksRaw : [];
   const currentBanking = useEmployeeFinanceMock((s) => s.currentBanking);
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const requestTab = useAdminNav((s) => s.requestTab);
@@ -52,11 +66,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   // Select stable store slices — NEVER call dueOnOrBefore/openFollowUps inside the
   // zustand selector (they allocate a new array every getSnapshot → React #185
   // "Maximum update depth exceeded" after My HR Today first paint).
-  const reminders = useHrReminders((s) => s.reminders);
+  const remindersRaw = useHrReminders((s) => s.reminders);
+  const reminders = Array.isArray(remindersRaw) ? remindersRaw : [];
   const addReminder = useHrReminders((s) => s.add);
   const completeReminder = useHrReminders((s) => s.complete);
   const recordAudit = useHrAuditHistory((s) => s.record);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
 
   useEffect(() => {
     for (const e of employees) ensureMeta(e.id);
@@ -127,7 +143,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
               type="date"
               className="field w-auto"
               aria-label="Work date"
-              value={date}
+              value={asText(date)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
             />
           </div>
@@ -161,7 +177,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             {dueTasks.map((t) => (
               <li key={t.id}>
                 <button type="button" className="text-left font-medium text-primary underline-offset-2 hover:underline" onClick={() => requestTab("tasks")}>
-                  {t.title}
+                  {asText(t.title)}
                 </button>
               </li>
             ))}
@@ -174,18 +190,21 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
         <p className="text-sm text-muted-foreground">Desk reminders for My HR Today — not push or email.</p>
         <div className="admin-toolbar flex-wrap">
           <input
+            ref={remTitleRef}
+            data-testid="admin-reminder-title"
             className="field min-w-[160px] flex-1"
             placeholder="Reminder title"
-            value={remTitle}
+            value={asText(remTitle)}
             onChange={(e) => setRemTitle(e.target.value)}
+            onInput={(e) => setRemTitle((e.target as HTMLInputElement).value)}
             aria-label="Reminder title"
           />
-          <input type="date" className="field w-auto" value={remDue} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
-          <select className="field w-auto" value={remEmp} onChange={(e) => setRemEmp(e.target.value)} aria-label="Reminder employee">
+          <input type="date" className="field w-auto" value={asText(remDue)} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
+          <select className="field w-auto" value={asText(remEmp)} onChange={(e) => setRemEmp(e.target.value)} aria-label="Reminder employee">
             <option value="">Optional employee</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
+              <option key={asText(e.id)} value={asText(e.id)}>
+                {asText(e.name)}
               </option>
             ))}
           </select>
@@ -194,11 +213,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             className="btn-primary"
             onClick={() => {
               const emp = employees.find((e) => e.id === remEmp);
+              const nextTitle = (asText(remTitle).trim() || remTitleRef.current?.value || "").trim();
+              const empName = emp ? asText(emp.name) : "";
               const r = addReminder({
-                title: remTitle,
+                title: nextTitle,
                 due: remDue,
                 ...(remEmp ? { employeeId: remEmp } : {}),
-                ...(emp?.name ? { employeeName: emp.name } : {}),
+                ...(empName ? { employeeName: empName } : {}),
               });
               if ("error" in r) {
                 setRemMsg(r.error);
@@ -207,8 +228,11 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
               recordAudit({
                 who: "HR",
                 kind: "reminder_add",
-                detail: `Reminder “${r.title}” due ${r.due}`,
-                month: remDue.slice(0, 7),
+                detail: `Reminder “${asText(r.title)}” due ${asText(r.due)}`,
+                month: (remDue == null ? "" : typeof remDue === "string" ? remDue : String(remDue)).slice(
+                  0,
+                  7,
+                ),
                 ...(r.employeeId ? { employeeId: r.employeeId } : {}),
               });
               setRemTitle("");
@@ -223,19 +247,21 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
           {dueReminders.map((r) => (
             <li key={r.id} className="flex flex-wrap items-center justify-between gap-2">
               <span>
-                <strong>{r.title}</strong>
-                {r.employeeName ? ` · ${r.employeeName}` : ""} · due {r.due}
+                <strong>{asText(r.title)}</strong>
+                {r.employeeName ? ` · ${asText(r.employeeName)}` : ""} · due {asText(r.due)}
               </span>
               <button
                 type="button"
                 className="btn-ghost"
                 onClick={() => {
                   completeReminder(r.id);
+                  const due =
+                    r.due == null ? "" : typeof r.due === "string" ? r.due : String(r.due);
                   recordAudit({
                     who: "HR",
                     kind: "reminder_done",
-                    detail: `Completed reminder “${r.title}”`,
-                    month: r.due.slice(0, 7),
+                    detail: `Completed reminder “${asText(r.title)}”`,
+                    month: due.slice(0, 7),
                     ...(r.employeeId ? { employeeId: r.employeeId } : {}),
                   });
                 }}
@@ -271,12 +297,15 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
 
         <div className="space-y-2">
           {issues.map((issue, idx) => (
-            <article key={`${issue.kind}-${issue.employeeId}-${idx}`} className="admin-emp-card flex flex-wrap items-center justify-between gap-3">
+            <article
+              key={`${asText(issue.kind)}-${asText(issue.employeeId)}-${idx}`}
+              className="admin-emp-card flex flex-wrap items-center justify-between gap-3"
+            >
               <div className="min-w-0">
-                <p className="font-semibold">{issue.name}</p>
+                <p className="font-semibold">{asText(issue.name)}</p>
                 <p className="text-sm text-muted-foreground">
                   <span className="chip mr-2 bg-muted/70">{KIND_LABEL[issue.kind]}</span>
-                  {issue.detail}
+                  {asText(issue.detail)}
                 </p>
               </div>
               <button

@@ -10,6 +10,8 @@ import {
 } from "@/personal/lib/vu-plan";
 import { todayKey } from "@/personal/lib/store";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function daysUntil(due: string, today: string): number {
   const a = new Date(`${today}T12:00:00`).getTime();
   const b = new Date(`${due}T12:00:00`).getTime();
@@ -46,8 +48,8 @@ export function AlertStrip() {
       if (top) {
         new Notification("HR Personal · To-Do Calendar", {
           body: overdue.length
-            ? `${overdue.length} window(s) ended — verify on VULMS. ${top.title}`
-            : `Closing soon: ${top.title} (${top.due})`,
+            ? `${overdue.length} window(s) ended — verify on VULMS. ${asTxt(top.title)}`
+            : `Closing soon: ${asTxt(top.title)} (${asTxt(top.due)})`,
           tag: "hp-vu-alert",
         });
       }
@@ -78,7 +80,12 @@ export function AlertStrip() {
           footnote="Export does not prove a miss — mark done here after you confirm attempt/submit on VULMS."
         >
           {overdue.slice(0, 4).map((t) => (
-            <AlertRow key={`${t.courseCode}-${t.title}`} todo={t} today={today} tone="overdue" />
+            <AlertRow
+              key={`${asTxt(t.courseCode)}-${asTxt(t.title)}`}
+              todo={t}
+              today={today}
+              tone="overdue"
+            />
           ))}
         </Banner>
       ) : null}
@@ -90,7 +97,12 @@ export function AlertStrip() {
           trailing={!overdue.length ? <NotifyBtn perm={perm} onClick={enableNotifications} /> : null}
         >
           {soon48.slice(0, 5).map((t) => (
-            <AlertRow key={`${t.courseCode}-${t.title}`} todo={t} today={today} tone="soon" />
+            <AlertRow
+              key={`${asTxt(t.courseCode)}-${asTxt(t.title)}`}
+              todo={t}
+              today={today}
+              tone="soon"
+            />
           ))}
         </Banner>
       ) : null}
@@ -98,7 +110,12 @@ export function AlertStrip() {
       {assign72.length && !soon48.some((s) => assign72.some((a) => a.title === s.title)) ? (
         <Banner tone="soon" title={`Assignment due ≤72h (${assign72.length})`}>
           {assign72.slice(0, 3).map((t) => (
-            <AlertRow key={`a-${t.courseCode}-${t.title}`} todo={t} today={today} tone="soon" />
+            <AlertRow
+              key={`a-${asTxt(t.courseCode)}-${asTxt(t.title)}`}
+              todo={t}
+              today={today}
+              tone="soon"
+            />
           ))}
         </Banner>
       ) : null}
@@ -122,9 +139,11 @@ export function AlertStrip() {
       {fees.length ? (
         <Banner tone="fee" title={`Fee challan on To-Do Calendar (${fees.length}) — admin, not study`}>
           {fees.slice(0, 3).map((t) => (
-            <li key={t.title} className="flex justify-between gap-3 text-sm">
-              <span className="font-semibold">{t.title}</span>
-              <span className="text-xs font-bold tabular-nums text-[var(--hp-muted)]">{t.due}</span>
+            <li key={asTxt(t.title)} className="flex justify-between gap-3 text-sm">
+              <span className="font-semibold">{asTxt(t.title)}</span>
+              <span className="text-xs font-bold tabular-nums text-[var(--hp-muted)]">
+                {asTxt(t.due)}
+              </span>
             </li>
           ))}
         </Banner>
@@ -187,14 +206,15 @@ function AlertRow({
   return (
     <li className="flex items-start justify-between gap-3 text-sm">
       <span className="font-semibold text-[var(--hp-ink)]">
-        <span className="text-[var(--hp-muted)]">{todo.courseCode}</span> · {todo.title}
+        <span className="text-[var(--hp-muted)]">{asTxt(todo.courseCode)}</span> ·{" "}
+        {asTxt(todo.title)}
       </span>
       <span
         className={`shrink-0 text-xs font-bold tabular-nums ${
           tone === "overdue" ? "text-[#fca5a5]" : "text-[var(--hp-amber)]"
         }`}
       >
-        {todo.due}
+        {asTxt(todo.due)}
         {d != null ? (d < 0 ? ` · ${Math.abs(d)}d past` : d === 0 ? " · today" : ` · ${d}d`) : ""}
       </span>
     </li>

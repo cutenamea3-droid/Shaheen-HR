@@ -103,20 +103,24 @@ export function parsePersonalBackup(raw: string): PersonalBackupEnvelope {
 
 export function applyPersonalBackup(envelope: PersonalBackupEnvelope): void {
   const d = envelope.data;
+  const cur = usePersonal.getState();
+  const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+  const obj = <T extends object>(v: unknown, fallback: T): T =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
   const patch: Partial<PersonalStore> = {
-    courses: d.courses ?? usePersonal.getState().courses,
-    backlog: d.backlog ?? [],
-    assessments: d.assessments ?? [],
-    notes: d.notes ?? [],
-    sessions: d.sessions ?? [],
-    dayPlans: d.dayPlans ?? {},
-    discipline: d.discipline ?? [],
+    courses: arr(d.courses, cur.courses),
+    backlog: arr(d.backlog, []),
+    assessments: arr(d.assessments, []),
+    notes: arr(d.notes, []),
+    sessions: arr(d.sessions, []),
+    dayPlans: obj(d.dayPlans, {}),
+    discipline: arr(d.discipline, []),
     settings: migrateSettings(d.settings),
     vaultNotes: typeof d.vaultNotes === "string" ? d.vaultNotes : "",
-    gradeEntries: d.gradeEntries ?? [],
-    courseGrades: d.courseGrades ?? [],
-    examPrepTasks: d.examPrepTasks ?? [],
-    weeklyReviews: d.weeklyReviews ?? {},
+    gradeEntries: arr(d.gradeEntries, []),
+    courseGrades: arr(d.courseGrades, []),
+    examPrepTasks: arr(d.examPrepTasks, []),
+    weeklyReviews: obj(d.weeklyReviews, {}),
   };
   usePersonal.setState(patch);
 }

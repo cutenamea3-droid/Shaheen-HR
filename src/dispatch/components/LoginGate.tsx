@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isDispatchPreviewMode, signInDispatch } from "@/dispatch/lib/auth";
 import type { DispatchAccount } from "@/dispatch/lib/types";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccount) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const preview = isDispatchPreviewMode();
 
   async function submit(e: React.FormEvent) {
@@ -14,7 +18,9 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
     setBusy(true);
     setError(null);
     try {
-      const account = await signInDispatch(email, password);
+      const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
+      const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
+      const account = await signInDispatch(nextEmail, nextPassword);
       onSignedIn(account);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");
@@ -30,34 +36,42 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           <p className="font-display text-3xl font-bold tracking-tight">Shaheen Transport</p>
           <p className="mt-2 text-base text-white/85">Dispatch Operations</p>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-white/75">
-            Morning Shift Handover continuity for US carrier dispatch desks. Manual ops tracker — not a load board,
-            and never Live GPS.
+            Morning Shift Handover continuity for US carrier dispatch desks. Manual ops tracker —
+            not a load board, and never Live GPS.
           </p>
         </div>
-        <form onSubmit={(e) => void submit(e)} className="flex flex-col justify-center gap-4 p-6 sm:p-8">
+        <form
+          onSubmit={(e) => void submit(e)}
+          className="flex flex-col justify-center gap-4 p-6 sm:p-8"
+        >
           <div>
             <p className="font-display text-2xl font-bold text-[color:var(--dispatch-navy)] md:hidden">
               Shaheen Transport
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-[color:var(--dispatch-navy)]">Dispatch sign in</h1>
+            <h1 className="mt-1 text-xl font-semibold text-[color:var(--dispatch-navy)]">
+              Dispatch sign in
+            </h1>
             <p className="mt-1 text-sm text-[color:var(--dispatch-muted)]">
               Backend auth + RLS required. Nav hide alone is not access control.
             </p>
           </div>
           {preview && (
             <p className="rounded-md border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              Fixture / preview mode: cloud SQL not applied or preview isolated. Data is local fixtures, not production
-              cloud.
+              Fixture / preview mode: cloud SQL not applied or preview isolated. Data is local
+              fixtures, not production cloud.
             </p>
           )}
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Email</span>
             <input
+              ref={emailRef}
               className="dispatch-field"
+              data-testid="dispatch-email"
               type="email"
               autoComplete="username"
-              value={email}
+              value={asText(email)}
               onChange={(e) => setEmail(e.target.value)}
+              onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
               required={!preview}
               placeholder={preview ? "any email (fixtures)" : "dispatcher@company.com"}
             />
@@ -65,11 +79,14 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
           <label className="grid gap-1 text-sm">
             <span className="font-medium">Password</span>
             <input
+              ref={passwordRef}
               className="dispatch-field"
+              data-testid="dispatch-password"
               type="password"
               autoComplete="current-password"
-              value={password}
+              value={asText(password)}
               onChange={(e) => setPassword(e.target.value)}
+              onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
               required={!preview}
               placeholder={preview ? "any password (fixtures)" : "••••••••"}
             />
@@ -79,12 +96,17 @@ export function LoginGate({ onSignedIn }: { onSignedIn: (account: DispatchAccoun
               {error}
             </p>
           )}
-          <button type="submit" className="dispatch-btn-primary" disabled={busy}>
+          <button
+            type="submit"
+            className="dispatch-btn-primary"
+            data-testid="dispatch-sign-in"
+            disabled={busy}
+          >
             {busy ? "Signing in…" : "Sign in"}
           </button>
           <p className="text-xs leading-relaxed text-[color:var(--dispatch-muted)]">
-            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Invite uses a dedicated
-            dispatcher login — never share Compliance seats.
+            Dispatchers cannot open Driver Compliance, Admin Attendance, or HR Personal. Invite uses
+            a dedicated dispatcher login — never share Compliance seats.
           </p>
         </form>
       </div>

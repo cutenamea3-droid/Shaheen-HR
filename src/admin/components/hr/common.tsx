@@ -36,6 +36,21 @@ export function TimeInput({ value, onChange, label, disabled }: { value: number 
         aria-invalid={bad || undefined}
         aria-describedby={hintId}
         onChange={(e) => setTxt(e.target.value)}
+        onInput={(e) => {
+          // Autofill / DOM-only mutations often skip React onChange + blur.
+          const t = (e.target as HTMLInputElement).value;
+          setTxt(t);
+          if (!t.trim()) {
+            setBad(false);
+            onChange(null);
+            return;
+          }
+          const v = parseTime(t);
+          if (v != null) {
+            setBad(false);
+            onChange(v);
+          }
+        }}
         onBlur={(e) => commit(e.target.value)}
         onPaste={(e) => {
           e.preventDefault();

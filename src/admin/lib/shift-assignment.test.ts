@@ -44,6 +44,11 @@ describe("shift-assignment history", () => {
     expect(once.deptAssignments).toHaveLength(1);
   });
 
+  it("resolveDeptAsOf tolerates corrupt non-array depts", () => {
+    expect(resolveDeptAsOf(base, null as never, "2026-03-15")).toBeUndefined();
+    expect(resolveDeptAsOf(base, "bad" as never, "2026-03-15")).toBeUndefined();
+  });
+
   it("same-day reassignment replaces that day's row only", () => {
     const a = appendDeptAssignment(base, "dispatch", "2026-05-10");
     const b = appendDeptAssignment({ ...base, ...a }, "hr", "2026-05-10");

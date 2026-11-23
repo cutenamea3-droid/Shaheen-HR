@@ -13,6 +13,12 @@ const rec = (a: string, b: string, c: string, d: string, extra = {}) => ({
 const WED = "2026-10-21", SAT = "2026-10-24", SUN = "2026-10-25";
 
 describe("attendance rules", () => {
+  it("parseTime coerces non-string / null without throwing", () => {
+    expect(parseTime(null as unknown as string)).toBeNull();
+    expect(parseTime(undefined as unknown as string)).toBeNull();
+    expect(() => parseTime(559 as unknown as string)).not.toThrow();
+    expect(parseTime("5:59 AM")).toBe(5 * 60 + 59);
+  });
   it("12 min late is under grace, 16 min is late", () => {
     expect(calcDay(emp, dept, WED, rec("5:12 AM", "9:00 AM", "9:45 AM", "3:00 PM"), s).lateLevel).toBe("grace");
     expect(calcDay(emp, dept, WED, rec("5:16 AM", "9:00 AM", "9:45 AM", "3:00 PM"), s).lateLevel).toBe("late");

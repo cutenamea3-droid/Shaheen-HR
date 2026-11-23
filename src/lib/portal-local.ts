@@ -49,7 +49,16 @@ export async function hashSecret(value: string): Promise<string> {
 }
 
 export function listLocalAccounts(): PortalAccount[] {
-  return readJson<PortalAccount[]>(ACCOUNTS_KEY, []);
+  const raw = readJson<unknown>(ACCOUNTS_KEY, []);
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a): a is PortalAccount => !!a && typeof a === "object" && !Array.isArray(a))
+    .map((a) => ({
+      ...a,
+      email: portalEmailKey((a as PortalAccount).email),
+      display_name: asPortalText((a as PortalAccount).display_name),
+      user_id: asPortalText((a as PortalAccount).user_id),
+    }));
 }
 
 export function saveLocalAccounts(accounts: PortalAccount[]) {
@@ -58,8 +67,9 @@ export function saveLocalAccounts(accounts: PortalAccount[]) {
 
 export function ensureLocalOwner(account: PortalAccount) {
   const list = listLocalAccounts();
-  if (list.some((a) => a.user_id === account.user_id || a.email.toLowerCase() === account.email.toLowerCase())) return;
-  saveLocalAccounts([{ ...account, role: account.role || "admin", active: true }, ...list]);
+  const email = portalEmailKey(account.email);
+  if (list.some((a) => a.user_id === account.user_id || portalEmailKey(a.email) === email)) return;
+  saveLocalAccounts([{ ...account, email, role: account.role || "admin", active: true }, ...list]);
 }
 
 export function upsertLocalAccount(account: PortalAccount) {
@@ -70,21 +80,26 @@ export function upsertLocalAccount(account: PortalAccount) {
   saveLocalAccounts(list);
 }
 
+function readSecretsMap(): SecretsMap {
+  const raw = readJson<unknown>(SECRETS_KEY, {});
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as SecretsMap) : {};
+}
+
 export function removeLocalAccount(userId: string) {
   saveLocalAccounts(listLocalAccounts().filter((a) => a.user_id !== userId));
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   delete secrets[userId];
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function setLocalPassword(userId: string, password: string) {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   secrets[userId] = await hashSecret(password);
   writeJson(SECRETS_KEY, secrets);
 }
 
 export async function verifyLocalPassword(userId: string, password: string): Promise<boolean> {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   const stored = secrets[userId];
   if (!stored) return false;
   return stored === (await hashSecret(password));
@@ -92,12 +107,36 @@ export async function verifyLocalPassword(userId: string, password: string): Pro
 
 /** True when this user has a locally stored password hash. */
 export function hasLocalPassword(userId: string): boolean {
-  const secrets = readJson<SecretsMap>(SECRETS_KEY, {});
+  const secrets = readSecretsMap();
   return Boolean(secrets[userId]);
 }
 
+function asPortalText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+function healLocalActivity(raw: unknown): LocalActivity | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<LocalActivity>;
+  const occurred_at = asPortalText(r.occurred_at);
+  if (!occurred_at) return null;
+  return {
+    id: asPortalText(r.id) || uid(),
+    actor_name: asPortalText(r.actor_name),
+    action: asPortalText(r.action),
+    section_id: asPortalText(r.section_id) || "portal",
+    occurred_at,
+  };
+}
+
 export function listLocalActivity(limit = 500): LocalActivity[] {
-  return readJson<LocalActivity[]>(ACTIVITY_KEY, []).slice(0, limit);
+  const raw = readJson<unknown>(ACTIVITY_KEY, []);
+  const list = Array.isArray(raw) ? raw : [];
+  return list
+    .map((row) => healLocalActivity(row))
+    .filter((row): row is LocalActivity => !!row)
+    .slice(0, limit);
 }
 
 export function logLocalActivity(input: {
@@ -107,14 +146,18 @@ export function logLocalActivity(input: {
 }) {
   const entry: LocalActivity = {
     id: uid(),
-    actor_name: input.actorName,
-    action: input.action,
-    section_id: input.sectionId ?? "portal",
+    actor_name: asPortalText(input.actorName),
+    action: asPortalText(input.action),
+    section_id: asPortalText(input.sectionId) || "portal",
     occurred_at: new Date().toISOString(),
   };
   const next = [entry, ...listLocalActivity(500)].slice(0, 500);
   writeJson(ACTIVITY_KEY, next);
   return entry;
+}
+
+function portalEmailKey(v: unknown): string {
+  return asPortalText(v).trim().toLowerCase();
 }
 
 export function createLocalAccount(input: {
@@ -123,15 +166,15 @@ export function createLocalAccount(input: {
   password: string;
   role?: PortalRole;
 }): Promise<PortalAccount> {
-  const email = input.email.trim().toLowerCase();
+  const email = portalEmailKey(input.email);
   const list = listLocalAccounts();
-  if (list.some((a) => a.email.toLowerCase() === email)) {
+  if (list.some((a) => portalEmailKey(a.email) === email)) {
     return Promise.reject(new Error("An account with that email already exists."));
   }
   const account: PortalAccount = {
     user_id: uid(),
     email,
-    display_name: input.displayName.trim(),
+    display_name: asPortalText(input.displayName).trim(),
     role: input.role ?? "standard",
     active: true,
   };
@@ -142,8 +185,8 @@ export function createLocalAccount(input: {
 }
 
 export function findLocalAccountByEmail(email: string): PortalAccount | null {
-  const normalized = email.trim().toLowerCase();
-  return listLocalAccounts().find((a) => a.email.toLowerCase() === normalized) ?? null;
+  const normalized = portalEmailKey(email);
+  return listLocalAccounts().find((a) => portalEmailKey(a.email) === normalized) ?? null;
 }
 
 /** Persist a local-only portal session (used when cloud auth is unavailable). */
@@ -157,7 +200,11 @@ export function clearLocalSession() {
 }
 
 export function readLocalSessionAccount(): PortalAccount | null {
-  const session = readJson<{ user_id?: string; email?: string } | null>(SESSION_KEY, null);
+  const raw = readJson<unknown>(SESSION_KEY, null);
+  const session =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { user_id?: string; email?: string })
+      : null;
   if (!session?.user_id) return null;
   const list = listLocalAccounts();
   const match = list.find((a) => a.user_id === session.user_id) ?? (session.email ? findLocalAccountByEmail(session.email) : null);

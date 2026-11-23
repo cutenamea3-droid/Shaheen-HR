@@ -13,7 +13,7 @@ import {
   rowIsActive,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, rowsOf, type AppData, type Row } from "./sections";
 import { isOwnerOperator } from "./driver-meta";
 
 /** Honest inspection status — only these values. */
@@ -85,11 +85,13 @@ function emptyCounts(): Record<InspectionStatus, number> {
 }
 
 function cell(row: Row | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
-  return data.sections[sectionId]?.rows.find((r) => r.driverId === driverId);
+  const rows = data.sections[sectionId]?.rows;
+  if (!Array.isArray(rows)) return undefined;
+  return rows.find((r) => r.driverId === driverId);
 }
 
 function driverName(data: AppData, driverId: string): string {
@@ -111,8 +113,10 @@ export function statusFromCell(opts: {
   /** When true, no expiry is required for "verified" (e.g. SSC, Other Docs). */
   noExpiryRequired?: boolean;
 }): { status: InspectionStatus; evidence: string; expiryDisplay: string } {
-  const status = normStatus(opts.statusRaw);
-  const expiryRaw = (opts.expiryRaw ?? "").trim();
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const statusRaw = asText(opts.statusRaw);
+  const status = normStatus(statusRaw);
+  const expiryRaw = asText(opts.expiryRaw).trim();
   const expiryDisplay = expiryRaw ? (isOldExpiry(expiryRaw) ? expiryRaw : fmtCell(expiryRaw) || expiryRaw) : "—";
 
   if (!status && !expiryRaw) {
@@ -167,10 +171,10 @@ export function statusFromCell(opts: {
   }
 
   // Unknown / custom status text
-  if (opts.statusRaw.trim()) {
+  if (statusRaw.trim()) {
     return {
       status: "present",
-      evidence: `Non-standard status “${opts.statusRaw.trim()}” — recorded but not verified`,
+      evidence: `Non-standard status “${statusRaw.trim()}” — recorded but not verified`,
       expiryDisplay,
     };
   }
@@ -215,7 +219,7 @@ const DEFAULT_DOC_HEADERS = [
 ];
 
 function docsChecklist(data: AppData): ChecklistDef[] {
-  const headers = data.sections.docs?.headers ?? [];
+  const headers = headersOf(data.sections.docs);
   const items: ChecklistDef[] = [];
   for (let i = 2; i <= 13; i++) {
     const label = (headers[i] ?? DEFAULT_DOC_HEADERS[i - 2] ?? `Document ${i - 1}`).trim();
@@ -236,7 +240,7 @@ function activeDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
-    for (const r of data.sections[def.id]?.rows ?? []) {
+    for (const r of rowsOf(data.sections[def.id])) {
       if (rowIsActive(def, r, data)) ids.add(r.driverId);
     }
   }
@@ -348,16 +352,20 @@ export function buildInspectionSummaries(data: AppData): InspectionDriverSummary
     .sort((a, b) => {
       const wr = WORST_RANK.indexOf(a.worst) - WORST_RANK.indexOf(b.worst);
       if (wr) return wr;
-      return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
     });
 }
 
 export function fleetInspectionCounts(summaries: InspectionDriverSummary[]) {
   const counts = emptyCounts();
   let drivers = 0;
-  for (const s of summaries) {
+  const list = Array.isArray(summaries) ? summaries : [];
+  for (const s of list) {
     drivers++;
-    for (const k of Object.keys(counts) as InspectionStatus[]) counts[k] += s.counts[k];
+    const sc =
+      s?.counts && typeof s.counts === "object" && !Array.isArray(s.counts) ? s.counts : emptyCounts();
+    for (const k of Object.keys(counts) as InspectionStatus[]) counts[k] += sc[k] ?? 0;
   }
   return { drivers, ...counts };
 }

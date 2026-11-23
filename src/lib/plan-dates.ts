@@ -13,7 +13,7 @@ import {
   parseISO,
   today,
 } from "./alerts";
-import type { Row } from "./sections";
+import { cellsOf, type Row } from "./sections";
 
 /** Business calendar: local date-only (matches parseISO / today() elsewhere). */
 export type PlanWording = "apply" | "call" | "renew" | "follow_up";
@@ -54,7 +54,7 @@ export const PLAN_LEAD_RULES: PlanLeadRule[] = [
     expiryCol: 3,
     statusCol: 2,
     stateCol: 8,
-    leadDays: (row) => dmvDays(row.cells[8] ?? ""),
+    leadDays: (row) => dmvDays(cellsOf(row)[8] ?? ""),
     wording: "apply",
     docLabel: "DMV Pull Notice",
     source: "alerts.ts dmvDays / dateIssue(c[3], dmvDays) / collectPlans expiry−dmvDays",
@@ -198,9 +198,10 @@ export function buildFuturePlanSuggestion(
   row: Row,
   opts?: { /** Already-computed reminder; do not subtract lead again. */ reminderDate?: Date | null },
 ): FuturePlanSuggestion {
-  const lead = resolveLeadDays(rule, row);
-  const expiryRaw = row.cells[rule.expiryCol] ?? "";
-  const statusRaw = rule.statusCol != null ? (row.cells[rule.statusCol] ?? "") : "";
+  const cells = cellsOf(row);
+  const lead = resolveLeadDays(rule, { ...row, cells });
+  const expiryRaw = cells[rule.expiryCol] ?? "";
+  const statusRaw = rule.statusCol != null ? (cells[rule.statusCol] ?? "") : "";
   const status = normStatus(statusRaw);
   const base = {
     wording: rule.wording,

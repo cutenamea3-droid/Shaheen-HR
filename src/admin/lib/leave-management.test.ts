@@ -42,4 +42,26 @@ describe("leave-management", () => {
     expect(leaveDaysOnDate("2026-03-02", [emp], records)).toHaveLength(1);
     expect(leaveDaysOnDate("2026-03-03", [emp], records)).toHaveLength(0);
   });
+
+  it("tolerates corrupt non-array employees / records", () => {
+    expect(listLeaveDaysInMonth("2026-03", "bad" as never, null as never)).toEqual([]);
+    expect(leaveDaysOnDate("2026-03-02", null as never, undefined as never)).toEqual([]);
+    expect(leaveRoster("x" as never, "y" as never, "2026-03-15")).toEqual([]);
+  });
+
+  it("coerces non-string leave notes / roster scalars", () => {
+    const records = {
+      "2026-03-02": {
+        e1: { ...leave(true), note: 42 as unknown as string },
+      },
+    };
+    const days = listLeaveDaysInMonth("2026-03", [emp], records);
+    expect(days[0]!.note).toBe("42");
+    expect(leaveDaysOnDate("2026-03-02", [emp], records)[0]!.note).toBe("42");
+
+    const badEmp = { ...emp, name: 7 as unknown as string, openingLeave: null as unknown as number };
+    const rows = leaveRoster([badEmp], records, "2026-03-15");
+    expect(rows[0]!.name).toBe("7");
+    expect(rows[0]!.openingLeave).toBe(0);
+  });
 });

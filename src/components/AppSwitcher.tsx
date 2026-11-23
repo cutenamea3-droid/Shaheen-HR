@@ -1,22 +1,18 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, ShieldX, Truck, UserRound, UsersRound } from "lucide-react";
+import { FileCheck2, ShieldX, UsersRound } from "lucide-react";
 import {
   EMPTY_GRANTS,
   companySwitcherModules,
-  isDispatchOnly,
   probeModuleGrants,
   type ModuleGrants,
   type ModuleId,
 } from "@/lib/module-access";
-import { shouldShowPersonalSwitcherLink } from "@/personal/lib/auth-probe";
 import { useHydrated } from "@/lib/use-hydrated";
 
 /**
- * Top bar that switches between isolated systems.
- * After seats resolve, only permitted modules remain visible
- * (Dispatch-only users do not see Compliance / Admin).
- * Personal appears only when already on `/personal` or seat probe allows (Batch 2 / #26).
+ * Top bar that switches between Compliance and Admin & Attendance only.
+ * Personal / Dispatch portals are not part of this deployable app.
  *
  * SPA shell is prerendered for `/` only (vite spa.prerender). Path-dependent
  * active/`aria-current` markup — including TanStack Link's built-in
@@ -30,17 +26,44 @@ export function AppSwitcher() {
   // Match the prerendered `/` shell until after hydration (not the real deep path).
   const path = hydrated ? pathname : "/";
   const isAdmin = path.startsWith("/admin");
-  const isDispatch = path.startsWith("/dispatch");
-  const isPersonal = path.startsWith("/personal");
-  const isCv = path === "/cv";
   const isDenied = path.startsWith("/access-denied");
-  const isDriver = !isAdmin && !isDispatch && !isPersonal && !isCv && !isDenied;
+  const isCv = path === "/cv";
+  const isRetiredPortal = path.startsWith("/personal") || path.startsWith("/dispatch");
+  const isDriver = !isAdmin && !isDenied && !isCv && !isRetiredPortal;
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
+  const [authEpoch, setAuthEpoch] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    let unsub = () => {};
+    void import("@/integrations/supabase/client")
+      .then(({ supabase, isSupabaseConfigured }) => {
+        if (!alive || !isSupabaseConfigured()) return;
+        const { data } = supabase.auth.onAuthStateChange(() => {
+          if (alive) setAuthEpoch((n) => n + 1);
+        });
+        unsub = () => data.subscription.unsubscribe();
+      })
+      .catch(() => {});
+    const bump = () => {
+      if (alive) setAuthEpoch((n) => n + 1);
+    };
+    window.addEventListener("shaheen-lock", bump);
+    window.addEventListener("shaheen-portal-ready", bump);
+    return () => {
+      alive = false;
+      unsub();
+      window.removeEventListener("shaheen-lock", bump);
+      window.removeEventListener("shaheen-portal-ready", bump);
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    // Drop ready while re-probing so stale grants cannot hide LoginGate links.
+    setReady(false);
     void probeModuleGrants().then((g) => {
       if (!alive) return;
       setGrants(g);
@@ -49,27 +72,16 @@ export function AppSwitcher() {
     return () => {
       alive = false;
     };
-  }, [pathname]);
+  }, [pathname, authEpoch]);
 
-  const hasAnySeat = Boolean(
-    grants.compliance || grants["admin-hr"] || grants.personal || grants.dispatch,
-  );
-  // Anonymous / unknown: all company login surfaces. After seats: keep Compliance /
-  // Admin / Dispatch reachable for independent LoginGates unless Dispatch-only.
+  const hasAnySeat = Boolean(grants.compliance || grants["admin-hr"]);
+  // Anonymous / unknown: both company login surfaces. After seats: Compliance + Admin.
   const selectable =
     ready && hasAnySeat
       ? companySwitcherModules(grants)
-      : (["compliance", "admin-hr", "dispatch"] as ModuleId[]);
+      : (["compliance", "admin-hr"] as ModuleId[]);
 
-  const show = (id: ModuleId) => {
-    if (id === "personal") {
-      // Privacy: Personal only while already on /personal (never advertised company-wide).
-      // Dispatch-only must not see Personal either.
-      if (ready && hasAnySeat && isDispatchOnly(grants)) return false;
-      return shouldShowPersonalSwitcherLink(isPersonal);
-    }
-    return selectable.includes(id);
-  };
+  const show = (id: ModuleId) => selectable.includes(id);
 
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
@@ -110,7 +122,7 @@ export function AppSwitcher() {
     current,
     children,
   }: {
-    to: "/" | "/admin" | "/dispatch" | "/personal";
+    to: "/" | "/admin";
     label: string;
     title: string;
     current: boolean;
@@ -150,7 +162,10 @@ export function AppSwitcher() {
           Management Portal
         </span>
       </div>
-      <nav aria-label="System switcher" className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4">
+      <nav
+        aria-label="System switcher"
+        className="ml-auto flex items-center gap-1 rounded-lg border border-border bg-background p-1 sm:ml-4"
+      >
         {show("compliance") && (
           <NavLink to="/" label="Driver Compliance" title="Driver Compliance" current={isDriver}>
             <FileCheck2 className="h-4 w-4 shrink-0" />
@@ -158,21 +173,14 @@ export function AppSwitcher() {
           </NavLink>
         )}
         {show("admin-hr") && (
-          <NavLink to="/admin" label="Admin & Attendance" title="Admin & Attendance" current={isAdmin}>
+          <NavLink
+            to="/admin"
+            label="Admin & Attendance"
+            title="Admin & Attendance"
+            current={isAdmin}
+          >
             <UsersRound className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Admin &amp; Attendance</span>
-          </NavLink>
-        )}
-        {show("dispatch") && (
-          <NavLink to="/dispatch" label="Dispatch Operations" title="Dispatch Operations" current={isDispatch}>
-            <Truck className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Dispatch</span>
-          </NavLink>
-        )}
-        {show("personal") && (
-          <NavLink to="/personal" label="HR Personal" title="HR Personal" current={isPersonal}>
-            <UserRound className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Personal</span>
           </NavLink>
         )}
         {isDenied && (

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES } from "@/admin/lib/employee-finance-mock";
@@ -21,6 +21,8 @@ import {
 import { formatPkr } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const emptyForm = (): ExpenseUpsertInput => ({
   title: "",
   categoryId: "office",
@@ -35,12 +37,17 @@ const emptyForm = (): ExpenseUpsertInput => ({
 });
 
 export function ExpensesManagement() {
-  const liveEmployees = useApp((s) => s.employees);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
   const company = useApp((s) => s.settings.company);
-  const categories = useExpensesStore((s) => s.categories);
-  const expenses = useExpensesStore((s) => s.expenses);
-  const templates = useExpensesStore((s) => s.templates);
-  const budgets = useExpensesStore((s) => s.budgets);
+  const categoriesRaw = useExpensesStore((s) => s.categories);
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
+  const expensesRaw = useExpensesStore((s) => s.expenses);
+  const expenses = Array.isArray(expensesRaw) ? expensesRaw : [];
+  const templatesRaw = useExpensesStore((s) => s.templates);
+  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
+  const budgetsRaw = useExpensesStore((s) => s.budgets);
+  const budgets = Array.isArray(budgetsRaw) ? budgetsRaw : [];
   const upsertExpense = useExpensesStore((s) => s.upsertExpense);
   const softDeleteExpense = useExpensesStore((s) => s.softDeleteExpense);
   const restoreExpense = useExpensesStore((s) => s.restoreExpense);
@@ -59,6 +66,8 @@ export function ExpensesManagement() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [q, setQ] = useState("");
   const [form, setForm] = useState<ExpenseUpsertInput>(emptyForm);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(true);
   const [msg, setMsg] = useState("");
@@ -72,15 +81,15 @@ export function ExpensesManagement() {
 
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const e of liveEmployees) m.set(e.id, e.name);
-    for (const e of SYNTHETIC_EMPLOYEES) m.set(e.id, e.name);
+    for (const e of liveEmployees) m.set(asText(e.id), asText(e.name));
+    for (const e of SYNTHETIC_EMPLOYEES) m.set(asText(e.id), asText(e.name));
     return m;
   }, [liveEmployees]);
 
   const roster = useMemo(
     () => [
-      ...liveEmployees.map((e) => ({ id: e.id, name: e.name })),
-      ...SYNTHETIC_EMPLOYEES.map((e) => ({ id: e.id, name: e.name })),
+      ...liveEmployees.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
+      ...SYNTHETIC_EMPLOYEES.map((e) => ({ id: asText(e.id), name: asText(e.name) })),
     ],
     [liveEmployees],
   );
@@ -88,30 +97,43 @@ export function ExpensesManagement() {
   const activeCats = categories.filter((c) => !c.archived);
 
   const filtered = useMemo(() => {
+    const monthKey = asText(month);
     return expenses.filter((e) => {
       if (showDeleted ? !e.deletedAt : !!e.deletedAt) return false;
-      if (!e.expenseDate.startsWith(month)) return false;
+      if (!asText(e.expenseDate).startsWith(monthKey)) return false;
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
       if (scopeFilter !== "all" && e.scope !== scopeFilter) return false;
       if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
-      if (q.trim()) {
-        const hay = `${e.title} ${e.note} ${e.employeeIds.map((id) => nameById.get(id) ?? "").join(" ")}`.toLowerCase();
-        if (!hay.includes(q.trim().toLowerCase())) return false;
+      const needle = asText(q).trim().toLowerCase();
+      if (needle) {
+        const hay = `${asText(e.title)} ${asText(e.note)} ${(Array.isArray(e.employeeIds) ? e.employeeIds : []).map((id) => asText(nameById.get(id))).join(" ")}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
       }
       return true;
     });
   }, [expenses, showDeleted, month, statusFilter, scopeFilter, categoryFilter, q, nameById]);
 
-  const monthActive = expenses.filter((e) => !e.deletedAt && e.expenseDate.startsWith(month));
+  const monthActive = expenses.filter((e) => {
+    return !e.deletedAt && asText(e.expenseDate).startsWith(asText(month));
+  });
   const summary = summarizeExpenses(monthActive);
-  const chartMax = Math.max(1, ...Object.values(summary.byCategory));
+  const byCategory =
+    summary.byCategory && typeof summary.byCategory === "object" && !Array.isArray(summary.byCategory)
+      ? summary.byCategory
+      : {};
+  const chartMax = Math.max(1, ...Object.values(byCategory));
 
   const save = (andAnother: boolean) => {
     setErr("");
     setMsg("");
+    const titleText =
+      form.title == null ? "" : typeof form.title === "string" ? form.title : String(form.title);
+    const nextTitle = (titleText.trim() || titleRef.current?.value || "").trim();
+    const amountRaw = form.amountPkr || Number(amountRef.current?.value || 0);
     const input: ExpenseUpsertInput = {
       ...form,
-      amountPkr: Number(form.amountPkr),
+      title: nextTitle,
+      amountPkr: Number(amountRaw),
       employeeIds: form.scope === "all" ? [] : empPick,
     };
     const res = upsertExpense(input, editId ? { id: editId } : undefined);
@@ -150,13 +172,13 @@ export function ExpensesManagement() {
       amountPkr: e.amountPkr,
       expenseDate: e.expenseDate,
       scope: e.scope,
-      employeeIds: e.employeeIds,
+      employeeIds: Array.isArray(e.employeeIds) ? e.employeeIds : [],
       status: e.status,
       note: e.note,
       templateId: e.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...e.employeeIds]);
+    setEmpPick([...(Array.isArray(e.employeeIds) ? e.employeeIds : [])]);
     setFormOpen(true);
     setErr("");
     setMsg("");
@@ -172,16 +194,16 @@ export function ExpensesManagement() {
       amountPkr: draft.amountPkr,
       expenseDate: draft.expenseDate,
       scope: draft.scope,
-      employeeIds: draft.employeeIds,
+      employeeIds: Array.isArray(draft.employeeIds) ? draft.employeeIds : [],
       status: "draft",
       note: draft.note,
       templateId: draft.templateId,
       allowDuplicate: false,
     });
-    setEmpPick([...draft.employeeIds]);
+    setEmpPick([...(Array.isArray(draft.employeeIds) ? draft.employeeIds : [])]);
     setEditId(null);
     setFormOpen(true);
-    setMsg(`Filled from template “${t.name}” — not auto-created. Review and Save.`);
+    setMsg(`Filled from template “${asText(t.name)}” — not auto-created. Review and Save.`);
   };
 
   const exportCsv = () => {
@@ -273,11 +295,11 @@ export function ExpensesManagement() {
       {/* Optional category chart */}
       <div className="admin-emp-card space-y-2">
         <div className="font-bold">Category spend ({month})</div>
-        {Object.keys(summary.byCategory).length === 0 ? (
+        {Object.keys(byCategory).length === 0 ? (
           <p className="text-sm text-muted-foreground">No expenses this month yet.</p>
         ) : (
           <div className="space-y-1.5">
-            {Object.entries(summary.byCategory)
+            {Object.entries(byCategory)
               .sort((a, b) => b[1] - a[1])
               .map(([catId, amt]) => {
                 const name = activeCats.find((c) => c.id === catId)?.name ?? catId;
@@ -300,10 +322,10 @@ export function ExpensesManagement() {
       <div className="admin-toolbar flex-wrap gap-2">
         <label>
           <span className="sr-only">Month</span>
-          <input type="month" className="field w-40" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />
+          <input type="month" className="field w-40" value={asText(month)} onChange={(e) => e.target.value && setMonth(e.target.value)} />
         </label>
-        <input className="field w-48" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="field w-36" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | ExpenseStatus)}>
+        <input className="field w-48" placeholder="Search…" value={asText(q)} onChange={(e) => setQ(e.target.value)} />
+        <select className="field w-36" value={asText(statusFilter)} onChange={(e) => setStatusFilter(e.target.value as "all" | ExpenseStatus)}>
           <option value="all">All statuses</option>
           {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -311,7 +333,7 @@ export function ExpensesManagement() {
             </option>
           ))}
         </select>
-        <select className="field w-40" value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "all" | ExpenseScope)}>
+        <select className="field w-40" value={asText(scopeFilter)} onChange={(e) => setScopeFilter(e.target.value as "all" | ExpenseScope)}>
           <option value="all">All scopes</option>
           {(Object.keys(EXPENSE_SCOPE_LABEL) as ExpenseScope[]).map((s) => (
             <option key={s} value={s}>
@@ -319,11 +341,11 @@ export function ExpensesManagement() {
             </option>
           ))}
         </select>
-        <select className="field w-40" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select className="field w-40" value={asText(categoryFilter)} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="all">All categories</option>
           {activeCats.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
+            <option key={asText(c.id)} value={asText(c.id)}>
+              {asText(c.name)}
             </option>
           ))}
         </select>
@@ -346,14 +368,22 @@ export function ExpensesManagement() {
           </div>
           <label>
             <span className="lbl">Title</span>
-            <input className="field" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+            <input
+              ref={titleRef}
+              data-testid="admin-expense-title"
+              className="field"
+              value={asText(form.title)}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, title: (e.target as HTMLInputElement).value }))}
+              required
+            />
           </label>
           <label>
             <span className="lbl">Category</span>
-            <select className="field" value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
+            <select className="field" value={asText(form.categoryId)} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
               {activeCats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+                <option key={asText(c.id)} value={asText(c.id)}>
+                  {asText(c.name)}
                   {c.custom ? " (custom)" : ""}
                 </option>
               ))}
@@ -362,12 +392,15 @@ export function ExpensesManagement() {
           <label>
             <span className="lbl">Amount (PKR whole)</span>
             <input
+              ref={amountRef}
+              data-testid="admin-expense-amount"
               type="number"
               min={1}
               step={1}
               className="field"
               value={form.amountPkr || ""}
               onChange={(e) => setForm((f) => ({ ...f, amountPkr: Number(e.target.value) }))}
+              onInput={(e) => setForm((f) => ({ ...f, amountPkr: Number((e.target as HTMLInputElement).value) }))}
               required
             />
           </label>
@@ -376,7 +409,7 @@ export function ExpensesManagement() {
             <input
               type="date"
               className="field"
-              value={form.expenseDate}
+              value={asText(form.expenseDate)}
               onChange={(e) => e.target.value && setForm((f) => ({ ...f, expenseDate: e.target.value }))}
               required
             />
@@ -385,7 +418,7 @@ export function ExpensesManagement() {
             <span className="lbl">Scope</span>
             <select
               className="field"
-              value={form.scope}
+              value={asText(form.scope)}
               onChange={(e) => {
                 const scope = e.target.value as ExpenseScope;
                 setForm((f) => ({ ...f, scope }));
@@ -403,7 +436,7 @@ export function ExpensesManagement() {
             <span className="lbl">Status</span>
             <select
               className="field"
-              value={form.status}
+              value={asText(form.status)}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ExpenseStatus }))}
             >
               {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (
@@ -429,7 +462,7 @@ export function ExpensesManagement() {
                         else setEmpPick((prev) => (on ? prev.filter((x) => x !== e.id) : [...prev, e.id]));
                       }}
                     >
-                      {e.name}
+                      {asText(e.name)}
                     </button>
                   );
                 })}
@@ -438,7 +471,13 @@ export function ExpensesManagement() {
           )}
           <label className="md:col-span-2 lg:col-span-3">
             <span className="lbl">Note</span>
-            <input className="field" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+            <input
+              className="field"
+              data-testid="admin-expense-note"
+              value={asText(form.note)}
+              onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+              onInput={(e) => setForm((f) => ({ ...f, note: (e.target as HTMLInputElement).value }))}
+            />
           </label>
           {err && (
             <p className="md:col-span-2 lg:col-span-3 text-sm text-destructive" role="alert">
@@ -497,16 +536,20 @@ export function ExpensesManagement() {
             {filtered.map((e) => (
               <tr key={e.id} className={`border-t border-border ${e.deletedAt ? "opacity-60" : ""}`}>
                 <td className="p-3 font-semibold">
-                  {e.title}
+                  {asText(e.title)}
                   <div className="text-xs font-normal text-muted-foreground">
                     {e.scope === "all"
                       ? "Company total (not split)"
-                      : e.employeeIds.map((id) => nameById.get(id) ?? id).join(", ")}
+                      : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
+                          .map((id) => asText(nameById.get(id) ?? id))
+                          .join(", ")}
                   </div>
                 </td>
-                <td className="p-3">{activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId}</td>
+                <td className="p-3">
+                  {asText(activeCats.find((c) => c.id === e.categoryId)?.name ?? e.categoryId)}
+                </td>
                 <td className="p-3 tabular-nums">{formatPkr(e.amountPkr)}</td>
-                <td className="p-3">{e.expenseDate}</td>
+                <td className="p-3">{asText(e.expenseDate)}</td>
                 <td className="p-3">{EXPENSE_SCOPE_LABEL[e.scope]}</td>
                 <td className="p-3">
                   {e.deletedAt ? (
@@ -514,7 +557,7 @@ export function ExpensesManagement() {
                   ) : (
                     <select
                       className="field h-8 w-32"
-                      value={e.status}
+                      value={asText(e.status)}
                       onChange={(ev) => setExpenseStatus(e.id, ev.target.value as ExpenseStatus)}
                     >
                       {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (
@@ -572,7 +615,7 @@ export function ExpensesManagement() {
           <ul className="text-sm">
             {activeCats.map((c) => (
               <li key={c.id} className="border-b border-border/50 py-1">
-                {c.name}
+                {asText(c.name)}
                 {c.custom ? " · custom" : ""}
               </li>
             ))}
@@ -581,15 +624,25 @@ export function ExpensesManagement() {
             className="admin-toolbar gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const r = addCategory(customCat);
+              const fd = new FormData(e.currentTarget);
+              const name = String(fd.get("admin-custom-category") ?? customCat).trim() || customCat.trim();
+              const r = addCategory(name);
               if (!r.ok) setErr(r.error ?? "Failed");
               else {
                 setCustomCat("");
-                setMsg(`Category “${customCat}” added.`);
+                setMsg(`Category “${name}” added.`);
               }
             }}
           >
-            <input className="field" placeholder="Custom category" value={customCat} onChange={(e) => setCustomCat(e.target.value)} />
+            <input
+              className="field"
+              name="admin-custom-category"
+              data-testid="admin-custom-category"
+              placeholder="Custom category"
+              value={asText(customCat)}
+              onChange={(e) => setCustomCat(e.target.value)}
+              onInput={(e) => setCustomCat((e.target as HTMLInputElement).value)}
+            />
             <button type="submit" className="btn-ghost">
               Add
             </button>
@@ -603,7 +656,7 @@ export function ExpensesManagement() {
           {templates.map((t) => (
             <div key={t.id} className="flex items-center justify-between gap-2 border-b border-border/50 py-2 text-sm">
               <div>
-                <div className="font-semibold">{t.name}</div>
+                <div className="font-semibold">{asText(t.name)}</div>
                 <div className="text-xs text-muted-foreground">
                   {formatPkr(t.amountPkr)} · {t.cadence} · {EXPENSE_SCOPE_LABEL[t.scope]}
                 </div>
@@ -644,10 +697,10 @@ export function ExpensesManagement() {
         <div className="admin-emp-card space-y-3">
           <h3 className="font-bold">Optional budget ({month})</h3>
           <div className="admin-toolbar gap-2">
-            <select className="field" value={budgetCat} onChange={(e) => setBudgetCat(e.target.value)}>
+            <select className="field" value={asText(budgetCat)} onChange={(e) => setBudgetCat(e.target.value)}>
               {activeCats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+                <option key={asText(c.id)} value={asText(c.id)}>
+                  {asText(c.name)}
                 </option>
               ))}
             </select>
@@ -656,15 +709,20 @@ export function ExpensesManagement() {
               min={0}
               step={1}
               className="field w-28"
+              data-testid="admin-budget-limit"
               placeholder="Limit PKR"
-              value={budgetLimit}
+              value={asText(budgetLimit)}
               onChange={(e) => setBudgetLimit(e.target.value)}
+              onInput={(e) => setBudgetLimit((e.target as HTMLInputElement).value)}
             />
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => {
-                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: Number(budgetLimit), note: "" });
+              onClick={(e) => {
+                const dom =
+                  (e.currentTarget.previousElementSibling as HTMLInputElement | null)?.value ?? "";
+                const limit = Number((asText(budgetLimit).trim() || dom || "0"));
+                const r = upsertBudget({ month, categoryId: budgetCat, limitPkr: limit, note: "" });
                 setMsg(r.ok ? "Budget saved." : r.error ?? "Failed");
               }}
             >
@@ -681,17 +739,17 @@ export function ExpensesManagement() {
           <p className="text-xs text-muted-foreground">
             Personal totals exclude company-wide (All) expenses so aggregates are never double-counted.
           </p>
-          <select className="field" value={finEmpId} onChange={(e) => setFinEmpId(e.target.value)}>
+          <select className="field" value={asText(finEmpId)} onChange={(e) => setFinEmpId(e.target.value)}>
             <option value="">Select employee…</option>
             {roster.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
+              <option key={asText(e.id)} value={asText(e.id)}>
+                {asText(e.name)}
               </option>
             ))}
           </select>
           {finEmpId && (
             <p className="text-sm font-semibold">
-              {nameById.get(finEmpId)} · {month}: {formatPkr(finTotal)}
+              {asText(nameById.get(finEmpId))} · {asText(month)}: {formatPkr(finTotal)}
             </p>
           )}
         </div>
@@ -704,8 +762,8 @@ export function ExpensesManagement() {
             <ul className="space-y-2 text-sm">
               {auditFor(auditId).map((a) => (
                 <li key={a.id} className="border-b border-border/50 pb-2">
-                  <div className="font-semibold">{a.action}</div>
-                  <div className="text-muted-foreground">{a.detail}</div>
+                  <div className="font-semibold">{asText(a.action)}</div>
+                  <div className="text-muted-foreground">{asText(a.detail)}</div>
                   <div className="text-xs text-muted-foreground">{new Date(a.at).toLocaleString()}</div>
                 </li>
               ))}

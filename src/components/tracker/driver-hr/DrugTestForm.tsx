@@ -3,7 +3,7 @@
  * Records only — no PDF. Matched ≠ clearance.
  * Add flows may enable Smart Hybrid Pairing Mode (Automatic / Manual / New Separate).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { parseISO } from "@/lib/alerts";
 import {
   listManualMatchOptions,
@@ -44,6 +44,8 @@ const PAIRING_MODE_LABEL: Record<PairingMode, string> = {
   separate: "New Separate Test",
 };
 
+const asDrugText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function DrugTestEventEditor({
   initial,
   linkOptions = [],
@@ -78,39 +80,72 @@ export function DrugTestEventEditor({
   onSave: (draft: DrugEventDraft, opts?: DrugEventSaveOpts) => void | Promise<void>;
   onCancel: () => void;
 }) {
-  const [kind, setKind] = useState<DrugDocKind | "">(initial?.kind ?? "");
-  const [specimenId, setSpecimenId] = useState(initial?.specimenId ?? "");
-  const [reason, setReason] = useState(initial?.reason ?? "");
-  const [collectionContext, setCollectionContext] = useState(initial?.collectionContext ?? "");
-  const [eventDate, setEventDate] = useState(initial?.eventDate ?? "");
-  const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [testingEventId, setTestingEventId] = useState(initial?.testingEventId ?? "");
+  const [kind, setKind] = useState<DrugDocKind | "">(parseDrugDocKind(initial?.kind));
+  const [specimenId, setSpecimenId] = useState(asDrugText(initial?.specimenId));
+  const [reason, setReason] = useState(asDrugText(initial?.reason));
+  const [collectionContext, setCollectionContext] = useState(
+    asDrugText(initial?.collectionContext),
+  );
+  const [eventDate, setEventDate] = useState(asDrugText(initial?.eventDate));
+  const [notes, setNotes] = useState(asDrugText(initial?.notes));
+  const [testingEventId, setTestingEventId] = useState(asDrugText(initial?.testingEventId));
   const [busy, setBusy] = useState(false);
+  const specimenRef = useRef<HTMLInputElement>(null);
+  const reasonRef = useRef<HTMLInputElement>(null);
+  const contextRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLInputElement>(null);
+  const eventDateRef = useRef<HTMLInputElement>(null);
   const [pairingMode, setPairingMode] = useState<PairingMode>("automatic");
   const [manualTestingEventId, setManualTestingEventId] = useState("");
   const [selectedTestingEventId, setSelectedTestingEventId] = useState("");
   const [confirmSeparate, setConfirmSeparate] = useState(false);
   const [manualQ, setManualQ] = useState("");
+  const keepEventId = asDrugText(initial?.testingEventId);
 
   const manualOptions = useMemo(() => {
     if (!enablePairing || !driverId) return [] as MatchCandidate[];
     const all = listManualMatchOptions(driverId, kind, existingEvents);
-    const q = manualQ.trim().toLowerCase();
+    const q = asDrugText(manualQ).trim().toLowerCase();
     if (!q) return all;
-    return all.filter((c) => c.label.toLowerCase().includes(q));
+    return all.filter((c) => asDrugText(c.label).toLowerCase().includes(q));
   }, [enablePairing, driverId, kind, existingEvents, manualQ]);
 
   const submit = (addAnother: boolean) => {
+    const nextSpecimen = (
+      asDrugText(specimenId).trim() ||
+      specimenRef.current?.value ||
+      ""
+    ).trim();
+    const nextReason = (asDrugText(reason).trim() || reasonRef.current?.value || "").trim();
+    const nextContext = (
+      asDrugText(collectionContext).trim() ||
+      contextRef.current?.value ||
+      ""
+    ).trim();
+    const nextNotes = (asDrugText(notes).trim() || notesRef.current?.value || "").trim();
+    const nextEventDate = (
+      asDrugText(eventDate).trim() ||
+      eventDateRef.current?.value ||
+      ""
+    ).trim();
     setBusy(true);
     void Promise.resolve(
       onSave(
-        { kind, specimenId, reason, collectionContext, eventDate, notes, testingEventId },
+        {
+          kind,
+          specimenId: nextSpecimen,
+          reason: nextReason,
+          collectionContext: nextContext,
+          eventDate: nextEventDate,
+          notes: nextNotes,
+          testingEventId: asDrugText(testingEventId),
+        },
         enablePairing
           ? {
               addAnother,
               pairingMode,
-              manualTestingEventId,
-              selectedTestingEventId,
+              manualTestingEventId: asDrugText(manualTestingEventId),
+              selectedTestingEventId: asDrugText(selectedTestingEventId),
               confirmSeparate,
             }
           : { addAnother },
@@ -173,9 +208,11 @@ export function DrugTestEventEditor({
                   value={manualQ}
                   disabled={disabled || busy}
                   onChange={(e) => setManualQ(e.target.value)}
+                  onInput={(e) => setManualQ((e.target as HTMLInputElement).value)}
                   placeholder="Specimen, reason, date, missing doc…"
                   className={fieldCls}
                   aria-label="Search events for manual matching"
+                  data-testid="drug-manual-event-search"
                 />
               </label>
               <label className={labelCls}>
@@ -192,11 +229,11 @@ export function DrugTestEventEditor({
                   <option value="">Select event…</option>
                   {manualOptions.map((c) => (
                     <option
-                      key={c.testingEventId}
-                      value={c.testingEventId}
+                      key={asDrugText(c.testingEventId)}
+                      value={asDrugText(c.testingEventId)}
                       disabled={c.hasIncomingKind}
                     >
-                      {c.label}
+                      {asDrugText(c.label)}
                       {c.hasIncomingKind ? " · BLOCKED (doc already present)" : ""}
                     </option>
                   ))}
@@ -224,8 +261,11 @@ export function DrugTestEventEditor({
               >
                 <option value="">Select which event…</option>
                 {ambiguousCandidates.map((c) => (
-                  <option key={c.testingEventId} value={c.testingEventId}>
-                    {c.label}
+                  <option
+                    key={asDrugText(c.testingEventId)}
+                    value={asDrugText(c.testingEventId)}
+                  >
+                    {asDrugText(c.label)}
                   </option>
                 ))}
               </select>
@@ -250,11 +290,13 @@ export function DrugTestEventEditor({
 
           {conflictMessage && (
             <p role="alert" className="rounded-md border border-danger/40 bg-danger-soft px-2.5 py-1.5 text-[14px] font-semibold text-danger">
-              {conflictMessage}
+              {asDrugText(conflictMessage)}
             </p>
           )}
           {pairingHint && !conflictMessage && (
-            <p className="text-[13px] font-semibold text-[var(--brand-slate)]">{pairingHint}</p>
+            <p className="text-[13px] font-semibold text-[var(--brand-slate)]">
+              {asDrugText(pairingHint)}
+            </p>
           )}
         </fieldset>
       )}
@@ -282,19 +324,25 @@ export function DrugTestEventEditor({
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Collection / event date</span>
           <input
+            ref={eventDateRef}
+            data-testid="drug-event-date"
             type="date"
             disabled={disabled || busy}
             value={parseISO(eventDate) ? eventDate : ""}
             onChange={(e) => setEventDate(e.target.value)}
+            onInput={(e) => setEventDate((e.target as HTMLInputElement).value)}
             className={fieldCls}
           />
         </label>
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Specimen ID</span>
           <input
+            ref={specimenRef}
+            data-testid="drug-specimen-id"
             value={specimenId}
             disabled={disabled || busy}
             onChange={(e) => setSpecimenId(e.target.value)}
+            onInput={(e) => setSpecimenId((e.target as HTMLInputElement).value)}
             placeholder="Leading zeros kept (e.g. 01234)"
             className={`${fieldCls} font-mono`}
           />
@@ -302,10 +350,13 @@ export function DrugTestEventEditor({
         <label className={labelCls}>
           <span className="mb-1 block font-bold text-muted-foreground">Reason</span>
           <input
+            ref={reasonRef}
+            data-testid="drug-reason"
             list="drug-reason-suggestions"
             value={reason}
             disabled={disabled || busy}
             onChange={(e) => setReason(e.target.value)}
+            onInput={(e) => setReason((e.target as HTMLInputElement).value)}
             placeholder="Random, Follow-up, …"
             className={fieldCls}
           />
@@ -318,9 +369,12 @@ export function DrugTestEventEditor({
         <label className={`${labelCls} ${compact ? "lg:col-span-1" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Collection context</span>
           <input
+            ref={contextRef}
+            data-testid="drug-collection-context"
             value={collectionContext}
             disabled={disabled || busy}
             onChange={(e) => setCollectionContext(e.target.value)}
+            onInput={(e) => setCollectionContext((e.target as HTMLInputElement).value)}
             placeholder="Collection date / site / batch — part of pairing key"
             className={fieldCls}
           />
@@ -329,22 +383,22 @@ export function DrugTestEventEditor({
           <label className={`${labelCls} ${compact ? "" : "sm:col-span-2"}`}>
             <span className="mb-1 block font-bold text-muted-foreground">Testing event link</span>
             <select
-              value={testingEventId}
+              value={asDrugText(testingEventId)}
               disabled={disabled || busy}
               onChange={(e) => setTestingEventId(e.target.value)}
               className={fieldCls}
             >
               <option value="">New testing event (independent)</option>
-              {initial?.testingEventId ? (
-                <option value={initial.testingEventId}>
-                  Keep current · {initial.testingEventId.slice(0, 8)}…
+              {keepEventId ? (
+                <option value={keepEventId}>
+                  Keep current · {keepEventId.slice(0, 8)}…
                 </option>
               ) : null}
               {linkOptions
-                .filter((o) => o.id !== initial?.testingEventId)
+                .filter((o) => asDrugText(o.id) !== keepEventId)
                 .map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
+                  <option key={asDrugText(o.id)} value={asDrugText(o.id)}>
+                    {asDrugText(o.label)}
                   </option>
                 ))}
             </select>
@@ -353,9 +407,12 @@ export function DrugTestEventEditor({
         <label className={`${labelCls} ${compact ? "sm:col-span-2 lg:col-span-3" : "sm:col-span-2"}`}>
           <span className="mb-1 block font-bold text-muted-foreground">Notes</span>
           <input
+            ref={notesRef}
+            data-testid="drug-notes"
             value={notes}
             disabled={disabled || busy}
             onChange={(e) => setNotes(e.target.value)}
+            onInput={(e) => setNotes((e.target as HTMLInputElement).value)}
             className={fieldCls}
           />
         </label>

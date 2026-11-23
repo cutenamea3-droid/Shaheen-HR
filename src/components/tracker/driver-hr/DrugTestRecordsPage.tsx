@@ -31,6 +31,7 @@ import {
 import {
   DRUG_DOC_KIND_LABEL,
   DRUG_PAIR_STATUS_LABEL,
+  asDrugText,
   formatDrugDocKind,
   newTestingEventId,
   pairDrugTestEvents,
@@ -55,7 +56,10 @@ export function DrugTestRecordsPage() {
   const view = useViewMode();
   const isAdmin = role === "admin";
   const data = useData();
-  const roster = useMemo(() => listRosterDrivers(data), [data]);
+  const roster = useMemo(() => {
+    const list = listRosterDrivers(data);
+    return Array.isArray(list) ? list : [];
+  }, [data]);
   const mode = getDriverDrugTestMode();
   const persistOk = canPersistDrugTests();
   const blocked = drugTestPersistBlockedReason(mode);
@@ -109,7 +113,7 @@ export function DrugTestRecordsPage() {
         actor,
       ).then((res) => {
         if (!alive) return;
-        setEvents(res.events);
+        setEvents(Array.isArray(res.events) ? res.events : []);
         setLoadError(res.error);
         setLoading(false);
       });
@@ -122,9 +126,11 @@ export function DrugTestRecordsPage() {
     };
   }, [roster, actor, persistOk, blocked]);
 
+  const safeEvents = Array.isArray(events) ? events : [];
+
   const pairsByDriver = useMemo(() => {
     const byDriver = new Map<string, DrugTestEvent[]>();
-    for (const ev of events) {
+    for (const ev of safeEvents) {
       const list = byDriver.get(ev.driverId) ?? [];
       list.push(ev);
       byDriver.set(ev.driverId, list);
@@ -141,22 +147,27 @@ export function DrugTestRecordsPage() {
       }
     }
     rows.sort((a, b) => {
-      const da = a.eventDate || a.collectionContext || "";
-      const db = b.eventDate || b.collectionContext || "";
+      const da = asDrugText(a.eventDate || a.collectionContext || "");
+      const db = asDrugText(b.eventDate || b.collectionContext || "");
       if (da !== db) return db.localeCompare(da);
-      return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+      return asDrugText(a.driverName).localeCompare(asDrugText(b.driverName), undefined, {
+        sensitivity: "base",
+      });
     });
     return rows;
-  }, [events, nameById]);
+  }, [safeEvents, nameById]);
 
   const reasonOptions = useMemo(() => {
     const s = new Set<string>();
-    for (const r of pairsByDriver) if (r.reason.trim()) s.add(r.reason.trim());
+    for (const r of pairsByDriver) {
+      const reason = asDrugText(r.reason).trim();
+      if (reason) s.add(reason);
+    }
     return [...s].sort((a, b) => a.localeCompare(b));
   }, [pairsByDriver]);
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = asDrugText(q).trim().toLowerCase();
     let rows = pairsByDriver.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (!needle) return true;
@@ -172,12 +183,14 @@ export function DrugTestRecordsPage() {
         r.federal ? DRUG_DOC_KIND_LABEL.federal_drug : "",
         r.medical ? DRUG_DOC_KIND_LABEL.medical_review : "",
       ]
+        .map(asDrugText)
         .join(" ")
         .toLowerCase();
       return hay.includes(needle);
     });
     if (reasonFilter !== "all") {
-      rows = rows.filter((r) => r.reason.trim().toLowerCase() === reasonFilter.toLowerCase());
+      const want = asDrugText(reasonFilter).trim().toLowerCase();
+      rows = rows.filter((r) => asDrugText(r.reason).trim().toLowerCase() === want);
     }
     return rows;
   }, [pairsByDriver, statusFilter, q, reasonFilter]);
@@ -188,7 +201,7 @@ export function DrugTestRecordsPage() {
   const showingEvents = filtered.length;
   const showingDrivers = useMemo(() => new Set(filtered.map((r) => r.driverId)).size, [filtered]);
   const isFiltered =
-    q.trim() !== "" || statusFilter !== "all" || reasonFilter !== "all";
+    asDrugText(q).trim() !== "" || statusFilter !== "all" || reasonFilter !== "all";
 
   const grouped = useMemo(() => {
     if (!groupByDriver) return null;
@@ -199,8 +212,8 @@ export function DrugTestRecordsPage() {
       map.set(r.driverId, list);
     }
     return [...map.entries()].sort((a, b) => {
-      const na = nameById.get(a[0]) ?? a[0];
-      const nb = nameById.get(b[0]) ?? b[0];
+      const na = asDrugText(nameById.get(a[0]) ?? a[0]);
+      const nb = asDrugText(nameById.get(b[0]) ?? b[0]);
       return na.localeCompare(nb, undefined, { sensitivity: "base" });
     });
   }, [filtered, groupByDriver, nameById]);
@@ -226,8 +239,11 @@ export function DrugTestRecordsPage() {
   };
 
   const driverEvents = useMemo(
-    () => (pickedDriverId ? events.filter((e) => e.driverId === pickedDriverId && !e.deletedAt) : []),
-    [events, pickedDriverId],
+    () =>
+      pickedDriverId
+        ? safeEvents.filter((e) => e.driverId === pickedDriverId && !e.deletedAt)
+        : [],
+    [safeEvents, pickedDriverId],
   );
 
   const saveNewEvent = async (draft: DrugEventDraft, opts?: DrugEventSaveOpts) => {
@@ -288,7 +304,7 @@ export function DrugTestRecordsPage() {
     const testingEventId =
       resolution.status === "attach"
         ? resolution.testingEventId
-        : draft.testingEventId.trim() || newTestingEventId();
+        : asDrugText(draft.testingEventId).trim() || newTestingEventId();
 
     try {
       await addDrugTestEvent(
@@ -302,8 +318,8 @@ export function DrugTestRecordsPage() {
       toast.success(
         resolution.status === "attach"
           ? addAnother
-            ? `${resolution.message} — add another`
-            : resolution.message
+            ? `${asDrugText(resolution.message)} — add another`
+            : asDrugText(resolution.message)
           : addAnother
             ? "Event saved — add another"
             : "Event saved",
@@ -641,7 +657,7 @@ export function DrugTestRecordsPage() {
             compact
             disabled={!persistOk}
             initial={editEv}
-            linkOptions={events
+            linkOptions={safeEvents
               .filter((e) => e.driverId === editEv.driverId && e.kind === "federal_drug" && e.testingEventId)
               .map((e) => ({
                 id: e.testingEventId,
@@ -676,27 +692,29 @@ export function DrugTestRecordsPage() {
           <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Driver</dt>
-              <dd>{viewRow.driverName}</dd>
+              <dd>{asDrugText(viewRow.driverName)}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Pair status</dt>
-              <dd>{DRUG_PAIR_STATUS_LABEL[viewRow.status]}</dd>
+              <dd>{asDrugText(DRUG_PAIR_STATUS_LABEL[viewRow.status])}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Reason</dt>
-              <dd>{viewRow.reason || "—"}</dd>
+              <dd>{asDrugText(viewRow.reason) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Collection date</dt>
-              <dd>{viewRow.eventDate || viewRow.collectionContext || "—"}</dd>
+              <dd>
+                {asDrugText(viewRow.eventDate) || asDrugText(viewRow.collectionContext) || "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Specimen</dt>
-              <dd className="font-mono">{viewRow.specimenId || "—"}</dd>
+              <dd className="font-mono">{asDrugText(viewRow.specimenId) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Testing event id</dt>
-              <dd className="font-mono text-[13px]">{viewRow.testingEventId || "—"}</dd>
+              <dd className="font-mono text-[13px]">{asDrugText(viewRow.testingEventId) || "—"}</dd>
             </div>
             <div>
               <dt className="text-[13px] font-bold text-muted-foreground">Federal Drug (CCF)</dt>
@@ -806,7 +824,7 @@ export function DrugTestRecordsPage() {
         </table>
         {!loading && !filtered.length && (
           <p className="px-3 py-6 text-[15px] text-muted-foreground">
-            {events.length
+            {safeEvents.length
               ? "No rows match this filter."
               : persistOk
                 ? "No drug test events yet — use + Add with a searchable driver."
@@ -848,10 +866,16 @@ function RecordRow({
 }) {
   return (
     <tr className="border-t border-foreground/10 align-top">
-      <td className="px-3 py-2.5 font-semibold">{hideDriver ? "" : row.driverName}</td>
-      <td className="px-3 py-2.5">{row.reason || "—"}</td>
-      <td className="px-3 py-2.5 text-[14px]">{row.eventDate || row.collectionContext || "—"}</td>
-      <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">{row.specimenId || "—"}</td>
+      <td className="px-3 py-2.5 font-semibold">
+        {hideDriver ? "" : asDrugText(row.driverName)}
+      </td>
+      <td className="px-3 py-2.5">{asDrugText(row.reason) || "—"}</td>
+      <td className="px-3 py-2.5 text-[14px]">
+        {asDrugText(row.eventDate) || asDrugText(row.collectionContext) || "—"}
+      </td>
+      <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">
+        {asDrugText(row.specimenId) || "—"}
+      </td>
       <td className="px-3 py-2.5 text-[14px]">
         {row.federal ? (
           <button
@@ -861,7 +885,9 @@ function RecordRow({
             className="text-left hover:underline disabled:no-underline"
           >
             <div className="font-bold">{formatDrugDocKind(row.federal.kind)}</div>
-            <div className="font-mono text-muted-foreground">{row.federal.specimenId || "no specimen"}</div>
+            <div className="font-mono text-muted-foreground">
+              {asDrugText(row.federal.specimenId) || "no specimen"}
+            </div>
           </button>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -876,7 +902,9 @@ function RecordRow({
             className="text-left hover:underline disabled:no-underline"
           >
             <div className="font-bold">{formatDrugDocKind(row.medical.kind)}</div>
-            <div className="font-mono text-muted-foreground">{row.medical.specimenId || "no specimen"}</div>
+            <div className="font-mono text-muted-foreground">
+              {asDrugText(row.medical.specimenId) || "no specimen"}
+            </div>
           </button>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -884,7 +912,7 @@ function RecordRow({
       </td>
       <td className="px-3 py-2.5">
         <span className={cn("inline-flex rounded-md px-2 py-0.5 text-[13px] font-bold", DRUG_STATUS_TONE[row.status])}>
-          {DRUG_PAIR_STATUS_LABEL[row.status]}
+          {asDrugText(DRUG_PAIR_STATUS_LABEL[row.status])}
         </span>
       </td>
       <td className="px-3 py-2.5">

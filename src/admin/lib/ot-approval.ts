@@ -11,6 +11,8 @@ import { create } from "zustand";
 import type { DayRec, Dept, Employee, Settings } from "./types";
 import { calcDay, monthDays } from "./calc";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export type OtApprovalKind = "overtime" | "additional_day";
 /** Bonus is a separate compensation line — never stored as OT/addl approval. */
 export type CompensationKind = OtApprovalKind | "bonus";
@@ -60,11 +62,17 @@ export function collectOtCandidates(input: {
     minutes: number;
     note: string;
   }> = [];
-  for (const e of input.employees) {
+  const employees = Array.isArray(input.employees) ? input.employees : [];
+  const depts = Array.isArray(input.depts) ? input.depts : [];
+  const records =
+    input.records && typeof input.records === "object" && !Array.isArray(input.records)
+      ? input.records
+      : {};
+  for (const e of employees) {
     if (input.deptId && e.deptId !== input.deptId) continue;
-    const dept = input.depts.find((d) => d.id === e.deptId);
+    const dept = depts.find((d) => d.id === e.deptId);
     for (const d of monthDays(input.month)) {
-      const r = input.records[d]?.[e.id];
+      const r = records[d]?.[e.id];
       if (!r) continue;
       const c = calcDay(e, dept, d, r, input.settings);
       if (c.overtimeMin > 0) {
@@ -73,7 +81,7 @@ export function collectOtCandidates(input: {
           date: d,
           kind: "overtime",
           minutes: c.overtimeMin,
-          note: r.note ?? "",
+          note: asText(r.note),
         });
       }
       if (c.extraDay) {
@@ -82,7 +90,7 @@ export function collectOtCandidates(input: {
           date: d,
           kind: "additional_day",
           minutes: c.extraDayMin,
-          note: r.note ?? "",
+          note: asText(r.note),
         });
       }
     }
@@ -104,53 +112,62 @@ type OtApprovalState = {
   resetApprovals: () => void;
 };
 
+const rowsOf = (v: unknown): Record<string, OtApprovalRow> =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, OtApprovalRow>) : {};
+
 export const useOtApprovalStore = create<OtApprovalState>()((set, get) => ({
   rows: {},
 
   ensureCandidate: (c) => {
     const id = otApprovalId(c.employeeId, c.date, c.kind);
-    const existing = get().rows[id];
+    const rows = rowsOf(get().rows);
+    const existing = rows[id];
     if (existing) {
       // Refresh minutes/note from attendance; keep decision.
-      set((s) => ({
+      set({
         rows: {
-          ...s.rows,
-          [id]: { ...existing, minutes: c.minutes, note: c.note ?? existing.note },
+          ...rows,
+          [id]: {
+            ...existing,
+            minutes: c.minutes,
+            note: c.note != null ? asText(c.note) : asText(existing.note),
+          },
         },
-      }));
+      });
       return;
     }
-    set((s) => ({
+    set({
       rows: {
-        ...s.rows,
+        ...rows,
         [id]: {
           id,
-          employeeId: c.employeeId,
-          date: c.date,
+          employeeId: asText(c.employeeId),
+          date: asText(c.date),
           kind: c.kind,
           minutes: c.minutes,
           status: "pending",
-          note: c.note ?? "",
+          note: asText(c.note),
           decidedAt: null,
         },
       },
-    }));
+    });
   },
 
   setStatus: (id, status, note) => {
-    const row = get().rows[id];
+    const rows = rowsOf(get().rows);
+    const row = rows[id];
     if (!row) return { ok: false, error: "Approval row not found" };
-    set((s) => ({
+    set({
       rows: {
-        ...s.rows,
+        ...rows,
         [id]: {
           ...row,
           status,
-          note: note != null ? note : row.note,
+          note: note != null ? asText(note) : asText(row.note),
           decidedAt: Date.now(),
         },
       },
-    }));
+    });
     return { ok: true };
   },
 
@@ -166,9 +183,11 @@ export function approvedMinutesForEmployee(
 ): { minutes: number; days: number } {
   let minutes = 0;
   let days = 0;
-  for (const r of Object.values(rows)) {
+  const asDate = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const monthKey = asDate(month);
+  for (const r of Object.values(rowsOf(rows))) {
     if (r.employeeId !== employeeId) continue;
-    if (!r.date.startsWith(month)) continue;
+    if (!asDate(r.date).startsWith(monthKey)) continue;
     if (r.kind !== kind) continue;
     if (r.status !== "approved") continue;
     minutes += r.minutes;

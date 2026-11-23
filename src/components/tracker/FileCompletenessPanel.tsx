@@ -11,9 +11,12 @@ import {
   printFileCompletenessSummary,
 } from "@/lib/file-completeness";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function FileCompletenessPanel() {
   const data = useData();
   const report = useMemo(() => buildFileCompletenessReport(data), [data]);
+  const drivers = Array.isArray(report.drivers) ? report.drivers : [];
 
   const tone =
     report.fleetPercent >= 90 ? "text-ok" : report.fleetPercent >= 70 ? "text-warn" : "text-danger";
@@ -35,7 +38,7 @@ export function FileCompletenessPanel() {
               </p>
               <p className="text-sm font-semibold text-muted-foreground">
                 Fleet · {report.fleetComplete}/{report.fleetApplicable} applicable items ·{" "}
-                {report.drivers.length} active drivers
+                {drivers.length} active drivers
               </p>
               <div className="mt-2 h-3 w-56 overflow-hidden rounded-full bg-muted">
                 <div className={cn("h-full rounded-full", bar)} style={{ width: `${report.fleetPercent}%` }} />
@@ -76,7 +79,7 @@ export function FileCompletenessPanel() {
         </div>
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-sm font-semibold text-muted-foreground">
           <span className="font-extrabold text-foreground">How % is calculated: </span>
-          {report.formula}
+          {asText(report.formula)}
         </div>
       </div>
 
@@ -95,7 +98,7 @@ export function FileCompletenessPanel() {
             </tr>
           </thead>
           <tbody>
-            {report.drivers.map((d) => (
+            {drivers.map((d) => (
               <tr key={d.driverId} className="border-b last:border-0">
                 <td className="px-4 py-3 font-bold">
                   <Link
@@ -103,7 +106,7 @@ export function FileCompletenessPanel() {
                     search={{ driver: d.driverId }}
                     className="text-primary underline-offset-2 hover:underline"
                   >
-                    {d.driverName}
+                    {asText(d.driverName)}
                   </Link>
                 </td>
                 <td className="px-4 py-3 font-extrabold tabular-nums">{d.percent}%</td>
@@ -114,10 +117,10 @@ export function FileCompletenessPanel() {
                 <td className="px-4 py-3 tabular-nums">{d.expired}</td>
                 <td className="px-4 py-3 tabular-nums">{d.pending}</td>
                 <td className="px-4 py-3 tabular-nums">{d.unable}</td>
-                <td className="px-4 py-3 text-muted-foreground">{d.formulaNote}</td>
+                <td className="px-4 py-3 text-muted-foreground">{asText(d.formulaNote)}</td>
               </tr>
             ))}
-            {!report.drivers.length && (
+            {!drivers.length && (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No active drivers to score.

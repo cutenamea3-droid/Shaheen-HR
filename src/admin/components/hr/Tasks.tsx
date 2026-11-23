@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { prettyDate } from "@/admin/lib/calc";
 import { normalizeTasks, taskDoneDays } from "@/admin/lib/normalize-tasks";
 import type { Task } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 const yesterday = () => {
   const d = new Date();
@@ -51,7 +53,7 @@ export function TaskGate() {
           {over.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4">
               <div>
-                <p className="text-xl font-bold">{t.title}</p>
+                <p className="text-xl font-bold">{asText(t.title)}</p>
                 <p className="text-sm font-semibold text-destructive">Was due {prettyDate(t.due)}</p>
               </div>
               <button className="btn-primary px-5 py-3 text-base" onClick={() => finish(t.id)}>Mark complete</button>
@@ -60,7 +62,7 @@ export function TaskGate() {
           {missed.map((t) => (
             <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border-2 border-destructive bg-destructive/10 p-4">
               <div>
-                <p className="text-xl font-bold">{t.title}</p>
+                <p className="text-xl font-bold">{asText(t.title)}</p>
                 <p className="text-sm font-semibold text-destructive">Daily task missed on {prettyDate(y)}</p>
               </div>
               <button className="btn-primary px-5 py-3 text-base" onClick={() => finish(t.id, y)}>Mark complete</button>
@@ -75,6 +77,7 @@ export function TaskGate() {
 export function Tasks() {
   const { tasks, addTask, toggleTask, removeTask } = useApp();
   const [title, setTitle] = useState("");
+  const titleRef = useRef<HTMLInputElement>(null);
   const [kind, setKind] = useState<Task["kind"]>("dated");
   const [due, setDue] = useState(todayStr());
   const today = todayStr();
@@ -85,19 +88,20 @@ export function Tasks() {
       <SectionTitle title="My tasks" sub="Dated tasks lock the dashboard once overdue. Daily tasks repeat every day." />
       {missed.length > 0 && (
         <div className="panel mb-4 border-destructive/40 text-sm text-destructive">
-          Missed yesterday: {missed.map((t) => t.title).join(", ")}
+          Missed yesterday: {missed.map((t) => asText(t.title)).join(", ")}
         </div>
       )}
       <form
         className="panel mb-4 grid gap-3 md:grid-cols-[1fr_160px_170px_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!title.trim()) return;
-          addTask({ title: title.trim(), kind, due });
+          const nextTitle = (asText(title).trim() || titleRef.current?.value || "").trim();
+          if (!nextTitle) return;
+          addTask({ title: nextTitle, kind, due: asText(due) });
           setTitle("");
         }}
       >
-        <label><span className="lbl">Task</span><input className="field" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label><span className="lbl">Task</span><input ref={titleRef} data-testid="admin-task-title" className="field" value={asText(title)} onChange={(e) => setTitle(e.target.value)} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} /></label>
         <label>
           <span className="lbl">Type</span>
           <select className="field" value={kind} onChange={(e) => setKind(e.target.value as Task["kind"])}>
@@ -105,7 +109,7 @@ export function Tasks() {
             <option value="daily">Every day</option>
           </select>
         </label>
-        <label><span className="lbl">{kind === "dated" ? "Due date" : "Starts"}</span><input type="date" className="field" value={due} onChange={(e) => e.target.value && setDue(e.target.value)} /></label>
+        <label><span className="lbl">{kind === "dated" ? "Due date" : "Starts"}</span><input type="date" className="field" value={asText(due)} onChange={(e) => e.target.value && setDue(e.target.value)} /></label>
         <button className="btn-primary">Add task</button>
       </form>
       <div className="space-y-2">
@@ -115,7 +119,9 @@ export function Tasks() {
             <div key={t.id} className="panel flex items-center justify-between gap-3 py-3">
               <label className="flex items-center gap-3">
                 <input type="checkbox" className="h-5 w-5 accent-primary" checked={done} onChange={() => toggleTask(t.id, today)} />
-                <span className={done ? "text-muted-foreground line-through" : "font-semibold"}>{t.title}</span>
+                <span className={done ? "text-muted-foreground line-through" : "font-semibold"}>
+                  {asText(t.title)}
+                </span>
               </label>
               <span className="flex items-center gap-3 text-xs text-muted-foreground">
                 {t.kind === "daily" ? "Every day" : prettyDate(t.due)}

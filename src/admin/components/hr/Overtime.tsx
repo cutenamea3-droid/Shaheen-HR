@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useApp } from "@/admin/lib/store";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { calcDay, fmtHours, monthDays, prettyDate } from "@/admin/lib/calc";
 import {
   COMPENSATION_KIND_LABEL,
@@ -9,16 +9,42 @@ import {
   type OtApprovalKind,
   type OtApprovalStatus,
 } from "@/admin/lib/ot-approval";
+import type { Dept, Employee } from "@/admin/lib/types";
 import { SectionTitle, todayStr } from "./common";
 
 type Row = { d: string; kind: OtApprovalKind; min: number; note: string; status: OtApprovalStatus; id: string };
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Overtime() {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [dept, setDept] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OtApprovalStatus>("all");
-  const { employees, depts, records, settings } = useApp();
-  const rowsMap = useOtApprovalStore((s) => s.rows);
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    settings,
+  } = useApp();
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const rowsMapRaw = useOtApprovalStore((s) => s.rows);
+  const rowsMap =
+    rowsMapRaw && typeof rowsMapRaw === "object" && !Array.isArray(rowsMapRaw) ? rowsMapRaw : {};
   const ensureCandidate = useOtApprovalStore((s) => s.ensureCandidate);
   const setStatus = useOtApprovalStore((s) => s.setStatus);
 
@@ -52,7 +78,7 @@ export function Overtime() {
             d,
             kind: "overtime",
             min: c.overtimeMin,
-            note: r.note ?? "",
+            note: r.note == null ? "" : typeof r.note === "string" ? r.note : String(r.note),
             status: ap?.status ?? "pending",
             id,
           });
@@ -64,7 +90,7 @@ export function Overtime() {
             d,
             kind: "additional_day",
             min: c.extraDayMin,
-            note: r.note ?? "",
+            note: r.note == null ? "" : typeof r.note === "string" ? r.note : String(r.note),
             status: ap?.status ?? "pending",
             id,
           });
@@ -113,18 +139,18 @@ export function Overtime() {
         }
         right={
           <div className="flex flex-wrap gap-2">
-            <select className="field w-auto" value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
+            <select className="field w-auto" value={asText(dept)} onChange={(e) => setDept(e.target.value)} aria-label="Department">
               <option value="">All departments</option>
               {depts.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
+                <option key={asText(d.id)} value={asText(d.id)}>
+                  {asText(d.name)}
                 </option>
               ))}
             </select>
             <input
               type="month"
               className="field w-auto"
-              value={month}
+              value={asText(month)}
               onChange={(e) => e.target.value && setMonth(e.target.value)}
               aria-label="Month"
             />
@@ -176,9 +202,10 @@ export function Overtime() {
           <div key={x.e.id} className="admin-emp-card">
             <div className="admin-emp-head">
               <h3 className="font-bold tracking-tight">
-                {x.n}. {x.e.name}{" "}
+                {x.n}. {asText(x.e.name)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
-                  · {depts.find((d) => d.id === x.e.deptId)?.name} · {x.e.afterHours ? "After-hours" : "Normal"}
+                  · {asText(depts.find((d) => d.id === x.e.deptId)?.name)} ·{" "}
+                  {x.e.afterHours ? "After-hours" : "Normal"}
                 </span>
               </h3>
               <p className="text-sm">
@@ -217,7 +244,7 @@ export function Overtime() {
                                 : "text-muted-foreground"
                           }
                         >
-                          {r.status}
+                          {asText(r.status)}
                         </span>
                       </td>
                       <td>
@@ -255,7 +282,7 @@ export function Overtime() {
                           </button>
                         </div>
                       </td>
-                      <td className="whitespace-pre-wrap">{r.note || "—"}</td>
+                      <td className="whitespace-pre-wrap">{asText(r.note) || "—"}</td>
                     </tr>
                   ))}
                 </tbody>

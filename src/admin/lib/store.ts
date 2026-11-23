@@ -50,6 +50,155 @@ type State = {
   setSettings: (p: Partial<Settings>) => void;
 };
 
+const arrOf = <T,>(v: unknown, fallback: T[] = []): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+const objOf = <T extends object>(v: unknown, fallback: T): T =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+/** Coerce employee scalars from corrupt cloud/local persist before UI `.name` / joinMonth use. */
+export function normalizeEmployee(raw: Partial<Employee> & Pick<Employee, "id">): Employee {
+  const joinRaw = asText(raw.joinMonth);
+  const joinMonth = /^\d{4}-\d{2}/.test(joinRaw)
+    ? joinRaw.slice(0, 7)
+    : new Date().toISOString().slice(0, 7);
+  const opening =
+    typeof raw.openingLeave === "number" && Number.isFinite(raw.openingLeave)
+      ? raw.openingLeave
+      : Number.isFinite(Number(raw.openingLeave))
+        ? Number(raw.openingLeave)
+        : 0;
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    deptId: asText(raw.deptId),
+    afterHours: Boolean(raw.afterHours),
+    joinMonth,
+    openingLeave: opening,
+    ...(Array.isArray(raw.deptAssignments) ? { deptAssignments: raw.deptAssignments } : {}),
+  };
+}
+
+/** Coerce team ACL row scalars before email/name compares. */
+export function normalizeTeamMember(raw: Partial<TeamMember> & Pick<TeamMember, "id">): TeamMember {
+  const role = raw.role === "admin" || raw.role === "standard" ? raw.role : "standard";
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    email: asText(raw.email).trim().toLowerCase(),
+    role,
+    active: raw.active !== false,
+  };
+}
+
+/** Coerce department name/shift minutes from corrupt persist. */
+export function normalizeDept(raw: Partial<Dept> & Pick<Dept, "id">): Dept {
+  const asMin = (v: unknown, fallback: number): number => {
+    if (v == null || v === "") return fallback;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    id: asText(raw.id) || uid(),
+    name: asText(raw.name),
+    start: asMin(raw.start, 540),
+    end: asMin(raw.end, 1140),
+  };
+}
+
+const asMinOrNull = (v: unknown): number | null => {
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const asFinite = (v: unknown, fallback: number): number => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+/** Coerce attendance DayRec scalars from corrupt cloud/local persist. */
+export function normalizeDayRec(raw: unknown): DayRec {
+  const base = emptyRec();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return base;
+  const r = raw as Partial<DayRec>;
+  const status =
+    r.status === "present" || r.status === "leave" || r.status === "absent" || r.status === "half"
+      ? r.status
+      : "present";
+  const otMode = r.otMode === "custom" ? "custom" : "auto";
+  return {
+    status,
+    in: asMinOrNull(r.in),
+    bin: asMinOrNull(r.bin),
+    bout: asMinOrNull(r.bout),
+    out: asMinOrNull(r.out),
+    noBreak: Boolean(r.noBreak),
+    otMarked: Boolean(r.otMarked),
+    otMode,
+    otHours: asFinite(r.otHours, 0),
+    extraHours: asMinOrNull(r.extraHours),
+    ...(r.doubleShift != null ? { doubleShift: Boolean(r.doubleShift) } : {}),
+    ...(r.extraMarked != null ? { extraMarked: Boolean(r.extraMarked) } : {}),
+    leavePaid: r.leavePaid !== false,
+    halfReason: asText(r.halfReason),
+    note: asText(r.note),
+  };
+}
+
+/** Coerce performance rating/note from corrupt persist. */
+export function normalizePerf(raw: unknown): Perf {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { rating: "", note: "" };
+  const p = raw as Partial<Perf>;
+  const r = asText(p.rating);
+  const rating = (
+    r === "excellent" || r === "good" || r === "average" || r === "needs" || r === "poor" ? r : ""
+  ) as Perf["rating"];
+  return { rating, note: asText(p.note) };
+}
+
+function healDayTree(
+  raw: unknown,
+  fallback: Record<string, Record<string, DayRec>>,
+): Record<string, Record<string, DayRec>> {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : (fallback as Record<string, unknown>);
+  const out: Record<string, Record<string, DayRec>> = {};
+  for (const [date, day] of Object.entries(src)) {
+    if (!day || typeof day !== "object" || Array.isArray(day)) continue;
+    const healed: Record<string, DayRec> = {};
+    for (const [empId, rec] of Object.entries(day as Record<string, unknown>)) {
+      healed[asText(empId) || empId] = normalizeDayRec(rec);
+    }
+    out[asText(date) || date] = healed;
+  }
+  return out;
+}
+
+function healPerfTree(
+  raw: unknown,
+  fallback: Record<string, Record<string, Perf>>,
+): Record<string, Record<string, Perf>> {
+  const src =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : (fallback as Record<string, unknown>);
+  const out: Record<string, Record<string, Perf>> = {};
+  for (const [date, day] of Object.entries(src)) {
+    if (!day || typeof day !== "object" || Array.isArray(day)) continue;
+    const healed: Record<string, Perf> = {};
+    for (const [empId, p] of Object.entries(day as Record<string, unknown>)) {
+      healed[asText(empId) || empId] = normalizePerf(p);
+    }
+    out[asText(date) || date] = healed;
+  }
+  return out;
+}
+
 export const useApp = create<State>()(
   persist(
     (set) => ({
@@ -63,37 +212,57 @@ export const useApp = create<State>()(
       team: seedData.team,
       logs: seedData.logs,
       upsertMember: (m) =>
-        set((s) => ({ team: s.team.some((x) => x.id === m.id) ? s.team.map((x) => (x.id === m.id ? m : x)) : [...s.team, m] })),
-      removeMember: (id) => set((s) => ({ team: s.team.filter((m) => m.id !== id) })),
+        set((s) => {
+          const team = arrOf<TeamMember>(s.team);
+          const next = normalizeTeamMember(m);
+          return {
+            team: team.some((x) => x.id === next.id)
+              ? team.map((x) => (x.id === next.id ? next : x))
+              : [...team, next],
+          };
+        }),
+      removeMember: (id) => set((s) => ({ team: arrOf<TeamMember>(s.team).filter((m) => m.id !== id) })),
       addLog: (who, action) =>
         set((s) => {
+          const logs = arrOf<LogEntry>(s.logs);
           const now = Date.now();
-          const top = s.logs[0];
+          const whoText = asText(who);
+          const actionText = asText(action);
+          const top = logs[0];
           // merge repeated edits of the same kind within one minute
-          if (top && top.who === who && top.action === action && now - top.at < 60_000)
-            return { logs: [{ ...top, at: now, count: (top.count ?? 1) + 1 }, ...s.logs.slice(1)] };
-          return { logs: [{ id: uid(), at: now, who, action }, ...s.logs].slice(0, 500) };
+          if (top && top.who === whoText && top.action === actionText && now - top.at < 60_000)
+            return { logs: [{ ...top, at: now, count: (top.count ?? 1) + 1 }, ...logs.slice(1)] };
+          return { logs: [{ id: uid(), at: now, who: whoText, action: actionText }, ...logs].slice(0, 500) };
         }),
       setAuthed: (authed) => set({ authed }),
       upsertDept: (d) =>
-        set((s) => ({ depts: s.depts.some((x) => x.id === d.id) ? s.depts.map((x) => (x.id === d.id ? d : x)) : [...s.depts, d] })),
-      removeDept: (id) => set((s) => ({ depts: s.depts.filter((d) => d.id !== id) })),
+        set((s) => {
+          const depts = arrOf<Dept>(s.depts);
+          const next = normalizeDept(d);
+          return {
+            depts: depts.some((x) => x.id === next.id)
+              ? depts.map((x) => (x.id === next.id ? next : x))
+              : [...depts, next],
+          };
+        }),
+      removeDept: (id) => set((s) => ({ depts: arrOf<Dept>(s.depts).filter((d) => d.id !== id) })),
       addEmployee: (e) =>
         set((s) => {
           const id = uid();
-          const effectiveFrom = `${(e.joinMonth || new Date().toISOString().slice(0, 7))}-01`;
+          const base = normalizeEmployee({ ...e, id });
+          const effectiveFrom = `${base.joinMonth}-01`;
           const emp: Employee = {
-            ...e,
-            id,
-            deptAssignments: e.deptAssignments?.length
-              ? e.deptAssignments
-              : [{ deptId: e.deptId, effectiveFrom }],
+            ...base,
+            deptAssignments:
+              Array.isArray(e.deptAssignments) && e.deptAssignments.length
+                ? e.deptAssignments
+                : [{ deptId: base.deptId, effectiveFrom }],
           };
-          return { employees: [...s.employees, emp] };
+          return { employees: [...arrOf<Employee>(s.employees), emp] };
         }),
       updateEmployee: (id, p) =>
         set((s) => ({
-          employees: s.employees.map((e) => {
+          employees: arrOf<Employee>(s.employees).map((e) => {
             if (e.id !== id) return e;
             const { deptEffectiveFrom, ...rest } = p;
             if (rest.deptId != null && rest.deptId !== e.deptId) {
@@ -101,16 +270,17 @@ export const useApp = create<State>()(
                 typeof deptEffectiveFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(deptEffectiveFrom)
                   ? deptEffectiveFrom
                   : new Date().toISOString().slice(0, 10);
-              const hist = appendDeptAssignment(e, rest.deptId, effectiveFrom);
-              return { ...e, ...rest, ...hist };
+              const hist = appendDeptAssignment(e, asText(rest.deptId), effectiveFrom);
+              return normalizeEmployee({ ...e, ...rest, ...hist, id: e.id });
             }
-            return { ...e, ...rest };
+            return normalizeEmployee({ ...e, ...rest, id: e.id });
           }),
         })),
-      removeEmployee: (id) => set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
+      removeEmployee: (id) =>
+        set((s) => ({ employees: arrOf<Employee>(s.employees).filter((e) => e.id !== id) })),
       moveEmployee: (id, to) =>
         set((s) => {
-          const list = [...s.employees];
+          const list = [...arrOf<Employee>(s.employees)];
           const from = list.findIndex((e) => e.id === id);
           if (from < 0) return s;
           const it = list.splice(from, 1)[0]!;
@@ -119,27 +289,35 @@ export const useApp = create<State>()(
         }),
       setRec: (date, empId, p) =>
         set((s) => {
-          const day = s.records[date] ?? {};
-          return { records: { ...s.records, [date]: { ...day, [empId]: { ...(day[empId] ?? emptyRec()), ...p } } } };
+          const records = objOf(s.records, {} as State["records"]);
+          const day = records[date] ?? {};
+          const merged = normalizeDayRec({ ...(day[empId] ?? emptyRec()), ...p });
+          return { records: { ...records, [date]: { ...day, [empId]: merged } } };
         }),
       resetRec: (date, empId) =>
         set((s) => {
-          const day = { ...(s.records[date] ?? {}) };
+          const records = objOf(s.records, {} as State["records"]);
+          const day = { ...(records[date] ?? {}) };
           delete day[empId];
-          return { records: { ...s.records, [date]: day } };
+          return { records: { ...records, [date]: day } };
         }),
       resetDay: (date) =>
         set((s) => {
-          const r = { ...s.records };
+          const r = { ...objOf(s.records, {} as State["records"]) };
           delete r[date];
           return { records: r };
         }),
       setPerf: (date, empId, p) =>
         set((s) => {
-          const day = s.perf[date] ?? {};
-          return { perf: { ...s.perf, [date]: { ...day, [empId]: { ...(day[empId] ?? { rating: "", note: "" }), ...p } } } };
+          const perf = objOf(s.perf, {} as State["perf"]);
+          const day = perf[date] ?? {};
+          const merged = normalizePerf({ ...(day[empId] ?? { rating: "", note: "" }), ...p });
+          return { perf: { ...perf, [date]: { ...day, [empId]: merged } } };
         }),
-      addTask: (t) => set((s) => ({ tasks: [...s.tasks, { ...t, id: uid(), done: false, doneDays: [] }] })),
+      addTask: (t) =>
+        set((s) => ({
+          tasks: [...normalizeTasks(s.tasks), { ...t, id: uid(), done: false, doneDays: [] }],
+        })),
       toggleTask: (id, day) =>
         set((s) => ({
           tasks: normalizeTasks(s.tasks).map((t) => {
@@ -151,7 +329,17 @@ export const useApp = create<State>()(
           }),
         })),
       removeTask: (id) => set((s) => ({ tasks: normalizeTasks(s.tasks).filter((t) => t.id !== id) })),
-      setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
+      setSettings: (p) =>
+        set((s) => {
+          const base = objOf(s.settings, seedData.settings);
+          const next = { ...base, ...p };
+          if ("company" in p) next.company = asText(p.company);
+          for (const k of ["grace", "breakMin", "breakLeeway", "satTargetHours"] as const) {
+            if (k in p) next[k] = asFinite(p[k], base[k]);
+          }
+          if ("overpay" in p) next.overpay = Boolean(p.overpay);
+          return { settings: next };
+        }),
     }),
     {
       name: "hr-attendance-v1",
@@ -161,10 +349,48 @@ export const useApp = create<State>()(
           persisted && typeof persisted === "object" && !Array.isArray(persisted)
             ? (persisted as Partial<State>)
             : {};
+        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
+        const obj = <T extends object>(v: unknown, fallback: T): T =>
+          v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
+        const settingsRaw = obj(p.settings, current.settings);
         return {
           ...current,
           ...p,
-          tasks: normalizeTasks(p.tasks ?? current.tasks),
+          tasks: normalizeTasks(arr(p.tasks, current.tasks)),
+          employees: arr(p.employees, current.employees)
+            .filter((e): e is Employee => !!e && typeof e === "object" && !Array.isArray(e))
+            .map((e) => normalizeEmployee(e as Employee)),
+          team: arr(p.team, current.team)
+            .filter((m): m is TeamMember => !!m && typeof m === "object" && !Array.isArray(m))
+            .map((m) => normalizeTeamMember(m as TeamMember)),
+          depts: arr(p.depts, current.depts)
+            .filter((d): d is Dept => !!d && typeof d === "object" && !Array.isArray(d))
+            .map((d) => normalizeDept(d as Dept)),
+          logs: arr(p.logs, current.logs)
+            .filter((l): l is LogEntry => !!l && typeof l === "object" && !Array.isArray(l))
+            .map((l) => ({
+              ...l,
+              id: asText((l as LogEntry).id) || uid(),
+              who: asText((l as LogEntry).who),
+              action: asText((l as LogEntry).action),
+              at:
+                typeof (l as LogEntry).at === "number" && Number.isFinite((l as LogEntry).at)
+                  ? (l as LogEntry).at
+                  : Number.isFinite(Number((l as LogEntry).at))
+                    ? Number((l as LogEntry).at)
+                    : Date.now(),
+            })),
+          records: healDayTree(p.records, current.records),
+          perf: healPerfTree(p.perf, current.perf),
+          settings: {
+            ...settingsRaw,
+            company: asText(settingsRaw.company),
+            grace: asFinite(settingsRaw.grace, current.settings.grace),
+            breakMin: asFinite(settingsRaw.breakMin, current.settings.breakMin),
+            breakLeeway: asFinite(settingsRaw.breakLeeway, current.settings.breakLeeway),
+            satTargetHours: asFinite(settingsRaw.satTargetHours, current.settings.satTargetHours),
+            overpay: Boolean(settingsRaw.overpay),
+          },
         };
       },
     },

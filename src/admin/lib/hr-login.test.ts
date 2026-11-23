@@ -36,6 +36,14 @@ describe("classifyHrLoginError", () => {
 });
 
 describe("attemptHrLogin", () => {
+  it("coerces non-string email before trim", async () => {
+    const deps = mockDeps();
+    await expect(attemptHrLogin(null as unknown as string, "x", deps)).resolves.toMatchObject({
+      ok: false,
+      kind: "credentials",
+    });
+  });
+
   it("success: cloud sign-in clears local session", async () => {
     const deps = mockDeps();
     const result = await attemptHrLogin("hr.compliance@gmail.com", "secret-ok", deps);

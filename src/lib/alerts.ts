@@ -1,6 +1,8 @@
 import {
   SECTIONS,
+  cellsOf,
   formatDriverStatus,
+  headersOf,
   parseDriverStatus,
   type AppData,
   type DriverStatus,
@@ -27,7 +29,8 @@ export function today() {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-export function parseISO(v: string): Date | null {
+export function parseISO(v: string | null | undefined): Date | null {
+  if (v == null || typeof v !== "string") return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v.trim());
   if (!m) return null;
   return new Date(+m[1], +m[2] - 1, +m[3]);
@@ -36,14 +39,15 @@ export const daysUntil = (d: Date) => Math.round((d.getTime() - today().getTime(
 export function fmtDate(d: Date) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
-export function fmtCell(v: string) {
-  const d = parseISO(v);
-  return d ? fmtDate(d) : v;
+export function fmtCell(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  const d = parseISO(s);
+  return d ? fmtDate(d) : s;
 }
 
 /** Pull a date out of free text like "I will Apply On December 12 , 2026 (Saturday)". */
-export function parsePlanDate(text: string): Date | null {
-  if (!text) return null;
+export function parsePlanDate(text: string | null | undefined): Date | null {
+  if (text == null || typeof text !== "string" || !text) return null;
   const iso = parseISO(text);
   if (iso) return iso;
   const low = text.toLowerCase();
@@ -55,8 +59,10 @@ export function parsePlanDate(text: string): Date | null {
   return new Date(+yy[1], MONTHS.indexOf(mm[1]), nums[0]);
 }
 
-export function normStatus(v: string): string {
-  const k = v.toLowerCase().replace(/[^a-z]/g, "");
+export function normStatus(v: unknown): string {
+  if (v == null) return "";
+  const raw = typeof v === "string" ? v : String(v);
+  const k = raw.toLowerCase().replace(/[^a-z]/g, "");
   if (!k) return "";
   if (k === "valid") return "Valid";
   if (k.startsWith("applied")) return "Applied";
@@ -64,7 +70,7 @@ export function normStatus(v: string): string {
   if (k.startsWith("missing")) return "Missing";
   if (k.includes("sign")) return "Sign Missing";
   if (k.startsWith("expired")) return "Expired";
-  return v.trim();
+  return raw.trim();
 }
 export function statusTone(v: string): Tone {
   switch (normStatus(v)) {
@@ -77,11 +83,16 @@ export function statusTone(v: string): Tone {
   }
 }
 
-const filled = (v: string | undefined) => !!v && v.trim() !== "";
+const filled = (v: unknown) => {
+  if (v == null) return false;
+  const s = typeof v === "string" ? v : String(v);
+  return s.trim() !== "";
+};
 
 /** Case-insensitive "old" in an expiration cell — skip amber/red for that column. */
-export function isOldExpiry(v: string) {
-  return (v ?? "").toLowerCase().includes("old");
+export function isOldExpiry(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  return s.toLowerCase().includes("old");
 }
 
 /**
@@ -155,10 +166,11 @@ export const APPLIED_EXPIRING_SOON_DAYS = 30;
  * never rewrites the stored status or expiry date, and countdown keeps running.
  */
 export function appliedExpiryView(
-  expiryRaw: string,
+  expiryRaw: unknown,
   soonDays = APPLIED_EXPIRING_SOON_DAYS,
 ): AppliedExpiryView | null {
-  if (isOldExpiry(expiryRaw)) {
+  const raw = expiryRaw == null ? "" : typeof expiryRaw === "string" ? expiryRaw : String(expiryRaw);
+  if (isOldExpiry(raw)) {
     return {
       application: "Applied",
       expiration: null,
@@ -169,7 +181,7 @@ export function appliedExpiryView(
       daysLeft: null,
     };
   }
-  const d = parseISO(expiryRaw);
+  const d = parseISO(raw);
   if (!d) {
     return {
       application: "Applied",
@@ -218,33 +230,44 @@ export function appliedExpiryView(
   };
 }
 
-function statusIssue(v: string, col: number, header: string, expiryRaw?: string): Issue | null {
+function statusIssue(v: string, col: number, header: unknown, expiryRaw?: string): Issue | null {
+  const hdr = header == null ? "" : typeof header === "string" ? header : String(header);
   const s = normStatus(v);
   if (s === "Applied") {
     const view = expiryRaw != null ? appliedExpiryView(expiryRaw) : null;
     if (view) {
       // Tone follows the expiration axis; Application stays Applied in the label.
-      return { tone: view.tone, label: `${header.trim()}: ${view.label}`, col };
+      const viewLabel =
+        view.label == null ? "" : typeof view.label === "string" ? view.label : String(view.label);
+      return { tone: view.tone, label: `${hdr.trim()}: ${viewLabel}`, col };
     }
-    return { tone: "info", label: `${header.trim()}: Applied`, col };
+    return { tone: "info", label: `${hdr.trim()}: Applied`, col };
   }
   if (s === "Missing" || s === "Invalid" || s === "Expired")
-    return { tone: "danger", label: `${header.trim()}: ${s}`, col };
-  if (s === "Sign Missing") return { tone: "sign", label: `${header.trim()}: Sign missing`, col };
+    return { tone: "danger", label: `${hdr.trim()}: ${s}`, col };
+  if (s === "Sign Missing") return { tone: "sign", label: `${hdr.trim()}: Sign missing`, col };
   return null;
 }
 
-export const dmvDays = (state: string) => (state.trim().toUpperCase() === "CA" ? 10 : 20);
+export const dmvDays = (state: unknown) =>
+  ((state == null ? "" : typeof state === "string" ? state : String(state)).trim().toUpperCase() ===
+  "CA"
+    ? 10
+    : 20);
 
 /** Returns row issues and the per-cell highlight tone map. */
 export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
-  const c = row.cells;
+  const c = cellsOf(row);
+  const hdrs = Array.isArray(headers)
+    ? headers.map((h) => (h == null ? "" : typeof h === "string" ? h : String(h)))
+    : [];
+  const headerAt = (i: number) => (hdrs[i] ?? `Column ${i + 1}`).trim() || `Column ${i + 1}`;
   const issues: Issue[] = [];
   const push = (i: Issue | null) => i && issues.push(i);
   const noteIssues = () =>
     def.types.forEach((t, i) => {
       // Temporary Note (tempnote) never yellow-highlights.
-      if (t === "note" && filled(c[i])) push({ tone: "note", label: `${headers[i].trim()}: note`, col: i });
+      if (t === "note" && filled(c[i])) push({ tone: "note", label: `${headerAt(i)}: note`, col: i });
     });
   switch (def.id) {
     case "dmv": {
@@ -253,8 +276,8 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
       const di = dateIssue(c[3], dmvDays(c[8]), 3, "DMV");
       push(di);
       if (di) issues.push({ tone: di.tone, label: "Future plan: apply now", col: 7 });
-      const rep = c[4].trim().toUpperCase();
-      if (rep && rep !== "NONE" && normStatus(c[4]) !== "Applied") push({ tone: "note", label: `Report: ${c[4].trim()}`, col: 4 });
+      const rep = (c[4] ?? "").trim().toUpperCase();
+      if (rep && rep !== "NONE" && normStatus(c[4]) !== "Applied") push({ tone: "note", label: `Report: ${(c[4] ?? "").trim()}`, col: 4 });
       else if (normStatus(c[4]) === "Applied") push({ tone: "info", label: "Report: Applied", col: 4 });
       noteIssues();
       break;
@@ -293,14 +316,16 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
     case "docs": {
       for (let i = 2; i <= 13; i++) {
         const s = normStatus(c[i]);
-        if (s !== "Valid") push(statusIssue(c[i], i, headers[i]) ?? { tone: "danger", label: `${headers[i]}: empty`, col: i });
+        if (s !== "Valid") push(statusIssue(c[i], i, headerAt(i)) ?? { tone: "danger", label: `${headerAt(i)}: empty`, col: i });
       }
       noteIssues();
       break;
     }
     case "info": {
       [1, 2].forEach((i) => {
-        if (!filled(c[i]) || normStatus(c[i]) === "Invalid") push({ tone: "danger", label: `${headers[i]}: ${c[i].trim() || "empty"}`, col: i });
+        const raw = c[i] ?? "";
+        if (!filled(raw) || normStatus(raw) === "Invalid")
+          push({ tone: "danger", label: `${headerAt(i)}: ${raw.trim() || "empty"}`, col: i });
       });
       break;
     }
@@ -315,10 +340,11 @@ export function analyzeRow(def: SectionDef, headers: string[], row: Row) {
 }
 
 export function complianceScore(row: Row) {
+  const cells = cellsOf(row);
   let valid = 0;
-  for (let i = 2; i <= 13; i++) if (normStatus(row.cells[i]) === "Valid") valid++;
+  for (let i = 2; i <= 13; i++) if (normStatus(cells[i]) === "Valid") valid++;
   let score = (valid / 12) * 100;
-  if (filled(row.cells[14])) score -= 5;
+  if (filled(cells[14])) score -= 5;
   return Math.max(0, Math.round(score));
 }
 
@@ -326,13 +352,18 @@ export function complianceScore(row: Row) {
 export function rowDriverStatus(def: SectionDef, row: Row, data: AppData): DriverStatus {
   if (row.status) return row.status;
   const idx = def.types.indexOf("active");
-  if (idx >= 0) return parseDriverStatus(row.cells[idx]);
+  if (idx >= 0) return parseDriverStatus((cellsOf(row))[idx]);
   // sections without a status column follow the driver's DMV / other status
   for (const s of SECTIONS) {
     const i = s.types.indexOf("active");
     if (i < 0 || s.id === "inactive") continue;
-    const r = data.sections[s.id]?.rows.find((x) => x.driverId === row.driverId);
-    if (r) return r.status ?? parseDriverStatus(r.cells[i]);
+    const rows = data.sections[s.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === row.driverId);
+    if (r) {
+      const cells = cellsOf(r);
+      return r.status ?? parseDriverStatus(cells[i]);
+    }
   }
   return "active";
 }
@@ -401,11 +432,12 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive" || def.id === "info" || def.id === "docs") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
+      const cells = cellsOf(row);
       for (const { col, label } of horizonDateCols(def)) {
-        const raw = row.cells[col] ?? "";
+        const raw = cells[col] ?? "";
         if (isOldExpiry(raw)) continue;
         const d = parseISO(raw);
         if (!d) continue;
@@ -417,7 +449,7 @@ export function collectHorizonDocs(data: AppData): HorizonDoc[] {
           sectionTitle: def.title,
           rowId: row.id,
           driverId: row.driverId,
-          driver: (row.cells[0] ?? "").trim(),
+          driver: (cells[0] ?? "").trim(),
           label,
           date: d,
           col,
@@ -441,22 +473,39 @@ export function collectPlans(data: AppData): PlanItem[] {
   const out: PlanItem[] = [];
   for (const def of SECTIONS) {
     const sec = data.sections[def.id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
+      const cells = cellsOf(row);
       def.types.forEach((t, i) => {
         if (t !== "plan") return;
-        const txt = row.cells[i];
+        const txt = cells[i] ?? "";
         const d = parsePlanDate(txt);
-        if (d) out.push({ date: d, sectionId: def.id, rowId: row.id, driver: row.cells[0], text: txt.trim(), derived: false });
+        if (d)
+          out.push({
+            date: d,
+            sectionId: def.id,
+            rowId: row.id,
+            driver: cells[0] ?? "",
+            text: txt.trim(),
+            derived: false,
+          });
       });
       // DMV rows without a written plan: derive apply date from expiration
-      if (def.id === "dmv" && !row.cells[7].trim()) {
-        const e = parseISO(row.cells[3]);
+      if (def.id === "dmv" && !(cells[7] ?? "").trim()) {
+        const e = parseISO(cells[3]);
         if (e) {
           const d = new Date(e);
-          d.setDate(d.getDate() - dmvDays(row.cells[8]));
-          out.push({ date: d, sectionId: "dmv", rowId: row.id, driver: row.cells[0], text: "Apply DMV pull notice (auto from expiration)", derived: true });
+          d.setDate(d.getDate() - dmvDays(cells[8]));
+          out.push({
+            date: d,
+            sectionId: "dmv",
+            rowId: row.id,
+            driver: cells[0] ?? "",
+            text: "Apply DMV pull notice (auto from expiration)",
+            derived: true,
+          });
         }
       }
     }
@@ -487,10 +536,13 @@ const EXPIRY_COLS: Record<string, number[]> = {
 export function driverExpiryDays(data: AppData, driverId: string): number[] {
   const out: number[] = [];
   for (const [sid, cols] of Object.entries(EXPIRY_COLS)) {
-    const row = data.sections[sid]?.rows.find((r) => r.driverId === driverId);
+    const rows = data.sections[sid]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const row = rows.find((r) => r.driverId === driverId);
     if (!row) continue;
+    const cells = cellsOf(row);
     for (const i of cols) {
-      const v = row.cells[i] ?? "";
+      const v = cells[i] ?? "";
       if (isOldExpiry(v)) continue;
       if (normStatus(v) === "Expired") {
         out.push(-1);
@@ -542,8 +594,11 @@ export interface SmartAlert {
   target: "section" | "drivers";
 }
 
-function docName(headers: string[], col: number, fallback: string) {
-  const h = (headers[col] ?? "").trim();
+function docName(headers: string[] | null | undefined, col: number, fallback: string) {
+  const hdrs = Array.isArray(headers)
+    ? headers.map((h) => (h == null ? "" : typeof h === "string" ? h : String(h)))
+    : [];
+  const h = (hdrs[col] ?? "").trim();
   if (!h) return fallback;
   const cleaned = h.replace(/\s*(exp(iry|iration|ires)?|date)\s*$/i, "").trim();
   return cleaned || h;
@@ -565,10 +620,11 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive" || def.id === "docs" || def.id === "info") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
-      const driver = (row.cells[0] ?? "").trim() || "—";
+      const cells = cellsOf(row);
+      const driver = (cells[0] ?? "").trim() || "—";
       const base = {
         driver,
         driverId: row.driverId,
@@ -579,7 +635,7 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
 
       // Missing CDL status → Incomplete (opens Driver Cards)
       if (def.id === "ssccdl") {
-        const cdlStatus = normStatus(row.cells[2] ?? "");
+        const cdlStatus = normStatus(cells[2] ?? "");
         if (!cdlStatus || cdlStatus === "Missing" || cdlStatus === "Invalid" || cdlStatus === "Expired") {
           out.push({
             ...base,
@@ -595,9 +651,9 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
 
       def.types.forEach((t, i) => {
         if (t !== "date") return;
-        const raw = row.cells[i] ?? "";
+        const raw = cells[i] ?? "";
         if (isOldExpiry(raw)) return;
-        const document = docName(sec.headers, i, def.short);
+        const document = docName(headersOf(sec), i, def.short);
         const d = parseISO(raw);
         if (!d) {
           // Empty or non-date / Missing → Incomplete
@@ -647,7 +703,8 @@ export function collectSmartAlerts(data: AppData): SmartAlert[] {
     const da = a.daysLeft ?? 9999;
     const db = b.daysLeft ?? 9999;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 
@@ -666,13 +723,13 @@ export function fleetCompliancePct(data: AppData) {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (rowOrdinaryComplianceMuted(def, r, data)) continue;
-      const name = (r.cells[0] ?? "").trim().toLowerCase();
+      const name = (cellsOf(r)[0] ?? "").trim().toLowerCase();
       if (!name) continue;
       names.add(name);
-      for (const i of analyzeRow(def, sec.headers, r).issues) {
+      for (const i of analyzeRow(def, headersOf(sec), r).issues) {
         if (i.tone !== "note") bad.add(name);
       }
     }
@@ -693,7 +750,8 @@ export function buildSafetyDigest(data: AppData) {
     hour: "numeric",
     minute: "2-digit",
   });
-  const totalDrivers = data.sections.dmv?.rows.length ?? 0;
+  const dmvRows = data.sections.dmv?.rows;
+  const totalDrivers = Array.isArray(dmvRows) ? dmvRows.length : 0;
   const compliance = fleetCompliancePct(data);
   const alerts = collectSmartAlerts(data);
   const critical = alerts.filter((a) => a.group === "critical");

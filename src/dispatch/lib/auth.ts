@@ -10,6 +10,20 @@ const PREVIEW_ACCOUNT: DispatchAccount = {
   active: true,
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+/** Coerce portal ACL scalars before UI `{account.display_name}` / email render. */
+export function healDispatchAccount(raw: DispatchAccount): DispatchAccount {
+  return {
+    ...raw,
+    user_id: asText(raw.user_id),
+    email: asText(raw.email),
+    display_name: asText(raw.display_name),
+    role: raw.role === "admin" ? "admin" : "dispatcher",
+    active: Boolean(raw.active),
+  };
+}
+
 export function isDispatchPreviewMode(): boolean {
   return isPreviewIsolated() || !isDispatchSupabaseConfigured();
 }
@@ -37,12 +51,12 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
 
   if (error) throw error;
   if (data && data.active && (data.role === "admin" || data.role === "dispatcher")) {
-    return data as DispatchAccount;
+    return healDispatchAccount(data as DispatchAccount);
   }
 
   // Bootstrap path for owner / first admin when migration applied.
   const { data: ensured, error: ensureError } = await dispatchSupabase.rpc("dispatch_ensure_self", {
-    p_display_name: user.email?.split("@")[0] ?? "Dispatcher",
+    p_display_name: asLoginEmail(user.email).split("@")[0] || "Dispatcher",
   });
   if (ensureError) {
     // No seat and ensure rejected → not a dispatcher.
@@ -50,16 +64,22 @@ export async function getDispatchAccount(): Promise<DispatchAccount | null> {
   }
   const row = Array.isArray(ensured) ? ensured[0] : ensured;
   if (!row || !row.active) return null;
-  return row as DispatchAccount;
+  return healDispatchAccount(row as DispatchAccount);
+}
+
+function asLoginEmail(email: unknown): string {
+  if (email == null) return "";
+  return (typeof email === "string" ? email : String(email)).trim().toLowerCase();
 }
 
 export async function signInDispatch(email: string, password: string): Promise<DispatchAccount> {
+  const login = asLoginEmail(email);
   if (isDispatchPreviewMode()) {
-    if (!email.trim() || !password) throw new Error("Enter email and password.");
+    if (!login || !password) throw new Error("Enter email and password.");
     return PREVIEW_ACCOUNT;
   }
   const { error } = await dispatchSupabase.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
+    email: login,
     password,
   });
   if (error) throw new Error("Invalid credentials.");
@@ -83,7 +103,7 @@ export async function listDispatchAccounts(): Promise<DispatchAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("email");
   if (error) throw error;
-  return (data ?? []) as DispatchAccount[];
+  return (Array.isArray(data) ? (data as DispatchAccount[]) : []).map(healDispatchAccount);
 }
 
 export async function setDispatchAccess(userId: string, role: DispatchRole, active: boolean): Promise<void> {
@@ -105,10 +125,16 @@ export async function inviteDispatchUser(input: {
   if (isDispatchPreviewMode()) {
     throw new Error("Invite is disabled in preview/fixture mode. Apply Dispatch SQL and use cloud auth.");
   }
+  const displayName =
+    input.displayName == null
+      ? ""
+      : typeof input.displayName === "string"
+        ? input.displayName.trim()
+        : String(input.displayName).trim();
   const { data, error } = await dispatchSupabase.functions.invoke("create-dispatch-user", {
     body: {
-      email: input.email.trim().toLowerCase(),
-      displayName: input.displayName.trim(),
+      email: asLoginEmail(input.email),
+      displayName,
       password: input.password,
       role: input.role,
     },

@@ -30,6 +30,8 @@ import {
 } from "@/lib/driver-hr/drug-tests";
 import { DrugTestEventEditor, DRUG_STATUS_TONE } from "./DrugTestForm";
 
+const asDrugText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /**
  * Drug Test Records — admin-authorized register (not PDF upload).
  * Same secure RPCs as the sidebar Drug Test Records page.
@@ -142,14 +144,14 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
 
           <div className="flex flex-wrap items-center gap-2">
             <input
-              value={q}
+              value={asDrugText(q)}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Filter specimen, reason, context…"
               className="min-w-[10rem] flex-1 rounded-lg border bg-card px-2.5 py-1.5 text-sm"
               aria-label="Filter drug test records"
             />
             <select
-              value={statusFilter}
+              value={asDrugText(statusFilter)}
               onChange={(e) => setStatusFilter(e.target.value as DrugPairStatus | "all")}
               className="rounded-lg border bg-card px-2.5 py-1.5 text-sm font-semibold"
               aria-label="Status filter"
@@ -227,10 +229,12 @@ export function DrugTestRegister({ driverId, driverName }: { driverId: string; d
                   toast.error(resolution.message);
                   return;
                 }
+                const asDrugText = (v: unknown) =>
+                  v == null ? "" : typeof v === "string" ? v : String(v);
                 const testingEventId =
                   resolution.status === "attach"
-                    ? resolution.testingEventId
-                    : draft.testingEventId.trim() || newTestingEventId();
+                    ? asDrugText(resolution.testingEventId)
+                    : asDrugText(draft.testingEventId).trim() || newTestingEventId();
                 try {
                   await addDrugTestEvent({ ...draft, driverId, testingEventId }, actor);
                   clearPairingFeedback();

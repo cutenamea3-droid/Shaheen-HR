@@ -21,7 +21,13 @@ import { isValidPkIban, normalizePkIban } from "./pk-iban";
 type RpcError = { message?: string } | null;
 
 function errMsg(error: RpcError, fallback: string): string {
-  return error?.message?.trim() || fallback;
+  const msg =
+    error?.message == null
+      ? ""
+      : typeof error.message === "string"
+        ? error.message
+        : String(error.message);
+  return msg.trim() || fallback;
 }
 
 function mapMasked(row: Record<string, unknown>): BankingAccountMasked {
@@ -90,7 +96,8 @@ export async function probeSecureFinanceAvailable(): Promise<boolean> {
 export async function secureListRoster(): Promise<FinanceResult<EmployeeDirectoryMeta[]>> {
   const { data, error } = await supabase.from("hr_employee_roster" as never).select("*");
   if (error) return { ok: false, error: errMsg(error, "Failed to load roster") };
-  return { ok: true, data: ((data as unknown[]) ?? []).map((r) => mapMeta(r as Record<string, unknown>)) };
+  const rows = Array.isArray(data) ? data : [];
+  return { ok: true, data: rows.map((r) => mapMeta(r as Record<string, unknown>)) };
 }
 
 export async function secureUpsertRoster(
@@ -113,11 +120,18 @@ export async function secureListBanking(employeeId?: string): Promise<FinanceRes
     p_employee_id: employeeId ?? null,
   } as never);
   if (error) return { ok: false, error: errMsg(error, "Failed to list banking") };
-  return { ok: true, data: ((data as unknown[]) ?? []).map((r) => mapMasked(r as Record<string, unknown>)) };
+  const rows = Array.isArray(data) ? data : [];
+  return { ok: true, data: rows.map((r) => mapMasked(r as Record<string, unknown>)) };
 }
 
 export async function secureAddBanking(input: AddBankingInput): Promise<FinanceResult<BankingAccountMasked>> {
-  const ref = input.isIban ? normalizePkIban(input.accountRef) : input.accountRef.trim();
+  const ref = input.isIban
+    ? normalizePkIban(input.accountRef)
+    : input.accountRef == null
+      ? ""
+      : typeof input.accountRef === "string"
+        ? input.accountRef.trim()
+        : String(input.accountRef).trim();
   if (input.isIban && !isValidPkIban(ref)) return { ok: false, error: "Invalid Pakistan IBAN" };
   const { data, error } = await supabase.rpc("hr_add_banking_account" as never, {
     p_employee_id: input.employeeId,
@@ -147,7 +161,8 @@ export async function secureListPayments(month: string): Promise<FinanceResult<S
     .select("*")
     .eq("month" as never, month as never);
   if (error) return { ok: false, error: errMsg(error, "Failed to load payments") };
-  return { ok: true, data: ((data as unknown[]) ?? []).map((r) => mapPayment(r as Record<string, unknown>)) };
+  const rows = Array.isArray(data) ? data : [];
+  return { ok: true, data: rows.map((r) => mapPayment(r as Record<string, unknown>)) };
 }
 
 export async function secureListPaymentEvents(paymentId: string): Promise<FinanceResult<SalaryPaymentEvent[]>> {
@@ -157,7 +172,8 @@ export async function secureListPaymentEvents(paymentId: string): Promise<Financ
     .eq("payment_id" as never, paymentId as never)
     .order("created_at" as never, { ascending: false } as never);
   if (error) return { ok: false, error: errMsg(error, "Failed to load payment history") };
-  return { ok: true, data: ((data as unknown[]) ?? []).map((r) => mapEvent(r as Record<string, unknown>)) };
+  const rows = Array.isArray(data) ? data : [];
+  return { ok: true, data: rows.map((r) => mapEvent(r as Record<string, unknown>)) };
 }
 
 export async function secureUpsertDue(

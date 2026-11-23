@@ -1,6 +1,6 @@
 import logo from "@/assets/logo.jpg.asset.json";
 import { fmtCell, fmtDate, matchesExpFilter, normStatus, overallExpStatus, rowIsActive, today, type ExpFilter } from "./alerts";
-import { SECTIONS, type AppData } from "./sections";
+import { SECTIONS, cellsOf, type AppData } from "./sections";
 
 export interface DotAuditRow {
   driverId: string;
@@ -23,13 +23,15 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
       if (activeOnly && !rowIsActive(def, r, data)) continue;
+      const cells = cellsOf(r);
       let row = map.get(r.driverId);
       if (!row) {
         row = {
           driverId: r.driverId,
-          name: (r.cells[0] ?? "").trim(),
+          name: (cells[0] ?? "").trim(),
           cdl: "",
           dmvStatus: "",
           medicalExpiry: "",
@@ -38,14 +40,15 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
         };
         map.set(r.driverId, row);
       }
-      if (!row.name.trim()) row.name = (r.cells[0] ?? "").trim();
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
+      if (!asN(row.name)) row.name = asN(cells[0]);
       if (def.id === "dmv") {
-        row.dmvStatus = normStatus(r.cells[2] ?? "") || (r.cells[2] ?? "").trim() || "—";
-        if (!row.cdl) row.cdl = (r.cells[1] ?? "").trim();
+        row.dmvStatus = normStatus(cells[2] ?? "") || (cells[2] ?? "").trim() || "—";
+        if (!row.cdl) row.cdl = (cells[1] ?? "").trim();
       }
-      if (def.id === "ssccdl" && (r.cells[1] ?? "").trim()) row.cdl = (r.cells[1] ?? "").trim();
-      if (def.id === "medical") row.medicalExpiry = fmtCell(r.cells[2] ?? "") || "—";
-      if (def.id === "queries") row.clearinghouseAnnual = fmtCell(r.cells[2] ?? "") || "—";
+      if (def.id === "ssccdl" && (cells[1] ?? "").trim()) row.cdl = (cells[1] ?? "").trim();
+      if (def.id === "medical") row.medicalExpiry = fmtCell(cells[2] ?? "") || "—";
+      if (def.id === "queries") row.clearinghouseAnnual = fmtCell(cells[2] ?? "") || "—";
     }
   }
 
@@ -59,12 +62,16 @@ export function buildDotAuditRows(data: AppData, opts?: { activeOnly?: boolean; 
       clearinghouseAnnual: r.clearinghouseAnnual || "—",
       overall: overallExpStatus(data, r.driverId),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.name).localeCompare(asN(b.name), undefined, { sensitivity: "base" });
+    });
 }
 
-function csvEscape(v: string) {
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-  return v;
+function csvEscape(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 export function downloadDotAuditCsv(rows: DotAuditRow[]) {
@@ -160,8 +167,9 @@ export function printDotAuditSummary(rows: DotAuditRow[]) {
   return true;
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function statusClass(overall: string) {
   if (overall === "Expired") return "st-expired";

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -77,6 +77,9 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
 
   const groups: RateFieldGroup[] = ["general", "hourly", "additional"];
   const filled = rateCardHasContent(card);
+  const rates =
+    card.rates && typeof card.rates === "object" && !Array.isArray(card.rates) ? card.rates : {};
+  const payMethodNote = typeof card.payMethodNote === "string" ? card.payMethodNote : "";
 
   return (
     <section className="tracker-profile-section">
@@ -112,7 +115,13 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
                     key={f.key}
                     label={f.label}
                     {...(f.hint ? { hint: f.hint } : {})}
-                    value={card.rates[f.key] ?? ""}
+                    value={
+                      rates[f.key] == null
+                        ? ""
+                        : typeof rates[f.key] === "string"
+                          ? rates[f.key]
+                          : String(rates[f.key])
+                    }
                     disabled={view}
                     onSave={async (raw) => {
                       const r = await setRateField(driverId, f.key, raw);
@@ -152,7 +161,7 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
               </label>
               <RateFieldInput
                 label="Pay method note"
-                value={card.payMethodNote}
+                value={payMethodNote}
                 disabled={view}
                 onSave={async (raw) => {
                   const updated = await setPayMethod(driverId, card.payMethod, raw.trim());
@@ -181,11 +190,31 @@ function RateFieldInput({
   disabled?: boolean;
   onSave: (raw: string) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState(value);
+  const safeValue = value == null ? "" : typeof value === "string" ? value : String(value);
+  const [draft, setDraft] = useState(safeValue);
   const [dirty, setDirty] = useState(false);
+  const saveTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (!dirty) setDraft(value);
-  }, [value, dirty]);
+    if (!dirty) setDraft(safeValue);
+  }, [safeValue, dirty]);
+  useEffect(
+    () => () => {
+      if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
+    },
+    [],
+  );
+
+  const queueSave = (raw: string) => {
+    setDraft(raw);
+    setDirty(true);
+    if (saveTimer.current != null) window.clearTimeout(saveTimer.current);
+    // Autofill often skips blur — debounce persist so typing does not spam the API.
+    saveTimer.current = window.setTimeout(() => {
+      void onSave(raw).then((ok) => {
+        if (ok) setDirty(false);
+      });
+    }, 400);
+  };
 
   return (
     <label className="block">
@@ -200,11 +229,14 @@ function RateFieldInput({
         disabled={disabled}
         value={draft}
         placeholder="—"
-        onChange={(e) => {
-          setDraft(e.target.value);
-          setDirty(true);
-        }}
+        data-testid="rate-card-field"
+        onChange={(e) => queueSave(e.target.value)}
+        onInput={(e) => queueSave((e.target as HTMLInputElement).value)}
         onBlur={async () => {
+          if (saveTimer.current != null) {
+            window.clearTimeout(saveTimer.current);
+            saveTimer.current = null;
+          }
           if (!dirty) return;
           const ok = await onSave(draft);
           if (ok) setDirty(false);

@@ -31,8 +31,10 @@ export type VuStudyPlan = typeof planFixture;
 
 export const VU_STUDY_PLAN = planFixture as VuStudyPlan;
 
-export function courseIdFromCode(code: string): string {
-  return code.trim().toLowerCase();
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+export function courseIdFromCode(code: unknown): string {
+  return asText(code).trim().toLowerCase();
 }
 
 export function formatMinutes(total: number): string {
@@ -64,37 +66,50 @@ export function liveTodoStatus(todo: VuTodo, todayIso: string): VuTodoStatus {
 }
 
 export function academicTodos(plan: VuStudyPlan = VU_STUDY_PLAN): VuTodo[] {
-  return (plan.todos as VuTodo[]).filter((t) => t.kind !== "fee" && t.courseCode);
+  const todos = Array.isArray(plan?.todos) ? (plan.todos as VuTodo[]) : [];
+  return todos.filter((t) => t.kind !== "fee" && t.courseCode);
 }
 
 export function feeTodos(plan: VuStudyPlan = VU_STUDY_PLAN): VuTodo[] {
-  return (plan.todos as VuTodo[]).filter((t) => t.kind === "fee");
+  const todos = Array.isArray(plan?.todos) ? (plan.todos as VuTodo[]) : [];
+  return todos.filter((t) => t.kind === "fee");
 }
+
+const asDue = (v: unknown, fallback = "") => {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  return s || fallback;
+};
 
 export function pendencyTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
     .filter((t) => t.statusAsOf === "open_now" || t.statusAsOf === "window_ended")
-    .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+    .sort((a, b) => asDue(a.due, "9999").localeCompare(asDue(b.due, "9999")));
 }
 
 export function dueSoonTodos(plan: VuStudyPlan, todayIso: string, withinDays = 7): VuTodo[] {
   const end = addDaysIso(todayIso, withinDays);
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
-    .filter((t) => t.due && t.due >= todayIso && t.due <= end)
-    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+    .filter((t) => {
+      const due = asDue(t.due);
+      return due && due >= todayIso && due <= end;
+    })
+    .sort((a, b) => asDue(a.due).localeCompare(asDue(b.due)));
 }
 
 export function overdueTodos(plan: VuStudyPlan, todayIso: string): VuTodo[] {
   return academicTodos(plan)
     .map((t) => ({ ...t, statusAsOf: liveTodoStatus(t, todayIso) }))
     .filter((t) => t.statusAsOf === "window_ended")
-    .sort((a, b) => (a.due || "").localeCompare(b.due || ""));
+    .sort((a, b) => asDue(a.due).localeCompare(asDue(b.due)));
 }
 
 export function slotsForDate(plan: VuStudyPlan, dateIso: string): VuLectureSlot[] {
-  return (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+  const slots = Array.isArray(plan?.weeklyLectureSchedule?.slots)
+    ? (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+    : [];
+  return slots
     .filter((s) => s.date === dateIso)
     .slice()
     .sort((a, b) => parseVuTime(a.time) - parseVuTime(b.time));
@@ -106,8 +121,10 @@ export function addDaysIso(iso: string, days: number): string {
   return isoTodayLocal(d);
 }
 
-export function parseVuTime(label: string): number {
-  const m = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+export function parseVuTime(label: unknown): number {
+  if (label == null) return 0;
+  const text = typeof label === "string" ? label : String(label);
+  const m = text.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
   if (!m) return 0;
   let h = Number(m[1]);
   const min = Number(m[2]);
@@ -160,6 +177,55 @@ function activityNoun(t: VuTodo): string {
   return "Activity";
 }
 
+const DEFAULT_ASSUMPTIONS = {
+  assignmentMinutes: 90,
+  quizMinutes: 45,
+  lectureMinutes: 50,
+  recoveryDays: 7,
+  keepUpDaysPerWeek: 6,
+} as const;
+
+function recoveryOf(plan: VuStudyPlan): Record<string, unknown> {
+  const r = (plan as { recovery?: unknown })?.recovery;
+  return r && typeof r === "object" && !Array.isArray(r) ? (r as Record<string, unknown>) : {};
+}
+
+function assumptionsOf(plan: VuStudyPlan) {
+  const raw = recoveryOf(plan).assumptions;
+  const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  const num = (k: keyof typeof DEFAULT_ASSUMPTIONS, fallback: number) =>
+    typeof o[k] === "number" && Number.isFinite(o[k] as number) ? (o[k] as number) : fallback;
+  return {
+    assignmentMinutes: num("assignmentMinutes", DEFAULT_ASSUMPTIONS.assignmentMinutes),
+    quizMinutes: num("quizMinutes", DEFAULT_ASSUMPTIONS.quizMinutes),
+    lectureMinutes: num("lectureMinutes", DEFAULT_ASSUMPTIONS.lectureMinutes),
+    recoveryDays: Math.max(1, num("recoveryDays", DEFAULT_ASSUMPTIONS.recoveryDays)),
+    keepUpDaysPerWeek: Math.max(1, num("keepUpDaysPerWeek", DEFAULT_ASSUMPTIONS.keepUpDaysPerWeek)),
+  };
+}
+
+function catchUpOf(plan: VuStudyPlan): {
+  absentWeeksVisible: number;
+  estimatedCatchUpMinutes: number;
+  attendanceAbsentPct?: number | null;
+} | null {
+  const raw = recoveryOf(plan).cs101ProgressCatchUp;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const out: {
+    absentWeeksVisible: number;
+    estimatedCatchUpMinutes: number;
+    attendanceAbsentPct?: number | null;
+  } = {
+    absentWeeksVisible: typeof o.absentWeeksVisible === "number" ? o.absentWeeksVisible : 0,
+    estimatedCatchUpMinutes:
+      typeof o.estimatedCatchUpMinutes === "number" ? o.estimatedCatchUpMinutes : 0,
+  };
+  if (typeof o.attendanceAbsentPct === "number") out.attendanceAbsentPct = o.attendanceAbsentPct;
+  else if (o.attendanceAbsentPct === null) out.attendanceAbsentPct = null;
+  return out;
+}
+
 /**
  * Today plan engine (§8): graded closing soon → handout prep → Lecture Schedule → Progress backlog.
  * Remaining minutes/counts come only from exports + explicit planning assumptions.
@@ -183,25 +249,18 @@ export function buildTodayPrescription(
   nextIrreversible: VuTodo | null;
 } {
   const handoutFirst = !!opts.handoutFirst;
-  const assumptions = plan.recovery.assumptions as {
-    assignmentMinutes: number;
-    quizMinutes: number;
-    lectureMinutes: number;
-    recoveryDays: number;
-    keepUpDaysPerWeek: number;
-  };
+  const assumptions = assumptionsOf(plan);
   const pending = pendencyTodos(plan, todayIso);
   const overdue = pending.filter((t) => t.statusAsOf === "window_ended");
   const openNow = pending.filter((t) => t.statusAsOf === "open_now");
   const slots = slotsForDate(plan, todayIso);
-  const weekSlots = plan.weeklyLectureSchedule.slots as VuLectureSlot[];
-  const catchUp = plan.recovery.cs101ProgressCatchUp as {
-    absentWeeksVisible: number;
-    estimatedCatchUpMinutes: number;
-    attendanceAbsentPct?: number | null;
-  };
+  const weekSlots = Array.isArray(plan?.weeklyLectureSchedule?.slots)
+    ? (plan.weeklyLectureSchedule.slots as VuLectureSlot[])
+    : [];
+  const catchUp = catchUpOf(plan);
+  const enrolled = Array.isArray(plan?.enrolledCourses) ? plan.enrolledCourses : [];
   const creditByCode = new Map(
-    plan.enrolledCourses.map((c) => [c.code, c.creditHours ?? 0] as const),
+    enrolled.map((c) => [c.code, c.creditHours ?? 0] as const),
   );
 
   let pendencyMinutes = 0;
@@ -228,7 +287,7 @@ export function buildTodayPrescription(
     if (opts.creditHourTriage) {
       return (creditByCode.get(b.courseCode || "") || 0) - (creditByCode.get(a.courseCode || "") || 0);
     }
-    return (a.title || "").localeCompare(b.title || "");
+    return asDue(a.title).localeCompare(asDue(b.title));
   });
 
   let recoveryLeft = Math.max(recoveryPortion, gradedOrdered.length ? 45 : 0);
@@ -240,31 +299,33 @@ export function buildTodayPrescription(
       t.kind === "assignment" ? assumptions.assignmentMinutes : assumptions.quizMinutes;
     const slice = Math.min(need, recoveryLeft, 55);
     const noun = activityNoun(t);
+    const courseCode = asText(t.courseCode) || "GEN";
+    const title = asText(t.title);
     blocks.push({
-      id: `rec-${t.courseCode}-${t.title}`,
+      id: `rec-${courseCode}-${title}`,
       kind: "recovery",
-      courseCode: t.courseCode || "GEN",
+      courseCode,
       label:
         t.statusAsOf === "window_ended"
-          ? `Verify on VULMS · ${noun} · ${t.title}`
-          : `Submit on VULMS · ${noun} · ${t.title}`,
+          ? `Verify on VULMS · ${noun} · ${title}`
+          : `Submit on VULMS · ${noun} · ${title}`,
       minutes: slice,
       clock: minutesToClock(cursor),
       room: null,
-      todoTitle: t.title,
+      todoTitle: title,
       priority: 0,
       due: t.due,
     });
     if (prepCount < 3) {
       blocks.push({
-        id: `prep-${t.courseCode}-${t.title}`,
+        id: `prep-${courseCode}-${title}`,
         kind: "prep",
-        courseCode: t.courseCode || "GEN",
-        label: `Prep only (≠ submit) · ${t.courseCode} · ${noun}`,
+        courseCode,
+        label: `Prep only (≠ submit) · ${courseCode} · ${noun}`,
         minutes: 20,
         clock: minutesToClock(cursor + slice + 5),
         room: null,
-        todoTitle: t.title,
+        todoTitle: title,
         priority: 1,
         due: t.due,
       });
@@ -290,13 +351,14 @@ export function buildTodayPrescription(
   }
 
   if (cs101Portion > 0) {
+    const absentWeeks = catchUp?.absentWeeksVisible ?? "?";
     blocks.push({
       id: "cs101-progress-catchup",
       kind: "cs101_catchup",
       courseCode: "CS101",
       label: handoutFirst
-        ? `CS101 Handouts catch-up · Progress Timeline ${catchUp.absentWeeksVisible} absent weeks`
-        : `CS101 Progress Timeline catch-up · ${catchUp.absentWeeksVisible} absent weeks`,
+        ? `CS101 Handouts catch-up · Progress Timeline ${absentWeeks} absent weeks`
+        : `CS101 Progress Timeline catch-up · ${absentWeeks} absent weeks`,
       minutes: cs101Portion,
       clock: minutesToClock(Math.max(cursor, 19 * 60)),
       room: null,
@@ -307,8 +369,8 @@ export function buildTodayPrescription(
   blocks.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     if (a.priority <= 1 && b.priority <= 1) {
-      const ad = a.due || "";
-      const bd = b.due || "";
+      const ad = asDue(a.due);
+      const bd = asDue(b.due);
       if (ad !== bd) return ad.localeCompare(bd);
       if (a.kind !== b.kind) return a.kind === "recovery" ? -1 : 1;
     }
@@ -322,7 +384,9 @@ export function buildTodayPrescription(
     overdue[0] ||
     null;
 
-  const daysBehind = plan.recovery.estimatedDaysBehindByOldestEndedWindow as number | null;
+  const daysBehindRaw = recoveryOf(plan).estimatedDaysBehindByOldestEndedWindow;
+  const daysBehind =
+    typeof daysBehindRaw === "number" && Number.isFinite(daysBehindRaw) ? daysBehindRaw : null;
   const howBehind =
     `CS101 Progress Timeline: ${catchUp?.absentWeeksVisible ?? "?"} absent weeks` +
     (catchUp?.attendanceAbsentPct != null ? ` · ${catchUp.attendanceAbsentPct}% absent` : "") +

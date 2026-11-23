@@ -10,6 +10,8 @@ import type {
 } from "./expenses-types";
 import { BUILTIN_EXPENSE_CATEGORIES } from "./expenses-types";
 
+const asText = (v: unknown): string => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function defaultExpenseCategories() {
   return BUILTIN_EXPENSE_CATEGORIES.map((c) => ({ id: c.id, name: c.name, custom: false }));
 }
@@ -17,10 +19,22 @@ export function defaultExpenseCategories() {
 /** Salary / payroll words — expenses must never double-count salary payments. */
 const SALARY_LIKE = /\b(salary|salaries|payroll|wage|wages|basic\s*pay)\b/i;
 
-export function looksLikeSalaryExpense(title: string, categoryId: string, categoryName?: string): boolean {
-  if (SALARY_LIKE.test(title)) return true;
-  if (SALARY_LIKE.test(categoryId)) return true;
-  if (categoryName && SALARY_LIKE.test(categoryName)) return true;
+export function looksLikeSalaryExpense(
+  title: unknown,
+  categoryId: unknown,
+  categoryName?: unknown,
+): boolean {
+  const t = title == null ? "" : typeof title === "string" ? title : String(title);
+  const c = categoryId == null ? "" : typeof categoryId === "string" ? categoryId : String(categoryId);
+  const n =
+    categoryName == null
+      ? ""
+      : typeof categoryName === "string"
+        ? categoryName
+        : String(categoryName);
+  if (SALARY_LIKE.test(t)) return true;
+  if (SALARY_LIKE.test(c)) return true;
+  if (n && SALARY_LIKE.test(n)) return true;
   return false;
 }
 
@@ -33,9 +47,15 @@ export function validateExpenseInput(input: {
   employeeIds: string[];
   categoryName?: string;
 }): { ok: true } | { ok: false; error: string } {
-  if (!input.title.trim()) return { ok: false, error: "Title is required" };
+  const title =
+    input.title == null
+      ? ""
+      : typeof input.title === "string"
+        ? input.title.trim()
+        : String(input.title).trim();
+  if (!title) return { ok: false, error: "Title is required" };
   if (!input.categoryId) return { ok: false, error: "Category is required" };
-  if (looksLikeSalaryExpense(input.title, input.categoryId, input.categoryName)) {
+  if (looksLikeSalaryExpense(title, input.categoryId, input.categoryName)) {
     return {
       ok: false,
       error: "Salary / payroll belongs on Salary pay — do not record it as an expense (avoids double-count)",
@@ -48,13 +68,14 @@ export function validateExpenseInput(input: {
   }
   if (input.amountPkr <= 0) return { ok: false, error: "Amount must be a positive whole PKR amount" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.expenseDate)) return { ok: false, error: "Expense date must be YYYY-MM-DD" };
-  if (input.scope === "one" && input.employeeIds.length !== 1) {
+  const employeeIds = Array.isArray(input.employeeIds) ? input.employeeIds : [];
+  if (input.scope === "one" && employeeIds.length !== 1) {
     return { ok: false, error: "One-employee scope requires exactly one employee" };
   }
-  if (input.scope === "multiple" && input.employeeIds.length < 2) {
+  if (input.scope === "multiple" && employeeIds.length < 2) {
     return { ok: false, error: "Multiple scope requires at least two employees" };
   }
-  if (input.scope === "all" && input.employeeIds.length > 0) {
+  if (input.scope === "all" && employeeIds.length > 0) {
     return { ok: false, error: "Company / all scope must not list individual employees (avoids double-count)" };
   }
   return { ok: true };
@@ -81,15 +102,16 @@ export function summarizeExpenses(
   let count = 0;
   let deletedCount = 0;
 
-  for (const r of rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  for (const r of list) {
     if (r.deletedAt) {
       deletedCount++;
       if (!opts?.includeDeleted) continue;
     }
-    if (opts?.month && !r.expenseDate.startsWith(opts.month)) continue;
+    if (opts?.month && !asText(r.expenseDate).startsWith(asText(opts.month))) continue;
     if (opts?.employeeId) {
       if (r.scope === "all") continue; // company totals are not attributed per employee
-      if (!r.employeeIds.includes(opts.employeeId)) continue;
+      if (!(Array.isArray(r.employeeIds) ? r.employeeIds : []).includes(opts.employeeId)) continue;
     }
     count++;
     totalPkr += r.amountPkr;
@@ -114,17 +136,26 @@ export function findDuplicateExpense(
   candidate: Pick<ExpenseRecord, "title" | "categoryId" | "amountPkr" | "expenseDate" | "scope" | "employeeIds">,
   excludeId?: string,
 ): ExpenseRecord | undefined {
-  const ids = [...candidate.employeeIds].sort().join(",");
-  return rows.find((r) => {
+  const list = Array.isArray(rows) ? rows : [];
+  const ids = [...(Array.isArray(candidate.employeeIds) ? candidate.employeeIds : [])].sort().join(",");
+  return list.find((r) => {
     if (r.deletedAt) return false;
     if (excludeId && r.id === excludeId) return false;
     if (r.expenseDate !== candidate.expenseDate) return false;
     if (r.categoryId !== candidate.categoryId) return false;
     if (r.amountPkr !== candidate.amountPkr) return false;
     if (r.scope !== candidate.scope) return false;
-    if ([...r.employeeIds].sort().join(",") !== ids) return false;
+    if ([...(Array.isArray(r.employeeIds) ? r.employeeIds : [])].sort().join(",") !== ids) return false;
     // Same title OR empty titles both count as duplicate signal
-    return r.title.trim().toLowerCase() === candidate.title.trim().toLowerCase();
+    const a =
+      r.title == null ? "" : typeof r.title === "string" ? r.title : String(r.title);
+    const b =
+      candidate.title == null
+        ? ""
+        : typeof candidate.title === "string"
+          ? candidate.title
+          : String(candidate.title);
+    return a.trim().toLowerCase() === b.trim().toLowerCase();
   });
 }
 
@@ -135,8 +166,9 @@ export function budgetUsage(
   categoryId: string,
 ): { limitPkr: number | null; spentPkr: number; over: boolean } {
   const budget = budgets.find((b) => b.month === month && b.categoryId === categoryId);
+  const monthKey = asText(month);
   const spentPkr = expenses
-    .filter((e) => !e.deletedAt && e.expenseDate.startsWith(month) && e.categoryId === categoryId)
+    .filter((e) => !e.deletedAt && asText(e.expenseDate).startsWith(monthKey) && e.categoryId === categoryId)
     .reduce((s, e) => s + e.amountPkr, 0);
   const limitPkr = budget?.limitPkr ?? null;
   return { limitPkr, spentPkr, over: limitPkr != null && spentPkr > limitPkr };
@@ -152,7 +184,7 @@ export function templateToExpenseDraft(t: ExpenseTemplate, expenseDate: string):
     amountPkr: t.amountPkr,
     expenseDate,
     scope: t.scope,
-    employeeIds: [...t.employeeIds],
+    employeeIds: [...(Array.isArray(t.employeeIds) ? t.employeeIds : [])],
     status: "draft",
     note: t.note,
     templateId: t.id,
@@ -165,6 +197,7 @@ export function appendAudit(
   action: string,
   detail: string,
 ): ExpenseAuditEvent[] {
+  const prev = Array.isArray(events) ? events : [];
   return [
     {
       id: Math.random().toString(36).slice(2, 10),
@@ -173,6 +206,6 @@ export function appendAudit(
       detail,
       at: Date.now(),
     },
-    ...events,
+    ...prev,
   ].slice(0, 1000);
 }

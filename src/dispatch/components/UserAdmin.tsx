@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import {
+  healDispatchAccount,
   inviteDispatchUser,
   listDispatchAccounts,
   setDispatchAccess,
 } from "@/dispatch/lib/auth";
 import type { DispatchAccount, DispatchRole } from "@/dispatch/lib/types";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function UserAdmin({ actor }: { actor: DispatchAccount }) {
   const [accounts, setAccounts] = useState<DispatchAccount[]>([]);
@@ -16,7 +19,8 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
   const [busy, setBusy] = useState(false);
 
   const refresh = async () => {
-    setAccounts(await listDispatchAccounts());
+    const next = await listDispatchAccounts();
+    setAccounts((Array.isArray(next) ? next : []).map(healDispatchAccount));
   };
 
   useEffect(() => {
@@ -44,9 +48,19 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
         className="grid gap-2 md:grid-cols-[1fr_1fr_1fr_140px_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const nextName =
+            String(fd.get("dispatch-invite-name") ?? displayName).trim() || asText(displayName).trim();
+          const nextEmail =
+            String(fd.get("dispatch-invite-email") ?? email).trim() || asText(email).trim();
+          const nextPassword =
+            String(fd.get("dispatch-invite-password") ?? password) || asText(password);
+          setDisplayName(nextName);
+          setEmail(nextEmail);
+          setPassword(nextPassword);
           setBusy(true);
           setMsg("");
-          void inviteDispatchUser({ email, displayName, password, role })
+          void inviteDispatchUser({ email: nextEmail, displayName: nextName, password: nextPassword, role })
             .then(async () => {
               setEmail("");
               setDisplayName("");
@@ -61,26 +75,46 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
       >
         <label className="grid gap-1 text-sm">
           <span>Name</span>
-          <input className="dispatch-field" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+          <input
+            className="dispatch-field"
+            name="dispatch-invite-name"
+            data-testid="dispatch-invite-name"
+            value={asText(displayName)}
+            onChange={(e) => setDisplayName(e.target.value)}
+            onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label className="grid gap-1 text-sm">
           <span>Email</span>
-          <input className="dispatch-field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            className="dispatch-field"
+            type="email"
+            name="dispatch-invite-email"
+            data-testid="dispatch-invite-email"
+            value={asText(email)}
+            onChange={(e) => setEmail(e.target.value)}
+            onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label className="grid gap-1 text-sm">
           <span>Temp password</span>
           <input
             className="dispatch-field"
             type="password"
-            value={password}
+            name="dispatch-invite-password"
+            data-testid="dispatch-invite-password"
+            value={asText(password)}
             onChange={(e) => setPassword(e.target.value)}
+            onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
             required
             minLength={8}
           />
         </label>
         <label className="grid gap-1 text-sm">
           <span>Role</span>
-          <select className="dispatch-field" value={role} onChange={(e) => setRole(e.target.value as DispatchRole)}>
+          <select className="dispatch-field" value={asText(role)} onChange={(e) => setRole(e.target.value as DispatchRole)}>
             <option value="dispatcher">Dispatcher</option>
             <option value="admin">Admin</option>
           </select>
@@ -107,12 +141,12 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
           <tbody>
             {accounts.map((a) => (
               <tr key={a.user_id} className="border-t border-[color:var(--dispatch-border)]">
-                <td className="p-2 font-medium">{a.display_name}</td>
-                <td className="p-2">{a.email}</td>
+                <td className="p-2 font-medium">{asText(a.display_name)}</td>
+                <td className="p-2">{asText(a.email)}</td>
                 <td className="p-2">
                   <select
                     className="dispatch-field h-8 w-36"
-                    value={a.role}
+                    value={asText(a.role) === "admin" ? "admin" : "dispatcher"}
                     disabled={busy}
                     onChange={(e) => {
                       const next = e.target.value as DispatchRole;

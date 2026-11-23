@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useApp } from "@/admin/lib/store";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { saveNow } from "@/admin/lib/cloud-sync";
 import { calcDay, fmtHours, leaveBalance, monthDays, prettyDate } from "@/admin/lib/calc";
 import { downloadPayrollCsv } from "@/admin/lib/reports";
 import { resolveDeptAsOf } from "@/admin/lib/shift-assignment";
 import { shiftVariance } from "@/admin/lib/shift-variance";
 import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing";
-import { emptyRec, type Status } from "@/admin/lib/types";
+import { emptyRec, type Dept, type Employee, type Status } from "@/admin/lib/types";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useDensity, setDensity } from "@/lib/density";
 import { loadAttendancePrefs, saveAttendancePrefs } from "@/lib/uiprefs";
 import { SectionTitle, TimeInput, Toggle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 function needsReview(
   e: { afterHours: boolean },
@@ -40,11 +42,37 @@ const FOCUS_CHIPS: { id: AttFocus; label: string }[] = [
 export function Attendance() {
   const { date, setDate } = useWorkDate();
   const [saveMsg, setSaveMsg] = useState("");
-  const month = date.slice(0, 7);
+  const month = (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7);
   const monthSpan = useMemo(() => monthDays(month), [month]);
   const [rangeFrom, setRangeFrom] = useState(monthSpan[0] ?? `${month}-01`);
   const [rangeTo, setRangeTo] = useState(monthSpan[monthSpan.length - 1] ?? `${month}-01`);
-  const { employees, depts, records, perf, settings, setRec, resetRec, resetDay } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setRec,
+    resetRec,
+    resetDay,
+  } = useApp();
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const monthClosed = isDateInClosedMonth(date, isClosedFn);
   const day = records[date] ?? {};
@@ -71,7 +99,9 @@ export function Attendance() {
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
-      const next = { ...prev, [id]: !isExpanded(id, prev) };
+      const safe =
+        prev && typeof prev === "object" && !Array.isArray(prev) ? prev : ({} as Record<string, boolean>);
+      const next = { ...safe, [id]: !isExpanded(id, safe) };
       saveAttendancePrefs({ expanded: next });
       return next;
     });
@@ -79,7 +109,9 @@ export function Attendance() {
 
   /** Compact: collapsed unless explicitly opened. Comfortable: open unless explicitly closed. */
   const isExpanded = (id: string, map = expanded) => {
-    if (map[id] != null) return map[id]!;
+    const safe =
+      map && typeof map === "object" && !Array.isArray(map) ? map : ({} as Record<string, boolean>);
+    if (safe[id] != null) return safe[id]!;
     return density !== "compact";
   };
 
@@ -130,8 +162,8 @@ export function Attendance() {
       result.cloud
         ? `✓ Filled ${targets.length} · ${prettyDate(date)} — Cloud Saved`
         : result.ok
-          ? `Filled ${targets.length} on this browser — ${result.message}`
-          : `Filled ${targets.length} locally — ${result.message || "sync failed, try Save"}`,
+          ? `Filled ${targets.length} on this browser — ${asText(result.message)}`
+          : `Filled ${targets.length} locally — ${asText(result.message) || "sync failed, try Save"}`,
     );
     if (result.ok) setTimeout(() => setSaveMsg(""), 6000);
   };
@@ -176,7 +208,7 @@ export function Attendance() {
               type="date"
               className="field w-auto"
               aria-label="Attendance date"
-              value={date}
+              value={asText(date)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
             />
             <input
@@ -184,7 +216,7 @@ export function Attendance() {
               className="field w-auto"
               title="Payroll range from"
               aria-label="Payroll range from"
-              value={rangeFrom}
+              value={asText(rangeFrom)}
               onChange={(e) => e.target.value && setRangeFrom(e.target.value)}
             />
             <span className="self-center text-sm text-muted-foreground" aria-hidden>
@@ -195,13 +227,25 @@ export function Attendance() {
               className="field w-auto"
               title="Payroll range to"
               aria-label="Payroll range to"
-              value={rangeTo}
+              value={asText(rangeTo)}
               onChange={(e) => e.target.value && setRangeTo(e.target.value)}
             />
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => downloadPayrollCsv(data, rangeFrom, rangeTo, rangeFrom.slice(0, 7))}
+              onClick={() =>
+                downloadPayrollCsv(
+                  data,
+                  rangeFrom,
+                  rangeTo,
+                  (rangeFrom == null
+                    ? ""
+                    : typeof rangeFrom === "string"
+                      ? rangeFrom
+                      : String(rangeFrom)
+                  ).slice(0, 7),
+                )
+              }
             >
               Export Payroll CSV
             </button>
@@ -247,7 +291,12 @@ export function Attendance() {
           const setStatus = (st: Status) => {
             if (st === "leave") {
               const bal = leaveBalance(e, date, records);
-              const paid = bal >= 1 ? true : confirm(`${e.name} has ${bal} paid leave left.\n\nOK = mark as PAID leave\nCancel = mark as UNPAID leave`);
+              const paid =
+                bal >= 1
+                  ? true
+                  : confirm(
+                      `${asText(e.name)} has ${bal} paid leave left.\n\nOK = mark as PAID leave\nCancel = mark as UNPAID leave`,
+                    );
               set({ status: st, leavePaid: paid });
             } else set({ status: st });
           };
@@ -270,8 +319,8 @@ export function Attendance() {
                   </span>
                   <span className="min-w-0">
                     <span className="mr-2 font-display text-muted-foreground">{i + 1}.</span>
-                    <span className="font-bold tracking-tight">{e.name}</span>
-                    <span className="ml-2 text-sm text-muted-foreground">{dept?.name}</span>
+                    <span className="font-bold tracking-tight">{asText(e.name)}</span>
+                    <span className="ml-2 text-sm text-muted-foreground">{asText(dept?.name)}</span>
                     {e.afterHours && <span className="chip ml-2 bg-secondary text-secondary-foreground">After-hours</span>}
                     {!rec && <span className="chip ml-2 bg-muted text-muted-foreground">Not entered</span>}
                     {!timesOff && r.in != null && r.out == null && (
@@ -301,22 +350,31 @@ export function Attendance() {
                     )}
                     {!open && rec && (
                       <span className="ml-2 text-sm text-muted-foreground">
-                        {r.status}
+                        {asText(r.status)}
                         {c.worked != null ? ` · ${fmtHours(c.worked)} h` : ""}
-                        {c.flags.length ? ` · ${c.flags[0]}` : ""}
+                        {(() => {
+                          const flags = Array.isArray(c.flags) ? c.flags : [];
+                          return flags.length ? ` · ${asText(flags[0])}` : "";
+                        })()}
                       </span>
                     )}
                   </span>
                 </button>
                 <div className="admin-toolbar" onClick={(ev) => ev.stopPropagation()}>
-                  <select className="field w-auto" value={r.status} onChange={(ev) => setStatus(ev.target.value as Status)}>
+                  <select className="field w-auto" value={asText(r.status)} onChange={(ev) => setStatus(ev.target.value as Status)}>
                     <option value="present">Present</option>
                     <option value="half">Half day</option>
                     <option value="leave">Leave</option>
                     <option value="absent">Absent</option>
                   </select>
                   {rec && (
-                    <button type="button" className="btn-ghost" onClick={() => confirm(`Reset ${e.name}'s record for this day?`) && resetRec(date, e.id)}>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() =>
+                        confirm(`Reset ${asText(e.name)}'s record for this day?`) && resetRec(date, e.id)
+                      }
+                    >
                       Reset
                     </button>
                   )}
@@ -353,12 +411,28 @@ export function Attendance() {
                         )}
                         {r.otMarked && !c.extraDay && (
                           <span className="flex items-center gap-2 text-sm">
-                            <select className="field h-9 w-auto" value={r.otMode} onChange={(ev) => set({ otMode: ev.target.value as "auto" | "custom" })}>
+                            <select
+                              className="field h-9 w-auto"
+                              value={asText(r.otMode) === "custom" ? "custom" : "auto"}
+                              onChange={(ev) => set({ otMode: ev.target.value as "auto" | "custom" })}
+                            >
                               <option value="auto">Auto from shift</option>
                               <option value="custom">Custom hours</option>
                             </select>
-                            {r.otMode === "custom" && (
-                              <input type="number" step="0.25" min="0" className="field h-9 w-24" value={r.otHours} onChange={(ev) => set({ otHours: +ev.target.value })} />
+                            {asText(r.otMode) === "custom" && (
+                              <input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                className="field h-9 w-24"
+                                value={
+                                  typeof r.otHours === "number" && Number.isFinite(r.otHours)
+                                    ? r.otHours
+                                    : 0
+                                }
+                                onChange={(ev) => set({ otHours: +ev.target.value })}
+                                onInput={(ev) => set({ otHours: +(ev.target as HTMLInputElement).value })}
+                              />
                             )}
                           </span>
                         )}
@@ -371,14 +445,30 @@ export function Attendance() {
                               min="0"
                               placeholder={c.worked != null ? fmtHours(c.worked) : "auto"}
                               className="field h-9 w-24"
-                              value={r.extraHours ?? ""}
+                              value={
+                                r.extraHours == null
+                                  ? ""
+                                  : typeof r.extraHours === "number" && Number.isFinite(r.extraHours)
+                                    ? r.extraHours
+                                    : ""
+                              }
                               onChange={(ev) => set({ extraHours: ev.target.value === "" ? null : +ev.target.value })}
+                              onInput={(ev) => {
+                                const v = (ev.target as HTMLInputElement).value;
+                                set({ extraHours: v === "" ? null : +v });
+                              }}
                             />
                           </span>
                         )}
                       </div>
                       {r.status === "half" && (
-                        <input className="field mt-3" placeholder="Half day reason" value={r.halfReason} onChange={(ev) => set({ halfReason: ev.target.value })} />
+                        <input
+                          className="field mt-3"
+                          placeholder="Half day reason"
+                          value={asText(r.halfReason)}
+                          onChange={(ev) => set({ halfReason: ev.target.value })}
+                          onInput={(ev) => set({ halfReason: (ev.target as HTMLInputElement).value })}
+                        />
                       )}
                     </>
                   )}
@@ -386,13 +476,15 @@ export function Attendance() {
                   <textarea
                     className="field mt-3 h-16 py-2"
                     placeholder="Note / reason (e.g. informed HR about late arrival)"
-                    value={r.note}
+                    value={asText(r.note)}
                     onChange={(ev) => set({ note: ev.target.value })}
+                    onInput={(ev) => set({ note: (ev.target as HTMLTextAreaElement).value })}
                   />
 
                   {rec && (() => {
                     const tips: string[] = [];
-                    if (c.missPunch) tips.push(`Missing ${c.missing.length} punch(es) — paste them from the machine or add a note.`);
+                    const missing = Array.isArray(c.missing) ? c.missing : [];
+                    if (c.missPunch) tips.push(`Missing ${missing.length} punch(es) — paste them from the machine or add a note.`);
                     if (r.in != null && r.out == null) tips.push("Missing clock-out — paste punch out from the machine or add a note.");
                     if (e.afterHours && !r.doubleShift && !c.extraDay && c.worked != null && c.worked >= c.shiftLen + 120)
                       tips.push(`Worked ${fmtHours(c.worked)} h — more than a normal shift. Tick "Double shift" if he stayed for an extra shift.`);
@@ -413,15 +505,27 @@ export function Attendance() {
                         Worked: <b>{c.worked != null ? `${fmtHours(c.worked)} h` : "—"}</b>
                       </span>
                       {c.breakTaken != null && <span>Break: <b>{c.breakTaken}m</b></span>}
-                      {c.flags.length ? (
-                        c.flags.map((f) => (
-                          <Tone key={f} tone={c.violations.includes(f) || f.startsWith("Miss") ? "red" : undefined}>
-                            {f}
-                          </Tone>
-                        ))
-                      ) : (
-                        <Tone tone="green">On time</Tone>
-                      )}
+                      {(() => {
+                        const flags = Array.isArray(c.flags) ? c.flags : [];
+                        const violations = Array.isArray(c.violations) ? c.violations : [];
+                        return flags.length ? (
+                          flags.map((f) => (
+                            <Tone
+                              key={String(f)}
+                              tone={
+                                violations.includes(f) ||
+                                (f == null ? "" : typeof f === "string" ? f : String(f)).startsWith("Miss")
+                                  ? "red"
+                                  : undefined
+                              }
+                            >
+                              {f == null ? "" : typeof f === "string" ? f : String(f)}
+                            </Tone>
+                          ))
+                        ) : (
+                          <Tone tone="green">On time</Tone>
+                        );
+                      })()}
                     </div>
                   )}
                 </>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { calcDay, prettyDate } from "@/admin/lib/calc";
 import { autoNote, ratingTone } from "@/admin/lib/reports";
@@ -16,17 +16,33 @@ import { isDateInClosedMonth, useMonthClosing } from "@/admin/lib/month-closing"
 import { SectionTitle, Tone } from "./common";
 import { useWorkDate } from "@/admin/lib/workdate";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /**
  * Performance & Follow-Ups — facts ≠ statements ≠ assessment.
  * Facts come only from attendance calc; assessment is HR rating; statements are recorded text.
  */
 export function Performance() {
   const { date, setDate } = useWorkDate();
-  const { employees, depts, records, perf, settings, setPerf } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    perf: perfRaw,
+    settings,
+    setPerf,
+  } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const depts = Array.isArray(deptsRaw) ? deptsRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
+  const perf = perfRaw && typeof perfRaw === "object" && !Array.isArray(perfRaw) ? perfRaw : {};
   const isClosedFn = useMonthClosing((s) => s.isClosed);
   const closed = isDateInClosedMonth(date, isClosedFn);
-  const hrStatements = usePerfFollowUps((s) => s.hrStatements);
-  const followUps = usePerfFollowUps((s) => s.followUps);
+  const hrStatementsRaw = usePerfFollowUps((s) => s.hrStatements);
+  const followUpsRaw = usePerfFollowUps((s) => s.followUps);
+  const hrStatements = Array.isArray(hrStatementsRaw) ? hrStatementsRaw : [];
+  const followUps = Array.isArray(followUpsRaw) ? followUpsRaw : [];
   const addFollowUp = usePerfFollowUps((s) => s.addFollowUp);
   const completeFollowUp = usePerfFollowUps((s) => s.completeFollowUp);
   const addHrStatement = usePerfFollowUps((s) => s.addHrStatement);
@@ -34,6 +50,7 @@ export function Performance() {
 
   const [fuEmp, setFuEmp] = useState("");
   const [fuTitle, setFuTitle] = useState("");
+  const fuTitleRef = useRef<HTMLInputElement>(null);
   const [fuDue, setFuDue] = useState(date);
   const [stmtText, setStmtText] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
@@ -43,11 +60,12 @@ export function Performance() {
 
   const onAddFollowUp = () => {
     const emp = employees.find((e) => e.id === fuEmp);
+    const nextTitle = (asText(fuTitle).trim() || fuTitleRef.current?.value || "").trim();
     const r = addFollowUp({
       employeeId: fuEmp,
-      employeeName: emp?.name ?? "",
+      employeeName: asText(emp?.name),
       due: fuDue,
-      title: fuTitle,
+      title: nextTitle,
       linkedDate: date,
     });
     if ("error" in r) {
@@ -57,9 +75,9 @@ export function Performance() {
     recordAudit({
       who: "HR",
       kind: "perf_followup_add",
-      detail: `Follow-up “${r.title}” for ${r.employeeName}`,
+      detail: `Follow-up “${asText(r.title)}” for ${asText(r.employeeName)}`,
       employeeId: r.employeeId,
-      month: date.slice(0, 7),
+      month: (date == null ? "" : typeof date === "string" ? date : String(date)).slice(0, 7),
     });
     setFuTitle("");
     setMsg("Follow-up added.");
@@ -70,7 +88,7 @@ export function Performance() {
       <SectionTitle
         title="Performance & Follow-Ups"
         sub={`${prettyDate(date)} · Facts (attendance) ≠ Statements (text) ≠ Assessment (rating). Violations appear as facts only.`}
-        right={<input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />}
+        right={<input type="date" className="field w-auto" value={asText(date)} onChange={(e) => e.target.value && setDate(e.target.value)} />}
       />
 
       {closed && (
@@ -83,16 +101,24 @@ export function Performance() {
         <h3 className="font-bold tracking-tight">Performance follow-ups</h3>
         <p className="text-sm text-muted-foreground">Desk list only — not push or email. Separate from assessment ratings.</p>
         <div className="admin-toolbar flex-wrap">
-          <select className="field w-auto" value={fuEmp} onChange={(e) => setFuEmp(e.target.value)} aria-label="Follow-up employee">
+          <select className="field w-auto" value={asText(fuEmp)} onChange={(e) => setFuEmp(e.target.value)} aria-label="Follow-up employee">
             <option value="">Employee</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
+              <option key={asText(e.id)} value={asText(e.id)}>
+                {asText(e.name)}
               </option>
             ))}
           </select>
-          <input className="field min-w-[180px] flex-1" placeholder="Follow-up title" value={fuTitle} onChange={(e) => setFuTitle(e.target.value)} />
-          <input type="date" className="field w-auto" value={fuDue} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
+          <input
+            ref={fuTitleRef}
+            data-testid="admin-followup-title"
+            className="field min-w-[180px] flex-1"
+            placeholder="Follow-up title"
+            value={asText(fuTitle)}
+            onChange={(e) => setFuTitle(e.target.value)}
+            onInput={(e) => setFuTitle((e.target as HTMLInputElement).value)}
+          />
+          <input type="date" className="field w-auto" value={asText(fuDue)} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
           <button type="button" className="btn-primary" onClick={onAddFollowUp}>
             Add follow-up
           </button>
@@ -102,19 +128,21 @@ export function Performance() {
           {openFu.map((f) => (
             <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-2">
               <span>
-                <strong>{f.employeeName}</strong> — {f.title} · due {f.due}
+                <strong>{asText(f.employeeName)}</strong> — {asText(f.title)} · due {asText(f.due)}
               </span>
               <button
                 type="button"
                 className="btn-ghost"
                 onClick={() => {
                   completeFollowUp(f.id);
+                  const due =
+                    f.due == null ? "" : typeof f.due === "string" ? f.due : String(f.due);
                   recordAudit({
                     who: "HR",
                     kind: "perf_followup_done",
-                    detail: `Completed follow-up “${f.title}”`,
+                    detail: `Completed follow-up “${asText(f.title)}”`,
                     employeeId: f.employeeId,
-                    month: f.due.slice(0, 7),
+                    month: due.slice(0, 7),
                   });
                 }}
               >
@@ -150,14 +178,14 @@ export function Performance() {
               <div className="admin-emp-head">
                 <span className="font-bold tracking-tight">
                   <span className="mr-2 text-muted-foreground">{employees.indexOf(e) + 1}.</span>
-                  {e.name}
+                  {asText(e.name)}
                 </span>
                 <select
                   className="field w-auto"
-                  value={p.rating}
+                  value={asText(p.rating)}
                   disabled={closed}
                   onChange={(ev) => setPerf(date, e.id, { rating: ev.target.value as Rating })}
-                  aria-label={`${e.name} assessment rating`}
+                  aria-label={`${asText(e.name)} assessment rating`}
                 >
                   <option value="">Select assessment</option>
                   {(Object.keys(RATING_LABEL) as Rating[]).map((r) => (
@@ -176,7 +204,7 @@ export function Performance() {
                       {facts.map((f, i) => (
                         <li key={`${f.kind}-${i}`}>
                           <Tone tone="red">
-                            {f.kind}: {f.detail}
+                            {asText(f.kind)}: {asText(f.detail)}
                           </Tone>
                         </li>
                       ))}
@@ -191,8 +219,8 @@ export function Performance() {
                     <ul className="space-y-1 text-sm">
                       {statements.map((st, i) => (
                         <li key={`${st.source}-${i}`}>
-                          <span className="text-muted-foreground">[{st.source}] </span>
-                          {st.text}
+                          <span className="text-muted-foreground">[{asText(st.source)}] </span>
+                          {asText(st.text)}
                         </li>
                       ))}
                     </ul>
@@ -205,6 +233,7 @@ export function Performance() {
                     disabled={closed}
                     value={stmtText[e.id] ?? ""}
                     onChange={(ev) => setStmtText((m) => ({ ...m, [e.id]: ev.target.value }))}
+                    onInput={(ev) => setStmtText((m) => ({ ...m, [e.id]: (ev.target as HTMLInputElement).value }))}
                   />
                   <button
                     type="button"
@@ -225,7 +254,11 @@ export function Performance() {
                 <div>
                   <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-muted-foreground">{PERF_LAYER_LABEL.assessment}</p>
                   <p className="text-sm">
-                    {assessment.rating ? <Tone tone={tone}>{assessment.ratingLabel}</Tone> : <span className="text-muted-foreground">Not assessed</span>}
+                    {assessment.rating ? (
+                      <Tone tone={tone}>{asText(assessment.ratingLabel)}</Tone>
+                    ) : (
+                      <span className="text-muted-foreground">Not assessed</span>
+                    )}
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">Assessment is never auto-filled from facts.</p>
                 </div>
@@ -235,10 +268,11 @@ export function Performance() {
                 className="field h-16 py-2"
                 placeholder="Performance note (statement layer)"
                 disabled={closed}
-                value={p.note}
+                value={asText(p.note)}
                 onChange={(ev) => setPerf(date, e.id, { note: ev.target.value })}
+                onInput={(ev) => setPerf(date, e.id, { note: (ev.target as HTMLInputElement).value })}
               />
-              {auto && !p.note && !closed && (
+              {auto && !asText(p.note) && !closed && (
                 <button className="mt-1 text-xs font-semibold text-primary underline" onClick={() => setPerf(date, e.id, { note: auto })}>
                   Use auto note as statement
                 </button>

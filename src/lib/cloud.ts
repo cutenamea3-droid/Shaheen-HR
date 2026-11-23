@@ -17,9 +17,28 @@ export interface PortalAccount {
   active: boolean;
 }
 
-function isMissingAccountsTable(error: { code?: string; message: string }) {
-  return error.code === "42P01" || error.code === "PGRST205" ||
-    (error.message.includes("driver_portal_accounts") && /does not exist|not find the table|schema cache/i.test(error.message));
+function asErrText(v: unknown): string {
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
+/** Coerce portal ACL scalars before UI display_name / email render. */
+export function healPortalAccount(raw: PortalAccount): PortalAccount {
+  return {
+    user_id: asErrText(raw.user_id),
+    email: asErrText(raw.email),
+    display_name: asErrText(raw.display_name),
+    role: raw.role === "admin" ? "admin" : "standard",
+    active: Boolean(raw.active),
+  };
+}
+
+function isMissingAccountsTable(error: { code?: string; message?: unknown }) {
+  const msg = asErrText(error.message);
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    (msg.includes("driver_portal_accounts") && /does not exist|not find the table|schema cache/i.test(msg))
+  );
 }
 
 function legacyOwnerAccount(userId: string): PortalAccount {
@@ -44,8 +63,9 @@ function signUpPasswordFor(email: string, password: string): string {
   return email === PORTAL_EMAIL ? LEGACY_PASSWORD_PREFIX + password : password;
 }
 
-function friendlyAuthError(err: { message?: string } | null | undefined, fallback: string): string {
-  const m = (err?.message ?? "").toLowerCase();
+function friendlyAuthError(err: { message?: unknown } | null | undefined, fallback: string): string {
+  const raw = asErrText(err?.message);
+  const m = raw.toLowerCase();
   if (/confirm|verification|not confirmed|email not confirmed/.test(m)) {
     return "Email confirmation is required. In Supabase: Authentication → Providers → Email → turn off Confirm email, then try again.";
   }
@@ -53,7 +73,7 @@ function friendlyAuthError(err: { message?: string } | null | undefined, fallbac
   if (/already registered|already been registered|user already/.test(m)) {
     return "That email is already registered but the password did not match. Check the password and try again.";
   }
-  if (err?.message?.trim()) return err.message.trim();
+  if (raw.trim()) return raw.trim();
   return fallback;
 }
 
@@ -75,7 +95,11 @@ async function finishPortalLogin(userId: string): Promise<PortalAccount> {
  * with the same email+password (no invented secrets), then continue the session.
  */
 export async function signInPortalAccount(email: string, password: string): Promise<PortalSignInResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = (
+    email == null ? "" : typeof email === "string" ? email : String(email)
+  )
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail || !password) throw new Error("Email and password are required.");
 
   for (const authPassword of authPasswordCandidates(normalizedEmail, password)) {
@@ -134,14 +158,17 @@ export async function getPortalAccount(userId: string): Promise<PortalAccount | 
     if (isMissingAccountsTable(error)) {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw new Error(userError.message);
-      if (userData.user?.id === userId && userData.user.email?.toLowerCase() === PORTAL_EMAIL) {
+      if (
+        userData.user?.id === userId &&
+        asErrText(userData.user.email).trim().toLowerCase() === PORTAL_EMAIL
+      ) {
         return legacyOwnerAccount(userId);
       }
     }
     throw new Error(error.message);
   }
   if (data && (data.role === "admin" || data.role === "standard")) {
-    return { ...data, role: data.role as PortalRole };
+    return healPortalAccount({ ...data, role: data.role as PortalRole });
   }
 
   // Empty / missing ACL row: try bootstrap RPC (owner or first admin on a fresh project).
@@ -151,13 +178,13 @@ export async function getPortalAccount(userId: string): Promise<PortalAccount | 
   if (!ensureErr && ensured) {
     const row = Array.isArray(ensured) ? ensured[0] : ensured;
     if (row && (row.role === "admin" || row.role === "standard")) {
-      return {
+      return healPortalAccount({
         user_id: row.user_id,
         email: row.email,
         display_name: row.display_name,
         role: row.role as PortalRole,
         active: Boolean(row.active),
-      };
+      });
     }
   }
   return null;
@@ -191,7 +218,10 @@ export async function listPortalAccounts(): Promise<PortalAccount[]> {
     .select("user_id, email, display_name, role, active")
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard");
+  const rows = Array.isArray(data) ? data : [];
+  return rows
+    .filter((account: PortalAccount): account is PortalAccount => account.role === "admin" || account.role === "standard")
+    .map(healPortalAccount);
 }
 
 export async function createPortalAccount(input: { email: string; displayName: string; password: string }): Promise<void> {
@@ -199,14 +229,39 @@ export async function createPortalAccount(input: { email: string; displayName: s
   if (error) throw new Error(error.message);
 }
 
-export async function listPortalActivity() {
+export type PortalActivityRow = {
+  id: string | number;
+  actor_name: string;
+  action: string;
+  section_id: string;
+  occurred_at: string;
+};
+
+/** Coerce activity log scalars before UI `{entry.action}` render. */
+export function healPortalActivity(raw: unknown): PortalActivityRow | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<PortalActivityRow>;
+  const occurred_at = asErrText(r.occurred_at);
+  if (!occurred_at) return null;
+  return {
+    id: r.id == null ? asErrText(Math.random()) : (typeof r.id === "string" || typeof r.id === "number" ? r.id : asErrText(r.id)),
+    actor_name: asErrText(r.actor_name),
+    action: asErrText(r.action),
+    section_id: asErrText(r.section_id) || "portal",
+    occurred_at,
+  };
+}
+
+export async function listPortalActivity(): Promise<PortalActivityRow[]> {
   const { data, error } = await db
     .from("driver_portal_activity")
     .select("id, actor_name, action, section_id, occurred_at")
     .order("occurred_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
-  return data ?? [];
+  return (Array.isArray(data) ? data : [])
+    .map((row: unknown) => healPortalActivity(row))
+    .filter((row: PortalActivityRow | null): row is PortalActivityRow => !!row);
 }
 
 /** Best-effort cloud activity write (trigger also logs tracker_sections upserts). */
@@ -218,9 +273,9 @@ export async function logPortalActivity(input: {
   const { data: userData } = await supabase.auth.getUser();
   const { error } = await db.from("driver_portal_activity").insert({
     actor_id: userData.user?.id ?? null,
-    actor_name: input.actorName,
-    action: input.action,
-    section_id: input.sectionId ?? "portal",
+    actor_name: asErrText(input.actorName),
+    action: asErrText(input.action),
+    section_id: asErrText(input.sectionId) || "portal",
   });
   if (error) throw new Error(error.message);
 }
@@ -242,17 +297,29 @@ export async function cloudStamp() {
 export async function cloudLoad() {
   const { data: rows, error } = await db.from(T).select("id, data, updated_at");
   if (error) throw new Error(error.message);
-  const list = (rows as unknown as { id: string; data: unknown; updated_at: string }[]) ?? [];
+  const list = Array.isArray(rows)
+    ? (rows as { id: string; data: unknown; updated_at: string }[])
+    : [];
   const stamp = list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
   return { sections: Object.fromEntries(list.map((r) => [r.id, JSON.stringify(r.data)])) as Record<string, string>, stamp };
 }
 
 export async function cloudSave({ data }: { data: { sections: Record<string, string> } }) {
   const now = new Date().toISOString();
-  const rows = Object.entries(data.sections).map(([id, json]) => ({ id, data: JSON.parse(json), updated_at: now }));
+  const sections =
+    data?.sections && typeof data.sections === "object" && !Array.isArray(data.sections)
+      ? data.sections
+      : {};
+  const rows = Object.entries(sections).flatMap(([id, json]) => {
+    try {
+      return [{ id, data: JSON.parse(json), updated_at: now }];
+    } catch {
+      return [];
+    }
+  });
   if (!rows.length) return { stamp: "" };
   const { data: out, error } = await db.from(T).upsert(rows as never).select("updated_at");
   if (error) throw new Error(error.message);
-  const list = (out as unknown as { updated_at: string }[]) ?? [];
+  const list = Array.isArray(out) ? (out as { updated_at: string }[]) : [];
   return { stamp: list.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "") };
 }

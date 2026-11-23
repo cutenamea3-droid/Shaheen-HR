@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, FolderInput, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/store";
 import { useViewMode } from "@/lib/viewmode";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
-import type { Row } from "@/lib/sections";
+import { cellsOf, type Row } from "@/lib/sections";
 
 /** Manual record lists — kept separate from the driver sections (not counted in alerts or Driver Cards). */
 export const RECORD_TABS = [
@@ -25,8 +25,10 @@ export const RECORD_TABS = [
 const STATUS = ["Valid", "On File", "Expired", "Missing", "Not Confirmed"];
 type ActiveFilter = "active" | "inactive" | "all";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function nameKey(name: string) {
-  return name.trim().toLowerCase();
+  return asText(name).trim().toLowerCase();
 }
 
 type PersonGroup = {
@@ -39,19 +41,22 @@ type PersonGroup = {
 function groupByPerson(rows: Row[]): PersonGroup[] {
   const map = new Map<string, PersonGroup>();
   for (const r of rows) {
-    const name = (r.cells[0] ?? "").trim() || "Unnamed";
+    const name = (cellsOf(r)[0] ?? "").trim() || "Unnamed";
     const key = nameKey(name);
     const g = map.get(key);
     if (g) g.rows.push(r);
     else map.set(key, { key, name, rows: [r], active: true });
   }
   for (const g of map.values()) g.active = recordPersonIsActive(g.rows);
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return [...map.values()].sort((a, b) =>
+    asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
+  );
 }
 
 function personCount(rows: Row[] | undefined) {
   if (!rows?.length) return 0;
-  return new Set(rows.map((r) => nameKey(r.cells[0] ?? ""))).size;
+  return new Set(rows.map((r) => nameKey(cellsOf(r)[0] ?? ""))).size;
 }
 
 export function Records() {
@@ -61,6 +66,8 @@ export function Records() {
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [doc, setDoc] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("active");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const cur = RECORD_TABS.find((t) => t.id === tab)!;
@@ -71,35 +78,39 @@ export function Records() {
   }, [tab]);
 
   const people = useMemo(() => {
-    const rows = data.sections[tab]?.rows ?? [];
-    const needle = q.trim().toLowerCase();
+    const rows = Array.isArray(data.sections[tab]?.rows) ? data.sections[tab]!.rows : [];
+    const needle = asText(q).trim().toLowerCase();
     const filtered = !needle
       ? rows
-      : rows.filter((r) => r.cells.some((c) => c.toLowerCase().includes(needle)));
+      : rows.filter((r) =>
+          cellsOf(r).some((c) => asText(c).toLowerCase().includes(needle)),
+        );
     const grouped = groupByPerson(filtered);
     if (!ownersTab || activeFilter === "all") return grouped;
     return grouped.filter((p) => (activeFilter === "active" ? p.active : !p.active));
   }, [data.sections, tab, q, ownersTab, activeFilter]);
 
   const add = () => {
-    if (!name.trim()) return;
-    addRecord(tab, [name.trim(), doc.trim(), "Valid", "", "", "Active"]);
+    const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
+    const nextDoc = (asText(doc).trim() || docRef.current?.value || "").trim();
+    if (!nextName) return;
+    addRecord(tab, [nextName, nextDoc, "Valid", "", "", "Active"]);
     setDoc("");
-    setOpen((o) => ({ ...o, [`${tab}:${nameKey(name)}`]: true }));
+    setOpen((o) => ({ ...o, [`${tab}:${nameKey(nextName)}`]: true }));
   };
 
   const cardId = (key: string) => `${tab}:${key}`;
   const toggle = (key: string) => {
     const id = cardId(key);
     setOpen((o) => {
-      const currently = id in o ? !!o[id] : !!q.trim();
+      const currently = id in o ? !!o[id] : !!asText(q).trim();
       return { ...o, [id]: !currently };
     });
   };
   const isOpen = (key: string) => {
     const id = cardId(key);
     if (id in open) return !!open[id];
-    return !!q.trim();
+    return !!asText(q).trim();
   };
 
   const shiftCategory = (personName: string, toId: string) => {
@@ -113,7 +124,7 @@ export function Records() {
     <div className="flex h-full flex-col gap-3 overflow-hidden px-2 py-2 sm:p-3">
       <div className="tracker-toolbar gap-2">
         {RECORD_TABS.map((t) => {
-          const docs = data.sections[t.id]?.rows.length ?? 0;
+          const docs = data.sections[t.id]?.rows?.length ?? 0;
           const peopleN = personCount(data.sections[t.id]?.rows);
           return (
             <button
@@ -142,7 +153,7 @@ export function Records() {
         <div className="relative w-full max-w-xs min-w-48">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={q}
+            value={asText(q)}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search…"
             className="tracker-search"
@@ -173,20 +184,26 @@ export function Records() {
             className="flex flex-wrap items-center gap-2"
           >
             <input
-              value={name}
+              ref={nameRef}
+              data-testid="records-person-name"
+              value={asText(name)}
               onChange={(e) => setName(e.target.value)}
+              onInput={(e) => setName((e.target as HTMLInputElement).value)}
               placeholder={`${cur.who} name`}
               className="h-10 w-52 rounded-xl border bg-card px-3"
             />
             <input
-              value={doc}
+              ref={docRef}
+              data-testid="records-doc-name"
+              value={asText(doc)}
               onChange={(e) => setDoc(e.target.value)}
+              onInput={(e) => setDoc((e.target as HTMLInputElement).value)}
               placeholder="Document (e.g. TWIC card)"
               className="h-10 w-56 rounded-xl border bg-card px-3"
             />
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!asText(name).trim()}
               className="ui-press inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-4 font-bold text-primary-foreground disabled:opacity-50"
             >
               <Plus className="size-4" /> Add record
@@ -224,7 +241,9 @@ export function Records() {
                     <ChevronDown className="size-4" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-lg font-extrabold tracking-tight">{p.name}</span>
+                    <span className="block truncate text-lg font-extrabold tracking-tight">
+                      {asText(p.name)}
+                    </span>
                     <span className="text-sm text-muted-foreground">
                       {p.rows.length} document{p.rows.length === 1 ? "" : "s"}
                       {ownersTab ? ` · ${p.active ? "Active" : "Inactive"}` : ""}
@@ -240,7 +259,7 @@ export function Records() {
                   <ActiveToggle
                     mode="binary"
                     value={p.active ? "Active" : "Inactive"}
-                    onSave={(v) => setRecordPersonActive(tab, p.name, v)}
+                    onSave={(v) => setRecordPersonActive(tab, asText(p.name), v)}
                   />
                 )}
 
@@ -249,13 +268,13 @@ export function Records() {
                     <FolderInput className="size-4 shrink-0" />
                     <span className="sr-only">Move category</span>
                     <select
-                      aria-label={`Move ${p.name} to another category`}
+                      aria-label={`Move ${asText(p.name)} to another category`}
                       className="ui-press h-9 max-w-[14rem] rounded-xl border bg-card px-2 font-semibold text-foreground"
-                      value={tab}
-                      onChange={(e) => shiftCategory(p.name, e.target.value)}
+                      value={asText(tab)}
+                      onChange={(e) => shiftCategory(asText(p.name), e.target.value)}
                     >
                       {RECORD_TABS.map((t) => (
-                        <option key={t.id} value={t.id}>
+                        <option key={asText(t.id)} value={asText(t.id)}>
                           {t.short}
                         </option>
                       ))}
@@ -273,8 +292,8 @@ export function Records() {
                           {RECORD_HEADERS[0]}
                         </div>
                         <EditableText
-                          value={p.name}
-                          onSave={(v) => renameRecordPerson(tab, p.name, v)}
+                          value={asText(p.name)}
+                          onSave={(v) => renameRecordPerson(tab, asText(p.name), v)}
                           bold
                         />
                       </div>
@@ -306,6 +325,7 @@ export function Records() {
                       </thead>
                       <tbody>
                         {p.rows.map((r, ri) => {
+                          const cells = cellsOf(r);
                           const save = (ci: number) => (v: string) => setCell(tab, r.id, ci, v);
                           return (
                             <tr key={r.id} className="ui-row-hover">
@@ -313,17 +333,17 @@ export function Records() {
                                 {ri + 1}
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <EditableText value={r.cells[1] ?? ""} onSave={save(1)} />
+                                <EditableText value={cells[1] ?? ""} onSave={save(1)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <StatusToggle value={r.cells[2] ?? ""} options={STATUS} onSave={save(2)} />
+                                <StatusToggle value={cells[2] ?? ""} options={STATUS} onSave={save(2)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
-                                <DateCell value={r.cells[3] ?? ""} onSave={save(3)} />
+                                <DateCell value={cells[3] ?? ""} onSave={save(3)} />
                               </td>
                               <td className="border-b border-r border-foreground/15 px-3 py-2 align-top">
                                 <EditableText
-                                  value={r.cells[4] ?? ""}
+                                  value={cells[4] ?? ""}
                                   onSave={save(4)}
                                   placeholder="Add note"
                                   boxed
@@ -335,7 +355,9 @@ export function Records() {
                                     type="button"
                                     aria-label="Delete document"
                                     onClick={() =>
-                                      confirm(`Delete “${r.cells[1] || "document"}” for ${p.name}?`) &&
+                                      confirm(
+                                        `Delete “${asText(cells[1]) || "document"}” for ${asText(p.name)}?`,
+                                      ) &&
                                       deleteRecord(tab, r.id)
                                     }
                                     className="ui-press rounded-lg p-2 text-muted-foreground hover:bg-danger-soft hover:text-danger"

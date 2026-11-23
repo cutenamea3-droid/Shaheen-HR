@@ -15,8 +15,7 @@ import {
   today,
   type Tone,
 } from "./alerts";
-import type { AppData, Row, SectionData } from "./sections";
-import { SECTIONS } from "./sections";
+import { SECTIONS, cellsOf, headersOf, type AppData, type Row, type SectionData } from "./sections";
 
 export const FOLLOW_UP_SECTION_ID = "compliance_follow_ups";
 
@@ -74,37 +73,45 @@ export function ensureFollowUpSection(data: AppData): AppData {
 }
 
 function normalizeFollowUpSection(sec: SectionData): SectionData {
-  let headers = [...(sec.headers ?? [])];
-  let widths = [...(sec.widths ?? [])];
-  let hidden = [...(sec.hidden ?? [])];
-  let touched = false;
+  let headers = [...headersOf(sec)];
+  let widths = Array.isArray(sec.widths) ? [...sec.widths] : [];
+  let hidden = Array.isArray(sec.hidden) ? [...sec.hidden] : [];
+  let touched = !Array.isArray(sec.rows);
   if (headers.length < FOLLOW_UP_HEADERS.length) {
     headers = [...FOLLOW_UP_HEADERS];
     widths = FOLLOW_UP_HEADERS.map(() => 180);
     hidden = FOLLOW_UP_HEADERS.map(() => false);
     touched = true;
   }
-  const rows = sec.rows.map((r) => {
-    const cells = [...r.cells];
+  const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
+  const rows = srcRows.map((r) => {
+    const base = cellsOf(r);
+    if (!Array.isArray(r.cells)) touched = true;
+    const cells = [...base];
     while (cells.length < FOLLOW_UP_HEADERS.length) {
       cells.push("");
       touched = true;
     }
-    return cells === r.cells ? r : { ...r, cells };
+    return cells.length === base.length && Array.isArray(r.cells) ? r : { ...r, cells };
   });
   if (!touched) return sec;
   return { ...sec, headers, widths, hidden, rows };
 }
 
-function parseStatus(raw: string): FollowUpStatus {
-  const k = raw.trim().toLowerCase();
+function asFuText(v: unknown): string {
+  if (v == null) return "";
+  return typeof v === "string" ? v : String(v);
+}
+
+function parseStatus(raw: unknown): FollowUpStatus {
+  const k = asFuText(raw).trim().toLowerCase();
   if (k === "done" || k === "complete" || k === "closed") return "done";
   if (k === "snoozed" || k === "snooze") return "snoozed";
   return "open";
 }
 
-function parseSource(raw: string): FollowUpSource {
-  const k = raw.trim().toLowerCase();
+function parseSource(raw: unknown): FollowUpSource {
+  const k = asFuText(raw).trim().toLowerCase();
   if (k === "applied") return "applied";
   if (k === "plan") return "plan";
   if (k === "alert") return "alert";
@@ -112,19 +119,22 @@ function parseSource(raw: string): FollowUpSource {
 }
 
 export function rowToFollowUp(row: Row): FollowUp {
-  const cells = row.cells;
+  const cells = cellsOf(row);
   return {
     id: row.id,
     driverId: row.driverId,
     driver: (cells[0] ?? "").trim() || "Unknown",
     subject: (cells[1] ?? "").trim(),
-    status: parseStatus(cells[2] ?? ""),
+    status: parseStatus(cells[2]),
     dueDate: (cells[3] ?? "").trim(),
     notes: (cells[4] ?? "").trim(),
-    source: parseSource(cells[5] ?? ""),
+    source: parseSource(cells[5]),
     sectionId: (cells[6] ?? "").trim(),
     docType: (cells[7] ?? "").trim(),
-    linkedRowId: row.id.startsWith("fu_") ? "" : row.id,
+    linkedRowId: (() => {
+      const rid = row.id == null ? "" : typeof row.id === "string" ? row.id : String(row.id);
+      return rid.startsWith("fu_") ? "" : rid;
+    })(),
   };
 }
 
@@ -143,7 +153,7 @@ export function followUpToCells(fu: Omit<FollowUp, "id"> | FollowUp): string[] {
 
 export function listFollowUps(data: AppData): FollowUp[] {
   const sec = data.sections[FOLLOW_UP_SECTION_ID];
-  if (!sec) return [];
+  if (!sec || !Array.isArray(sec.rows)) return [];
   return sec.rows.map(rowToFollowUp);
 }
 
@@ -159,9 +169,11 @@ export function followUpTone(fu: FollowUp): Tone {
 }
 
 export function followUpDueLabel(fu: FollowUp): string {
-  if (!fu.dueDate.trim()) return "No due date";
-  const d = parseISO(fu.dueDate);
-  if (!d) return fu.dueDate;
+  const due =
+    fu.dueDate == null ? "" : typeof fu.dueDate === "string" ? fu.dueDate : String(fu.dueDate);
+  if (!due.trim()) return "No due date";
+  const d = parseISO(due);
+  if (!d) return due;
   const n = daysUntil(d);
   const base = fmtDate(d);
   if (n < 0) return `${base} · ${-n}d overdue`;
@@ -193,8 +205,9 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
   for (const def of SECTIONS) {
     if (!["dmv", "medical", "queries", "ssccdl"].includes(def.id)) continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
-    for (const row of sec.rows) {
+    if (!sec || !Array.isArray(sec.rows)) continue;
+    for (const rawRow of sec.rows) {
+      const row = { ...rawRow, cells: cellsOf(rawRow) };
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
       def.types.forEach((t, col) => {
@@ -217,7 +230,15 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
             f.driverId === row.driverId &&
             f.sectionId === def.id &&
             f.source === "applied" &&
-            (f.docType === docType || f.subject.toLowerCase().includes("applied")),
+            (f.docType === docType ||
+              (f.subject == null
+                ? ""
+                : typeof f.subject === "string"
+                  ? f.subject
+                  : String(f.subject)
+              )
+                .toLowerCase()
+                .includes("applied")),
         );
         if (already) return;
 
@@ -226,7 +247,7 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
         out.push({
           key: `${def.id}:${row.id}:${col}`,
           driverId: row.driverId,
-          driver: row.cells[0] ?? "",
+          driver: String(row.cells[0] ?? ""),
           sectionId: def.id,
           rowId: row.id,
           docType,
@@ -243,11 +264,15 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
 export function filterFollowUps(
   items: FollowUp[],
   filter: "all" | "open" | "today" | "overdue" | "done" | "snoozed",
-  search: string,
+  search: unknown,
 ): FollowUp[] {
-  const q = search.trim().toLowerCase();
+  const q = (search == null ? "" : typeof search === "string" ? search : String(search))
+    .trim()
+    .toLowerCase();
+  const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
   const t = today();
-  return items.filter((fu) => {
+  const list = Array.isArray(items) ? items : [];
+  return list.filter((fu) => {
     if (filter === "open" && fu.status !== "open") return false;
     if (filter === "done" && fu.status !== "done") return false;
     if (filter === "snoozed" && fu.status !== "snoozed") return false;
@@ -261,16 +286,17 @@ export function filterFollowUps(
     }
     if (!q) return true;
     return (
-      fu.driver.toLowerCase().includes(q) ||
-      fu.subject.toLowerCase().includes(q) ||
-      fu.docType.toLowerCase().includes(q) ||
-      fu.notes.toLowerCase().includes(q)
+      asText(fu.driver).toLowerCase().includes(q) ||
+      asText(fu.subject).toLowerCase().includes(q) ||
+      asText(fu.docType).toLowerCase().includes(q) ||
+      asText(fu.notes).toLowerCase().includes(q)
     );
   }).sort((a, b) => {
     const da = parseISO(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
     const db = parseISO(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver);
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver));
   });
 }
 
@@ -282,7 +308,8 @@ export function followUpCounts(items: FollowUp[]) {
   let overdue = 0;
   let done = 0;
   let snoozed = 0;
-  for (const fu of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const fu of list) {
     if (fu.status === "done") {
       done++;
       continue;
@@ -296,5 +323,5 @@ export function followUpCounts(items: FollowUp[]) {
       if (n === 0) todayN++;
     }
   }
-  return { all: items.length, open, today: todayN, overdue, done, snoozed };
+  return { all: list.length, open, today: todayN, overdue, done, snoozed };
 }

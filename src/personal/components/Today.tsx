@@ -56,12 +56,19 @@ type TimerState = {
 const DONE_KEY = "hr-personal-vu-today-done-v1";
 const MODE_KEY = "hr-personal-vu-today-modes-v1";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
+function asDoneMap(v: unknown): Record<string, boolean> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, boolean>) : {};
+}
+
 function loadDoneMap(date: string): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(DONE_KEY);
     if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, Record<string, boolean>>;
-    return parsed[date] ?? {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return asDoneMap((parsed as Record<string, unknown>)[date]);
   } catch {
     return {};
   }
@@ -70,8 +77,14 @@ function loadDoneMap(date: string): Record<string, boolean> {
 function saveDoneMap(date: string, map: Record<string, boolean>) {
   try {
     const raw = localStorage.getItem(DONE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Record<string, boolean>>) : {};
-    parsed[date] = map;
+    let parsed: Record<string, Record<string, boolean>> = {};
+    if (raw) {
+      const j = JSON.parse(raw) as unknown;
+      if (j && typeof j === "object" && !Array.isArray(j)) {
+        parsed = j as Record<string, Record<string, boolean>>;
+      }
+    }
+    parsed[date] = asDoneMap(map);
     localStorage.setItem(DONE_KEY, JSON.stringify(parsed));
   } catch {
     /* ignore */
@@ -79,21 +92,35 @@ function saveDoneMap(date: string, map: Record<string, boolean>) {
 }
 
 function loadModes(): { handoutFirst: boolean; creditTriage: boolean } {
+  const fallback = { handoutFirst: true, creditTriage: false };
   try {
     const raw = localStorage.getItem(MODE_KEY);
-    if (!raw) return { handoutFirst: true, creditTriage: false };
-    return JSON.parse(raw) as { handoutFirst: boolean; creditTriage: boolean };
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
+    const o = parsed as { handoutFirst?: unknown; creditTriage?: unknown };
+    return {
+      handoutFirst: typeof o.handoutFirst === "boolean" ? o.handoutFirst : fallback.handoutFirst,
+      creditTriage: typeof o.creditTriage === "boolean" ? o.creditTriage : fallback.creditTriage,
+    };
   } catch {
-    return { handoutFirst: true, creditTriage: false };
+    return fallback;
   }
 }
 
 export function Today() {
   const settings = usePersonal((s) => s.settings);
-  const courses = usePersonal((s) => s.courses);
-  const sessions = usePersonal((s) => s.sessions);
-  const assessments = usePersonal((s) => s.assessments);
-  const dayPlans = usePersonal((s) => s.dayPlans);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const backlog = Array.isArray(backlogRaw) ? backlogRaw : [];
   const vuSeededAt = usePersonal((s) => s.vuSeededAt);
   const vuPlanAsOf = usePersonal((s) => s.vuPlanAsOf);
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
@@ -103,20 +130,18 @@ export function Today() {
   const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
-  const backlog = usePersonal((s) => s.backlog);
 
   const today = todayKey();
   const sunday = isSundayIso(today);
   const student = VU_STUDY_PLAN.student;
   const [modes, setModes] = useState(loadModes);
-  const rx = useMemo(
-    () =>
-      buildTodayPrescription(VU_STUDY_PLAN, today, {
-        handoutFirst: modes.handoutFirst,
-        creditHourTriage: modes.creditTriage,
-      }),
-    [today, modes.handoutFirst, modes.creditTriage],
-  );
+  const rx = useMemo(() => {
+    const raw = buildTodayPrescription(VU_STUDY_PLAN, today, {
+      handoutFirst: modes.handoutFirst,
+      creditHourTriage: modes.creditTriage,
+    });
+    return { ...raw, blocks: Array.isArray(raw.blocks) ? raw.blocks : [] };
+  }, [today, modes.handoutFirst, modes.creditTriage]);
 
   const [doneMap, setDoneMap] = useState<Record<string, boolean>>(() => loadDoneMap(today));
   const [presetId, setPresetId] = useState("lecture");
@@ -177,7 +202,8 @@ export function Today() {
   const minutes7d = studyMinutesInRange(sessions, Date.now() - 7 * 86400000, Date.now());
   const streak = streakDays(sessions);
   const active14 = consistencyDays(sessions, 14);
-  const doneCount = Object.values(doneMap).filter(Boolean).length;
+  const safeDone = asDoneMap(doneMap);
+  const doneCount = Object.values(safeDone).filter(Boolean).length;
   const progressPct = rx.blocks.length
     ? Math.round((doneCount / rx.blocks.length) * 100)
     : 0;
@@ -190,7 +216,7 @@ export function Today() {
   });
 
   const markDone = (block: TodayBlock, done: boolean) => {
-    const next = { ...doneMap, [block.id]: done };
+    const next = { ...safeDone, [block.id]: done };
     setDoneMap(next);
     saveDoneMap(today, next);
     if (block.todoTitle) {
@@ -203,7 +229,17 @@ export function Today() {
           setAssessmentSubmitted(a.id, done);
         }
       }
-      const b = backlog.find((x) => x.label.includes(block.todoTitle || ""));
+      const needle =
+        block.todoTitle == null
+          ? ""
+          : typeof block.todoTitle === "string"
+            ? block.todoTitle
+            : String(block.todoTitle);
+      const b = backlog.find((x) => {
+        const label =
+          x.label == null ? "" : typeof x.label === "string" ? x.label : String(x.label);
+        return needle ? label.includes(needle) : false;
+      });
       if (b && b.done !== done) toggleBacklog(b.id);
     }
   };
@@ -301,19 +337,24 @@ export function Today() {
         <div className="relative z-[1] flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 max-w-xl">
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--hp-violet-soft)]">
-              My Study Today · {student.name} · {student.studentId} · e-ID to {student.eCardValidUntil}
+              My Study Today · {asTxt(student.name)} · {asTxt(student.studentId)} · e-ID to{" "}
+              {asTxt(student.eCardValidUntil)}
             </div>
             <h2 className="hp-title mt-2 text-3xl font-bold tracking-tight text-[var(--hp-ink)] sm:text-4xl">
               {formatMinutes(rx.dailyTotal)} · graded windows first
             </h2>
             {next ? (
               <p className="mt-2 text-sm font-semibold text-[var(--hp-amber)]">
-                Next irreversible To-Do Calendar item: {next.title}
-                {next.due ? ` · locks ${next.due}` : ""} · verify status on VULMS
+                Next irreversible To-Do Calendar item: {asTxt(next.title)}
+                {next.due ? ` · locks ${asTxt(next.due)}` : ""} · verify status on VULMS
               </p>
             ) : null}
-            <p className="mt-2 text-sm leading-relaxed text-[var(--hp-muted)]">{rx.motivation}</p>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--hp-muted)]">{rx.howBehind}</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--hp-muted)]">
+              {asTxt(rx.motivation)}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--hp-muted)]">
+              {asTxt(rx.howBehind)}
+            </p>
             <p className="mt-3 text-[11px] font-semibold text-[var(--hp-teal)]">{VU_DAILY_HABIT}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -356,7 +397,12 @@ export function Today() {
         </div>
 
         <div className="relative z-[1] mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Stat label="Today load" value={formatMinutes(rx.dailyTotal)} hint={rx.math} accent="violet" />
+          <Stat
+            label="Today load"
+            value={formatMinutes(rx.dailyTotal)}
+            hint={asTxt(rx.math)}
+            accent="violet"
+          />
           <Stat
             label="To-Do pendency"
             value={String(rx.pendencyCount)}
@@ -445,7 +491,7 @@ export function Today() {
 
           <ul className="space-y-2.5">
             {rx.blocks.map((b, i) => {
-              const done = !!doneMap[b.id];
+              const done = !!safeDone[b.id];
               const active = timer.blockId === b.id;
               return (
                 <li
@@ -470,18 +516,22 @@ export function Today() {
                         </span>
                         {b.due ? (
                           <span className="text-[10px] font-semibold text-[var(--hp-amber)]">
-                            due {b.due}
+                            due {asTxt(b.due)}
                           </span>
                         ) : null}
                         {b.room ? (
-                          <span className="text-[10px] font-semibold text-[var(--hp-muted)]">{b.room}</span>
+                          <span className="text-[10px] font-semibold text-[var(--hp-muted)]">
+                            {asTxt(b.room)}
+                          </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-[var(--hp-ink)]">{b.label}</div>
+                      <div className="mt-1 text-sm font-semibold text-[var(--hp-ink)]">
+                        {asTxt(b.label)}
+                      </div>
                       <div className="text-xs text-[var(--hp-muted)]">
-                        {b.courseCode} · {b.minutes}m suggested
+                        {asTxt(b.courseCode)} · {b.minutes}m suggested
                         {courses.find((c) => c.code === b.courseCode)?.requirementType
-                          ? ` · ${courses.find((c) => c.code === b.courseCode)?.requirementType}`
+                          ? ` · ${asTxt(courses.find((c) => c.code === b.courseCode)?.requirementType)}`
                           : ""}
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-2 text-[11px]">
@@ -584,8 +634,8 @@ export function Today() {
                     {i + 1}
                   </span>
                   <div>
-                    <div className="text-sm font-semibold text-[var(--hp-ink)]">{step.title}</div>
-                    <div className="text-xs leading-relaxed text-[var(--hp-muted)]">{step.blurb}</div>
+                    <div className="text-sm font-semibold text-[var(--hp-ink)]">{asTxt(step.title)}</div>
+                    <div className="text-xs leading-relaxed text-[var(--hp-muted)]">{asTxt(step.blurb)}</div>
                   </div>
                 </li>
               ))}
@@ -644,8 +694,8 @@ export function Today() {
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-bold text-[var(--hp-ink)]">
-                      {c.code}{" "}
-                      <span className="font-semibold text-[var(--hp-muted)]">· {c.title}</span>
+                      {asTxt(c.code)}{" "}
+                      <span className="font-semibold text-[var(--hp-muted)]">· {asTxt(c.title)}</span>
                     </div>
                   </div>
                   <span
@@ -655,7 +705,7 @@ export function Today() {
                         : "bg-[var(--hp-violet)]/15 text-[var(--hp-violet)]"
                     }`}
                   >
-                    {c.requirementType || "—"}
+                    {asTxt(c.requirementType) || "—"}
                   </span>
                 </div>
               ))}
@@ -674,7 +724,8 @@ export function Today() {
                   </>
                 ) : activeBlock ? (
                   <>
-                    Focus now: <strong className="text-[var(--hp-ink)]">{activeBlock.label}</strong>.
+                    Focus now:{" "}
+                    <strong className="text-[var(--hp-ink)]">{asTxt(activeBlock.label)}</strong>.
                   </>
                 ) : streak > 0 ? (
                   <>

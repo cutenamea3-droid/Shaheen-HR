@@ -1,11 +1,28 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead, Stat } from "./common";
 import {
+  blocksOf,
   consistencyDays,
   studyMinutesInRange,
   todayKey,
   usePersonal,
 } from "@/personal/lib/store";
+import {
+  normalizeAssessment,
+  normalizeBacklogItem,
+  normalizeCourse,
+  normalizeCourseGrade,
+  normalizeFocusSession,
+  normalizeGradeEntry,
+} from "@/personal/lib/assessment-phases";
+import type {
+  Assessment,
+  BacklogItem,
+  Course,
+  CourseGrade,
+  FocusSession,
+  GradeEntry,
+} from "@/personal/lib/types";
 import {
   VU_LETTER_CHOICES,
   VU_WEIGHT_BANDS,
@@ -16,19 +33,57 @@ import {
 import {
   buildWeeklyStats,
   emptyWeeklyReview,
+  normalizeWeeklyReview,
   weekStartMonday,
 } from "@/personal/lib/weekly-review";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function Analytics() {
-  const sessions = usePersonal((s) => s.sessions);
-  const backlog = usePersonal((s) => s.backlog);
-  const courses = usePersonal((s) => s.courses);
-  const dayPlans = usePersonal((s) => s.dayPlans);
-  const assessments = usePersonal((s) => s.assessments);
-  const discipline = usePersonal((s) => s.discipline);
-  const gradeEntries = usePersonal((s) => s.gradeEntries);
-  const courseGrades = usePersonal((s) => s.courseGrades);
-  const weeklyReviews = usePersonal((s) => s.weeklyReviews);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const disciplineRaw = usePersonal((s) => s.discipline);
+  const gradeEntriesRaw = usePersonal((s) => s.gradeEntries);
+  const courseGradesRaw = usePersonal((s) => s.courseGrades);
+  const weeklyReviewsRaw = usePersonal((s) => s.weeklyReviews);
+  const sessions = (Array.isArray(sessionsRaw) ? sessionsRaw : [])
+    .map((s) => normalizeFocusSession(s as Partial<FocusSession> & Pick<FocusSession, "id">))
+    .filter((s) => !!s.id);
+  const backlog = (Array.isArray(backlogRaw) ? backlogRaw : [])
+    .map((b) => normalizeBacklogItem(b as Partial<BacklogItem> & Pick<BacklogItem, "id">))
+    .filter((b) => !!b.id);
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
+  const assessments = (Array.isArray(assessmentsRaw) ? assessmentsRaw : [])
+    .map((a) =>
+      normalizeAssessment(a as Partial<Assessment> & Pick<Assessment, "id" | "title">),
+    )
+    .filter((a) => !!a.id);
+  const discipline = (Array.isArray(disciplineRaw) ? disciplineRaw : []).map((d) => ({
+    ...d,
+    id: asTxt(d?.id),
+    label: asTxt(d?.label),
+    doneDates: Array.isArray(d?.doneDates)
+      ? d.doneDates.map((x) => asTxt(x)).filter(Boolean)
+      : [],
+  }));
+  const gradeEntries = (Array.isArray(gradeEntriesRaw) ? gradeEntriesRaw : [])
+    .map((g) => normalizeGradeEntry(g as Partial<GradeEntry> & Pick<GradeEntry, "id">))
+    .filter((g) => !!g.id);
+  const courseGrades = (Array.isArray(courseGradesRaw) ? courseGradesRaw : [])
+    .map((g) => normalizeCourseGrade(g as Partial<CourseGrade> & Pick<CourseGrade, "id">))
+    .filter((g) => !!g.id);
+  const weeklyReviews =
+    weeklyReviewsRaw && typeof weeklyReviewsRaw === "object" && !Array.isArray(weeklyReviewsRaw)
+      ? weeklyReviewsRaw
+      : {};
+
   const upsertGradeEntry = usePersonal((s) => s.upsertGradeEntry);
   const removeGradeEntry = usePersonal((s) => s.removeGradeEntry);
   const upsertCourseGrade = usePersonal((s) => s.upsertCourseGrade);
@@ -52,8 +107,9 @@ export function Analytics() {
 
   const plansDone = Object.values(dayPlans).reduce(
     (acc, p) => {
-      acc.total += p.blocks.length;
-      acc.done += p.blocks.filter((b) => b.done).length;
+      const blocks = blocksOf(p);
+      acc.total += blocks.length;
+      acc.done += blocks.filter((b) => b.done).length;
       return acc;
     },
     { total: 0, done: 0 },
@@ -63,6 +119,7 @@ export function Analytics() {
 
   const [gCourseId, setGCourseId] = useState(courses[0]?.id ?? "cs101");
   const [gLabel, setGLabel] = useState("");
+  const gLabelRef = useRef<HTMLInputElement>(null);
   const [gScore, setGScore] = useState("");
   const [gMax, setGMax] = useState("");
   const [gProv, setGProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
@@ -71,18 +128,34 @@ export function Analytics() {
   const [letterProv, setLetterProv] = useState<"owner_recorded" | "owner_whatif">("owner_recorded");
   const [swPct, setSwPct] = useState("");
   const [fePct, setFePct] = useState("");
+  const swPctRef = useRef<HTMLInputElement>(null);
+  const fePctRef = useRef<HTMLInputElement>(null);
 
   const whatIf = estimateCourseAggregate({
-    semesterWorkPct: swPct === "" ? null : Number(swPct),
-    finalExamPct: fePct === "" ? null : Number(fePct),
+    semesterWorkPct: (() => {
+      const raw = asTxt(swPct === "" ? swPctRef.current?.value ?? "" : swPct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
+    finalExamPct: (() => {
+      const raw = asTxt(fePct === "" ? fePctRef.current?.value ?? "" : fePct).trim();
+      return raw === "" ? null : Number(raw);
+    })(),
   });
 
   const weekStart = weekStartMonday(todayKey());
   const weekly = buildWeeklyStats(weekStart, sessions, discipline, assessments);
-  const review = weeklyReviews[weekStart] ?? emptyWeeklyReview(weekStart);
-  const [wins, setWins] = useState(review.wins);
-  const [blockers, setBlockers] = useState(review.blockers);
-  const [nextFocus, setNextFocus] = useState(review.nextFocus);
+  const review = normalizeWeeklyReview(
+    weeklyReviews[weekStart] ?? emptyWeeklyReview(weekStart),
+    weekStart,
+  );
+  const [wins, setWins] = useState(asTxt(review.wins));
+  const [blockers, setBlockers] = useState(asTxt(review.blockers));
+  const [nextFocus, setNextFocus] = useState(asTxt(review.nextFocus));
+  const winsRef = useRef<HTMLTextAreaElement>(null);
+  const blockersRef = useRef<HTMLTextAreaElement>(null);
+  const nextFocusRef = useRef<HTMLTextAreaElement>(null);
+  const gScoreRef = useRef<HTMLInputElement>(null);
+  const gMaxRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-4">
@@ -122,9 +195,9 @@ export function Analytics() {
               const max = Math.max(1, ...byCourse.map((r) => r.minutes));
               const w = Math.round((row.minutes / max) * 100);
               return (
-                <li key={row.code}>
+                <li key={asTxt(row.code)}>
                   <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-semibold">{row.code}</span>
+                    <span className="font-semibold">{asTxt(row.code)}</span>
                     <span className="tabular-nums text-[var(--hp-muted)]">{row.minutes}m</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-[var(--hp-border)]">
@@ -185,12 +258,12 @@ export function Analytics() {
           <Field label="Course letter (CGPA)">
             <select
               className="hp-field"
-              value={letterCourseId}
+              value={asTxt(letterCourseId)}
               onChange={(e) => setLetterCourseId(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} ({c.creditHours ?? "?"} CH)
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)} ({c.creditHours ?? "?"} CH)
                 </option>
               ))}
             </select>
@@ -220,12 +293,12 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                if (!letter.trim()) return;
+                if (!asTxt(letter).trim()) return;
                 const course = courses.find((c) => c.id === letterCourseId);
                 upsertCourseGrade({
                   id: `cg-${letterCourseId}`,
                   courseId: letterCourseId,
-                  letter: letter.trim(),
+                  letter: asTxt(letter).trim(),
                   creditHours: course?.creditHours ?? null,
                   provenance: letterProv,
                   notes: "",
@@ -244,8 +317,9 @@ export function Analytics() {
             {courseGrades.map((g) => (
               <li key={g.id} className="flex justify-between gap-2 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === g.courseId)?.code ?? g.courseId} · {g.letter} ·{" "}
-                  <span className="text-[var(--hp-muted)]">{g.provenance}</span>
+                  {asTxt(courses.find((c) => c.id === g.courseId)?.code) || asTxt(g.courseId)} ·{" "}
+                  {asTxt(g.letter)} ·{" "}
+                  <span className="text-[var(--hp-muted)]">{asTxt(g.provenance)}</span>
                 </span>
                 <Btn variant="danger" className="!py-1" onClick={() => removeCourseGrade(g.id)}>
                   Remove
@@ -262,35 +336,44 @@ export function Analytics() {
         <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-[var(--hp-border)] p-3 md:grid-cols-2">
           <Field label="Component label">
             <input
+              ref={gLabelRef}
               className="hp-field"
-              value={gLabel}
+              data-testid="personal-grade-label"
+              value={asTxt(gLabel)}
               onChange={(e) => setGLabel(e.target.value)}
+              onInput={(e) => setGLabel((e.target as HTMLInputElement).value)}
               placeholder="e.g. Quiz 1 (from Grade Book)"
             />
           </Field>
           <Field label="Course">
-            <select className="hp-field" value={gCourseId} onChange={(e) => setGCourseId(e.target.value)}>
+            <select className="hp-field" value={asTxt(gCourseId)} onChange={(e) => setGCourseId(e.target.value)}>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
           </Field>
           <Field label="Score">
             <input
+              ref={gScoreRef}
+              data-testid="personal-grade-score"
               className="hp-field"
               type="number"
-              value={gScore}
+              value={asTxt(gScore)}
               onChange={(e) => setGScore(e.target.value)}
+              onInput={(e) => setGScore((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Max">
             <input
+              ref={gMaxRef}
+              data-testid="personal-grade-max"
               className="hp-field"
               type="number"
-              value={gMax}
+              value={asTxt(gMax)}
               onChange={(e) => setGMax(e.target.value)}
+              onInput={(e) => setGMax((e.target as HTMLInputElement).value)}
             />
           </Field>
           <Field label="Provenance">
@@ -306,9 +389,14 @@ export function Analytics() {
           <div className="flex items-end">
             <Btn
               onClick={() => {
-                if (!gLabel.trim()) return;
-                const score = gScore === "" ? null : Number(gScore);
-                const maxScore = gMax === "" ? null : Number(gMax);
+                const nextGLabel = (asTxt(gLabel).trim() || gLabelRef.current?.value || "").trim();
+                if (!nextGLabel) return;
+                const scoreRaw = asTxt(
+                  gScore === "" ? gScoreRef.current?.value ?? "" : gScore,
+                ).trim();
+                const maxRaw = asTxt(gMax === "" ? gMaxRef.current?.value ?? "" : gMax).trim();
+                const score = scoreRaw === "" ? null : Number(scoreRaw);
+                const maxScore = maxRaw === "" ? null : Number(maxRaw);
                 if (looksLikeProjectedDefault(score, "D") && gProv === "owner_whatif") {
                   /* still allow explicit what-if; warn via notes */
                 }
@@ -318,7 +406,7 @@ export function Analytics() {
                 upsertGradeEntry({
                   id: Math.random().toString(36).slice(2, 10),
                   courseId: gCourseId,
-                  label: gLabel.trim(),
+                  label: nextGLabel,
                   score,
                   maxScore,
                   provenance: gProv,
@@ -342,9 +430,9 @@ export function Analytics() {
             {gradeEntries.map((g) => (
               <li key={g.id} className="flex justify-between gap-2 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === g.courseId)?.code} · {g.label} ·{" "}
+                  {asTxt(courses.find((c) => c.id === g.courseId)?.code)} · {asTxt(g.label)} ·{" "}
                   {g.score ?? "—"}/{g.maxScore ?? "—"} ·{" "}
-                  <span className="text-[var(--hp-muted)]">{g.provenance}</span>
+                  <span className="text-[var(--hp-muted)]">{asTxt(g.provenance)}</span>
                 </span>
                 <Btn variant="danger" className="!py-1" onClick={() => removeGradeEntry(g.id)}>
                   Remove
@@ -361,8 +449,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
-              value={swPct}
+              ref={swPctRef}
+              data-testid="personal-sw-pct"
+              value={asTxt(swPct)}
               onChange={(e) => setSwPct(e.target.value)}
+              onInput={(e) => setSwPct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
@@ -372,8 +463,11 @@ export function Analytics() {
               type="number"
               min={0}
               max={100}
-              value={fePct}
+              ref={fePctRef}
+              data-testid="personal-fe-pct"
+              value={asTxt(fePct)}
               onChange={(e) => setFePct(e.target.value)}
+              onInput={(e) => setFePct((e.target as HTMLInputElement).value)}
               placeholder="empty"
             />
           </Field>
@@ -407,25 +501,34 @@ export function Analytics() {
         <div className="grid gap-3">
           <Field label="Wins this week">
             <textarea
+              ref={winsRef}
+              data-testid="personal-weekly-wins"
               className="hp-field min-h-[72px] py-2"
-              value={wins}
+              value={asTxt(wins)}
               onChange={(e) => setWins(e.target.value)}
+              onInput={(e) => setWins((e.target as HTMLTextAreaElement).value)}
               placeholder="Verified submits, handout coverage…"
             />
           </Field>
           <Field label="Blockers">
             <textarea
+              ref={blockersRef}
+              data-testid="personal-weekly-blockers"
               className="hp-field min-h-[72px] py-2"
-              value={blockers}
+              value={asTxt(blockers)}
               onChange={(e) => setBlockers(e.target.value)}
+              onInput={(e) => setBlockers((e.target as HTMLTextAreaElement).value)}
               placeholder="What slipped — no invented excuses needed"
             />
           </Field>
           <Field label="Next week focus">
             <textarea
+              ref={nextFocusRef}
+              data-testid="personal-weekly-next"
               className="hp-field min-h-[72px] py-2"
-              value={nextFocus}
+              value={asTxt(nextFocus)}
               onChange={(e) => setNextFocus(e.target.value)}
+              onInput={(e) => setNextFocus((e.target as HTMLTextAreaElement).value)}
               placeholder="1–3 finishable targets"
             />
           </Field>
@@ -434,9 +537,9 @@ export function Analytics() {
               onClick={() => {
                 upsertWeeklyReview({
                   weekStart,
-                  wins,
-                  blockers,
-                  nextFocus,
+                  wins: asTxt(wins) || winsRef.current?.value || "",
+                  blockers: asTxt(blockers) || blockersRef.current?.value || "",
+                  nextFocus: asTxt(nextFocus) || nextFocusRef.current?.value || "",
                   updatedAt: Date.now(),
                 });
                 toggleDiscipline("weekly-review");

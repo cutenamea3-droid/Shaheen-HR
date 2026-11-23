@@ -58,7 +58,18 @@ export type FileCompletenessReport = {
 function scoreItems(summary: InspectionDriverSummary): FileCompletenessRow {
   let complete = 0;
   let applicable = 0;
-  const c = summary.counts;
+  const c =
+    summary.counts && typeof summary.counts === "object" && !Array.isArray(summary.counts)
+      ? summary.counts
+      : ({
+          verified: 0,
+          present: 0,
+          missing: 0,
+          expired: 0,
+          pending: 0,
+          unable: 0,
+          n_a: 0,
+        } as Record<InspectionStatus, number>);
   for (const status of Object.keys(c) as InspectionStatus[]) {
     const n = c[status];
     if (APPLICABLE_EXCLUDE.includes(status)) continue;
@@ -87,7 +98,8 @@ export function buildFileCompletenessReport(data: AppData): FileCompletenessRepo
   const summaries = buildInspectionSummaries(data);
   const drivers = summaries.map(scoreItems).sort((a, b) => {
     if (a.percent !== b.percent) return a.percent - b.percent;
-    return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+    const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
   });
 
   let fleetComplete = 0;
@@ -122,9 +134,10 @@ export function driverFileCompletenessPercent(data: AppData, driverId: string): 
   return applicable === 0 ? 100 : Math.round((complete / applicable) * 100);
 }
 
-function csvEscape(v: string) {
-  if (/[",\n\r]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
-  return v;
+function csvEscape(v: unknown) {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 export function fileCompletenessCsv(report: FileCompletenessReport): string {
@@ -143,13 +156,14 @@ export function fileCompletenessCsv(report: FileCompletenessReport): string {
     "N/A",
     "Formula note",
   ];
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
   const lines = [
     `# File Completeness — Shaheen Transport LLC`,
     `# Generated ${report.generatedAt}`,
     `# Fleet ${report.fleetPercent}% (${report.fleetComplete}/${report.fleetApplicable})`,
     `# Formula: ${report.formula}`,
     head.join(","),
-    ...report.drivers.map((d) =>
+    ...drivers.map((d) =>
       [
         d.driverName,
         d.driverId,
@@ -183,7 +197,8 @@ export function downloadFileCompletenessCsv(report: FileCompletenessReport) {
 
 export function downloadFileCompletenessPdf(report: FileCompletenessReport) {
   const head = ["Driver", "%", "Complete", "Applicable", "Missing", "Expired", "Pending", "Unable", "Note"];
-  const body = report.drivers.map((d) => [
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
+  const body = drivers.map((d) => [
     d.driverName,
     `${d.percent}%`,
     String(d.complete),
@@ -202,14 +217,16 @@ export function downloadFileCompletenessPdf(report: FileCompletenessReport) {
   );
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 /** Printable HTML with formula explanation (complements PDF). */
 export function printFileCompletenessSummary(report: FileCompletenessReport) {
-  const rows = report.drivers.length
-    ? report.drivers
+  const drivers = Array.isArray(report?.drivers) ? report.drivers : [];
+  const rows = drivers.length
+    ? drivers
         .map(
           (d) => `<tr>
       <td>${esc(d.driverName)}</td>

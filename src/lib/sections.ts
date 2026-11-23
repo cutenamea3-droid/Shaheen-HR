@@ -34,7 +34,18 @@ export const SECTIONS: SectionDef[] = [
     id: "dmv",
     title: "DMV Pull Notices",
     short: "DMV",
-    types: ["name", "text", "status", "date", "text", "note", "active", "plan", "state", "tempnote"],
+    types: [
+      "name",
+      "text",
+      "status",
+      "date",
+      "text",
+      "note",
+      "active",
+      "plan",
+      "state",
+      "tempnote",
+    ],
     rules: [
       "CA drivers: expiration turns amber 10 days before it expires.",
       "Other-state drivers: expiration turns amber 20 days before (their DMV takes 15–20 business days).",
@@ -63,7 +74,18 @@ export const SECTIONS: SectionDef[] = [
     id: "queries",
     title: "Queries",
     short: "Queries",
-    types: ["name", "status", "date", "status", "date", "note", "plan", "plan", "active", "tempnote"],
+    types: [
+      "name",
+      "status",
+      "date",
+      "status",
+      "date",
+      "note",
+      "plan",
+      "plan",
+      "active",
+      "tempnote",
+    ],
     rules: [
       "New drivers get a Pre-Employment Query first; the Annual Query starts one year later.",
       "Annual & Pre-Employment expirations turn amber 2 weeks (14 days) before they expire — each column is judged on its own.",
@@ -79,7 +101,18 @@ export const SECTIONS: SectionDef[] = [
     id: "ssccdl",
     title: "SSC & CDL",
     short: "SSC & CDL",
-    types: ["name", "text", "status", "date", "status", "secret", "note", "plan", "active", "tempnote"],
+    types: [
+      "name",
+      "text",
+      "status",
+      "date",
+      "status",
+      "secret",
+      "note",
+      "plan",
+      "active",
+      "tempnote",
+    ],
     rules: [
       "CDL expiration turns amber 30 days before it expires — tell the driver to renew.",
       "Social Security Card has no expiration; it is flagged only when Missing or Invalid.",
@@ -95,10 +128,23 @@ export const SECTIONS: SectionDef[] = [
     title: "Drivers Other Documents",
     short: "Other Docs",
     types: [
-      "name", "score",
-      "status", "status", "status", "status", "status", "status",
-      "status", "status", "status", "status", "status", "status",
-      "note", "active", "tempnote",
+      "name",
+      "score",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "status",
+      "note",
+      "active",
+      "tempnote",
     ],
     rules: [
       "These documents never expire — they must be signed and filled in correctly.",
@@ -181,9 +227,28 @@ export interface Row {
   dateOfHire?: string;
 }
 
+/** Safe cells array for corrupt/missing cloud rows — never assume `row.cells` is an array or that entries are strings. */
+export function cellsOf(row: { cells?: unknown } | null | undefined): string[] {
+  if (!Array.isArray(row?.cells)) return [];
+  return (row!.cells as unknown[]).map((c) => (c == null ? "" : typeof c === "string" ? c : String(c)));
+}
+
+/** Safe rows array for corrupt/missing cloud sections — never assume `section.rows` is an array. */
+export function rowsOf(sec: { rows?: unknown } | null | undefined): Row[] {
+  return Array.isArray(sec?.rows) ? (sec!.rows as Row[]) : [];
+}
+
+/** Safe headers array for corrupt/missing cloud sections. */
+export function headersOf(sec: { headers?: unknown } | null | undefined): string[] {
+  if (!Array.isArray(sec?.headers)) return [];
+  return (sec!.headers as unknown[]).map((h) => (h == null ? "" : String(h)));
+}
+
 /** Parse employment status from a cell or optional Row.status. Empty → active. */
-export function parseDriverStatus(value?: string | null): DriverStatus {
-  const k = (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+export function parseDriverStatus(value?: unknown): DriverStatus {
+  const raw =
+    value == null ? "" : typeof value === "string" ? value : String(value);
+  const k = raw.trim().toLowerCase().replace(/\s+/g, " ");
   if (k === "inactive") return "inactive";
   if (k === "leave" || k === "on leave") return "leave";
   return "active";
@@ -207,27 +272,40 @@ export interface AppData {
   sections: Record<string, SectionData>;
 }
 
-export const normName = (n: string) =>
-  n
+export const normName = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  return s
     .toLowerCase()
     .replace(/\bs\d+\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
+};
 
 export function defaultWidth(t: ColType) {
   switch (t) {
-    case "name": return 230;
-    case "note": case "plan": case "tempnote": return 340;
-    case "status": return 190;
-    case "date": return 190;
-    case "score": return 170;
-    case "active": return 220;
-    case "state": return 110;
-    default: return 200;
+    case "name":
+      return 230;
+    case "note":
+    case "plan":
+    case "tempnote":
+      return 340;
+    case "status":
+      return 190;
+    case "date":
+      return 190;
+    case "score":
+      return 170;
+    case "active":
+      return 220;
+    case "state":
+      return 110;
+    default:
+      return 200;
   }
 }
 
-export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+export const uid = () =>
+  Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export function buildSeed(): AppData {
   // Prefer full AppData seed (tracker backup shape: { version, sections }).
@@ -266,35 +344,46 @@ const SPLITS: { id: string; oldLen: number; at: number; moveNote: boolean }[] = 
   { id: "ssccdl", oldLen: 8, at: 7, moveNote: false },
 ];
 /** Matching key for one person: ignores ID numbers (S16, 498250, ,s232), punctuation, spacing and l/I scan mix-ups. */
-export const driverKey = (n: string) =>
-  (n ?? "")
+export const driverKey = (n: unknown) => {
+  const s = n == null ? "" : typeof n === "string" ? n : String(n);
+  return s
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .filter((t) => t && !/^s?\d+$/.test(t))
     .join(" ")
     .replace(/l/g, "i");
+};
 
 /** Links rows of the same person (in every section) to one driver, so Driver Cards shows one card. Cell values are untouched. */
 /** Sections whose column 1 holds the CDL number. */
 const CDL_COL: Record<string, number> = { dmv: 1, ssccdl: 1, inactive: 1 };
-export const cdlDigits = (v: string) => {
-  const d = (v ?? "").replace(/\D/g, "");
+export const cdlDigits = (v: unknown) => {
+  const s = v == null ? "" : typeof v === "string" ? v : String(v);
+  const d = s.replace(/\D/g, "");
   return d.length >= 6 ? d : "";
 };
 function editDist(a: string, b: string) {
-  const m = a.length, n = b.length;
+  const m = a.length,
+    n = b.length;
   const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
   for (let j = 1; j <= n; j++) dp[0][j] = j;
   for (let i = 1; i <= m; i++)
     for (let j = 1; j <= n; j++)
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
   return dp[m][n];
 }
 /** Small typos in a name (Sara/Sarah, Ismail/Ismael): same word count, each word off by at most 1 letter, 2 in total. */
-export function similarNames(a: string, b: string) {
-  const x = a.split(" "), y = b.split(" ");
-  if (!a || !b || x.length !== y.length) return false;
+export function similarNames(a: unknown, b: unknown) {
+  const as = a == null ? "" : typeof a === "string" ? a : String(a);
+  const bs = b == null ? "" : typeof b === "string" ? b : String(b);
+  const x = as.split(" "),
+    y = bs.split(" ");
+  if (!as || !bs || x.length !== y.length) return false;
   let total = 0;
   for (let i = 0; i < x.length; i++) {
     const d = editDist(x[i], y[i]);
@@ -308,49 +397,89 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
   const ids = SECTIONS.map((s) => s.id).filter((id) => data.sections[id]);
   // pass 1: same cleaned name
   const owner = new Map<string, string>();
-  for (const id of ids) for (const r of data.sections[id].rows) {
-    const k = driverKey(r.cells[0]);
-    if (k && !owner.has(k)) owner.set(k, r.driverId);
+  for (const id of ids) {
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) {
+      const k = driverKey(cellsOf(r)[0]);
+      if (k && !owner.has(k)) owner.set(k, r.driverId);
+    }
   }
   const target = new Map<string, string>();
-  for (const id of ids) for (const r of data.sections[id].rows) {
-    const want = owner.get(driverKey(r.cells[0]));
-    if (want && want !== r.driverId) target.set(r.driverId, want);
+  for (const id of ids) {
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) {
+      const want = owner.get(driverKey(cellsOf(r)[0]));
+      if (want && want !== r.driverId) target.set(r.driverId, want);
+    }
   }
-  const resolve = (d: string) => { let x = d; const seen = new Set<string>(); while (target.has(x) && !seen.has(x)) { seen.add(x); x = target.get(x)!; } return x; };
+  const resolve = (d: string) => {
+    let x = d;
+    const seen = new Set<string>();
+    while (target.has(x) && !seen.has(x)) {
+      seen.add(x);
+      x = target.get(x)!;
+    }
+    return x;
+  };
   // pass 2: same CDL number, or a small name typo when CDLs don't disagree
   type G = { id: string; keys: Set<string>; cdls: Set<string>; rows: number };
   const groups = new Map<string, G>();
-  for (const id of ids) for (const r of data.sections[id].rows) {
-    const gid = resolve(r.driverId);
-    const g = groups.get(gid) ?? { id: gid, keys: new Set(), cdls: new Set(), rows: 0 };
-    g.rows++;
-    const k = driverKey(r.cells[0]);
-    if (k) g.keys.add(k);
-    if (id in CDL_COL) { const c = cdlDigits(r.cells[CDL_COL[id]]); if (c) g.cdls.add(c); }
-    groups.set(gid, g);
+  for (const id of ids) {
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) {
+      const gid = resolve(r.driverId);
+      const g = groups.get(gid) ?? { id: gid, keys: new Set(), cdls: new Set(), rows: 0 };
+      g.rows++;
+      const cells = cellsOf(r);
+      const k = driverKey(cells[0]);
+      if (k) g.keys.add(k);
+      if (id in CDL_COL) {
+        const c = cdlDigits(cells[CDL_COL[id]]);
+        if (c) g.cdls.add(c);
+      }
+      groups.set(gid, g);
+    }
   }
   const list = [...groups.values()].sort((a, b) => b.rows - a.rows);
-  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
-    const a = list[i], b = list[j];
-    if (resolve(a.id) === resolve(b.id)) continue;
-    const sameCdl = [...a.cdls].some((c) => b.cdls.has(c));
-    const conflict = a.cdls.size > 0 && b.cdls.size > 0 && !sameCdl;
-    const typo = !conflict && [...a.keys].some((x) => [...b.keys].some((y) => similarNames(x, y)));
-    if ((sameCdl && [...a.keys].some((x) => [...b.keys].some((y) => x.split(" ").some((t) => y.split(" ").includes(t))))) || typo)
-      target.set(resolve(b.id), resolve(a.id));
-  }
+  for (let i = 0; i < list.length; i++)
+    for (let j = i + 1; j < list.length; j++) {
+      const a = list[i],
+        b = list[j];
+      if (resolve(a.id) === resolve(b.id)) continue;
+      const sameCdl = [...a.cdls].some((c) => b.cdls.has(c));
+      const conflict = a.cdls.size > 0 && b.cdls.size > 0 && !sameCdl;
+      const typo =
+        !conflict && [...a.keys].some((x) => [...b.keys].some((y) => similarNames(x, y)));
+      if (
+        (sameCdl &&
+          [...a.keys].some((x) =>
+            [...b.keys].some((y) => x.split(" ").some((t) => y.split(" ").includes(t))),
+          )) ||
+        typo
+      )
+        target.set(resolve(b.id), resolve(a.id));
+    }
   const changed: string[] = [];
   const sections = { ...data.sections };
   for (const id of ids) {
     const sec = sections[id];
+    if (!sec || !Array.isArray(sec.rows)) continue;
     let touched = false;
     const rows = sec.rows.map((r) => {
       const want = resolve(r.driverId);
-      if (want !== r.driverId) { touched = true; return { ...r, driverId: want }; }
+      if (want !== r.driverId) {
+        touched = true;
+        return { ...r, driverId: want };
+      }
       return r;
     });
-    if (touched) { sections[id] = { ...sec, rows }; changed.push(id); }
+    if (touched) {
+      sections[id] = { ...sec, rows };
+      changed.push(id);
+    }
   }
   return { data: changed.length ? { ...data, sections } : data, changed };
 }
@@ -365,13 +494,19 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
 
   for (const def of SECTIONS) {
     const sec = sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
 
-    let headers = [...sec.headers];
-    let widths = [...(sec.widths ?? [])];
-    let hidden = [...(sec.hidden ?? [])];
-    let rows = sec.rows.map((r) => ({ ...r, cells: [...r.cells] }));
-    let touched = false;
+    let headers = headersOf(sec);
+    let widths = [...(Array.isArray(sec.widths) ? sec.widths : [])];
+    let hidden = [...(Array.isArray(sec.hidden) ? sec.hidden : [])];
+    let rows = sec.rows.map((r) => ({
+      ...r,
+      cells: [...cellsOf(r)],
+    }));
+    let touched =
+      sec.rows.some((r) => !Array.isArray(r.cells)) ||
+      (Array.isArray(sec.headers) &&
+        sec.headers.some((h) => h != null && typeof h !== "string"));
 
     const padRow = (cells: string[], len: number) => {
       if (cells.length >= len) return cells;
@@ -426,10 +561,17 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
       }
       return r;
     });
-    if (widths.length !== (sec.widths?.length ?? 0) || hidden.length !== (sec.hidden?.length ?? 0)) touched = true;
+    if (widths.length !== (sec.widths?.length ?? 0) || hidden.length !== (sec.hidden?.length ?? 0))
+      touched = true;
 
     if (touched) {
-      sections[def.id] = { ...sec, headers, widths: widths.slice(0, len), hidden: hidden.slice(0, len), rows };
+      sections[def.id] = {
+        ...sec,
+        headers,
+        widths: widths.slice(0, len),
+        hidden: hidden.slice(0, len),
+        rows,
+      };
       changed.push(def.id);
     }
   }
@@ -438,20 +580,27 @@ export function normalizeSections(input: AppData): { data: AppData; changed: str
 }
 
 /** Canonical Active/Leave/Inactive label for a driver from any section that stores status. */
-export function driverEmploymentStatus(data: AppData, driverId: string): "Active" | "Leave" | "Inactive" {
+export function driverEmploymentStatus(
+  data: AppData,
+  driverId: string,
+): "Active" | "Leave" | "Inactive" {
   for (const s of SECTIONS) {
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
-    const r = data.sections[s.id]?.rows.find((x) => x.driverId === driverId);
+    const rows = data.sections[s.id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (!r) continue;
     // Prefer optional Row.status when set; otherwise the active cell (empty → active).
-    return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
+    return formatDriverStatus(r.status ?? parseDriverStatus(cellsOf(r)[i]));
   }
   const inaDef = SECTIONS.find((s) => s.id === "inactive");
   const i = inaDef?.types.indexOf("active") ?? -1;
-  const r = i >= 0 ? data.sections.inactive?.rows.find((x) => x.driverId === driverId) : undefined;
-  if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(r.cells[i]));
+  const inaRows = data.sections.inactive?.rows;
+  const r =
+    i >= 0 && Array.isArray(inaRows) ? inaRows.find((x) => x.driverId === driverId) : undefined;
+  if (r && i >= 0) return formatDriverStatus(r.status ?? parseDriverStatus(cellsOf(r)[i]));
   return "Active";
 }
 
@@ -462,16 +611,20 @@ export function buildInactiveCells(data: AppData, driverId: string, status: stri
   let phone = "";
   let state = "";
   for (const id of ["dmv", "ssccdl", "docs", "medical", "queries", "info", "inactive"] as const) {
-    const r = data.sections[id]?.rows.find((x) => x.driverId === driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     if (!r) continue;
-    if (!name.trim()) name = (r.cells[0] ?? "").trim();
-    if ((id === "dmv" || id === "ssccdl" || id === "inactive") && !license.trim()) license = (r.cells[1] ?? "").trim();
-    if (id === "info" && !phone.trim()) phone = (r.cells[1] ?? "").trim();
-    if (id === "inactive" && !phone.trim()) phone = (r.cells[2] ?? "").trim();
+    const cells = cellsOf(r);
+    if (!name.trim()) name = (cells[0] ?? "").trim();
+    if ((id === "dmv" || id === "ssccdl" || id === "inactive") && !license.trim())
+      license = (cells[1] ?? "").trim();
+    if (id === "info" && !phone.trim()) phone = (cells[1] ?? "").trim();
+    if (id === "inactive" && !phone.trim()) phone = (cells[2] ?? "").trim();
     const def = SECTIONS.find((s) => s.id === id);
     const si = def?.types.indexOf("state") ?? -1;
-    if (si >= 0 && !state.trim()) state = (r.cells[si] ?? "").trim();
-    if (id === "info" && !state.trim()) state = (r.cells[3] ?? "").trim();
+    if (si >= 0 && !state.trim()) state = (cells[si] ?? "").trim();
+    if (id === "info" && !state.trim()) state = (cells[3] ?? "").trim();
   }
   // Inactive roster only stores Active/Inactive (Leave drivers stay on main sections).
   const label = parseDriverStatus(status) === "inactive" ? "Inactive" : "Active";
@@ -494,19 +647,22 @@ export function syncInactiveRoster(input: AppData): { data: AppData; changed: st
     if (s.id === "inactive") continue;
     const i = s.types.indexOf("active");
     if (i < 0) continue;
-    for (const r of input.sections[s.id]?.rows ?? []) {
-      if (r.cells[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
+    for (const r of rowsOf(input.sections[s.id])) {
+      if (cellsOf(r)[i]?.trim().toLowerCase() === "inactive") inactiveIds.add(r.driverId);
     }
   }
+
+  if (!Array.isArray(inaSec.rows)) return { data: input, changed: [] };
 
   let touched = false;
   const byId = new Map(inaSec.rows.map((r) => [r.driverId, r]));
   const rows = inaSec.rows.map((r) => {
     // Roster Status is Active/Inactive only — Leave maps to Active here.
     const want = inactiveIds.has(r.driverId) ? "Inactive" : "Active";
-    if ((r.cells[statusIdx] ?? "").trim() === want) return r;
+    const cells = cellsOf(r);
+    if ((cells[statusIdx] ?? "").trim() === want) return r;
     touched = true;
-    return { ...r, cells: r.cells.map((c, i) => (i === statusIdx ? want : c)) };
+    return { ...r, cells: cells.map((c, i) => (i === statusIdx ? want : c)) };
   });
 
   for (const driverId of inactiveIds) {
@@ -534,17 +690,17 @@ export function migrateData(input: AppData): { data: AppData; changed: string[] 
   const sections = { ...data.sections };
   for (const sp of SPLITS) {
     const sec = sections[sp.id];
-    if (!sec || sec.headers.length !== sp.oldLen) continue;
-    const ins = <T,>(a: T[], v: T) => [...a.slice(0, sp.at), v, ...a.slice(sp.at)];
+    if (!sec || !Array.isArray(sec.rows) || !Array.isArray(sec.headers) || sec.headers.length !== sp.oldLen) continue;
+    const ins = <T>(a: T[], v: T) => [...a.slice(0, sp.at), v, ...a.slice(sp.at)];
     const headers = ins(sec.headers, "Future Plans");
     headers[sp.at - 1] = "Notes";
     sections[sp.id] = {
       ...sec,
       headers,
-      widths: ins(sec.widths ?? [], defaultWidth("plan")),
-      hidden: ins(sec.hidden ?? [], false),
+      widths: ins(Array.isArray(sec.widths) ? sec.widths : [], defaultWidth("plan")),
+      hidden: ins(Array.isArray(sec.hidden) ? sec.hidden : [], false),
       rows: sec.rows.map((r) => {
-        const cells = ins(r.cells, "");
+        const cells = ins(cellsOf(r), "");
         if (sp.moveNote) {
           cells[sp.at] = cells[sp.at - 1];
           cells[sp.at - 1] = "";

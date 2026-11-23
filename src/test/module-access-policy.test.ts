@@ -17,8 +17,8 @@ import {
   shouldDenyModulePath,
 } from "@/lib/module-access";
 
-describe("module-access policy", () => {
-  it("maps roles for admin / compliance / HR / dispatcher / personal-owner", () => {
+describe("module-access policy (Compliance + Attendance)", () => {
+  it("maps roles for admin / compliance; ignores retired personal/dispatch seats", () => {
     const grants = seatsToGrants([
       { module: "compliance", role: "admin", active: true },
       { module: "admin-hr", role: "standard", active: true },
@@ -27,23 +27,19 @@ describe("module-access policy", () => {
     ]);
     expect(grants.compliance).toBe("admin");
     expect(grants["admin-hr"]).toBe("standard");
-    expect(grants.dispatch).toBe("dispatcher");
-    expect(grants.personal).toBe("owner");
+    expect(grants.dispatch).toBeNull();
+    expect(grants.personal).toBeNull();
   });
 
   it("ignores inactive seats", () => {
-    const grants = seatsToGrants([{ module: "dispatch", role: "admin", active: false }]);
-    expect(grants.dispatch).toBeNull();
+    const grants = seatsToGrants([{ module: "compliance", role: "admin", active: false }]);
+    expect(grants.compliance).toBeNull();
   });
 
-  it("dispatch-only auto-homes on /dispatch", () => {
+  it("never treats Dispatch-only as a home in this app", () => {
     const grants = seatsToGrants([{ module: "dispatch", role: "dispatcher", active: true }]);
-    expect(isDispatchOnly(grants)).toBe(true);
-    expect(homePathFor(grants)).toBe("/dispatch");
-    expect(canAccessPath(grants, "/")).toBe(false);
-    expect(canAccessPath(grants, "/admin")).toBe(false);
-    expect(canAccessPath(grants, "/personal")).toBe(false);
-    expect(canAccessPath(grants, "/dispatch")).toBe(true);
+    expect(isDispatchOnly(grants)).toBe(false);
+    expect(homePathFor(grants)).toBe("/access-denied");
   });
 
   it("least-privilege: drug/rate for compliance admin; finance for admin-hr admin", () => {
@@ -62,13 +58,10 @@ describe("module-access policy", () => {
     );
   });
 
-  it("hides Personal from company switcher unless already on /personal", () => {
-    const grants = seatsToGrants([
-      { module: "compliance", role: "admin", active: true },
-      { module: "personal", role: "owner", active: true },
-    ]);
+  it("switcher only lists Compliance + Admin", () => {
+    const grants = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
     expect(selectableModulesFor(grants, { pathname: "/" })).toEqual(["compliance"]);
-    expect(selectableModulesFor(grants, { pathname: "/personal" })).toEqual(["compliance", "personal"]);
+    expect(companySwitcherModules(grants)).toEqual(["compliance", "admin-hr"]);
   });
 
   it("anonymous / empty grants land on access-denied home", () => {
@@ -91,40 +84,29 @@ describe("module-access policy", () => {
     expect(moduleForPath("/access-denied")).toBe("access-denied");
   });
 
-  it("never Access-Denies Admin/Personal/Dispatch LoginGate paths when another seat exists", () => {
+  it("never Access-Denies Admin LoginGate or retired soft landings", () => {
     const complianceOnly = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
     expect(isIndependentLoginModule("admin-hr")).toBe(true);
     expect(isIndependentLoginModule("personal")).toBe(true);
     expect(isIndependentLoginModule("dispatch")).toBe(true);
     expect(isIndependentLoginModule("compliance")).toBe(false);
 
-    // canAccessPath remains strict (seat check); ModuleRedirector uses shouldDenyModulePath.
     expect(canAccessPath(complianceOnly, "/admin")).toBe(false);
-    expect(canAccessPath(complianceOnly, "/dispatch")).toBe(false);
-    expect(canAccessPath(complianceOnly, "/personal")).toBe(false);
+    expect(canAccessPath(complianceOnly, "/dispatch")).toBe(true);
+    expect(canAccessPath(complianceOnly, "/personal")).toBe(true);
     expect(shouldDenyModulePath(complianceOnly, "/admin")).toBe(false);
     expect(shouldDenyModulePath(complianceOnly, "/dispatch")).toBe(false);
     expect(shouldDenyModulePath(complianceOnly, "/personal")).toBe(false);
     expect(shouldDenyModulePath(complianceOnly, "/")).toBe(false);
   });
 
-  it("still Access-Denies Compliance URLs for Admin-only / Dispatch-only seats", () => {
+  it("still Access-Denies Compliance URLs for Admin-only seats", () => {
     const adminOnly = seatsToGrants([{ module: "admin-hr", role: "admin", active: true }]);
-    const dispatchOnly = seatsToGrants([{ module: "dispatch", role: "dispatcher", active: true }]);
     expect(shouldDenyModulePath(adminOnly, "/")).toBe(true);
     expect(shouldDenyModulePath(adminOnly, "/admin")).toBe(false);
-    expect(shouldDenyModulePath(dispatchOnly, "/")).toBe(true);
-    expect(shouldDenyModulePath(dispatchOnly, "/dispatch")).toBe(false);
     expect(shouldDenyModulePath({ compliance: null, "admin-hr": null, personal: null, dispatch: null }, "/")).toBe(
       false,
     );
-  });
-
-  it("company switcher keeps Admin/Dispatch login surfaces except Dispatch-only", () => {
-    const complianceOnly = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
-    const dispatchOnly = seatsToGrants([{ module: "dispatch", role: "dispatcher", active: true }]);
-    expect(companySwitcherModules(complianceOnly)).toEqual(["compliance", "admin-hr", "dispatch"]);
-    expect(companySwitcherModules(dispatchOnly)).toEqual(["dispatch"]);
   });
 });
 
@@ -135,6 +117,6 @@ describe("auth honesty", () => {
     expect(() => assertNoTokenBridge("admin-lovable", "driver")).toThrow(/Unsafe token bridge/);
     expect(() => assertNoTokenBridge("personal", "driver")).toThrow(/Unsafe token bridge/);
     expect(isLocalRoleSourceOfTruth()).toBe(false);
-    expect(describeAuthBoundaries().length).toBeGreaterThan(3);
+    expect(describeAuthBoundaries().length).toBeGreaterThan(2);
   });
 });

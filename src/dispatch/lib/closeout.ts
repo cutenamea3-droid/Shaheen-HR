@@ -24,15 +24,20 @@ export function canReopenLoad(status: DispatchLoad["status"]): boolean {
   return status === "closed";
 }
 
-export function validateCloseout(note: string): string | null {
-  const trimmed = note.trim();
+function asTrimmedText(v: unknown): string {
+  if (v == null) return "";
+  return (typeof v === "string" ? v : String(v)).trim();
+}
+
+export function validateCloseout(note: unknown): string | null {
+  const trimmed = asTrimmedText(note);
   if (!trimmed) return "Closeout requires a manual desk note.";
   if (trimmed.length < 3) return "Closeout note is too short.";
   return null;
 }
 
-export function validateReopen(reason: string): string | null {
-  const trimmed = reason.trim();
+export function validateReopen(reason: unknown): string | null {
+  const trimmed = asTrimmedText(reason);
   if (!trimmed) return "Reopen requires a manual reason.";
   if (trimmed.length < 3) return "Reopen reason is too short.";
   return null;
@@ -75,7 +80,7 @@ export function validateAccessorialInput(input: {
   amount_manual?: number | null;
   hours_manual?: number | null;
 }): string | null {
-  if (!input.description.trim()) return "Accessorial requires a manual description.";
+  if (!asTrimmedText(input.description)) return "Accessorial requires a manual description.";
   const amountErr = validateAccessorialAmount(input.amount_manual);
   if (amountErr) return amountErr;
   const hoursErr = validateAccessorialHours(input.hours_manual);
@@ -88,23 +93,25 @@ export function validateCommunication(input: {
   summary: string;
   decided_action?: string | null;
 }): string | null {
-  if (!input.summary.trim()) return "Communication/decision requires a summary.";
-  if (input.kind === "decision" && !(input.decided_action ?? "").trim()) {
+  if (!asTrimmedText(input.summary)) return "Communication/decision requires a summary.";
+  if (input.kind === "decision" && !asTrimmedText(input.decided_action)) {
     return "Decisions require a decided action (desk record only — no external notify).";
   }
   return null;
 }
 
 export function awaitingCloseoutLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter((l) => l.status === "delivered");
+  return (Array.isArray(loads) ? loads : []).filter((l) => l.status === "delivered");
 }
 
 export function openAccessorials(items: DispatchAccessorial[]): DispatchAccessorial[] {
-  return items.filter((a) => a.status === "draft" || a.status === "submitted" || a.status === "approved");
+  return (Array.isArray(items) ? items : []).filter(
+    (a) => a.status === "draft" || a.status === "submitted" || a.status === "approved",
+  );
 }
 
 export function unpaidClosedLoads(loads: DispatchLoad[]): DispatchLoad[] {
-  return loads.filter(
+  return (Array.isArray(loads) ? loads : []).filter(
     (l) =>
       l.status === "closed" &&
       (l.payment_status === "unpaid" || l.payment_status === "partial"),
@@ -152,8 +159,8 @@ export function buildCompleteLoadHistory(input: {
   events.push({
     at: load.created_at,
     source: "load",
-    title: `Load created · ${load.load_number}`,
-    detail: `Status now: ${load.status}; payment: ${paymentStatusLabel(load.payment_status)}`,
+    title: `Load created · ${asTrimmedText(load.load_number)}`,
+    detail: `Status now: ${asTrimmedText(load.status)}; payment: ${paymentStatusLabel(load.payment_status)}`,
   });
 
   if (load.actual_pickup_at) {
@@ -161,7 +168,7 @@ export function buildCompleteLoadHistory(input: {
       at: load.actual_pickup_at,
       source: "load",
       title: "Actual pickup recorded",
-      detail: load.last_manual_location ?? "Desk-entered actual pickup",
+      detail: asTrimmedText(load.last_manual_location) || "Desk-entered actual pickup",
     });
   }
   if (load.actual_delivery_at) {
@@ -177,7 +184,7 @@ export function buildCompleteLoadHistory(input: {
       at: load.closed_at,
       source: "closeout",
       title: "Load closed",
-      detail: load.closeout_note ?? "Closed — file complete (payment separate)",
+      detail: asTrimmedText(load.closeout_note) || "Closed — file complete (payment separate)",
     });
   }
   if (load.reopened_at) {
@@ -185,54 +192,67 @@ export function buildCompleteLoadHistory(input: {
       at: load.reopened_at,
       source: "closeout",
       title: "Load reopened",
-      detail: load.reopen_reason ?? "Reopened to delivered",
+      detail: asTrimmedText(load.reopen_reason) || "Reopened to delivered",
     });
   }
 
-  for (const c of input.checkCalls ?? []) {
+  const checkCalls = Array.isArray(input.checkCalls) ? input.checkCalls : [];
+  const issues = Array.isArray(input.issues) ? input.issues : [];
+  const followUps = Array.isArray(input.followUps) ? input.followUps : [];
+  const communications = Array.isArray(input.communications) ? input.communications : [];
+  const accessorials = Array.isArray(input.accessorials) ? input.accessorials : [];
+  for (const c of checkCalls) {
+    const loc = asTrimmedText(c.manual_location);
+    const notes = asTrimmedText(c.notes);
     events.push({
       at: c.called_at,
       source: "check_call",
       title: "Check-call",
-      detail: [c.manual_location, c.notes].filter(Boolean).join(" · ") || "Manual check-call",
+      detail: [loc, notes].filter(Boolean).join(" · ") || "Manual check-call",
     });
   }
-  for (const i of input.issues ?? []) {
+  for (const i of issues) {
     events.push({
       at: i.updated_at || i.created_at,
       source: "issue",
-      title: `Issue: ${i.title}`,
-      detail: `${i.status} · ${i.escalation_level}${i.senior_informed ? " · Senior Informed (manual)" : ""}`,
+      title: `Issue: ${asTrimmedText(i.title)}`,
+      detail: `${asTrimmedText(i.status)} · ${asTrimmedText(i.escalation_level)}${i.senior_informed ? " · Senior Informed (manual)" : ""}`,
     });
   }
-  for (const f of input.followUps ?? []) {
+  for (const f of followUps) {
     events.push({
       at: f.updated_at || f.created_at,
       source: "follow_up",
-      title: `Follow-up: ${f.title}`,
-      detail: `${f.status} · due ${new Date(f.due_at).toLocaleString()}`,
+      title: `Follow-up: ${asTrimmedText(f.title)}`,
+      detail: `${asTrimmedText(f.status)} · due ${new Date(f.due_at).toLocaleString()}`,
     });
   }
-  for (const c of input.communications ?? []) {
+  for (const c of communications) {
     events.push({
       at: c.created_at,
       source: "communication",
-      title: `${c.kind}: ${c.summary}`,
-      detail: [c.decided_action, c.detail].filter(Boolean).join(" · ") || "Desk log only — no external notify",
+      title: `${asTrimmedText(c.kind)}: ${asTrimmedText(c.summary)}`,
+      detail:
+        [asTrimmedText(c.decided_action), asTrimmedText(c.detail)].filter(Boolean).join(" · ") ||
+        "Desk log only — no external notify",
     });
   }
-  for (const a of input.accessorials ?? []) {
+  for (const a of accessorials) {
+    const currency = asTrimmedText(a.currency);
     const amt =
-      a.amount_manual == null ? "amount: Needs Policy / blank" : `${a.currency} ${a.amount_manual}`;
+      a.amount_manual == null
+        ? "amount: Needs Policy / blank"
+        : `${currency} ${a.amount_manual}`;
     events.push({
       at: a.updated_at || a.created_at,
       source: "accessorial",
-      title: `${accessorialKindLabel(a.kind)} · ${a.status}`,
-      detail: `${a.description} · ${amt}${a.hours_manual != null ? ` · hours (manual): ${a.hours_manual}` : ""}`,
+      title: `${accessorialKindLabel(a.kind)} · ${asTrimmedText(a.status)}`,
+      detail: `${asTrimmedText(a.description)} · ${amt}${a.hours_manual != null ? ` · hours (manual): ${a.hours_manual}` : ""}`,
     });
   }
 
-  return events.sort((a, b) => b.at.localeCompare(a.at));
+  const asAt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return events.sort((a, b) => asAt(b.at).localeCompare(asAt(a.at)));
 }
 
 /** Explicit fence: Batch 9 never posts accessorials into Admin HR expense/payroll. */

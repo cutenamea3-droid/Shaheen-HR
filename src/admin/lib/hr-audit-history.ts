@@ -30,13 +30,44 @@ export type HrAuditEvent = {
 export const HR_AUDIT_STORAGE_KEY = "hr-audit-history-v1";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
-type State = {
-  events: HrAuditEvent[];
-  record: (input: Omit<HrAuditEvent, "id" | "at"> & { at?: number }) => HrAuditEvent;
-  forMonth: (month: string) => HrAuditEvent[];
-  recent: (limit?: number) => HrAuditEvent[];
-};
+const KIND_SET = new Set<string>(Object.keys({
+  month_close: 1,
+  month_reopen: 1,
+  pdf_management: 1,
+  pdf_audit: 1,
+  pdf_employee: 1,
+  perf_followup_add: 1,
+  perf_followup_done: 1,
+  reminder_add: 1,
+  reminder_done: 1,
+} satisfies Record<HrAuditKind, 1>));
+
+/** Coerce audit event scalars so React never receives object children. */
+export function normalizeHrAuditEvent(raw: unknown): HrAuditEvent | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const e = raw as Partial<HrAuditEvent>;
+  const kindRaw = asText(e.kind);
+  if (!KIND_SET.has(kindRaw)) return null;
+  const at =
+    typeof e.at === "number" && Number.isFinite(e.at)
+      ? e.at
+      : Number.isFinite(Number(e.at))
+        ? Number(e.at)
+        : Date.now();
+  const month = asText(e.month).trim();
+  const employeeId = asText(e.employeeId);
+  return {
+    id: asText(e.id).trim() || uid(),
+    at,
+    who: asText(e.who) || "HR",
+    kind: kindRaw as HrAuditKind,
+    detail: asText(e.detail),
+    ...(month ? { month } : {}),
+    ...(employeeId ? { employeeId } : {}),
+  };
+}
 
 export const AUDIT_KIND_LABEL: Record<HrAuditKind, string> = {
   month_close: "Month closed",
@@ -50,26 +81,60 @@ export const AUDIT_KIND_LABEL: Record<HrAuditKind, string> = {
   reminder_done: "HR reminder completed",
 };
 
+type State = {
+  events: HrAuditEvent[];
+  record: (input: Omit<HrAuditEvent, "id" | "at"> & { at?: number }) => HrAuditEvent;
+  forMonth: (month: string) => HrAuditEvent[];
+  recent: (limit?: number) => HrAuditEvent[];
+};
+
 export const useHrAuditHistory = create<State>()(
   persist(
     (set, get) => ({
       events: [],
       record: (input) => {
+        const month = asText(input.month).trim();
+        const employeeId = asText(input.employeeId);
         const ev: HrAuditEvent = {
           id: uid(),
-          at: input.at ?? Date.now(),
-          who: input.who || "HR",
+          at:
+            typeof input.at === "number" && Number.isFinite(input.at) ? input.at : Date.now(),
+          who: asText(input.who) || "HR",
           kind: input.kind,
-          detail: input.detail,
-          ...(input.month ? { month: input.month } : {}),
-          ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+          detail: asText(input.detail),
+          ...(month ? { month } : {}),
+          ...(employeeId ? { employeeId } : {}),
         };
-        set({ events: [ev, ...get().events].slice(0, 1000) });
+        const prev = Array.isArray(get().events) ? get().events : [];
+        set({ events: [ev, ...prev].slice(0, 1000) });
         return ev;
       },
-      forMonth: (month) => get().events.filter((e) => e.month === month),
-      recent: (limit = 50) => get().events.slice(0, limit),
+      forMonth: (month) => {
+        const list = Array.isArray(get().events) ? get().events : [];
+        const key = asText(month);
+        return list.filter((e) => asText(e.month) === key);
+      },
+      recent: (limit = 50) => {
+        const list = Array.isArray(get().events) ? get().events : [];
+        return list.slice(0, limit);
+      },
     }),
-    { name: HR_AUDIT_STORAGE_KEY },
+    {
+      name: HR_AUDIT_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const list = Array.isArray(raw.events) ? raw.events : current.events;
+        return {
+          ...current,
+          ...raw,
+          events: list
+            .map((e) => normalizeHrAuditEvent(e))
+            .filter((e): e is HrAuditEvent => !!e),
+        };
+      },
+    },
   ),
 );

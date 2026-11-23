@@ -22,7 +22,7 @@ import {
   suggestionMatchesToday,
   type FuturePlanSuggestion,
 } from "./plan-dates";
-import { SECTIONS, sectionById, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, sectionById, type AppData, type Row } from "./sections";
 import {
   collectTempNotes,
   isNewDriver,
@@ -117,23 +117,28 @@ function daysLabel(daysLeft: number | null, d: Date | null): string {
   return `${daysLeft}d left · ${fmtDate(d)}`;
 }
 
+function issueLabel(issue: { label?: unknown } | null | undefined): string {
+  const v = issue?.label;
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
 function issueFilters(issue: Issue, sectionId: string): WorkCenterFilter[] {
   const f: WorkCenterFilter[] = [];
-  const lab = issue.label.toLowerCase();
-  if (/expired/i.test(issue.label) && issue.tone === "danger") f.push("expired");
-  if (issue.tone === "warn" || (/expires in/i.test(issue.label) && issue.tone !== "danger")) f.push("expiring_soon");
-  if (/applied/i.test(issue.label)) f.push("pending_applications");
+  const lab = issueLabel(issue).toLowerCase();
+  if (/expired/i.test(lab) && issue.tone === "danger") f.push("expired");
+  if (issue.tone === "warn" || (/expires in/i.test(lab) && issue.tone !== "danger")) f.push("expiring_soon");
+  if (/applied/i.test(lab)) f.push("pending_applications");
   if (sectionId === "docs" || /missing|invalid|empty|sign missing/i.test(lab)) {
     if (!/applied/i.test(lab) && !/expired \d/i.test(lab) && !/expires in/i.test(lab)) {
       f.push("missing_documents");
     }
   }
-  if (/future plan/i.test(issue.label)) f.push("future_plans");
+  if (/future plan/i.test(lab)) f.push("future_plans");
   return f.length ? f : ["all"];
 }
 
 function neededActionFor(issue: Issue, sectionId: string, suggestion: FuturePlanSuggestion | null): string {
-  const lab = issue.label.toLowerCase();
+  const lab = issueLabel(issue).toLowerCase();
   if (/applied/i.test(lab)) return "Check application status — do not mark Valid until renewed";
   if (/future plan/i.test(lab)) {
     if (suggestion?.available) return `Act by ${suggestion.reminderLabel ?? suggestion.text}`;
@@ -164,10 +169,11 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
 
-    for (const row of sec.rows) {
-      const driver = (row.cells[0] ?? "").trim() || "—";
+    for (const rawRow of sec.rows) {
+      const row: Row = { ...rawRow, cells: cellsOf(rawRow) };
+      const driver = String(row.cells[0] ?? "").trim() || "—";
       const driverId = row.driverId;
       const isNew = isNewDriver(data, driverId);
       const mutedOrdinary = rowOrdinaryComplianceMuted(def, row, data);
@@ -214,7 +220,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
       // Temporary notes (preserve no-due notes — never invent a due date)
       if (def.types.includes("tempnote") && !leaveMute) {
         const tidx = def.types.indexOf("tempnote");
-        const text = (row.cells[tidx] ?? "").trim();
+        const text = String(row.cells[tidx] ?? "").trim();
         if (text) {
           pushUnique(out, {
             key: `temp-${def.id}-${row.id}`,
@@ -254,7 +260,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         // New/OO muted from ordinary lists but still show plans when filtering future_plans / new
         if (mutedOrdinary && !isNew) continue;
         const suggestion = buildFuturePlanSuggestion(rule, row);
-        const existingPlan = (row.cells[rule.planCol] ?? "").trim();
+        const existingPlan = String(row.cells[rule.planCol] ?? "").trim();
         const statusRaw = rule.statusCol != null ? (row.cells[rule.statusCol] ?? "") : "";
         const expiryRaw = row.cells[rule.expiryCol] ?? "";
         const expiryD = parseISO(expiryRaw);
@@ -314,14 +320,15 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
       if (mutedOrdinary) continue;
       if (def.id === "info") continue;
 
-      const { issues } = analyzeRow(def, sec.headers, row);
+      const { issues } = analyzeRow(def, headersOf(sec), row);
       for (const issue of issues) {
+        const lab = issueLabel(issue);
         // Skip pure note highlights (not tempnote — those never enter analyzeRow)
-        if (issue.tone === "note" && !/future plan/i.test(issue.label) && !/report:/i.test(issue.label)) {
+        if (issue.tone === "note" && !/future plan/i.test(lab) && !/report:/i.test(lab)) {
           continue;
         }
         // Plan issues are covered by plan cards above
-        if (/future plan/i.test(issue.label)) continue;
+        if (/future plan/i.test(lab)) continue;
 
         const colType = def.types[issue.col];
         const expiryPaired =
@@ -353,19 +360,19 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         }
 
         let kind: WorkCenterItemKind = "status";
-        if (/applied/i.test(issue.label)) kind = "applied";
-        else if (def.id === "docs" || /missing|invalid|empty/i.test(issue.label)) kind = "missing_doc";
-        else if (colType === "date" || /expir/i.test(issue.label)) kind = "expiry";
+        if (/applied/i.test(lab)) kind = "applied";
+        else if (def.id === "docs" || /missing|invalid|empty/i.test(lab)) kind = "missing_doc";
+        else if (colType === "date" || /expir/i.test(lab)) kind = "expiry";
 
         const planRule = planRulesForSection(def.id).find(
           (r) => r.expiryCol === dateCol || r.statusCol === statusColN,
         );
         const planSuggestion = planRule ? buildFuturePlanSuggestion(planRule, row) : null;
         const planCol = planRule?.planCol ?? null;
-        const existingPlan = planCol != null ? (row.cells[planCol] ?? "").trim() : "";
+        const existingPlan = planCol != null ? String(row.cells[planCol] ?? "").trim() : "";
 
         pushUnique(out, {
-          key: `issue-${def.id}-${row.id}-${issue.col}-${issue.label}`,
+          key: `issue-${def.id}-${row.id}-${issue.col}-${lab}`,
           kind,
           filters: [...new Set(filters)],
           driverId,
@@ -373,13 +380,13 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
           sectionId: def.id,
           sectionTitle: def.title,
           rowId: row.id,
-          docType: (sec.headers[issue.col] ?? def.short).trim() || def.short,
+          docType: (headersOf(sec)[issue.col] ?? def.short).trim() || def.short,
           statusLabel,
           expiryRaw,
           expiryDisplay: expiryD ? fmtDate(expiryD) : fmtCell(expiryRaw) || "—",
           daysLeft: left,
           daysLabel: daysLabel(left, expiryD),
-          details: issue.label,
+          details: lab,
           neededAction: neededActionFor(issue, def.id, planSuggestion),
           tone: issue.tone,
           statusCol: statusColN,
@@ -411,13 +418,15 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
     const da = a.daysLeft ?? 9999;
     const db = b.daysLeft ?? 9999;
     if (da !== db) return da - db;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 
 export function groupWorkCenterByDriver(items: WorkCenterItem[]): WorkCenterDriverGroup[] {
   const map = new Map<string, WorkCenterDriverGroup>();
-  for (const item of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const item of list) {
     let g = map.get(item.driverId);
     if (!g) {
       g = {
@@ -432,13 +441,16 @@ export function groupWorkCenterByDriver(items: WorkCenterItem[]): WorkCenterDriv
     g.items.push(item);
     g.worstTone = worseTone(g.worstTone, item.tone);
     if (item.isNew) g.isNew = true;
-    if (!g.driver.trim() || g.driver === "—") g.driver = item.driver;
+    const gDriver =
+      g.driver == null ? "" : typeof g.driver === "string" ? g.driver : String(g.driver);
+    if (!gDriver.trim() || gDriver === "—") g.driver = item.driver;
   }
   return [...map.values()].sort((a, b) => {
     const ta = TONE_RANK.indexOf(a.worstTone);
     const tb = TONE_RANK.indexOf(b.worstTone);
     if (ta !== tb) return ta - tb;
-    return a.driver.localeCompare(b.driver, undefined, { sensitivity: "base" });
+    const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asDrv(a.driver).localeCompare(asDrv(b.driver), undefined, { sensitivity: "base" });
   });
 }
 
@@ -447,11 +459,16 @@ export function filterWorkCenterItems(
   filter: WorkCenterFilter,
   search: string,
 ): WorkCenterItem[] {
-  const q = search.trim().toLowerCase();
-  return items.filter((item) => {
-    if (filter !== "all" && !item.filters.includes(filter)) return false;
+  const q = (search == null ? "" : typeof search === "string" ? search : String(search))
+    .trim()
+    .toLowerCase();
+  const list = Array.isArray(items) ? items : [];
+  return list.filter((item) => {
+    const filters = Array.isArray(item.filters) ? item.filters : [];
+    if (filter !== "all" && !filters.includes(filter)) return false;
     if (!q) return true;
-    const hay = `${item.driver} ${item.docType} ${item.sectionTitle} ${item.details} ${item.statusLabel}`.toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const hay = `${asText(item.driver)} ${asText(item.docType)} ${asText(item.sectionTitle)} ${asText(item.details)} ${asText(item.statusLabel)}`.toLowerCase();
     return hay.includes(q);
   });
 }
@@ -465,10 +482,12 @@ export function workCenterCounts(items: WorkCenterItem[]): WorkCenterCounts {
   const byFilter = new Map<WorkCenterFilter, Set<string>>();
   for (const f of WORK_CENTER_FILTERS) byFilter.set(f.id, new Set());
 
-  for (const item of items) {
+  const list = Array.isArray(items) ? items : [];
+  for (const item of list) {
     driversAll.add(item.driverId);
     byFilter.get("all")!.add(item.driverId);
-    for (const f of item.filters) {
+    const filters = Array.isArray(item.filters) ? item.filters : [];
+    for (const f of filters) {
       if (f === "all") continue;
       byFilter.get(f)?.add(item.driverId);
     }
@@ -476,7 +495,7 @@ export function workCenterCounts(items: WorkCenterItem[]): WorkCenterCounts {
 
   counts.drivers = driversAll.size;
   for (const f of WORK_CENTER_FILTERS) {
-    counts[f.id] = f.id === "all" ? items.length : byFilter.get(f.id)!.size;
+    counts[f.id] = f.id === "all" ? list.length : byFilter.get(f.id)!.size;
   }
   return counts;
 }
@@ -488,14 +507,15 @@ export function findWorkCenterRow(
   rowId: string,
 ): { row: Row; headers: string[] } | null {
   const sec = data.sections[sectionId];
-  if (!sec) return null;
+  if (!sec || !Array.isArray(sec.rows)) return null;
   const row = sec.rows.find((r) => r.id === rowId);
   if (!row) return null;
-  return { row, headers: sec.headers };
+  return { row, headers: headersOf(sec) };
 }
 
 export function sectionStatusOptions(sectionId: string): string[] {
-  return sectionById(sectionId)?.statusOptions ?? [];
+  const opts = sectionById(sectionId)?.statusOptions;
+  return Array.isArray(opts) ? opts : [];
 }
 
 /** Temp notes for a driver (display helper). */

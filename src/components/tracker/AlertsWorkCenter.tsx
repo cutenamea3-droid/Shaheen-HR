@@ -14,7 +14,7 @@ import {
   type WorkCenterItem,
 } from "@/lib/alerts-work-center";
 import { setCell, useData } from "@/lib/store";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
 import { suggestPlanForCell } from "@/lib/plan-dates";
 import { DateCell, EditableText, StatusToggle, Chip } from "./cells";
 import { FuturePlanSuggest } from "./FuturePlanSuggest";
@@ -26,6 +26,8 @@ import { InspectionReadinessPanel } from "./InspectionReadinessPanel";
 import { ComplianceHistoryPanel } from "./ComplianceHistoryPanel";
 import { FileCompletenessPanel } from "./FileCompletenessPanel";
 import type { Tone } from "@/lib/alerts";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 type WorkCenterTab =
   | "today"
@@ -77,7 +79,8 @@ function safeSave(
 
 function ItemEditor({ item }: { item: WorkCenterItem }) {
   const data = useData();
-  const row = data.sections[item.sectionId]?.rows.find((r) => r.id === item.rowId);
+  const rawRow = rowsOf(data.sections[item.sectionId]).find((r) => r.id === item.rowId);
+  const row = rawRow ? { ...rawRow, cells: cellsOf(rawRow) } : undefined;
   if (!row) {
     return <p className="text-sm font-semibold text-danger">Row missing — refresh or open full record.</p>;
   }
@@ -91,10 +94,10 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
   if (item.linkOnly && item.kind !== "new_driver") {
     return (
       <p className="text-sm font-semibold text-muted-foreground">
-        {item.linkOnly.reason}.{" "}
+        {asText(item.linkOnly.reason)}.{" "}
         {item.linkOnly.to === "/drivers" ? (
           <Link to="/drivers" search={{ driver: item.driverId }} className="font-bold text-primary underline">
-            {item.linkOnly.label}
+            {asText(item.linkOnly.label)}
           </Link>
         ) : (
           <Link
@@ -103,7 +106,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
             search={{ row: item.rowId }}
             className="font-bold text-primary underline"
           >
-            {item.linkOnly.label}
+            {asText(item.linkOnly.label)}
           </Link>
         )}
       </p>

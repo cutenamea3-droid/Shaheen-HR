@@ -9,9 +9,10 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-## Combined site rules
-- Four isolated modules in one site: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …), Admin & Attendance (`src/admin/` → `/admin`), HR Personal (`src/personal/` → `/personal`; secure workspace + `VITE_PERSONAL_*`), Dispatch Operations (`src/dispatch/` → `/dispatch`; Batch 7–9 ops). Why: user requires systems kept separate and never merged.
-- Never share data, stores, or database clients across Driver ↔ Admin ↔ Personal. Dispatch may reuse the Driver *project* URL/key with dedicated auth storage (`shaheen-dispatch-auth-v1`) + `dispatch_portal_accounts` ACL — never Admin/Personal clients. Personal uses only `src/personal/integrations/supabase/client.ts` + `VITE_PERSONAL_*` (or local mock when `VITE_PERSONAL_AUTH_SECURE` is unset) — never company `app_state` / `tracker_sections`. Why: data and AuthZ must stay separate.
-- Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL. Why: Batch 2 security invariant.
-- Admin colors stay under `.admin-theme`; Dispatch under `.dispatch-theme`; Personal under `.personal-theme`. Why: user requires identical per-system look.
-- Dispatchers must be blocked by backend auth + RLS (`dispatch_portal_accounts`), not nav hide alone. Never expose compliance docs, banking, salaries, drug tests, rate cards, or Personal study data to Dispatch.
+## Site rules (Compliance + Attendance app)
+
+- Two modules in this deployable: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …) and Admin & Attendance (`src/admin/` → `/admin`). Personal Study and Dispatch Operations UIs are **not** served here (`/personal` and `/dispatch` soft-land with a clear message). Why: owner split to stop four-dashboard Access Denied races.
+- Never share data, stores, or database clients across Driver ↔ Admin. Personal/Dispatch source trees may remain unwired for history; do not re-link them into routes/switcher/probes without a new owner request.
+- Keep production wiring: Driver `VITE_SUPABASE_*` (`okzcwctsgurumnnzuxgg`) and Admin Lovable Cloud client — do not re-point. Zero Prod SQL deletes/overwrites without explicit approval.
+- Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL.
+- Admin colors stay under `.admin-theme`.

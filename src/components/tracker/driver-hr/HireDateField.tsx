@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CalendarDays, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -16,13 +16,19 @@ import { useViewMode } from "@/lib/viewmode";
 export function HireDateField({ driverId }: { driverId: string }) {
   const data = useData();
   const view = useViewMode();
-  const value = dateOfHireOf(data, driverId);
+  const asHireText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const value = asHireText(dateOfHireOf(data, driverId));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
+  const pickerRef = useRef<HTMLInputElement>(null);
+  const typedRef = useRef<HTMLInputElement>(null);
   const los = lengthOfService(value);
+  const safeDraft = asHireText(draft);
 
   const commit = (raw: string) => {
-    const parsed = parseHireDateInput(raw);
+    const fromDom = (typedRef.current?.value || pickerRef.current?.value || "").trim();
+    const next = (asHireText(raw).trim() || fromDom).trim();
+    const parsed = parseHireDateInput(next);
     if (parsed === null) {
       toast.error("Use MM/DD/YYYY or pick a date");
       return;
@@ -42,15 +48,25 @@ export function HireDateField({ driverId }: { driverId: string }) {
       <div className="tracker-profile-section space-y-2 p-4">
         <div className="text-xs font-bold tracking-wide text-muted-foreground uppercase">Date of Hire</div>
         <input
+          ref={pickerRef}
+          data-testid="hire-date-picker"
           type="date"
-          value={parseISO(draft) ? draft : ""}
+          value={parseISO(safeDraft) ? safeDraft : ""}
           onChange={(e) => setDraft(e.target.value)}
+          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1.5 text-base"
           aria-label="Date of hire picker"
         />
         <input
-          value={draft.includes("-") && parseISO(draft) ? formatHireDateDisplay(draft) : draft}
+          ref={typedRef}
+          data-testid="hire-date-typed"
+          value={
+            safeDraft.includes("-") && parseISO(safeDraft)
+              ? formatHireDateDisplay(safeDraft)
+              : safeDraft
+          }
           onChange={(e) => setDraft(e.target.value)}
+          onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           placeholder="MM/DD/YYYY"
           className="w-full rounded-lg border bg-card px-2.5 py-1.5 text-sm"
           aria-label="Date of hire typed"
@@ -58,7 +74,7 @@ export function HireDateField({ driverId }: { driverId: string }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => commit(draft)}
+            onClick={() => commit(safeDraft)}
             className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-primary-foreground"
           >
             Save
@@ -126,7 +142,8 @@ export function HireDateField({ driverId }: { driverId: string }) {
       </button>
       {los && (
         <p className="mt-1.5 text-xs font-semibold text-muted-foreground">
-          Length of service: {los.label}
+          Length of service:{" "}
+          {los.label == null ? "" : typeof los.label === "string" ? los.label : String(los.label)}
         </p>
       )}
     </div>

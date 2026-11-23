@@ -3,9 +3,12 @@ import { isValidPkIban, maskPkIban, normalizePkIban, pkIbanLast4 } from "./pk-ib
 import {
   PK_PAYMENT_INSTITUTIONS,
   PK_PAYMENT_INSTITUTIONS_REF_DATE,
+  PK_INSTITUTION_OTHER_ID,
   countInstitutionsByKind,
+  institutionDisplayLabel,
   searchPkInstitutions,
 } from "./pk-payment-institutions";
+import { shortName } from "./reports";
 import {
   employeeFinancePersistenceGuard,
   useEmployeeFinanceMock,
@@ -27,10 +30,19 @@ describe("pk-iban", () => {
     expect(maskPkIban(iban)).toBe("PK** HABB **** **** **** 7001");
     expect(pkIbanLast4(iban)).toBe("7001");
     expect(normalizePkIban("pk13 habb 0000001234567001")).toBe(iban);
+    expect(normalizePkIban(null as unknown as string)).toBe("");
+    expect(() => normalizePkIban(13 as unknown as string)).not.toThrow();
   });
 });
 
 describe("pk-payment-institutions", () => {
+  it("institutionDisplayLabel and shortName coerce non-string labels", () => {
+    expect(institutionDisplayLabel(PK_INSTITUTION_OTHER_ID, null as unknown as string)).toBe("Other");
+    expect(() => institutionDisplayLabel(PK_INSTITUTION_OTHER_ID, 42 as unknown as string)).not.toThrow();
+    expect(shortName(null)).toBe("");
+    expect(shortName("Alexander Longname")).toBe("Alexander");
+  });
+
   it("has reference date and category coverage", () => {
     expect(PK_PAYMENT_INSTITUTIONS_REF_DATE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     const counts = countInstitutionsByKind();
@@ -91,6 +103,34 @@ describe("employee-finance-mock security", () => {
     expect(s.setStatus("mock-emp-a1", "active").ok).toBe(true);
     expect(useEmployeeFinanceMock.getState().meta["mock-emp-a1"]?.status).toBe("active");
     expect(useEmployeeFinanceMock.getState().meta["mock-emp-a1"]?.reactivatedAt).toBeTruthy();
+  });
+
+  it("setDesignation and addBankingChange coerce non-string fields", () => {
+    const s = useEmployeeFinanceMock.getState();
+    expect(() => s.setDesignation("mock-emp-a1", null as unknown as string)).not.toThrow();
+    expect(() =>
+      s.addBankingChange({
+        employeeId: "mock-emp-a1",
+        institutionId: "other",
+        accountTitle: null as unknown as string,
+        accountRef: null as unknown as string,
+        isIban: false,
+        otherLabel: null as unknown as string,
+        note: 9 as unknown as string,
+        effectiveFrom: "2026-11-17",
+      }),
+    ).not.toThrow();
+    expect(
+      s.addBankingChange({
+        employeeId: "mock-emp-a1",
+        institutionId: "other",
+        accountTitle: null as unknown as string,
+        accountRef: null as unknown as string,
+        isIban: false,
+        otherLabel: null as unknown as string,
+        effectiveFrom: "2026-11-17",
+      }).ok,
+    ).toBe(false);
   });
 
   it("keeps banking history without overwrite", () => {

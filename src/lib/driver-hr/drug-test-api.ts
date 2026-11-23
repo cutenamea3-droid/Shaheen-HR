@@ -12,7 +12,7 @@ import {
   secureRestoreDrugTest,
   secureUpdateDrugTest,
 } from "./drug-test-secure";
-import { newTestingEventId, type DrugTestEvent } from "./drug-tests";
+import { asDrugText, newTestingEventId, type DrugTestEvent } from "./drug-tests";
 import { recordSensitiveAudit } from "./sensitive-audit";
 import { notifyDriverHrRefresh, subscribeDriverHrRefresh } from "./refresh-bus";
 
@@ -39,8 +39,9 @@ export async function listDrugTestsAsync(driverId: string, actor = "portal"): Pr
   if (getDriverDrugTestMode() === "secure") {
     try {
       const rows = await secureListDrugTests(driverId);
-      recordSensitiveAudit({ actor, action: "drug_test_list", driverId, detail: `n=${rows.length}` });
-      return { events: rows, error: null, secure: true };
+      const list = Array.isArray(rows) ? rows : [];
+      recordSensitiveAudit({ actor, action: "drug_test_list", driverId, detail: `n=${list.length}` });
+      return { events: list, error: null, secure: true };
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load drug test records";
       return { events: [], error: msg, secure: true };
@@ -61,13 +62,15 @@ export async function listDrugTestsForDrivers(
   if (getDriverDrugTestMode() !== "secure") {
     return { events: [], error: DRUG_TEST_SECURE_REQUIRED, secure: false };
   }
-  const unique = [...new Set(driverIds.filter(Boolean))];
+  const ids = Array.isArray(driverIds) ? driverIds : [];
+  const unique = [...new Set(ids.filter(Boolean))];
   const settled = await Promise.all(
     unique.map(async (id) => {
       try {
         const rows = await secureListDrugTests(id);
-        recordSensitiveAudit({ actor, action: "drug_test_list", driverId: id, detail: `n=${rows.length}` });
-        return { rows, error: null as string | null };
+        const list = Array.isArray(rows) ? rows : [];
+        recordSensitiveAudit({ actor, action: "drug_test_list", driverId: id, detail: `n=${list.length}` });
+        return { rows: list, error: null as string | null };
       } catch (e) {
         return {
           rows: [] as DrugTestEvent[],
@@ -76,7 +79,7 @@ export async function listDrugTestsForDrivers(
       }
     }),
   );
-  const events = settled.flatMap((s) => s.rows);
+  const events = settled.flatMap((s) => (Array.isArray(s.rows) ? s.rows : []));
   const firstErr = settled.find((s) => s.error)?.error ?? null;
   return { events, error: firstErr, secure: true };
 }
@@ -89,7 +92,7 @@ export async function addDrugTestEvent(
   assertPersistable();
   const withGroup: Omit<DrugTestEvent, "id" | "createdAt"> = {
     ...input,
-    testingEventId: input.testingEventId?.trim() || newTestingEventId(),
+    testingEventId: asDrugText(input.testingEventId).trim() || newTestingEventId(),
   };
   const ev = await secureAddDrugTest(withGroup);
   notifyDriverHrRefresh();

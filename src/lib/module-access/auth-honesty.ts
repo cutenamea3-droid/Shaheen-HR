@@ -1,19 +1,17 @@
 /**
- * Cross-project auth honesty (Batch 2).
+ * Cross-project auth honesty (Compliance + Attendance app).
  *
- * Three Auth backends exist:
- * - Driver Supabase (`VITE_SUPABASE_*`) — Compliance ACL + (optional) Dispatch ACL
+ * Auth backends in this deployable:
+ * - Driver Supabase (`VITE_SUPABASE_*`) — Compliance ACL
  * - Admin Lovable Cloud — separate hardcoded client in `src/admin/integrations/supabase/client.ts`
- * - Personal Supabase (`VITE_PERSONAL_*`) — PR #16; not required on main until approved
+ *
+ * Personal / Dispatch UIs are retired from this app; their cloud projects/tables
+ * remain untouched. Do not reintroduce Personal/Dispatch JWT probes here.
  *
  * Forbidden:
  * - Copying JWT / session storage keys across projects
  * - Using Driver session to call Admin APIs (or vice versa)
  * - Treating localStorage roles / AppSwitcher visibility as source of truth
- *
- * Allowed:
- * - Dispatch reusing the Driver *project* with a dedicated auth storage key + `dispatch_portal_accounts`
- * - Deriving module grants by reading each project's own session independently
  */
 
 import type { AuthProject } from "./types";
@@ -37,8 +35,6 @@ export type AuthBoundaryViolation =
 /** Pure guard used by tests and call sites — never "fix" a cross-project token. */
 export function assertNoTokenBridge(from: AuthProject, to: AuthProject): void {
   if (from === to) return;
-  // Driver ↔ Dispatch share the Driver Auth project by design (separate storage + ACL).
-  // That is not a bridge to Admin or Personal.
   if ((from === "driver" && to === "admin-lovable") || (from === "admin-lovable" && to === "driver")) {
     throw new Error("Unsafe token bridge: Driver Auth and Admin Lovable Cloud must not share JWTs.");
   }
@@ -49,10 +45,9 @@ export function assertNoTokenBridge(from: AuthProject, to: AuthProject): void {
 
 export function describeAuthBoundaries(): string[] {
   return [
-    "Driver Compliance JWT unlocks only Driver Supabase (tracker / portal / optional dispatch_* with Dispatch ACL).",
+    "Driver Compliance JWT unlocks only Driver Supabase (tracker / portal).",
     "Admin & Attendance JWT unlocks only the Lovable Admin Cloud client — never Driver tables.",
-    "Personal JWT (when #16 + Personal project enabled) unlocks only Personal tables.",
-    "Dispatch uses dedicated auth storage (`shaheen-dispatch-auth-v1`) even when URL/key match Driver.",
+    "Personal / Dispatch UIs are not served by this app; their cloud data is left intact.",
     "localStorage role directories and AppSwitcher hide/show are UX only — RLS/RPC/ACL enforce access.",
   ];
 }

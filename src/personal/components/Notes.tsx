@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { usePersonal } from "@/personal/lib/store";
+import { normalizeNote } from "@/personal/lib/assessment-phases";
+import type { Note } from "@/personal/lib/types";
 import {
   PRACTICE_CHECKLIST,
   REVISION_TAG_PRESETS,
@@ -10,10 +12,17 @@ import {
 } from "@/personal/lib/revision";
 import { vuQuickLinks } from "@/personal/lib/vu-rhythm";
 
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function Notes() {
-  const courses = usePersonal((s) => s.courses);
-  const notes = usePersonal((s) => s.notes);
-  const assessments = usePersonal((s) => s.assessments);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const notesRaw = usePersonal((s) => s.notes);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const notes = (Array.isArray(notesRaw) ? notesRaw : [])
+    .map((n) => normalizeNote(n as Partial<Note> & Pick<Note, "id">))
+    .filter((n) => !!n.id);
+  const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
   const upsertNote = usePersonal((s) => s.upsertNote);
   const removeNote = usePersonal((s) => s.removeNote);
 
@@ -25,6 +34,12 @@ export function Notes() {
   const [filterTag, setFilterTag] = useState<string>("all");
   const [linkCourse, setLinkCourse] = useState(courses[0]?.code ?? "CS101");
   const [practiceDone, setPracticeDone] = useState<Record<string, boolean>>({});
+  const titleRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  /** Prefer React state; fall back to DOM when autofill/automation set value without onChange. */
+  const readTitle = () => (asTxt(title).trim() || titleRef.current?.value || "").trim();
+  const readBody = () => (asTxt(body).length ? asTxt(body) : bodyRef.current?.value || "");
 
   const suggestions = useMemo(
     () => suggestRevisionTargets(courses, assessments, notes),
@@ -65,7 +80,7 @@ export function Notes() {
               >
                 <div>
                   <div className="text-sm font-semibold text-[var(--hp-ink)]">
-                    {s.courseCode}{" "}
+                    {asTxt(s.courseCode)}{" "}
                     <span
                       className={`ml-1 text-[10px] font-bold uppercase tracking-wide ${
                         s.urgency === "high"
@@ -75,10 +90,10 @@ export function Notes() {
                             : "text-[var(--hp-muted)]"
                       }`}
                     >
-                      {s.urgency}
+                      {asTxt(s.urgency)}
                     </span>
                   </div>
-                  <div className="text-xs text-[var(--hp-muted)]">{s.reason}</div>
+                  <div className="text-xs text-[var(--hp-muted)]">{asTxt(s.reason)}</div>
                 </div>
                 <Btn
                   variant="ghost"
@@ -86,7 +101,7 @@ export function Notes() {
                   onClick={() => {
                     setCourseId(s.courseId === "general" ? "general" : s.courseId);
                     setTagDraft("revision");
-                    setTitle(`${s.courseCode} revision`);
+                    setTitle(`${asTxt(s.courseCode)} revision`);
                   }}
                 >
                   Draft note
@@ -106,12 +121,12 @@ export function Notes() {
                 <input
                   type="checkbox"
                   checked={!!practiceDone[item.id]}
-                  onChange={() =>
-                    setPracticeDone((p) => ({ ...p, [item.id]: !p[item.id] }))
-                  }
+                  onChange={() => setPracticeDone((p) => ({ ...p, [item.id]: !p[item.id] }))}
                 />
-                <span className={practiceDone[item.id] ? "text-[var(--hp-muted)] line-through" : ""}>
-                  {item.label}
+                <span
+                  className={practiceDone[item.id] ? "text-[var(--hp-muted)] line-through" : ""}
+                >
+                  {asTxt(item.label)}
                 </span>
               </li>
             ))}
@@ -126,17 +141,28 @@ export function Notes() {
         />
         <div className="grid gap-3">
           <Field label="Course">
-            <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select
+              className="hp-field"
+              value={asTxt(courseId)}
+              onChange={(e) => setCourseId(e.target.value)}
+            >
               <option value="general">General revision</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
           </Field>
           <Field label="Title">
-            <input className="hp-field" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              ref={titleRef}
+              className="hp-field"
+              data-testid="personal-note-title"
+              value={asTxt(title)}
+              onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
+            />
           </Field>
           <Field label="Tag">
             <div className="flex flex-wrap gap-1.5">
@@ -154,28 +180,33 @@ export function Notes() {
           </Field>
           <Field label="Body">
             <textarea
+              ref={bodyRef}
               className="hp-field min-h-[140px] py-2"
-              value={body}
+              data-testid="personal-note-body"
+              value={asTxt(body)}
               onChange={(e) => setBody(e.target.value)}
+              onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
               placeholder="Revision bullets, formulas, VULMS reminders — owner text only…"
             />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Btn
+              data-testid="personal-save-note"
               onClick={() => {
-                if (!title.trim()) return;
+                const nextTitle = readTitle();
+                if (!nextTitle) return;
                 upsertNote({
                   id: editingId ?? Math.random().toString(36).slice(2, 10),
                   courseId: courseId as "general" | string,
-                  title: title.trim(),
-                  body,
+                  title: nextTitle,
+                  body: readBody(),
                   updatedAt: Date.now(),
                   tags: tagDraft ? [tagDraft] : [],
                 });
                 reset();
               }}
             >
-              {editingId ? "Update note" : "Save note"}
+              {editingId ? "Update note" : "Add note"}
             </Btn>
             {editingId ? (
               <Btn variant="ghost" onClick={reset}>
@@ -192,7 +223,7 @@ export function Notes() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={filterTag}
+              value={asTxt(filterTag)}
               onChange={(e) => setFilterTag(e.target.value)}
             >
               <option value="all">All tags</option>
@@ -205,20 +236,25 @@ export function Notes() {
           }
         />
         {!sorted.length ? (
-          <Empty>No notes yet. Everything you write stays on this device under personal keys.</Empty>
+          <Empty>
+            No notes yet. Notes stay in your Personal workspace (device cache + Personal cloud when
+            secure mode is on) — never company Compliance / Admin / Dispatch stores.
+          </Empty>
         ) : (
           <ul className="space-y-2">
-            {sorted.map((n) => (
+            {sorted.map((n) => {
+              const tags = Array.isArray(n.tags) ? n.tags : [];
+              return (
               <li
                 key={n.id}
                 className="rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold">{n.title}</div>
+                    <div className="font-semibold">{asTxt(n.title)}</div>
                     <div className="text-xs text-[var(--hp-muted)]">
                       {courseLabel(courses, n.courseId)} ·{" "}
-                      {n.tags.length ? n.tags.join(", ") + " · " : ""}
+                      {tags.length ? tags.map(asTxt).filter(Boolean).join(", ") + " · " : ""}
                       {new Date(n.updatedAt).toLocaleString()}
                     </div>
                   </div>
@@ -227,10 +263,10 @@ export function Notes() {
                       variant="ghost"
                       onClick={() => {
                         setEditingId(n.id);
-                        setTitle(n.title);
-                        setBody(n.body);
-                        setCourseId(n.courseId);
-                        setTagDraft(n.tags[0] ?? "revision");
+                        setTitle(asTxt(n.title));
+                        setBody(asTxt(n.body));
+                        setCourseId(asTxt(n.courseId) || "general");
+                        setTagDraft(asTxt(tags[0]) || "revision");
                       }}
                     >
                       Edit
@@ -240,13 +276,14 @@ export function Notes() {
                     </Btn>
                   </div>
                 </div>
-                {n.body ? (
+                {asTxt(n.body) ? (
                   <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-[var(--hp-ink)]/90">
-                    {n.body}
+                    {asTxt(n.body)}
                   </pre>
                 ) : null}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </Panel>
@@ -258,12 +295,12 @@ export function Notes() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={linkCourse}
+              value={asTxt(linkCourse)}
               onChange={(e) => setLinkCourse(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.code}>
-                  {c.code}
+                <option key={c.id} value={asTxt(c.code)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -280,7 +317,9 @@ export function Notes() {
               >
                 <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hp-teal)]" />
                 <span>
-                  <span className="block text-sm font-semibold text-[var(--hp-ink)]">{l.label}</span>
+                  <span className="block text-sm font-semibold text-[var(--hp-ink)]">
+                    {asTxt(l.label)}
+                  </span>
                   <span className="block text-xs text-[var(--hp-muted)]">{l.blurb}</span>
                 </span>
               </a>

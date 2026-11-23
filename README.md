@@ -1,3 +1,11 @@
+# Shaheen HR — Compliance + Attendance
+
+This deployable app serves **Driver Compliance** (`/`) and **Admin & Attendance** (`/admin`) only.
+Personal Study and Dispatch Operations UIs are retired from this app (soft landing on `/personal` and `/dispatch`).
+Cloud data for all modules was left intact — see Project store `docs/data-protection/pre-split-backup-inventory.md`.
+
+---
+
 # Shaheen Hr Dashboard
 
 i have two differnet projects zip file i download from my git hub are you able to combile them, sepersatly in one without doing any changing line by line ???

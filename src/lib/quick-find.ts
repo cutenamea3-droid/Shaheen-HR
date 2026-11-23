@@ -20,7 +20,7 @@ import {
   listScopeOf,
   type ListScope,
 } from "@/lib/driver-meta";
-import { SECTIONS, type AppData } from "@/lib/sections";
+import { SECTIONS, cellsOf, headersOf, type AppData } from "@/lib/sections";
 
 export type FinderEmploymentLabel = "Active" | "Leave" | "Inactive" | "New";
 
@@ -74,15 +74,16 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
   for (const def of SECTIONS) {
     if (def.id === "inactive") continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const r of sec.rows) {
+      const cells = cellsOf(r);
       let d = map.get(r.driverId);
       if (!d) {
         const status = rowDriverStatus(def, r, data);
         const scope = listScopeOf(data, r.driverId);
         d = {
           driverId: r.driverId,
-          name: (r.cells[0] ?? "").trim(),
+          name: (cells[0] ?? "").trim(),
           cdl: "",
           employmentLabel: isNewDriver(data, r.driverId) ? "New" : formatDriverStatus(status),
           status,
@@ -104,14 +105,14 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
       d.scope = listScopeOf(data, r.driverId);
       d.employmentLabel = isNewDriver(data, r.driverId) ? "New" : formatDriverStatus(d.status);
       d.classLabel = formatDriverClass(d.scope === "owner_operator" ? "owner_operator" : "company");
-      if (!d.name) d.name = (r.cells[0] ?? "").trim();
+      if (!d.name) d.name = (cells[0] ?? "").trim();
 
       if (!rowAlertsMuted(def, r, data)) {
-        d.issues += analyzeRow(def, sec.headers, r).issues.length;
+        d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
       }
 
-      if (def.id === "ssccdl" && (r.cells[1] ?? "").trim()) d.cdl = (r.cells[1] ?? "").trim();
-      if (def.id === "dmv" && !d.cdl) d.cdl = (r.cells[1] ?? "").trim();
+      if (def.id === "ssccdl" && (cells[1] ?? "").trim()) d.cdl = (cells[1] ?? "").trim();
+      if (def.id === "dmv" && !d.cdl) d.cdl = (cells[1] ?? "").trim();
 
       if (def.id === "info") d.infoRowId = r.id;
       if (def.id === "docs") {
@@ -119,7 +120,7 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
         let missing = 0;
         def.types.forEach((t, i) => {
           if (t !== "status") return;
-          const s = normStatus(r.cells[i] ?? "");
+          const s = normStatus(cells[i] ?? "");
           if (s === "Missing" || s === "Sign Missing" || s === "Invalid") missing++;
         });
         d.missingDocs = missing;
@@ -135,10 +136,14 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
       tempNotes: countTempNotes(data, d.driverId),
       firstAlert: alertsByDriver.get(d.driverId) ?? null,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return asN(a.name).localeCompare(asN(b.name), undefined, { sensitivity: "base" });
+    });
 }
 
 /** cmdk value string — name, CDL, and stable driver ID. */
 export function finderSearchValue(d: FinderDriver): string {
-  return `${d.name} ${d.cdl} ${d.driverId}`;
+  const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return `${asN(d.name)} ${asN(d.cdl)} ${asN(d.driverId)}`;
 }

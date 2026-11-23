@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
 import { todayKey, usePersonal } from "@/personal/lib/store";
+import { normalizeBacklogItem } from "@/personal/lib/assessment-phases";
+import type { BacklogItem } from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Backlog() {
-  const courses = usePersonal((s) => s.courses);
-  const backlog = usePersonal((s) => s.backlog);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const backlogRaw = usePersonal((s) => s.backlog);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const backlog = (Array.isArray(backlogRaw) ? backlogRaw : [])
+    .map((b) => normalizeBacklogItem(b as Partial<BacklogItem> & Pick<BacklogItem, "id">))
+    .filter((b) => !!b.id);
   const addBacklog = usePersonal((s) => s.addBacklog);
   const toggleBacklog = usePersonal((s) => s.toggleBacklog);
   const removeBacklog = usePersonal((s) => s.removeBacklog);
@@ -13,6 +21,8 @@ export function Backlog() {
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "cs101");
   const [label, setLabel] = useState("");
   const [mins, setMins] = useState("30");
+  const labelRef = useRef<HTMLInputElement>(null);
+  const minsRef = useRef<HTMLInputElement>(null);
 
   const open = backlog.filter((b) => !b.done);
   const done = backlog.filter((b) => b.done);
@@ -27,38 +37,52 @@ export function Backlog() {
         className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 sm:grid-cols-[1fr_2fr_100px_auto]"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!label.trim()) return;
+          const nextLabel = (asTxt(label).trim() || labelRef.current?.value || "").trim();
+          if (!nextLabel) return;
+          const nextMins = asTxt(mins).trim() || minsRef.current?.value || "30";
           addBacklog({
             courseId,
-            label: label.trim(),
-            estimatedMinutes: Math.max(5, Number(mins) || 30),
+            label: nextLabel,
+            estimatedMinutes: Math.max(5, Number(nextMins) || 30),
           });
           setLabel("");
           rebuildDayBlocks(todayKey());
         }}
       >
         <Field label="Course">
-          <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+          <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
             {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code}
+              <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                {asTxt(c.code)}
               </option>
             ))}
           </select>
         </Field>
         <Field label="What to recover">
           <input
+            ref={labelRef}
             className="hp-field"
-            value={label}
+            data-testid="personal-backlog-label"
+            value={asTxt(label)}
             onChange={(e) => setLabel(e.target.value)}
+            onInput={(e) => setLabel((e.target as HTMLInputElement).value)}
             placeholder="e.g. Watch missed CS101 video week 3"
           />
         </Field>
         <Field label="Est. min">
-          <input className="hp-field" value={mins} onChange={(e) => setMins(e.target.value)} />
+          <input
+            ref={minsRef}
+            className="hp-field"
+            data-testid="personal-backlog-mins"
+            value={asTxt(mins)}
+            onChange={(e) => setMins(e.target.value)}
+            onInput={(e) => setMins((e.target as HTMLInputElement).value)}
+          />
         </Field>
         <div className="flex items-end">
-          <Btn type="submit">Add</Btn>
+          <Btn type="submit" data-testid="personal-backlog-add">
+            Add
+          </Btn>
         </div>
       </form>
 
@@ -72,7 +96,7 @@ export function Backlog() {
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
             >
               <div>
-                <div className="text-sm font-semibold">{b.label}</div>
+                <div className="text-sm font-semibold">{asTxt(b.label)}</div>
                 <div className="text-xs text-[var(--hp-muted)]">
                   {courseLabel(courses, b.courseId)} · ~{b.estimatedMinutes}m
                 </div>
@@ -105,7 +129,7 @@ export function Backlog() {
             {done.map((b) => (
               <li key={b.id} className="flex justify-between text-sm">
                 <span>
-                  {courseLabel(courses, b.courseId)} — {b.label}
+                  {courseLabel(courses, b.courseId)} — {asTxt(b.label)}
                 </span>
                 <Btn variant="ghost" onClick={() => toggleBacklog(b.id)}>
                   Undo

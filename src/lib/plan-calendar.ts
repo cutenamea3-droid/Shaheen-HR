@@ -19,7 +19,7 @@ import {
   toISODateLocal,
 } from "./plan-dates";
 import { listFollowUps, followUpTone, type FollowUp } from "./follow-ups";
-import { SECTIONS, type AppData } from "./sections";
+import { SECTIONS, cellsOf, rowsOf, type AppData } from "./sections";
 import { rowIsActive, rowOrdinaryComplianceMuted } from "./alerts";
 
 function startOfDay(d: Date): Date {
@@ -87,7 +87,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
   // Fill driverId from section rows for plan events
   for (const ev of out) {
     if (ev.driverId) continue;
-    const row = data.sections[ev.sectionId]?.rows.find((r) => r.id === ev.rowId);
+    const row = rowsOf(data.sections[ev.sectionId]).find((r) => r.id === ev.rowId);
     if (row) ev.driverId = row.driverId;
   }
 
@@ -95,15 +95,16 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
   for (const rule of PLAN_LEAD_RULES) {
     const sec = data.sections[rule.sectionId];
     const def = SECTIONS.find((s) => s.id === rule.sectionId);
-    if (!sec || !def) continue;
-    for (const row of sec.rows) {
+    if (!sec || !def || !Array.isArray(sec.rows)) continue;
+    for (const rawRow of sec.rows) {
+      const row = { ...rawRow, cells: cellsOf(rawRow) };
       if (rowOrdinaryComplianceMuted(def, row, data)) continue;
       if (!rowIsActive(def, row, data)) continue;
       const suggestion = buildFuturePlanSuggestion(rule, row);
       if (!suggestion.available || !suggestion.reminderDate) continue;
       // Skip if Applied (status-check only — preserve Applied DMV behavior)
       if (suggestion.suppressReapply) continue;
-      const saved = (row.cells[rule.planCol] ?? "").trim();
+      const saved = String(row.cells[rule.planCol] ?? "").trim();
       // If a saved plan already has a parseable date, collectPlans covers it
       if (saved) continue;
       const iso = toIso(suggestion.reminderDate);
@@ -116,7 +117,7 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
         dateIso: iso,
         kind: "suggestion",
         tone: toneForDate(suggestion.reminderDate),
-        driver: row.cells[0] ?? "",
+        driver: String(row.cells[0] ?? ""),
         driverId: row.driverId,
         title: `${rule.docLabel} reminder`,
         detail: suggestion.text,
@@ -150,18 +151,23 @@ export function collectCalendarEvents(data: AppData): CalendarEvent[] {
     });
   }
 
-  return out.sort((a, b) => a.date.getTime() - b.date.getTime() || a.driver.localeCompare(b.driver));
+  const asDrv = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  return out.sort(
+    (a, b) => a.date.getTime() - b.date.getTime() || asDrv(a.driver).localeCompare(asDrv(b.driver)),
+  );
 }
 
 export function eventsOnDay(events: CalendarEvent[], day: Date): CalendarEvent[] {
+  const list = Array.isArray(events) ? events : [];
   const iso = toIso(startOfDay(day));
-  return events.filter((e) => e.dateIso === iso);
+  return list.filter((e) => e.dateIso === iso);
 }
 
 export function eventsInRange(events: CalendarEvent[], start: Date, end: Date): CalendarEvent[] {
+  const list = Array.isArray(events) ? events : [];
   const a = startOfDay(start).getTime();
   const b = startOfDay(end).getTime();
-  return events.filter((e) => {
+  return list.filter((e) => {
     const t = e.date.getTime();
     return t >= a && t <= b;
   });

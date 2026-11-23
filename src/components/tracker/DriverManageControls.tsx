@@ -22,7 +22,8 @@ export function DriverManageControls({ driverId, name }: { driverId: string; nam
   const klass = driverClassOf(data, driverId);
   const isNew = isNewDriver(data, driverId);
   const history = classHistoryOf(data, driverId);
-  const label = name.trim() || "this driver";
+  const label =
+    (name == null ? "" : typeof name === "string" ? name : String(name)).trim() || "this driver";
 
   if (view) {
     return (

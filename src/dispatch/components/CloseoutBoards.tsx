@@ -2,7 +2,7 @@
  * Batch 9 surfaces: Detention & Accessorials board + helpers used from Load editor.
  * Additive — does not rewrite Batch 7/8 cores. No rates/free-time invention; no HR payroll bleed.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   listAccessorials,
   saveAccessorial,
@@ -22,6 +22,8 @@ import type {
 import { ACCESSORIAL_KIND_LABELS } from "@/dispatch/lib/types";
 import { EmptyHint, SectionHelp } from "./EmptyHint";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 const KINDS = Object.keys(ACCESSORIAL_KIND_LABELS) as AccessorialKind[];
 const STATUSES: AccessorialStatus[] = ["draft", "submitted", "approved", "denied", "paid", "void"];
 
@@ -32,18 +34,26 @@ export function AccessorialsBoard({
   loads: DispatchLoad[];
   onOpen: (id: string) => void;
 }) {
+  const safeLoads = Array.isArray(loads) ? loads : [];
   const [rows, setRows] = useState<DispatchAccessorial[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [loadId, setLoadId] = useState(loads.find((l) => l.status === "delivered")?.id ?? loads[0]?.id ?? "");
+  const [loadId, setLoadId] = useState(
+    safeLoads.find((l) => l.status === "delivered")?.id ?? safeLoads[0]?.id ?? "",
+  );
   const [kind, setKind] = useState<AccessorialKind>("detention");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [hours, setHours] = useState("");
   const [freeTimeNote, setFreeTimeNote] = useState("Free-time / rate Needs Policy Confirmation — do not invent");
+  const descriptionRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const hoursRef = useRef<HTMLInputElement>(null);
+  const freeTimeNoteRef = useRef<HTMLInputElement>(null);
 
   async function reload() {
-    setRows(await listAccessorials());
+    const next = await listAccessorials();
+    setRows(Array.isArray(next) ? next : []);
   }
 
   useEffect(() => {
@@ -51,7 +61,7 @@ export function AccessorialsBoard({
   }, [loads]);
 
   const open = openAccessorials(rows);
-  const byLoad = new Map(loads.map((l) => [l.id, l]));
+  const byLoad = new Map(safeLoads.map((l) => [l.id, l]));
 
   return (
     <div className="grid gap-3">
@@ -70,17 +80,18 @@ export function AccessorialsBoard({
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="grid gap-1 text-xs">
             Load
-            <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
-              {loads.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.load_number} · {statusLabel(l.status)} · pay {paymentStatusLabel(l.payment_status)}
+            <select className="dispatch-field" value={asText(loadId)} onChange={(e) => setLoadId(e.target.value)}>
+              {safeLoads.map((l) => (
+                <option key={asText(l.id)} value={asText(l.id)}>
+                  {asText(l.load_number)} · {statusLabel(l.status)} · pay{" "}
+                  {paymentStatusLabel(l.payment_status)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-xs">
             Kind
-            <select className="dispatch-field" value={kind} onChange={(e) => setKind(e.target.value as AccessorialKind)}>
+            <select className="dispatch-field" value={asText(kind)} onChange={(e) => setKind(e.target.value as AccessorialKind)}>
               {KINDS.map((k) => (
                 <option key={k} value={k}>
                   {ACCESSORIAL_KIND_LABELS[k]}
@@ -91,38 +102,50 @@ export function AccessorialsBoard({
           <label className="grid gap-1 text-xs sm:col-span-2">
             Description
             <input
+              ref={descriptionRef}
+              data-testid="dispatch-accessorial-description"
               className="dispatch-field"
-              value={description}
+              value={asText(description)}
               onChange={(e) => setDescription(e.target.value)}
+              onInput={(e) => setDescription((e.target as HTMLInputElement).value)}
               placeholder="What happened (manual)"
             />
           </label>
           <label className="grid gap-1 text-xs">
             Amount (manual — blank = Needs Policy)
             <input
+              ref={amountRef}
+              data-testid="dispatch-accessorial-amount"
               className="dispatch-field"
               inputMode="decimal"
-              value={amount}
+              value={asText(amount)}
               onChange={(e) => setAmount(e.target.value)}
+              onInput={(e) => setAmount((e.target as HTMLInputElement).value)}
               placeholder="Leave blank — never invent rate"
             />
           </label>
           <label className="grid gap-1 text-xs">
             Hours claimed (manual)
             <input
+              ref={hoursRef}
+              data-testid="dispatch-accessorial-hours"
               className="dispatch-field"
               inputMode="decimal"
-              value={hours}
+              value={asText(hours)}
               onChange={(e) => setHours(e.target.value)}
+              onInput={(e) => setHours((e.target as HTMLInputElement).value)}
               placeholder="Optional — not free-time calc"
             />
           </label>
           <label className="grid gap-1 text-xs sm:col-span-2">
             Free-time / rate note
             <input
+              ref={freeTimeNoteRef}
+              data-testid="dispatch-accessorial-freetime"
               className="dispatch-field"
-              value={freeTimeNote}
+              value={asText(freeTimeNote)}
               onChange={(e) => setFreeTimeNote(e.target.value)}
+              onInput={(e) => setFreeTimeNote((e.target as HTMLInputElement).value)}
             />
           </label>
         </div>
@@ -134,15 +157,19 @@ export function AccessorialsBoard({
             setBusy(true);
             setError(null);
             try {
-              const amount_manual = amount.trim() === "" ? null : Number(amount);
-              const hours_manual = hours.trim() === "" ? null : Number(hours);
+              const nextDesc = (asText(description).trim() || descriptionRef.current?.value || "").trim();
+              const nextAmount = (asText(amount).trim() || amountRef.current?.value || "").trim();
+              const nextHours = (asText(hours).trim() || hoursRef.current?.value || "").trim();
+              const nextFree = (asText(freeTimeNote).trim() || freeTimeNoteRef.current?.value || "").trim();
+              const amount_manual = nextAmount === "" ? null : Number(nextAmount);
+              const hours_manual = nextHours === "" ? null : Number(nextHours);
               await saveAccessorial({
                 load_id: loadId,
                 kind,
-                description,
+                description: nextDesc,
                 amount_manual,
                 hours_manual,
-                free_time_note: freeTimeNote.trim() || null,
+                free_time_note: nextFree || null,
                 status: "draft",
               });
               setDescription("");
@@ -174,19 +201,21 @@ export function AccessorialsBoard({
                 <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <div>
                     <p className="font-semibold">
-                      {accessorialKindLabel(a.kind)} · {a.status}
-                      {load ? ` · ${load.load_number}` : ""}
+                      {accessorialKindLabel(a.kind)} · {asText(a.status)}
+                      {load ? ` · ${asText(load.load_number)}` : ""}
                     </p>
                     <p className="text-xs text-[color:var(--dispatch-muted)]">
-                      {a.description}
+                      {asText(a.description)}
                       {" · "}
-                      {a.amount_manual == null ? "amount blank / Needs Policy" : `USD ${a.amount_manual}`}
+                      {a.amount_manual == null
+                        ? "amount blank / Needs Policy"
+                        : `USD ${a.amount_manual}`}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <select
                       className="dispatch-field"
-                      value={a.status}
+                      value={asText(a.status)}
                       disabled={busy}
                       onChange={async (e) => {
                         setBusy(true);

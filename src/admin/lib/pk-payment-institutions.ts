@@ -107,8 +107,10 @@ export function findPkInstitution(id: string): PkPaymentInstitution | undefined 
   return PK_PAYMENT_INSTITUTIONS.find((x) => x.id === id);
 }
 
-export function searchPkInstitutions(query: string): PkPaymentInstitution[] {
-  const q = query.trim().toLowerCase();
+export function searchPkInstitutions(query: unknown): PkPaymentInstitution[] {
+  const q = (query == null ? "" : typeof query === "string" ? query : String(query))
+    .trim()
+    .toLowerCase();
   if (!q) return [...PK_PAYMENT_INSTITUTIONS];
   return PK_PAYMENT_INSTITUTIONS.filter((inst) => {
     if (inst.name.toLowerCase().includes(q)) return true;
@@ -117,12 +119,20 @@ export function searchPkInstitutions(query: string): PkPaymentInstitution[] {
   });
 }
 
-export function institutionDisplayLabel(id: string, otherLabel?: string): string {
-  if (id === PK_INSTITUTION_OTHER_ID) return otherLabel?.trim() || "Other";
+export function institutionDisplayLabel(id: string, otherLabel?: unknown): string {
+  const other =
+    otherLabel == null
+      ? ""
+      : typeof otherLabel === "string"
+        ? otherLabel.trim()
+        : String(otherLabel).trim();
+  if (id === PK_INSTITUTION_OTHER_ID) return other || "Other";
   const inst = findPkInstitution(id);
-  if (!inst) return otherLabel?.trim() || "Unknown institution";
+  if (!inst) return other || "Unknown institution";
   const kind = pkInstitutionKindLabel(inst.kind);
-  return inst.isBank ? `${inst.name}` : `${inst.name} (${kind})`;
+  const name =
+    inst.name == null ? "" : typeof inst.name === "string" ? inst.name : String(inst.name);
+  return inst.isBank ? `${name}` : `${name} (${kind})`;
 }
 
 export function countInstitutionsByKind(): Record<PkInstitutionKind, number> {

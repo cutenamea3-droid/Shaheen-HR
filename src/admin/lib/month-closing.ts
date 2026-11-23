@@ -34,6 +34,8 @@ type State = {
   closingMeansPaid: false;
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function empty(month: string): MonthCloseRecord {
   return {
     month,
@@ -46,26 +48,67 @@ function empty(month: string): MonthCloseRecord {
   };
 }
 
+/** Coerce month-close row scalars so Reports never renders object children. */
+export function normalizeMonthCloseRecord(raw: unknown, fallbackMonth = ""): MonthCloseRecord | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Partial<MonthCloseRecord>;
+  const month = asText(r.month).trim() || asText(fallbackMonth).trim();
+  if (!/^\d{4}-\d{2}$/.test(month)) return null;
+  const status: MonthCloseStatus = r.status === "closed" ? "closed" : "open";
+  const asTs = (v: unknown): number | null => {
+    if (v == null || v === "") return null;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  return {
+    month,
+    status,
+    closedAt: asTs(r.closedAt),
+    closedBy: asText(r.closedBy),
+    reopenReason: asText(r.reopenReason),
+    reopenedAt: asTs(r.reopenedAt),
+    reopenedBy: asText(r.reopenedBy),
+  };
+}
+
 export const useMonthClosing = create<State>()(
   persist(
     (set, get) => ({
       months: {},
       closingMeansPaid: false,
-      statusOf: (month) => get().months[month]?.status ?? "open",
-      isClosed: (month) => (get().months[month]?.status ?? "open") === "closed",
+      statusOf: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return months[asText(month)]?.status ?? "open";
+      },
+      isClosed: (month) => {
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        return (months[asText(month)]?.status ?? "open") === "closed";
+      },
       closeMonth: (month, who) => {
-        if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
-        if (get().isClosed(month)) return { ok: false, error: "Month already closed" };
-        const prev = get().months[month] ?? empty(month);
+        const key = asText(month).trim();
+        if (!/^\d{4}-\d{2}$/.test(key)) return { ok: false, error: "Invalid month" };
+        if (get().isClosed(key)) return { ok: false, error: "Month already closed" };
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[key] ?? empty(key);
         set({
           months: {
-            ...get().months,
-            [month]: {
+            ...months,
+            [key]: {
               ...prev,
-              month,
+              month: key,
               status: "closed",
               closedAt: Date.now(),
-              closedBy: who || "HR",
+              closedBy: asText(who) || "HR",
               reopenReason: "",
               reopenedAt: null,
               reopenedBy: "",
@@ -75,40 +118,65 @@ export const useMonthClosing = create<State>()(
         return { ok: true };
       },
       reopenMonth: (month, who, reason) => {
-        if (!/^\d{4}-\d{2}$/.test(month)) return { ok: false, error: "Invalid month" };
-        if (!get().isClosed(month)) return { ok: false, error: "Month is not closed" };
-        const trimmed = reason.trim();
+        const key = asText(month).trim();
+        if (!/^\d{4}-\d{2}$/.test(key)) return { ok: false, error: "Invalid month" };
+        if (!get().isClosed(key)) return { ok: false, error: "Month is not closed" };
+        const trimmed = asText(reason).trim();
         if (!trimmed) return { ok: false, error: "Reopen requires a reason" };
-        const prev = get().months[month] ?? empty(month);
+        const months =
+          get().months && typeof get().months === "object" && !Array.isArray(get().months)
+            ? get().months
+            : {};
+        const prev = months[key] ?? empty(key);
         set({
           months: {
-            ...get().months,
-            [month]: {
+            ...months,
+            [key]: {
               ...prev,
               status: "open",
               reopenReason: trimmed,
               reopenedAt: Date.now(),
-              reopenedBy: who || "HR",
+              reopenedBy: asText(who) || "HR",
             },
           },
         });
         return { ok: true };
       },
     }),
-    { name: MONTH_CLOSING_STORAGE_KEY },
+    {
+      name: MONTH_CLOSING_STORAGE_KEY,
+      merge: (persisted, current) => {
+        const raw =
+          persisted && typeof persisted === "object" && !Array.isArray(persisted)
+            ? (persisted as Partial<State>)
+            : {};
+        const src =
+          raw.months && typeof raw.months === "object" && !Array.isArray(raw.months)
+            ? raw.months
+            : current.months;
+        const months: Record<string, MonthCloseRecord> = {};
+        for (const [k, v] of Object.entries(src)) {
+          const healed = normalizeMonthCloseRecord(v, k);
+          if (healed) months[healed.month] = healed;
+        }
+        return { ...current, ...raw, months, closingMeansPaid: false as const };
+      },
+    },
   ),
 );
 
 /** Pure helper for tests / guards. */
-export function monthOfDate(date: string): string {
-  return date.slice(0, 7);
+export function monthOfDate(date: unknown): string {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  return s.slice(0, 7);
 }
 
 /**
  * Whether attendance/performance edits for a calendar date should be blocked.
  * Closing ≠ Paid — this only gates month-period edits, never payment status.
  */
-export function isDateInClosedMonth(date: string, isClosed: (month: string) => boolean): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
-  return isClosed(monthOfDate(date));
+export function isDateInClosedMonth(date: unknown, isClosed: (month: string) => boolean): boolean {
+  const s = date == null ? "" : typeof date === "string" ? date : String(date);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  return isClosed(monthOfDate(s));
 }

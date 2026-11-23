@@ -1,8 +1,19 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Btn, Empty, Field, Panel, SectionHead, courseLabel } from "./common";
-import { deadlineBadge } from "@/personal/lib/assessment-phases";
+import {
+  deadlineBadge,
+  normalizeAssessment,
+  normalizeExamPrepTask,
+} from "@/personal/lib/assessment-phases";
 import { usePersonal } from "@/personal/lib/store";
-import type { AssessmentKind, DeadlineSource, ExamPrepTask } from "@/personal/lib/types";
+import type {
+  Assessment,
+  AssessmentKind,
+  DeadlineSource,
+  ExamPrepTask,
+} from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 const KINDS: AssessmentKind[] = ["assignment", "quiz", "gdb", "midterm", "final", "other"];
 
@@ -25,21 +36,30 @@ function DeadlineChip({ source }: { source: DeadlineSource | undefined }) {
           : "bg-[var(--hp-border)] text-[var(--hp-muted)]";
   return (
     <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
-      {badge.label}
+      {asTxt(badge.label)}
     </span>
   );
 }
 
 export function Assessments() {
-  const courses = usePersonal((s) => s.courses);
-  const assessments = usePersonal((s) => s.assessments);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const assessmentsRaw = usePersonal((s) => s.assessments);
+  const courses = Array.isArray(coursesRaw) ? coursesRaw : [];
+  const assessments = (Array.isArray(assessmentsRaw) ? assessmentsRaw : [])
+    .map((a) =>
+      normalizeAssessment(a as Partial<Assessment> & Pick<Assessment, "id" | "title">),
+    )
+    .filter((a) => !!a.id);
   const settings = usePersonal((s) => s.settings);
   const setSettings = usePersonal((s) => s.setSettings);
   const upsertAssessment = usePersonal((s) => s.upsertAssessment);
   const setAssessmentPrep = usePersonal((s) => s.setAssessmentPrep);
   const setAssessmentSubmitted = usePersonal((s) => s.setAssessmentSubmitted);
   const removeAssessment = usePersonal((s) => s.removeAssessment);
-  const examPrepTasks = usePersonal((s) => s.examPrepTasks);
+  const examPrepTasksRaw = usePersonal((s) => s.examPrepTasks);
+  const examPrepTasks = (Array.isArray(examPrepTasksRaw) ? examPrepTasksRaw : [])
+    .map((t) => normalizeExamPrepTask(t as Partial<ExamPrepTask> & Pick<ExamPrepTask, "id">))
+    .filter((t) => !!t.id);
   const upsertExamPrepTask = usePersonal((s) => s.upsertExamPrepTask);
   const toggleExamPrepTask = usePersonal((s) => s.toggleExamPrepTask);
   const removeExamPrepTask = usePersonal((s) => s.removeExamPrepTask);
@@ -48,11 +68,13 @@ export function Assessments() {
   const [kind, setKind] = useState<AssessmentKind>("assignment");
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "cs101");
   const [dueDate, setDueDate] = useState("");
-  const [mid, setMid] = useState(settings.midtermRef);
-  const [fin, setFin] = useState(settings.finalsRef);
+  const [mid, setMid] = useState(asTxt(settings.midtermRef));
+  const [fin, setFin] = useState(asTxt(settings.finalsRef));
   const [prepCourseId, setPrepCourseId] = useState(courses[0]?.id ?? "cs101");
   const [prepLabel, setPrepLabel] = useState("");
   const [prepKind, setPrepKind] = useState<ExamPrepTask["examKind"]>("midterm");
+  const titleRef = useRef<HTMLInputElement>(null);
+  const prepLabelRef = useRef<HTMLInputElement>(null);
 
   const daysUntil = (iso: string) => {
     if (!iso) return null;
@@ -68,7 +90,13 @@ export function Assessments() {
       assessments
         .filter((a) => !a.submitted && !a.done)
         .slice()
-        .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999")),
+        .sort((a, b) => {
+          const asDue = (v: unknown, fb = "") => {
+            const s = v == null ? "" : typeof v === "string" ? v : String(v);
+            return s || fb;
+          };
+          return asDue(a.dueDate, "9999").localeCompare(asDue(b.dueDate, "9999"));
+        }),
     [assessments],
   );
 
@@ -118,7 +146,7 @@ export function Assessments() {
             <input
               className="hp-field"
               type="date"
-              value={mid}
+              value={asTxt(mid)}
               onChange={(e) => setMid(e.target.value)}
             />
           </Field>
@@ -126,7 +154,7 @@ export function Assessments() {
             <input
               className="hp-field"
               type="date"
-              value={fin}
+              value={asTxt(fin)}
               onChange={(e) => setFin(e.target.value)}
             />
           </Field>
@@ -208,7 +236,7 @@ export function Assessments() {
         <div className="mb-3 flex flex-wrap gap-2">
           {EXAM_PREP_STARTERS.map((s) => (
             <Btn
-              key={`${s.examKind}-${s.label}`}
+              key={`${asTxt(s.examKind)}-${asTxt(s.label)}`}
               variant="ghost"
               className="!py-1"
               onClick={() =>
@@ -222,7 +250,7 @@ export function Assessments() {
                 })
               }
             >
-              + {s.label}
+              + {asTxt(s.label)}
             </Btn>
           ))}
         </div>
@@ -230,12 +258,12 @@ export function Assessments() {
           <Field label="Course">
             <select
               className="hp-field"
-              value={prepCourseId}
+              value={asTxt(prepCourseId)}
               onChange={(e) => setPrepCourseId(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -255,19 +283,24 @@ export function Assessments() {
           <Field label="Custom task">
             <div className="flex gap-2">
               <input
+                ref={prepLabelRef}
                 className="hp-field"
-                value={prepLabel}
+                data-testid="personal-prep-label"
+                value={asTxt(prepLabel)}
                 onChange={(e) => setPrepLabel(e.target.value)}
+                onInput={(e) => setPrepLabel((e.target as HTMLInputElement).value)}
                 placeholder="Owner task…"
               />
               <Btn
+                data-testid="personal-prep-add"
                 onClick={() => {
-                  if (!prepLabel.trim()) return;
+                  const next = (asTxt(prepLabel).trim() || prepLabelRef.current?.value || "").trim();
+                  if (!next) return;
                   upsertExamPrepTask({
                     id: Math.random().toString(36).slice(2, 10),
                     courseId: prepCourseId,
                     examKind: prepKind,
-                    label: prepLabel.trim(),
+                    label: next,
                     done: false,
                     notes: "",
                   });
@@ -292,7 +325,7 @@ export function Assessments() {
               >
                 <div>
                   <div className={`text-sm font-semibold ${t.done ? "text-[var(--hp-muted)] line-through" : ""}`}>
-                    {t.label}
+                    {asTxt(t.label)}
                   </div>
                   <div className="text-xs text-[var(--hp-muted)]">
                     {courseLabel(courses, t.courseId)} · {t.examKind} · prep checklist (≠ VULMS submit)
@@ -321,12 +354,13 @@ export function Assessments() {
           className="mb-4 grid gap-3 rounded-lg border border-[var(--hp-border)] bg-[var(--hp-elevated)] p-3 md:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!title.trim()) return;
+            const nextTitle = (asTxt(title).trim() || titleRef.current?.value || "").trim();
+            if (!nextTitle) return;
             upsertAssessment({
               id: Math.random().toString(36).slice(2, 10),
               courseId,
               kind,
-              title: title.trim(),
+              title: nextTitle,
               dueDate,
               notes: dueDate
                 ? "Owner-entered deadline — verify on VULMS."
@@ -342,13 +376,20 @@ export function Assessments() {
           }}
         >
           <Field label="Title">
-            <input className="hp-field" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <input
+              ref={titleRef}
+              className="hp-field"
+              data-testid="personal-assessment-title"
+              value={asTxt(title)}
+              onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
+            />
           </Field>
           <Field label="Due date (optional)">
             <input
               className="hp-field"
               type="date"
-              value={dueDate}
+              value={asTxt(dueDate)}
               onChange={(e) => setDueDate(e.target.value)}
             />
           </Field>
@@ -362,17 +403,17 @@ export function Assessments() {
             </select>
           </Field>
           <Field label="Course">
-            <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
               <option value="general">General</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
           </Field>
           <div className="md:col-span-2">
-            <Btn type="submit">Add assessment</Btn>
+            <Btn type="submit" data-testid="personal-assessment-add">Add assessment</Btn>
           </div>
         </form>
 
@@ -386,11 +427,11 @@ export function Assessments() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--hp-border)] px-3 py-2"
               >
                 <div className="min-w-0 space-y-1">
-                  <div className="font-semibold">{a.title}</div>
+                  <div className="font-semibold">{asTxt(a.title)}</div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--hp-muted)]">
                     <span>
-                      {a.dueDate || "no date"} · {courseLabel(courses, a.courseId)} ·{" "}
-                      {a.kind === "gdb" ? "GDB" : a.kind}
+                      {asTxt(a.dueDate) || "no date"} · {courseLabel(courses, a.courseId)} ·{" "}
+                      {a.kind === "gdb" ? "GDB" : asTxt(a.kind)}
                     </span>
                     <DeadlineChip source={a.deadlineSource} />
                     {a.prepDone ? (

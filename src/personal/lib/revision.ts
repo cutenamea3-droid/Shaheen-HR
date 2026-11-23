@@ -23,18 +23,21 @@ export function suggestRevisionTargets(
   nowMs = Date.now(),
 ): RevisionSuggestion[] {
   const out: RevisionSuggestion[] = [];
+  const noteList = Array.isArray(notes) ? notes : [];
+  const courseList = Array.isArray(courses) ? courses : [];
+  const assessmentList = Array.isArray(assessments) ? assessments : [];
   const notesByCourse = new Map<string, number>();
-  for (const n of notes) {
+  for (const n of noteList) {
     const key = n.courseId === "general" ? "general" : n.courseId;
     notesByCourse.set(key, (notesByCourse.get(key) ?? 0) + 1);
   }
 
-  for (const a of assessments) {
+  for (const a of assessmentList) {
     if (a.submitted || a.done) continue;
     if (a.kind !== "assignment" && a.kind !== "quiz" && a.kind !== "gdb" && a.kind !== "midterm" && a.kind !== "final") {
       continue;
     }
-    const course = courses.find((c) => c.id === a.courseId);
+    const course = courseList.find((c) => c.id === a.courseId);
     const code = course?.code ?? a.courseId;
     let urgency: RevisionSuggestion["urgency"] = "medium";
     if (a.dueDate) {
@@ -52,12 +55,12 @@ export function suggestRevisionTargets(
       id: `asm-${a.id}`,
       courseId: a.courseId,
       courseCode: code,
-      reason: `${a.kind.toUpperCase()}: ${a.title} · ${prepHint}`,
+      reason: `${(a.kind == null ? "" : typeof a.kind === "string" ? a.kind : String(a.kind)).toUpperCase()}: ${a.title == null ? "" : typeof a.title === "string" ? a.title : String(a.title)} · ${prepHint}`,
       urgency,
     });
   }
 
-  for (const c of courses) {
+  for (const c of courseList) {
     if (c.isTbd) continue;
     const n = notesByCourse.get(c.id) ?? 0;
     if (n === 0) {
@@ -76,9 +79,15 @@ export function suggestRevisionTargets(
 }
 
 export function filterNotesByTag(notes: Note[], tag: string | "all"): Note[] {
-  if (tag === "all") return notes;
-  const t = tag.toLowerCase();
-  return notes.filter((n) => n.tags.some((x) => x.toLowerCase() === t));
+  const list = Array.isArray(notes) ? notes : [];
+  if (tag === "all") return list;
+  const t = (tag == null ? "" : typeof tag === "string" ? tag : String(tag)).toLowerCase();
+  return list.filter((n) =>
+    (Array.isArray(n.tags) ? n.tags : []).some((x) => {
+      const s = x == null ? "" : typeof x === "string" ? x : String(x);
+      return s.toLowerCase() === t;
+    }),
+  );
 }
 
 export const PRACTICE_CHECKLIST = [

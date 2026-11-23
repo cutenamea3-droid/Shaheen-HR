@@ -34,7 +34,8 @@ export function loadsToCsv(loads: DispatchLoad[]): string {
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-  const rows = loads.map((l) =>
+  const list = Array.isArray(loads) ? loads : [];
+  const rows = list.map((l) =>
     [
       l.load_number,
       l.status,
@@ -78,7 +79,8 @@ export function accessorialsToCsv(items: DispatchAccessorial[]): string {
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-  const rows = items.map((a) =>
+  const list = Array.isArray(items) ? items : [];
+  const rows = list.map((a) =>
     [
       a.load_id,
       a.kind,
@@ -128,10 +130,11 @@ export function exportLoadsPdf(loads: DispatchLoad[], title = "Dispatch Operatio
     14,
     22,
   );
+  const list = Array.isArray(loads) ? loads : [];
   autoTable(doc, {
     startY: 28,
     head: [["Load", "Status", "Payment", "Customer", "Driver", "BOL", "POD", "Manual location", "Updated"]],
-    body: loads.map((l) => [
+    body: list.map((l) => [
       l.load_number,
       statusLabel(l.status),
       paymentStatusLabel(l.payment_status),
@@ -148,7 +151,9 @@ export function exportLoadsPdf(loads: DispatchLoad[], title = "Dispatch Operatio
 }
 
 export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: DispatchLoad[]) {
-  const byId = new Map(loads.map((l) => [l.id, l.load_number]));
+  const loadList = Array.isArray(loads) ? loads : [];
+  const itemList = Array.isArray(items) ? items : [];
+  const byId = new Map(loadList.map((l) => [l.id, l.load_number]));
   const doc = new jsPDF({ orientation: "landscape" });
   doc.setFontSize(14);
   doc.text("Dispatch Operations — Detention & Accessorials", 14, 16);
@@ -161,8 +166,14 @@ export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: Dispa
   autoTable(doc, {
     startY: 28,
     head: [["Load", "Kind", "Status", "Description", "Amount (manual)", "Hours (manual)", "Free-time note"]],
-    body: items.map((a) => [
-      byId.get(a.load_id) ?? a.load_id.slice(0, 8),
+    body: itemList.map((a) => [
+      byId.get(a.load_id) ??
+        (a.load_id == null
+          ? ""
+          : typeof a.load_id === "string"
+            ? a.load_id
+            : String(a.load_id)
+        ).slice(0, 8),
       accessorialKindLabel(a.kind),
       a.status,
       a.description,
@@ -175,10 +186,15 @@ export function exportAccessorialsPdf(items: DispatchAccessorial[], loads: Dispa
   doc.save(`dispatch-accessorials-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
+function asReportText(v: unknown): string {
+  return v == null ? "" : typeof v === "string" ? v : String(v);
+}
+
 export function exportLoadHistoryPdf(load: DispatchLoad, events: LoadHistoryEvent[]) {
+  const loadNumber = asReportText(load.load_number) || "load";
   const doc = new jsPDF();
   doc.setFontSize(14);
-  doc.text(`Complete Load History — ${load.load_number}`, 14, 16);
+  doc.text(`Complete Load History — ${loadNumber}`, 14, 16);
   doc.setFontSize(9);
   doc.text(
     `Status: ${statusLabel(load.status)} · Payment: ${paymentStatusLabel(load.payment_status)} · Delivered ≠ Closed ≠ Paid`,
@@ -186,19 +202,23 @@ export function exportLoadHistoryPdf(load: DispatchLoad, events: LoadHistoryEven
     22,
   );
   doc.text(`Generated ${new Date().toLocaleString()} · Desk records only`, 14, 28);
+  const eventList = Array.isArray(events) ? events : [];
   autoTable(doc, {
     startY: 34,
     head: [["When", "Source", "Event", "Detail"]],
-    body: events.map((e) => [
-      new Date(e.at).toLocaleString(),
-      e.source,
-      e.title,
-      e.detail,
+    body: eventList.map((e) => [
+      (() => {
+        const ms = Date.parse(asReportText(e.at));
+        return Number.isFinite(ms) ? new Date(ms).toLocaleString() : asReportText(e.at) || "—";
+      })(),
+      asReportText(e.source),
+      asReportText(e.title),
+      asReportText(e.detail),
     ]),
     styles: { fontSize: 8 },
     columnStyles: { 3: { cellWidth: 70 } },
   });
-  doc.save(`dispatch-history-${load.load_number}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`dispatch-history-${loadNumber}-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]) {
@@ -206,38 +226,39 @@ export function exportHandoverPdf(handover: ShiftHandover, loads: DispatchLoad[]
   doc.setFontSize(14);
   doc.text("Shift Handover — Dispatch Operations", 14, 16);
   doc.setFontSize(10);
-  doc.text(`Shift date: ${handover.shift_date}`, 14, 26);
-  doc.text(`From: ${handover.from_dispatcher}`, 14, 32);
-  doc.text(`To: ${handover.to_dispatcher || "—"}`, 14, 38);
+  doc.text(`Shift date: ${asReportText(handover.shift_date)}`, 14, 26);
+  doc.text(`From: ${asReportText(handover.from_dispatcher)}`, 14, 32);
+  doc.text(`To: ${asReportText(handover.to_dispatcher) || "—"}`, 14, 38);
   doc.text("Summary", 14, 48);
   doc.setFontSize(9);
-  const summaryLines = doc.splitTextToSize(handover.summary || "—", 180);
+  const summaryLines = doc.splitTextToSize(asReportText(handover.summary) || "—", 180);
   doc.text(summaryLines, 14, 54);
   let y = 54 + summaryLines.length * 5 + 8;
   doc.setFontSize(10);
   doc.text("Watch items", 14, y);
   y += 6;
   doc.setFontSize(9);
-  const watch = doc.splitTextToSize(handover.watch_items || "—", 180);
+  const watch = doc.splitTextToSize(asReportText(handover.watch_items) || "—", 180);
   doc.text(watch, 14, y);
   y += watch.length * 5 + 8;
   doc.setFontSize(10);
   doc.text("Next-day priorities", 14, y);
   y += 6;
   doc.setFontSize(9);
-  const next = doc.splitTextToSize(handover.next_day_priorities || "—", 180);
+  const next = doc.splitTextToSize(asReportText(handover.next_day_priorities) || "—", 180);
   doc.text(next, 14, y);
   y += next.length * 5 + 10;
-  const openLoads = loads.filter((l) => handover.open_load_ids.includes(l.id));
+  const openIds = Array.isArray(handover.open_load_ids) ? handover.open_load_ids : [];
+  const openLoads = (Array.isArray(loads) ? loads : []).filter((l) => openIds.includes(l.id));
   autoTable(doc, {
     startY: y,
     head: [["Open load", "Status", "Payment", "Driver", "Manual location"]],
     body: openLoads.map((l) => [
-      l.load_number,
+      asReportText(l.load_number),
       statusLabel(l.status),
       paymentStatusLabel(l.payment_status),
-      l.assigned_driver_name ?? "",
-      l.last_manual_location ?? "",
+      asReportText(l.assigned_driver_name),
+      asReportText(l.last_manual_location),
     ]),
     styles: { fontSize: 8 },
   });

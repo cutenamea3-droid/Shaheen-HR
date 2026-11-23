@@ -60,8 +60,9 @@ export type PaymentRegisterSummary = {
 };
 
 export function summarizePayments(rows: SalaryPaymentRecord[]): PaymentRegisterSummary {
+  const list = Array.isArray(rows) ? rows : [];
   const s: PaymentRegisterSummary = {
-    employees: rows.length,
+    employees: list.length,
     duePkr: 0,
     paidPkr: 0,
     remainingPkr: 0,
@@ -70,7 +71,7 @@ export function summarizePayments(rows: SalaryPaymentRecord[]): PaymentRegisterS
     paid: 0,
     onHold: 0,
   };
-  for (const r of rows) {
+  for (const r of list) {
     s.duePkr += r.amountDuePkr;
     s.paidPkr += r.amountPaidPkr;
     s.remainingPkr += Math.max(0, r.amountDuePkr - r.amountPaidPkr);
@@ -109,9 +110,10 @@ export function salaryPaymentsCsv(
     "Paid on",
     "Note",
   ];
+  const list = Array.isArray(rows) ? rows : [];
   const lines = [
     head.map(esc).join(","),
-    ...rows.map((r) =>
+    ...list.map((r) =>
       [
         r.employeeName,
         r.month,

@@ -1,12 +1,40 @@
-import { useState } from "react";
-import { useApp } from "@/admin/lib/store";
+import { useMemo, useRef, useState } from "react";
+import { normalizeDept, normalizeEmployee, useApp } from "@/admin/lib/store";
 import { fmtTime, leaveBalance } from "@/admin/lib/calc";
 import { normalizeAssignments } from "@/admin/lib/shift-assignment";
+import type { Dept, Employee } from "@/admin/lib/types";
 import { SectionTitle, Toggle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function Team() {
-  const { employees, depts, records, addEmployee, updateEmployee, removeEmployee, moveEmployee } = useApp();
+  const {
+    employees: employeesRaw,
+    depts: deptsRaw,
+    records: recordsRaw,
+    addEmployee,
+    updateEmployee,
+    removeEmployee,
+    moveEmployee,
+  } = useApp();
+  const employees = useMemo(
+    () =>
+      (Array.isArray(employeesRaw) ? employeesRaw : [])
+        .map((e) => normalizeEmployee(e as Partial<Employee> & Pick<Employee, "id">))
+        .filter((e) => !!e.id),
+    [employeesRaw],
+  );
+  const depts = useMemo(
+    () =>
+      (Array.isArray(deptsRaw) ? deptsRaw : [])
+        .map((d) => normalizeDept(d as Partial<Dept> & Pick<Dept, "id">))
+        .filter((d) => !!d.id),
+    [deptsRaw],
+  );
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const [name, setName] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
   const [deptId, setDeptId] = useState(depts[0]?.id ?? "");
   const [after, setAfter] = useState(false);
   const [deptEffectiveFrom, setDeptEffectiveFrom] = useState(todayStr());
@@ -21,9 +49,10 @@ export function Team() {
         className="admin-emp-card mb-1 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!name.trim()) return;
+          const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
+          if (!nextName) return;
           addEmployee({
-            name: name.trim(),
+            name: nextName,
             deptId,
             afterHours: after,
             joinMonth: todayStr().slice(0, 7),
@@ -35,14 +64,21 @@ export function Team() {
       >
         <label>
           <span className="lbl">Name</span>
-          <input className="field" value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            ref={nameRef}
+            data-testid="admin-add-employee-name"
+            className="field"
+            value={asText(name)}
+            onChange={(e) => setName(e.target.value)}
+            onInput={(e) => setName((e.target as HTMLInputElement).value)}
+          />
         </label>
         <label>
           <span className="lbl">Department</span>
-          <select className="field" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
+          <select className="field" value={asText(deptId)} onChange={(e) => setDeptId(e.target.value)}>
             {depts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name} ({fmtTime(d.start)}–{fmtTime(d.end)})
+              <option key={asText(d.id)} value={asText(d.id)}>
+                {asText(d.name)} ({fmtTime(d.start)}–{fmtTime(d.end)})
               </option>
             ))}
           </select>
@@ -59,7 +95,7 @@ export function Team() {
           <input
             type="date"
             className="field w-auto"
-            value={deptEffectiveFrom}
+            value={asText(deptEffectiveFrom)}
             onChange={(e) => e.target.value && setDeptEffectiveFrom(e.target.value)}
             title="Applied when you change an employee's department below"
           />
@@ -83,21 +119,24 @@ export function Team() {
                     className="field"
                     value={i + 1}
                     onChange={(ev) => moveEmployee(e.id, +ev.target.value - 1)}
+                    onInput={(ev) => moveEmployee(e.id, +(ev.target as HTMLInputElement).value - 1)}
                   />
                 </label>
                 <label>
                   <span className="lbl">Name</span>
                   <input
                     className="field"
-                    value={e.name}
+                    data-testid={`admin-emp-name-${e.id}`}
+                    value={asText(e.name)}
                     onChange={(ev) => updateEmployee(e.id, { name: ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { name: (ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <label>
                   <span className="lbl">Department (shift)</span>
                   <select
                     className="field"
-                    value={e.deptId}
+                    value={asText(e.deptId)}
                     onChange={(ev) =>
                       updateEmployee(e.id, {
                         deptId: ev.target.value,
@@ -106,8 +145,8 @@ export function Team() {
                     }
                   >
                     {depts.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
+                      <option key={asText(d.id)} value={asText(d.id)}>
+                        {asText(d.name)}
                       </option>
                     ))}
                   </select>
@@ -122,7 +161,7 @@ export function Team() {
                   <input
                     type="month"
                     className="field"
-                    value={e.joinMonth}
+                    value={asText(e.joinMonth)}
                     onChange={(ev) => ev.target.value && updateEmployee(e.id, { joinMonth: ev.target.value })}
                   />
                 </label>
@@ -132,8 +171,9 @@ export function Team() {
                     type="number"
                     min={0}
                     className="field"
-                    value={e.openingLeave}
+                    value={Number.isFinite(e.openingLeave) ? e.openingLeave : ""}
                     onChange={(ev) => updateEmployee(e.id, { openingLeave: +ev.target.value })}
+                    onInput={(ev) => updateEmployee(e.id, { openingLeave: +(ev.target as HTMLInputElement).value })}
                   />
                 </label>
                 <div className="admin-toolbar gap-1">
@@ -158,7 +198,7 @@ export function Team() {
                   <button
                     type="button"
                     className="btn-danger px-3"
-                    onClick={() => confirm(`Remove ${e.name}?`) && removeEmployee(e.id)}
+                    onClick={() => confirm(`Remove ${asText(e.name)}?`) && removeEmployee(e.id)}
                     aria-label="Remove"
                   >
                     ✕
@@ -169,7 +209,9 @@ export function Team() {
                 <span>
                   Current shift:{" "}
                   <strong className="text-foreground">
-                    {dept ? `${dept.name} ${fmtTime(dept.start)}–${fmtTime(dept.end)}` : "Not configured"}
+                    {dept
+                      ? `${asText(dept.name)} ${fmtTime(dept.start)}–${fmtTime(dept.end)}`
+                      : "Not configured"}
                   </strong>
                 </span>
                 <span>

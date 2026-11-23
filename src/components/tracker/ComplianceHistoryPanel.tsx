@@ -8,10 +8,13 @@ import { listSensitiveAudit } from "@/lib/driver-hr/sensitive-audit";
 import {
   buildComplianceHistory,
   complianceHistoryEmptyMessage,
+  historyAtIso,
   historySourceLabel,
   type ComplianceHistoryEvent,
 } from "@/lib/compliance-history";
-import { SECTIONS } from "@/lib/sections";
+import { SECTIONS, cellsOf, rowsOf } from "@/lib/sections";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function ComplianceHistoryPanel() {
   const data = useData();
@@ -27,12 +30,13 @@ export function ComplianceHistoryPanel() {
     void listPortalActivity()
       .then((items) => {
         if (!active) return;
-        setPortal(items);
+        setPortal(Array.isArray(items) ? items : []);
         setPortalNote("");
       })
       .catch(() => {
         if (!active) return;
-        setPortal(listLocalActivity(500));
+        const local = listLocalActivity(500);
+        setPortal(Array.isArray(local) ? local : []);
         setPortalNote("Cloud activity unavailable — showing local activity cache only.");
       });
     return () => {
@@ -41,16 +45,19 @@ export function ComplianceHistoryPanel() {
   }, []);
 
   const drivers = useMemo(() => {
+    const asId = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const map = new Map<string, string>();
     for (const def of SECTIONS) {
-      for (const r of data.sections[def.id]?.rows ?? []) {
-        const n = (r.cells[0] ?? "").trim();
-        if (n && !map.has(r.driverId)) map.set(r.driverId, n);
+      for (const r of rowsOf(data.sections[def.id])) {
+        const id = asId(r.driverId).trim();
+        const n = (cellsOf(r)[0] ?? "").trim();
+        if (id && n && !map.has(id)) map.set(id, n);
       }
     }
+    const asName = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return [...map.entries()]
       .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      .sort((a, b) => asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }));
   }, [data]);
 
   const events = useMemo(() => {
@@ -64,13 +71,14 @@ export function ComplianceHistoryPanel() {
   }, [data, portal, driverId]);
 
   const filtered = useMemo(() => {
-    const qq = q.trim().toLowerCase();
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const qq = asText(q).trim().toLowerCase();
     if (!qq) return events;
     return events.filter(
       (e) =>
-        e.title.toLowerCase().includes(qq) ||
-        e.detail.toLowerCase().includes(qq) ||
-        (e.actor ?? "").toLowerCase().includes(qq) ||
+        asText(e.title).toLowerCase().includes(qq) ||
+        asText(e.detail).toLowerCase().includes(qq) ||
+        asText(e.actor).toLowerCase().includes(qq) ||
         historySourceLabel(e.source).toLowerCase().includes(qq),
     );
   }, [events, q]);
@@ -103,8 +111,8 @@ export function ComplianceHistoryPanel() {
           >
             <option value="">All drivers</option>
             {drivers.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
+              <option key={asText(d.id)} value={asText(d.id)}>
+                {asText(d.name)}
               </option>
             ))}
           </select>
@@ -137,6 +145,11 @@ export function ComplianceHistoryPanel() {
 }
 
 function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
+  const title = asText(event.title);
+  const detail = asText(event.detail);
+  const atLabel = asText(event.atLabel);
+  const actor = asText(event.actor);
+  const sectionId = asText(event.sectionId);
   return (
     <li className="relative mb-4 pl-6">
       <span className="absolute top-2 -left-[7px] size-3 rounded-full border-2 border-primary bg-card" />
@@ -145,17 +158,17 @@ function HistoryRow({ event }: { event: ComplianceHistoryEvent }) {
           <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-extrabold">
             {historySourceLabel(event.source)}
           </span>
-          <time className="text-xs font-semibold text-muted-foreground" dateTime={new Date(event.at).toISOString()}>
-            {event.atLabel}
+          <time className="text-xs font-semibold text-muted-foreground" dateTime={historyAtIso(event.at)}>
+            {atLabel}
           </time>
         </div>
-        <p className="mt-1 font-extrabold">{event.title}</p>
-        <p className="text-sm text-muted-foreground">{event.detail}</p>
-        {(event.actor || event.sectionId) && (
+        <p className="mt-1 font-extrabold">{title}</p>
+        <p className="text-sm text-muted-foreground">{detail}</p>
+        {(actor || sectionId) && (
           <p className={cn("mt-1 text-xs font-semibold text-muted-foreground")}>
-            {event.actor ? `Actor: ${event.actor}` : ""}
-            {event.actor && event.sectionId ? " · " : ""}
-            {event.sectionId ? `Section: ${event.sectionId}` : ""}
+            {actor ? `Actor: ${actor}` : ""}
+            {actor && sectionId ? " · " : ""}
+            {sectionId ? `Section: ${sectionId}` : ""}
           </p>
         )}
       </div>

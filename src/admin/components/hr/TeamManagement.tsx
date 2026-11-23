@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { Trash2, UserPlus } from "lucide-react";
-import { useApp } from "@/admin/lib/store";
-import type { Role } from "@/admin/lib/types";
+import { normalizeTeamMember, useApp } from "@/admin/lib/store";
+import type { Role, TeamMember } from "@/admin/lib/types";
+
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function TeamManagement({ adminEmail }: { adminEmail: string }) {
-  const team = useApp((s) => s.team);
+  const teamRaw = useApp((s) => s.team);
+  const team = (Array.isArray(teamRaw) ? teamRaw : [])
+    .map((m) => normalizeTeamMember(m as Partial<TeamMember> & Pick<TeamMember, "id">))
+    .filter((m) => !!m.id);
   const upsert = useApp((s) => s.upsertMember);
   const remove = useApp((s) => s.removeMember);
   const addLog = useApp((s) => s.addLog);
@@ -31,10 +36,16 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
         className="panel grid gap-3 md:grid-cols-[1fr_1fr_160px_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!name.trim() || !email.trim()) return;
-          const display = name.trim();
-          const mail = email.trim().toLowerCase();
-          if (team.some((m) => m.email === mail) || mail === adminEmail.toLowerCase()) {
+          const fd = new FormData(e.currentTarget);
+          const display =
+            String(fd.get("admin-team-name") ?? name).trim() || asText(name).trim();
+          const mail = (
+            String(fd.get("admin-team-email") ?? email).trim() || asText(email).trim()
+          ).toLowerCase();
+          if (!display || !mail) return;
+          const asMail = (v: unknown) =>
+            (v == null ? "" : typeof v === "string" ? v : String(v)).trim().toLowerCase();
+          if (team.some((m) => asMail(m.email) === mail) || mail === asMail(adminEmail)) {
             setMsg("An account with that email already exists.");
             return;
           }
@@ -48,15 +59,32 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
       >
         <label>
           <span className="lbl">Name</span>
-          <input className="field" value={name} onChange={(e) => setName(e.target.value)} required />
+          <input
+            className="field"
+            name="admin-team-name"
+            data-testid="admin-team-name"
+            value={asText(name)}
+            onChange={(e) => setName(e.target.value)}
+            onInput={(e) => setName((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label>
           <span className="lbl">Email</span>
-          <input className="field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            className="field"
+            type="email"
+            name="admin-team-email"
+            data-testid="admin-team-email"
+            value={asText(email)}
+            onChange={(e) => setEmail(e.target.value)}
+            onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
+            required
+          />
         </label>
         <label>
           <span className="lbl">Role</span>
-          <select className="field" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <select className="field" value={asText(role)} onChange={(e) => setRole(e.target.value as Role)}>
             <option value="standard">Standard</option>
             <option value="admin">Admin</option>
           </select>
@@ -98,28 +126,28 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                 <td className="p-3 font-semibold">
                   <input
                     className="field h-8 max-w-[12rem] font-semibold"
-                    aria-label={`Name for ${m.email}`}
-                    defaultValue={m.name}
+                    aria-label={`Name for ${asText(m.email)}`}
+                    defaultValue={asText(m.name)}
                     onBlur={(e) => {
-                      const next = e.target.value.trim();
-                      if (next && next !== m.name) {
+                      const next = asText(e.target.value).trim();
+                      if (next && next !== asText(m.name)) {
                         upsert({ ...m, name: next });
-                        addLog(adminEmail, `Renamed account ${m.email} to “${next}”`);
-                        setMsg(`Updated name for ${m.email}.`);
+                        addLog(adminEmail, `Renamed account ${asText(m.email)} to “${next}”`);
+                        setMsg(`Updated name for ${asText(m.email)}.`);
                       }
                     }}
                   />
                 </td>
-                <td className="p-3">{m.email}</td>
+                <td className="p-3">{asText(m.email)}</td>
                 <td className="p-3">
                   <select
                     className="field h-8 w-32"
-                    value={m.role}
+                    value={asText(m.role) === "admin" ? "admin" : "standard"}
                     onChange={(e) => {
                       const nextRole = e.target.value as Role;
                       upsert({ ...m, role: nextRole });
-                      addLog(adminEmail, `Updated role for ${m.email} → ${nextRole}`);
-                      setMsg(`Updated role for ${m.email}.`);
+                      addLog(adminEmail, `Updated role for ${asText(m.email)} → ${nextRole}`);
+                      setMsg(`Updated role for ${asText(m.email)}.`);
                     }}
                   >
                     <option value="standard">Standard</option>
@@ -133,8 +161,13 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     onClick={() => {
                       const nextActive = !m.active;
                       upsert({ ...m, active: nextActive });
-                      addLog(adminEmail, `${nextActive ? "Enabled" : "Disabled"} account ${m.email}`);
-                      setMsg(`${m.email} is now ${nextActive ? "active" : "disabled"}.`);
+                      addLog(
+                        adminEmail,
+                        `${nextActive ? "Enabled" : "Disabled"} account ${asText(m.email)}`,
+                      );
+                      setMsg(
+                        `${asText(m.email)} is now ${nextActive ? "active" : "disabled"}.`,
+                      );
                     }}
                   >
                     {m.active ? "Active" : "Disabled"}
@@ -146,10 +179,10 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     className="btn-danger h-8 px-2"
                     title="Remove"
                     onClick={() => {
-                      if (!confirm(`Remove ${m.name}?`)) return;
+                      if (!confirm(`Remove ${asText(m.name)}?`)) return;
                       remove(m.id);
-                      addLog(adminEmail, `Removed account ${m.email}`);
-                      setMsg(`Removed ${m.name}.`);
+                      addLog(adminEmail, `Removed account ${asText(m.email)}`);
+                      setMsg(`Removed ${asText(m.name)}.`);
                     }}
                   >
                     <Trash2 className="h-4 w-4" />

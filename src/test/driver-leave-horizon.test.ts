@@ -22,6 +22,9 @@ test("parseDriverStatus defaults empty to active (backward compatible)", () => {
   expect(parseDriverStatus("Leave")).toBe("leave");
   expect(parseDriverStatus("on leave")).toBe("leave");
   expect(parseDriverStatus("Inactive")).toBe("inactive");
+  expect(parseDriverStatus(null)).toBe("active");
+  expect(() => parseDriverStatus(1 as unknown as string)).not.toThrow();
+  expect(parseDriverStatus(1 as unknown as string)).toBe("active");
   expect(formatDriverStatus("leave")).toBe("Leave");
 });
 

@@ -3,7 +3,9 @@ import { toast } from "sonner";
 import {
   buildInactiveCells,
   buildSeed,
+  cellsOf,
   formatDriverStatus,
+  headersOf,
   migrateData,
   parseDriverStatus,
   SECTIONS,
@@ -15,7 +17,14 @@ import {
 } from "./sections";
 import { applyDriverClass, applyRosterKind } from "./driver-meta";
 import { applyDateOfHire } from "./driver-hr/hire-date";
-import { cloudLoad, cloudSave, cloudStamp, hasPortalSession, logPortalActivity, subscribePortalAuth } from "./cloud";
+import {
+  cloudLoad,
+  cloudSave,
+  cloudStamp,
+  hasPortalSession,
+  logPortalActivity,
+  subscribePortalAuth,
+} from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
 import {
   FOLLOW_UP_SECTION_ID,
@@ -32,7 +41,14 @@ export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"]
 /** Re-export for callers / tests. */
 export { FOLLOW_UP_SECTION_ID, FOLLOW_UP_HEADERS };
 /** Document columns + person Active/Inactive (last). */
-export const RECORD_HEADERS = ["Name", "Document", "Status", "Expiry Date", "Notes", "Active Status"];
+export const RECORD_HEADERS = [
+  "Name",
+  "Document",
+  "Status",
+  "Expiry Date",
+  "Notes",
+  "Active Status",
+];
 /** Index of Active/Inactive on record rows (Owner Operators etc.). */
 export const RECORD_ACTIVE_COL = 5;
 let state: AppData = buildSeed();
@@ -59,6 +75,40 @@ export const useSyncStatus = () =>
 function emit() {
   listeners.forEach((l) => l());
 }
+
+/** Parse one tracker_sections JSON blob; undefined = keep prior local / skip. */
+export function parseCloudSectionJson(raw: string): SectionData | undefined {
+  try {
+    const v = JSON.parse(raw) as unknown;
+    if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+    const o = v as Partial<SectionData>;
+    if (!Array.isArray(o.headers) || !Array.isArray(o.rows)) return undefined;
+    const rows = o.rows
+      .map((r) => {
+        if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+        const row = r as unknown as Record<string, unknown>;
+        const id = typeof row.id === "string" ? row.id : "";
+        if (!id) return null;
+        const driverId =
+          typeof row.driverId === "string" && row.driverId ? row.driverId : id;
+        const cells = Array.isArray(row.cells)
+          ? row.cells.map((c) => (c == null ? "" : String(c)))
+          : [];
+        return { ...row, id, driverId, cells } as SectionData["rows"][number];
+      })
+      .filter((r): r is SectionData["rows"][number] => r != null);
+    return {
+      headers: o.headers.map((h) => (h == null ? "" : String(h))),
+      widths: Array.isArray(o.widths) ? o.widths.map((w) => Number(w) || 0) : [],
+      hidden: Array.isArray(o.hidden) ? o.hidden.map((h) => !!h) : [],
+      rows,
+      ...(Array.isArray(o.dismissed) ? { dismissed: o.dismissed.filter((x): x is string => typeof x === "string") } : {}),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function emptyRecordSection(): SectionData {
   return {
     headers: [...RECORD_HEADERS],
@@ -70,11 +120,15 @@ function emptyRecordSection(): SectionData {
 
 /** Pad/migrate record tabs so Active Status column exists on every row. */
 function normalizeRecordSection(sec: SectionData): SectionData {
-  let headers = [...(sec.headers ?? [])];
-  let widths = [...(sec.widths ?? [])];
-  let hidden = [...(sec.hidden ?? [])];
-  let rows = sec.rows.map((r) => ({ ...r, cells: [...r.cells] }));
-  let touched = false;
+  let headers = [...headersOf(sec)];
+  let widths = Array.isArray(sec.widths) ? [...sec.widths] : [];
+  let hidden = Array.isArray(sec.hidden) ? [...sec.hidden] : [];
+  const srcRows = Array.isArray(sec.rows) ? sec.rows : [];
+  let rows = srcRows.map((r) => ({
+    ...r,
+    cells: [...cellsOf(r)],
+  }));
+  let touched = !Array.isArray(sec.rows) || srcRows.some((r) => !Array.isArray(r.cells));
 
   const hasActive = headers.some((h) => /^active\s*status$/i.test(h.trim()));
   if (!hasActive) {
@@ -108,7 +162,12 @@ function normalizeRecordSection(sec: SectionData): SectionData {
     }
     return cells === r.cells ? r : { ...r, cells };
   });
-  if (!touched && widths.length === (sec.widths?.length ?? 0) && hidden.length === (sec.hidden?.length ?? 0)) return sec;
+  if (
+    !touched &&
+    widths.length === (sec.widths?.length ?? 0) &&
+    hidden.length === (sec.hidden?.length ?? 0)
+  )
+    return sec;
   return { ...sec, headers, widths: widths.slice(0, len), hidden: hidden.slice(0, len), rows };
 }
 
@@ -133,7 +192,11 @@ function ensureRecordSections(data: AppData): AppData {
 }
 
 function markAllSectionsDirty() {
-  Object.keys(state.sections).forEach((id) => dirty.add(id));
+  const sections =
+    state.sections && typeof state.sections === "object" && !Array.isArray(state.sections)
+      ? state.sections
+      : {};
+  Object.keys(sections).forEach((id) => dirty.add(id));
 }
 
 /** localStorage is a short cache only — Supabase tracker_sections is source of truth once signed in. */
@@ -145,7 +208,8 @@ function persist() {
       localWarned = true;
       toast.error("This computer's browser storage is full", {
         id: "local-full",
-        description: "Your changes are still being sent to the cloud. Download a Backup to be safe.",
+        description:
+          "Your changes are still being sent to the cloud. Download a Backup to be safe.",
         duration: 10000,
       });
     }
@@ -155,10 +219,14 @@ let localWarned = false;
 
 function saveFailReason(e: unknown) {
   const m = (e instanceof Error ? e.message : String(e ?? "")).toLowerCase();
-  if (typeof navigator !== "undefined" && !navigator.onLine) return "You are offline — check your internet connection.";
-  if (/quota|storage|disk|full|space|limit|413|too large/.test(m)) return "Cloud storage is full or the change is too large.";
-  if (/passcode|unauthor|401|403/.test(m)) return "The portal was locked — please lock and unlock again with your password.";
-  if (/timeout|fetch|network|failed to/.test(m)) return "The cloud did not answer (connection problem).";
+  if (typeof navigator !== "undefined" && !navigator.onLine)
+    return "You are offline — check your internet connection.";
+  if (/quota|storage|disk|full|space|limit|413|too large/.test(m))
+    return "Cloud storage is full or the change is too large.";
+  if (/passcode|unauthor|401|403/.test(m))
+    return "The portal was locked — please lock and unlock again with your password.";
+  if (/timeout|fetch|network|failed to/.test(m))
+    return "The cloud did not answer (connection problem).";
   return "The cloud could not save right now.";
 }
 export function retrySync() {
@@ -199,7 +267,8 @@ async function flush() {
       const { logLocalActivity } = await import("./portal-local");
       const meta = {
         actorName: "Driver Compliance",
-        action: ids.length === 1 ? `Saved compliance section` : `Saved ${ids.length} compliance sections`,
+        action:
+          ids.length === 1 ? `Saved compliance section` : `Saved ${ids.length} compliance sections`,
         sectionId: ids.length === 1 ? ids[0]! : "sections",
       };
       logLocalActivity(meta);
@@ -220,7 +289,8 @@ async function flush() {
     if (failCount === 1 || failCount % 10 === 0)
       toast.error("Your changes were NOT saved to the cloud", {
         id: "cloud-save-fail",
-        description: saveFailReason(e) + " They are kept on this computer and will retry automatically.",
+        description:
+          saveFailReason(e) + " They are kept on this computer and will retry automatically.",
         duration: Infinity,
         action: { label: "Try again", onClick: () => retrySync() },
       });
@@ -245,7 +315,9 @@ async function pullCloud(force = false) {
     if (cloudReady && (dirty.size || flushing)) return;
     const r = await cloudLoad();
     if (cloudReady && (dirty.size || flushing)) return;
-    const ids = Object.keys(r.sections);
+    const remoteSections =
+      r.sections && typeof r.sections === "object" && !Array.isArray(r.sections) ? r.sections : {};
+    const ids = Object.keys(remoteSections);
     if (!ids.length) {
       // Cloud empty → seed/local cache is first durable copy (incl. record tabs), then upload.
       state = ensureRecordSections(state);
@@ -257,17 +329,22 @@ async function pullCloud(force = false) {
       return;
     }
     // Remote is source of truth: apply cloud rows, keep any local-only keys only until uploaded.
+    // One corrupt section must not fail the whole pull (outer catch → "error" sync forever).
     const sections = { ...state.sections };
-    for (const id of ids) sections[id] = JSON.parse(r.sections[id]);
+    for (const id of ids) {
+      const parsed = parseCloudSectionJson(remoteSections[id]);
+      if (parsed !== undefined) sections[id] = parsed;
+      else console.warn(`[cloud] skipped corrupt tracker section "${id}"`);
+    }
     if (!cloudReady) dirty.clear();
     const m = migrateData(ensureRecordSections({ ...state, sections }));
     state = m.data;
     m.changed.forEach((id) => dirty.add(id));
     // Upload record shells / follow-ups (or other local-only sections) missing from remote.
     for (const id of RECORD_SECTION_IDS) {
-      if (!r.sections[id]) dirty.add(id);
+      if (!remoteSections[id]) dirty.add(id);
     }
-    if (!r.sections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
+    if (!remoteSections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
     if (dirty.size) scheduleFlush();
     lastStamp = r.stamp;
     cloudReady = true;
@@ -312,8 +389,17 @@ export function loadFromStorage() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as AppData;
-      if (parsed?.sections) state = migrateData(parsed).data;
+      const parsed = JSON.parse(raw) as unknown;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        (parsed as AppData).sections &&
+        typeof (parsed as AppData).sections === "object" &&
+        !Array.isArray((parsed as AppData).sections)
+      ) {
+        state = migrateData(parsed as AppData).data;
+      }
     }
   } catch {
     /* ignore corrupt storage */
@@ -357,7 +443,16 @@ export const useLoaded = () =>
 function update(fn: (d: AppData) => AppData) {
   const prev = state;
   state = fn(state);
-  for (const id of Object.keys(state.sections)) if (state.sections[id] !== prev.sections[id]) dirty.add(id);
+  const nextSections =
+    state.sections && typeof state.sections === "object" && !Array.isArray(state.sections)
+      ? state.sections
+      : {};
+  const prevSections =
+    prev.sections && typeof prev.sections === "object" && !Array.isArray(prev.sections)
+      ? prev.sections
+      : {};
+  for (const id of Object.keys(nextSections))
+    if (nextSections[id] !== prevSections[id]) dirty.add(id);
   persist();
   emit();
   scheduleFlush();
@@ -372,8 +467,9 @@ SECTIONS.forEach((s) => {
 export function setCell(sectionId: string, rowId: string, col: number, value: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    const row = sec?.rows.find((r) => r.id === rowId);
-    if (!row || !sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
+    const row = sec.rows.find((r) => r.id === rowId);
+    if (!row) return d;
     const isActive = SECTIONS.find((s) => s.id === sectionId)?.types[col] === "active";
     const sections = { ...d.sections };
     if (isActive) {
@@ -382,26 +478,27 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       // keep Active / Leave / Inactive in sync for this driver across every section
       for (const [sid, idx] of Object.entries(ACTIVE_IDX)) {
         const cur = sections[sid];
-        if (!cur) continue;
+        if (!cur || !Array.isArray(cur.rows)) continue;
         // Inactive roster Status column stays Active/Inactive only
-        const cellLabel = sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
+        const cellLabel =
+          sid === "inactive" ? (status === "inactive" ? "Inactive" : "Active") : label;
         sections[sid] = {
           ...cur,
-          rows: cur.rows.map((r) =>
-            r.driverId === row.driverId
-              ? {
-                  ...r,
-                  status,
-                  cells: r.cells.map((c, i) => (i === idx ? cellLabel : c)),
-                }
-              : r,
-          ),
+          rows: cur.rows.map((r) => {
+            if (r.driverId !== row.driverId) return r;
+            const cells = cellsOf(r);
+            return {
+              ...r,
+              status,
+              cells: cells.map((c, i) => (i === idx ? cellLabel : c)),
+            };
+          }),
         };
       }
       // Inactive Drivers tab must list anyone marked Inactive (create row if missing)
       const ina = sections.inactive;
       const inaIdx = ACTIVE_IDX.inactive;
-      if (ina && inaIdx != null) {
+      if (ina && Array.isArray(ina.rows) && inaIdx != null) {
         const has = ina.rows.some((r) => r.driverId === row.driverId);
         if (status === "inactive" && !has) {
           const draft = { ...d, sections };
@@ -424,26 +521,41 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
     }
     sections[sectionId] = {
       ...sec,
-      rows: sec.rows.map((r) =>
-        r.id === rowId ? { ...r, cells: r.cells.map((c, i) => (i === col ? value : c)) } : r,
-      ),
+      rows: sec.rows.map((r) => {
+        if (r.id !== rowId) return r;
+        const cells = cellsOf(r);
+        const next = cells.length > col ? cells.slice() : [...cells, ...Array(col - cells.length + 1).fill("")];
+        next[col] = value == null ? "" : typeof value === "string" ? value : String(value);
+        return { ...r, cells: next };
+      }),
     };
     return { ...d, sections };
   });
 }
 
 export function patchSection(sectionId: string, patch: Partial<AppData["sections"][string]>) {
-  update((d) => ({ ...d, sections: { ...d.sections, [sectionId]: { ...d.sections[sectionId], ...patch } } }));
+  update((d) => {
+    const prev = d.sections[sectionId];
+    if (!prev) return d;
+    return {
+      ...d,
+      sections: { ...d.sections, [sectionId]: { ...prev, ...patch } },
+    };
+  });
 }
 
 export function setRowHeight(sectionId: string, rowId: string, h: number) {
   update((d) => {
     const sec = d.sections[sectionId];
+    if (!sec || !Array.isArray(sec.rows)) return d;
     return {
       ...d,
       sections: {
         ...d.sections,
-        [sectionId]: { ...sec, rows: sec.rows.map((r) => (r.id === rowId ? { ...r, height: h } : r)) },
+        [sectionId]: {
+          ...sec,
+          rows: sec.rows.map((r) => (r.id === rowId ? { ...r, height: h } : r)),
+        },
       },
     };
   });
@@ -452,8 +564,15 @@ export function setRowHeight(sectionId: string, rowId: string, h: number) {
 export function deleteDriver(driverId: string) {
   update((d) => {
     const sections = { ...d.sections };
-    for (const k of Object.keys(sections))
-      sections[k] = { ...sections[k], rows: sections[k].rows.filter((r) => r.driverId !== driverId) };
+    for (const k of Object.keys(sections)) {
+      const prev = sections[k];
+      // Skip corrupt/missing rows — same class of crash as addDriver on unknown sections.
+      if (!prev || !Array.isArray(prev.rows)) continue;
+      sections[k] = {
+        ...prev,
+        rows: prev.rows.filter((r) => r.driverId !== driverId),
+      };
+    }
     return { ...d, sections };
   });
 }
@@ -462,13 +581,18 @@ export function deleteDriver(driverId: string) {
 export function addDriver(values: Record<string, string[]>) {
   const driverId = "d_" + uid();
   const addedAt = Date.now();
+  const valuesMap =
+    values && typeof values === "object" && !Array.isArray(values) ? values : {};
   update((d) => {
     const sections = { ...d.sections };
-    for (const [sid, cells] of Object.entries(values)) {
+    for (const [sid, cells] of Object.entries(valuesMap)) {
+      const prev = sections[sid];
+      // Skip unknown section ids — spreading undefined.rows previously crashed Add Driver.
+      if (!prev || !Array.isArray(prev.rows)) continue;
       sections[sid] = {
-        ...sections[sid],
+        ...prev,
         rows: [
-          ...sections[sid].rows,
+          ...prev.rows,
           {
             id: sid + "_" + uid(),
             driverId,
@@ -517,26 +641,53 @@ export function exportBackup() {
   return JSON.stringify(state, null, 2);
 }
 export function importBackup(json: string) {
-  const parsed = JSON.parse(json) as AppData;
-  if (!parsed?.sections) throw new Error("Not a valid backup file");
-  update(() => migrateData(parsed).data);
+  const parsed = JSON.parse(json) as unknown;
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    !(parsed as AppData).sections ||
+    typeof (parsed as AppData).sections !== "object" ||
+    Array.isArray((parsed as AppData).sections)
+  ) {
+    throw new Error("Not a valid backup file");
+  }
+  update(() => migrateData(parsed as AppData).data);
 }
 
 /** Adds an empty row for an existing driver in a section where they are missing (keeps rows line-by-line). */
 export function addRowForDriver(sectionId: string, driverId: string, name: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec || sec.rows.some((r) => r.driverId === driverId)) return d;
-    const cells = sec.headers.map((_, i) => (i === 0 ? name : ""));
-    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() }] } } };
+    if (!sec) return d;
+    const existing = Array.isArray(sec.rows) ? sec.rows : [];
+    if (existing.some((r) => r.driverId === driverId)) return d;
+    const cells = headersOf(sec).map((_, i) => (i === 0 ? name : ""));
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: {
+          ...sec,
+          rows: [
+            ...existing,
+            { id: sectionId + "_" + uid(), driverId, cells, addedAt: Date.now() },
+          ],
+        },
+      },
+    };
   });
 }
 
 /** Manual record lists (extra driver documents, owner operators, mechanics) — kept apart from the driver sections. */
 export function addRecord(sectionId: string, cells: string[]) {
   update((d) => {
-    const sec = d.sections[sectionId] ?? emptyRecordSection();
-    const padded = [...cells];
+    const secRaw = d.sections[sectionId] ?? emptyRecordSection();
+    const sec = {
+      ...secRaw,
+      rows: Array.isArray(secRaw.rows) ? secRaw.rows : [],
+    };
+    const padded = [...cellsOf({ cells })];
     while (padded.length < RECORD_HEADERS.length) {
       padded.push(padded.length === RECORD_ACTIVE_COL ? "Active" : "");
     }
@@ -546,7 +697,15 @@ export function addRecord(sectionId: string, cells: string[]) {
         ...d.sections,
         [sectionId]: {
           ...sec,
-          rows: [...sec.rows, { id: sectionId + "_" + uid(), driverId: "r_" + uid(), cells: padded, addedAt: Date.now() }],
+          rows: [
+            ...sec.rows,
+            {
+              id: sectionId + "_" + uid(),
+              driverId: "r_" + uid(),
+              cells: padded,
+              addedAt: Date.now(),
+            },
+          ],
         },
       },
     };
@@ -557,14 +716,19 @@ export function addRecord(sectionId: string, cells: string[]) {
 export function setRecordPersonActive(sectionId: string, personName: string, value: string) {
   const key = recordPersonKey(personName);
   if (!key) return;
-  const label = value.trim().toLowerCase() === "inactive" ? "Inactive" : "Active";
+  const label =
+    (value == null ? "" : typeof value === "string" ? value : String(value)).trim().toLowerCase() ===
+    "inactive"
+      ? "Inactive"
+      : "Active";
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
-      const cells = [...r.cells];
+      const baseCells = cellsOf(r);
+      if (recordPersonKey(baseCells[0] ?? "") !== key) return r;
+      const cells = [...baseCells];
       while (cells.length <= RECORD_ACTIVE_COL) cells.push("");
       const wasInactive = cells[RECORD_ACTIVE_COL].trim().toLowerCase() === "inactive";
       if (label === "Inactive" && wasInactive) return r;
@@ -578,9 +742,10 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
   });
 }
 
-export function recordPersonIsActive(rows: { cells: string[] }[]) {
+export function recordPersonIsActive(rows: { cells?: unknown }[]) {
   for (const r of rows) {
-    const v = (r.cells[RECORD_ACTIVE_COL] ?? "").trim();
+    const cells = cellsOf(r);
+    const v = (cells[RECORD_ACTIVE_COL] ?? "").trim();
     if (v) return v.toLowerCase() !== "inactive";
   }
   return true;
@@ -591,8 +756,14 @@ state = ensureRecordSections(state);
 export function deleteRecord(sectionId: string, rowId: string) {
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
-    return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) } } };
+    if (!sec || !Array.isArray(sec.rows)) return d;
+    return {
+      ...d,
+      sections: {
+        ...d.sections,
+        [sectionId]: { ...sec, rows: sec.rows.filter((r) => r.id !== rowId) },
+      },
+    };
   });
 }
 
@@ -611,20 +782,22 @@ export function addFollowUp(input: {
   update((d) => {
     const base = ensureFollowUpSection(d);
     const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     const cells = followUpToCells({
       id,
       driverId: input.driverId,
-      driver: input.driver,
-      subject: input.subject.trim(),
+      driver: asText(input.driver),
+      subject: asText(input.subject).trim(),
       status: "open",
-      dueDate: (input.dueDate ?? "").trim(),
-      notes: (input.notes ?? "").trim(),
+      dueDate: asText(input.dueDate).trim(),
+      notes: asText(input.notes).trim(),
       source: input.source ?? "manual",
       sectionId: input.sectionId ?? "",
       docType: input.docType ?? "",
       linkedRowId: "",
     });
     while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
+    const existingRows = Array.isArray(sec.rows) ? sec.rows : [];
     return {
       ...base,
       sections: {
@@ -632,7 +805,7 @@ export function addFollowUp(input: {
         [FOLLOW_UP_SECTION_ID]: {
           ...sec,
           rows: [
-            ...sec.rows,
+            ...existingRows,
             {
               id,
               driverId: input.driverId || "fu_" + uid(),
@@ -661,9 +834,10 @@ export function updateFollowUp(
   update((d) => {
     const base = ensureFollowUpSection(d);
     const sec = base.sections[FOLLOW_UP_SECTION_ID]!;
-    const rows = sec.rows.map((r) => {
+    const existingRows = Array.isArray(sec.rows) ? sec.rows : [];
+    const rows = existingRows.map((r) => {
       if (r.id !== id) return r;
-      const cells = [...r.cells];
+      const cells = [...cellsOf(r)];
       while (cells.length < FOLLOW_UP_HEADERS.length) cells.push("");
       if (patch.driver != null) cells[0] = patch.driver;
       if (patch.subject != null) cells[1] = patch.subject;
@@ -680,7 +854,7 @@ export function updateFollowUp(
 export function deleteFollowUp(id: string) {
   update((d) => {
     const sec = d.sections[FOLLOW_UP_SECTION_ID];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     return {
       ...d,
       sections: {
@@ -691,8 +865,8 @@ export function deleteFollowUp(id: string) {
   });
 }
 
-function recordPersonKey(name: string) {
-  return name.trim().toLowerCase();
+function recordPersonKey(name: unknown) {
+  return (name == null ? "" : typeof name === "string" ? name : String(name)).trim().toLowerCase();
 }
 
 /** Move every document row for a person from one record section into another (preserves cells/driverId/addedAt; new row ids). */
@@ -701,15 +875,17 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
   const key = recordPersonKey(personName);
   if (!key) return;
   update((d) => {
-    const from = d.sections[fromId] ?? emptyRecordSection();
-    const to = d.sections[toId] ?? emptyRecordSection();
-    const moving = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") === key);
+    const fromRaw = d.sections[fromId] ?? emptyRecordSection();
+    const toRaw = d.sections[toId] ?? emptyRecordSection();
+    const from = { ...fromRaw, rows: Array.isArray(fromRaw.rows) ? fromRaw.rows : [] };
+    const to = { ...toRaw, rows: Array.isArray(toRaw.rows) ? toRaw.rows : [] };
+    const moving = from.rows.filter((r) => recordPersonKey(cellsOf(r)[0] ?? "") === key);
     if (!moving.length) return d;
-    const stay = from.rows.filter((r) => recordPersonKey(r.cells[0] ?? "") !== key);
+    const stay = from.rows.filter((r) => recordPersonKey(cellsOf(r)[0] ?? "") !== key);
     const added = moving.map((r) => ({
       ...r,
       id: toId + "_" + uid(),
-      cells: [...r.cells],
+      cells: [...cellsOf(r)],
     }));
     return {
       ...d,
@@ -724,18 +900,19 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
 
 /** Rename every document row for a person within a record section so person-card grouping stays intact. */
 export function renameRecordPerson(sectionId: string, oldName: string, newName: string) {
-  const next = newName.trim();
+  const next = (newName == null ? "" : typeof newName === "string" ? newName : String(newName)).trim();
   if (!next) return;
   const key = recordPersonKey(oldName);
   if (!key || recordPersonKey(next) === key) return;
   update((d) => {
     const sec = d.sections[sectionId];
-    if (!sec) return d;
+    if (!sec || !Array.isArray(sec.rows)) return d;
     let touched = false;
     const rows = sec.rows.map((r) => {
-      if (recordPersonKey(r.cells[0] ?? "") !== key) return r;
+      const cells = cellsOf(r);
+      if (recordPersonKey(cells[0] ?? "") !== key) return r;
       touched = true;
-      return { ...r, cells: r.cells.map((c, i) => (i === 0 ? next : c)) };
+      return { ...r, cells: cells.map((c, i) => (i === 0 ? next : c)) };
     });
     if (!touched) return d;
     return { ...d, sections: { ...d.sections, [sectionId]: { ...sec, rows } } };

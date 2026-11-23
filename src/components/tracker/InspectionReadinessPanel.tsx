@@ -29,21 +29,28 @@ const STATUS_CHIP: Record<InspectionStatus, string> = {
   unable: "bg-warn text-primary-foreground",
 };
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function InspectionReadinessPanel() {
   const data = useData();
   const [filter, setFilter] = useState<InspectionStatus | "all">("all");
   const [q, setQ] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const summaries = useMemo(() => buildInspectionSummaries(data), [data]);
+  const summaries = useMemo(() => {
+    const list = buildInspectionSummaries(data);
+    return Array.isArray(list) ? list : [];
+  }, [data]);
   const fleet = useMemo(() => fleetInspectionCounts(summaries), [summaries]);
 
   const visible = useMemo(() => {
-    const qq = q.trim().toLowerCase();
+    const qq = asText(q).trim().toLowerCase();
     return summaries.filter((s) => {
-      if (filter !== "all" && s.counts[filter] === 0) return false;
+      const counts: Partial<Record<InspectionStatus, number>> =
+        s?.counts && typeof s.counts === "object" && !Array.isArray(s.counts) ? s.counts : {};
+      if (filter !== "all" && (counts[filter] ?? 0) === 0) return false;
       if (!qq) return true;
-      return s.driverName.toLowerCase().includes(qq);
+      return asText(s.driverName).toLowerCase().includes(qq);
     });
   }, [summaries, filter, q]);
 
@@ -113,10 +120,10 @@ export function InspectionReadinessPanel() {
               >
                 {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 <div className="min-w-0 flex-1">
-                  <p className="font-extrabold">{s.driverName}</p>
+                  <p className="font-extrabold">{asText(s.driverName)}</p>
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Worst: {INSPECTION_STATUS_LABEL[s.worst]} · {s.counts.verified} verified ·{" "}
-                    {s.counts.missing + s.counts.expired} gaps
+                    Worst: {asText(INSPECTION_STATUS_LABEL[s.worst])} · {s.counts.verified}{" "}
+                    verified · {s.counts.missing + s.counts.expired} gaps
                   </p>
                 </div>
                 <Link
@@ -130,7 +137,7 @@ export function InspectionReadinessPanel() {
               </button>
               {open && (
                 <div className="space-y-2 border-t px-4 py-3">
-                  {s.items.map((it) => (
+                  {(Array.isArray(s.items) ? s.items : []).map((it) => (
                     <div
                       key={it.key}
                       className="flex flex-wrap items-start justify-between gap-2 rounded-lg border bg-background/80 p-3"
@@ -146,14 +153,14 @@ export function InspectionReadinessPanel() {
                             {INSPECTION_STATUS_LABEL[it.status]}
                           </span>
                           <span className="text-xs font-bold text-muted-foreground uppercase">
-                            {it.category}
+                            {asText(it.category)}
                           </span>
                         </div>
-                        <p className="mt-1 font-bold">{it.document}</p>
-                        <p className="text-sm text-muted-foreground">{it.evidence}</p>
+                        <p className="mt-1 font-bold">{asText(it.document)}</p>
+                        <p className="text-sm text-muted-foreground">{asText(it.evidence)}</p>
                         <p className="text-sm">
                           <span className="font-bold">Expiry: </span>
-                          {it.expiryDisplay}
+                          {asText(it.expiryDisplay)}
                         </p>
                       </div>
                       {it.rowId && (

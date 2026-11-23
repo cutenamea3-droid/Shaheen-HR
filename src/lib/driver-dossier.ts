@@ -8,7 +8,7 @@ import {
   statusExpiryCol,
   today,
 } from "./alerts";
-import { driverEmploymentStatus, normName, type AppData } from "./sections";
+import { cellsOf, driverEmploymentStatus, headersOf, normName, type AppData } from "./sections";
 import { dateOfHireOf, formatHireDateDisplay } from "./driver-hr/hire-date";
 
 export interface DossierLine {
@@ -43,8 +43,8 @@ export interface DriverDossier {
   records: DossierRecordLine[];
 }
 
-function cell(row: { cells: string[] } | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+function cell(row: { cells?: unknown } | undefined, i: number) {
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function statusOf(row: { cells: string[] } | undefined, i: number) {
@@ -64,7 +64,8 @@ function statusDisplay(sectionId: string, statusCol: number, row: { cells: strin
 }
 
 function onlyThisDriver<T extends { driverId: string }>(rows: T[] | undefined, driverId: string): T | undefined {
-  return rows?.find((r) => r.driverId === driverId);
+  if (!Array.isArray(rows)) return undefined;
+  return rows.find((r) => r.driverId === driverId);
 }
 
 const DEFAULT_DOC_HEADERS = [
@@ -91,7 +92,7 @@ const RECORD_TABS = [
 function buildOtherDocs(data: AppData, driverId: string): DossierLine[] {
   const docs = onlyThisDriver(data.sections.docs?.rows, driverId);
   if (!docs) return [];
-  const headers = data.sections.docs?.headers ?? [];
+  const headers = headersOf(data.sections.docs);
   const lines: DossierLine[] = [];
   for (let i = 2; i <= 13; i++) {
     const label = (headers[i] ?? DEFAULT_DOC_HEADERS[i - 2] ?? `Document ${i - 1}`).trim() || `Document ${i - 1}`;
@@ -114,9 +115,10 @@ function buildRelevantRecords(data: AppData, driverName: string): DossierRecordL
   if (!key) return [];
   const out: DossierRecordLine[] = [];
   for (const tab of RECORD_TABS) {
-    const rows = data.sections[tab.id]?.rows ?? [];
+    const rows = data.sections[tab.id]?.rows;
+    if (!Array.isArray(rows)) continue;
     for (const row of rows) {
-      if (normName(row.cells[0] ?? "") !== key) continue;
+      if (normName(cell(row, 0)) !== key) continue;
       out.push({
         source: tab.label,
         document: cell(row, 1) || "—",
@@ -154,7 +156,7 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
   let docsNotes = "";
   if (docs) {
     let valid = 0;
-    for (let i = 2; i <= 13; i++) if (normStatus(docs.cells[i] ?? "") === "Valid") valid++;
+    for (let i = 2; i <= 13; i++) if (normStatus(cell(docs, i)) === "Valid") valid++;
     docsStatus = `${complianceScore(docs)}% · ${valid}/12 valid`;
     docsNotes = cell(docs, 14);
   }
@@ -226,8 +228,9 @@ export function buildDriverDossier(data: AppData, driverId: string): DriverDossi
   };
 }
 
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function esc(s: unknown) {
+  const t = s == null ? "" : typeof s === "string" ? s : String(s);
+  return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function logoAbsoluteUrl(): string {
@@ -246,7 +249,9 @@ function tableRows(
   let lastSection = "";
   return lines
     .map((r) => {
-      const section = (r.section ?? "").trim();
+      const section = (
+        r.section == null ? "" : typeof r.section === "string" ? r.section : String(r.section)
+      ).trim();
       const showBanner = !!opts?.showSection && section && section !== lastSection;
       if (showBanner) lastSection = section;
       const banner = showBanner

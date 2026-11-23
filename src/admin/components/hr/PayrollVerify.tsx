@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES, useEmployeeFinanceMock } from "@/admin/lib/employee-finance-mock";
 import { useOtApprovalStore } from "@/admin/lib/ot-approval";
 import {
   HISTORICAL_ADDITIONAL_DAY_RATE_PKR,
+  asPayrollPolicy,
   usePayrollPolicyStore,
 } from "@/admin/lib/payroll-policy";
 import { buildPayrollVerifyRow, summarizePayrollVerify } from "@/admin/lib/payroll-verify";
@@ -11,22 +12,35 @@ import { useBonusStore } from "@/admin/lib/bonus-store";
 import { formatPkr } from "@/admin/lib/salary-payments";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function PayrollVerify() {
-  const liveEmployees = useApp((s) => s.employees);
-  const payments = useEmployeeFinanceMock((s) => s.payments);
-  const approvals = useOtApprovalStore((s) => s.rows);
-  const policy = usePayrollPolicyStore((s) => s.policy);
+  const liveEmployeesRaw = useApp((s) => s.employees);
+  const liveEmployees = Array.isArray(liveEmployeesRaw) ? liveEmployeesRaw : [];
+  const paymentsRaw = useEmployeeFinanceMock((s) => s.payments);
+  const payments = Array.isArray(paymentsRaw) ? paymentsRaw : [];
+  const approvalsRaw = useOtApprovalStore((s) => s.rows);
+  const approvals =
+    approvalsRaw && typeof approvalsRaw === "object" && !Array.isArray(approvalsRaw)
+      ? approvalsRaw
+      : {};
+  const policyRaw = usePayrollPolicyStore((s) => s.policy);
+  const policy = asPayrollPolicy(policyRaw);
   const setAdditionalDayRate = usePayrollPolicyStore((s) => s.setAdditionalDayRate);
   const setOvertimeHourlyRate = usePayrollPolicyStore((s) => s.setOvertimeHourlyRate);
   const setWorkingDaysDivisor = usePayrollPolicyStore((s) => s.setWorkingDaysDivisor);
   const confirmDivisorPolicy = usePayrollPolicyStore((s) => s.confirmDivisorPolicy);
-  const bonuses = useBonusStore((s) => s.bonuses);
+  const bonusesRaw = useBonusStore((s) => s.bonuses);
+  const bonuses = Array.isArray(bonusesRaw) ? bonusesRaw : [];
   const upsertBonus = useBonusStore((s) => s.upsertBonus);
 
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const [dayRateDraft, setDayRateDraft] = useState(String(policy.additionalDayRatePkr));
   const [otRateDraft, setOtRateDraft] = useState(policy.overtimeHourlyRatePkr != null ? String(policy.overtimeHourlyRatePkr) : "");
   const [divisorDraft, setDivisorDraft] = useState(policy.workingDaysDivisor != null ? String(policy.workingDaysDivisor) : "");
+  const dayRateRef = useRef<HTMLInputElement>(null);
+  const otRateRef = useRef<HTMLInputElement>(null);
+  const divisorRef = useRef<HTMLInputElement>(null);
   const [bonusDraft, setBonusDraft] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
 
@@ -43,8 +57,10 @@ export function PayrollVerify() {
       const payment = payments.find((p) => p.employeeId === employeeId && p.month === month);
       const bonus = bonuses.find((b) => b.employeeId === employeeId && b.month === month);
       // Skip empty employees with no payment / approvals / bonus
+      const asDate = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      const monthKey = asDate(month);
       const hasApproval = Object.values(approvals).some(
-        (a) => a.employeeId === employeeId && a.date.startsWith(month),
+        (a) => a.employeeId === employeeId && asDate(a.date).startsWith(monthKey),
       );
       if (!payment && !bonus && !hasApproval) continue;
       const verifyInput: Parameters<typeof buildPayrollVerifyRow>[0] = {
@@ -65,25 +81,28 @@ export function PayrollVerify() {
 
   const applyPolicy = () => {
     setErr("");
-    const day = Number(dayRateDraft);
+    const nextDay = (asText(dayRateDraft).trim() || dayRateRef.current?.value || "").trim();
+    const nextOt = (asText(otRateDraft).trim() || otRateRef.current?.value || "").trim();
+    const nextDiv = (asText(divisorDraft).trim() || divisorRef.current?.value || "").trim();
+    const day = Number(nextDay);
     const r1 = setAdditionalDayRate(day);
     if (!r1.ok) {
       setErr(r1.error ?? "Day rate failed");
       return;
     }
-    if (otRateDraft.trim() === "") {
+    if (nextOt === "") {
       setOvertimeHourlyRate(null);
     } else {
-      const r2 = setOvertimeHourlyRate(Number(otRateDraft));
+      const r2 = setOvertimeHourlyRate(Number(nextOt));
       if (!r2.ok) {
         setErr(r2.error ?? "OT rate failed");
         return;
       }
     }
-    if (divisorDraft.trim() === "") {
+    if (nextDiv === "") {
       setWorkingDaysDivisor(null);
     } else {
-      const r3 = setWorkingDaysDivisor(Number(divisorDraft));
+      const r3 = setWorkingDaysDivisor(Number(nextDiv));
       if (!r3.ok) {
         setErr(r3.error ?? "Divisor failed");
         return;
@@ -101,7 +120,7 @@ export function PayrollVerify() {
             type="month"
             className="field w-auto"
             aria-label="Verify month"
-            value={month}
+            value={asText(month)}
             onChange={(e) => e.target.value && setMonth(e.target.value)}
           />
         }
@@ -122,15 +141,15 @@ export function PayrollVerify() {
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             Additional day rate (PKR)
-            <input className="field mt-1" value={dayRateDraft} onChange={(e) => setDayRateDraft(e.target.value)} />
+            <input ref={dayRateRef} data-testid="admin-day-rate" className="field mt-1" value={asText(dayRateDraft)} onChange={(e) => setDayRateDraft(e.target.value)} onInput={(e) => setDayRateDraft((e.target as HTMLInputElement).value)} />
           </label>
           <label className="text-sm">
             OT hourly rate (PKR) — blank = Needs Policy
-            <input className="field mt-1" value={otRateDraft} onChange={(e) => setOtRateDraft(e.target.value)} placeholder="unset" />
+            <input ref={otRateRef} data-testid="admin-ot-rate" className="field mt-1" value={asText(otRateDraft)} onChange={(e) => setOtRateDraft(e.target.value)} onInput={(e) => setOtRateDraft((e.target as HTMLInputElement).value)} placeholder="unset" />
           </label>
           <label className="text-sm">
             Working-days divisor — blank = Needs Policy
-            <input className="field mt-1" value={divisorDraft} onChange={(e) => setDivisorDraft(e.target.value)} placeholder="do not invent 26/27" />
+            <input ref={divisorRef} data-testid="admin-divisor" className="field mt-1" value={asText(divisorDraft)} onChange={(e) => setDivisorDraft(e.target.value)} onInput={(e) => setDivisorDraft((e.target as HTMLInputElement).value)} placeholder="do not invent 26/27" />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -196,7 +215,7 @@ export function PayrollVerify() {
                 <tbody>
                   {r.lines.map((line) => (
                     <tr key={line.kind}>
-                      <td>{line.label}</td>
+                      <td>{asText(line.label)}</td>
                       <td>
                         {line.amountPkr != null
                           ? formatPkr(line.amountPkr)
@@ -205,7 +224,9 @@ export function PayrollVerify() {
                             : "—"}
                       </td>
                       <td className="text-sm text-muted-foreground">
-                        {line.gate && !line.gate.ok ? line.gate.message : line.detail}
+                        {line.gate && !line.gate.ok
+                          ? asText(line.gate.message)
+                          : asText(line.detail)}
                       </td>
                     </tr>
                   ))}
@@ -218,15 +239,23 @@ export function PayrollVerify() {
                 <input
                   className="field mt-1 w-36"
                   value={bonusDraft[r.employeeId] ?? ""}
+                  data-testid={`admin-bonus-${r.employeeId}`}
                   onChange={(e) => setBonusDraft((s) => ({ ...s, [r.employeeId]: e.target.value }))}
+                  onInput={(e) =>
+                    setBonusDraft((s) => ({ ...s, [r.employeeId]: (e.target as HTMLInputElement).value }))
+                  }
                   placeholder="0"
                 />
               </label>
               <button
                 type="button"
                 className="btn-ghost"
-                onClick={() => {
-                  const n = Number(bonusDraft[r.employeeId] ?? "0");
+                onClick={(e) => {
+                  const dom =
+                    (e.currentTarget.previousElementSibling as HTMLElement | null)
+                      ?.querySelector?.("input")
+                      ?.value ?? "";
+                  const n = Number(asText(bonusDraft[r.employeeId]).trim() || asText(dom) || "0");
                   const res = upsertBonus(r.employeeId, month, n, "manual bonus");
                   if (!res.ok) setErr(res.error ?? "Bonus failed");
                 }}

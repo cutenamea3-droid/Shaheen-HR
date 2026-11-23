@@ -7,7 +7,9 @@ function readJson<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    return JSON.parse(raw) as T;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as T;
   } catch {
     return null;
   }
@@ -72,7 +74,12 @@ export function saveDashboardPrefs(p: DashboardPrefs) {
 }
 
 export function loadAttendancePrefs(): AttendancePrefs {
-  return readJson<AttendancePrefs>(ATTENDANCE) ?? {};
+  const raw = readJson<AttendancePrefs>(ATTENDANCE) ?? {};
+  if (raw.expanded && typeof raw.expanded === "object" && !Array.isArray(raw.expanded)) {
+    return { ...raw, expanded: raw.expanded };
+  }
+  const { expanded: _drop, ...rest } = raw;
+  return rest;
 }
 export function saveAttendancePrefs(p: AttendancePrefs) {
   writeJson(ATTENDANCE, { ...loadAttendancePrefs(), ...p });

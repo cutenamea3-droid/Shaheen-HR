@@ -37,8 +37,10 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 function isH3SwallowedErrorBody(body: string): boolean {
   try {
-    const payload = JSON.parse(body) as { unhandled?: unknown; message?: unknown };
-    return payload.unhandled === true && payload.message === "HTTPError";
+    const payload = JSON.parse(body) as unknown;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+    const o = payload as { unhandled?: unknown; message?: unknown };
+    return o.unhandled === true && o.message === "HTTPError";
   } catch {
     return false;
   }

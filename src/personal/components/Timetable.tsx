@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Btn, Empty, Panel, SectionHead, courseLabel } from "./common";
-import { todayKey, usePersonal } from "@/personal/lib/store";
+import { normalizeCourse } from "@/personal/lib/assessment-phases";
+import { blocksOf, todayKey, usePersonal } from "@/personal/lib/store";
 import {
   BUSY_MINUTES,
   RESCUE_MINUTES,
@@ -8,11 +9,18 @@ import {
   modeBudgetMinutes,
   modeLabel,
 } from "@/personal/lib/schedule";
-import type { StudyMode } from "@/personal/lib/types";
+import type { Course, StudyMode } from "@/personal/lib/types";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 export function Timetable() {
-  const courses = usePersonal((s) => s.courses);
-  const dayPlans = usePersonal((s) => s.dayPlans);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const dayPlansRaw = usePersonal((s) => s.dayPlans);
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
+  const dayPlans =
+    dayPlansRaw && typeof dayPlansRaw === "object" && !Array.isArray(dayPlansRaw) ? dayPlansRaw : {};
   const ensureDayPlan = usePersonal((s) => s.ensureDayPlan);
   const setDayMode = usePersonal((s) => s.setDayMode);
   const setDayBlockDone = usePersonal((s) => s.setDayBlockDone);
@@ -26,7 +34,8 @@ export function Timetable() {
   }, [ensureDayPlan, today]);
 
   const plan = dayPlans[today];
-  const used = plan?.blocks.reduce((s, b) => s + b.minutes, 0) ?? 0;
+  const planBlocks = blocksOf(plan);
+  const used = planBlocks.reduce((s, b) => s + b.minutes, 0);
   const budget = plan
     ? modeBudgetMinutes(plan.mode, today, settings)
     : sunday
@@ -88,13 +97,15 @@ export function Timetable() {
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="hp-title text-base font-bold sm:text-lg">{m.title}</span>
+                  <span className="hp-title text-base font-bold sm:text-lg">
+                    {asTxt(m.title)}
+                  </span>
                   <span className="text-2xl font-bold tabular-nums text-[var(--hp-teal)]">
                     {m.minutes}
                     <span className="text-sm font-semibold text-[var(--hp-muted)]">m</span>
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-[var(--hp-muted)]">{m.blurb}</p>
+                <p className="mt-2 text-xs text-[var(--hp-muted)]">{asTxt(m.blurb)}</p>
               </button>
             );
           })}
@@ -111,11 +122,11 @@ export function Timetable() {
 
       <Panel>
         <SectionHead title="Today’s blocks" subtitle={`${today} · mark only what you actually finish`} />
-        {!plan?.blocks.length ? (
+        {!planBlocks.length ? (
           <Empty>Empty plan. Add backlog recovery items, then rebuild.</Empty>
         ) : (
           <ol className="space-y-2">
-            {plan.blocks.map((b, i) => (
+            {planBlocks.map((b, i) => (
               <li
                 key={b.id}
                 className={`flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--hp-border)] px-3 py-3 ${
@@ -127,7 +138,7 @@ export function Timetable() {
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
-                    <div className="font-semibold">{b.label}</div>
+                    <div className="font-semibold">{asTxt(b.label)}</div>
                     <div className="text-xs text-[var(--hp-muted)]">
                       {courseLabel(courses, b.courseId)} · {b.minutes} minutes
                     </div>

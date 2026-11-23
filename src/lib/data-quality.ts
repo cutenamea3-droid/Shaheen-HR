@@ -11,7 +11,7 @@ import {
   parseISO,
   statusExpiryCol,
 } from "./alerts";
-import { SECTIONS, normName, type AppData, type Row } from "./sections";
+import { SECTIONS, cellsOf, headersOf, normName, rowsOf, type AppData, type Row } from "./sections";
 
 export type DataQualitySeverity = "high" | "medium" | "low" | "info";
 
@@ -47,12 +47,14 @@ export const DATA_QUALITY_POLICY =
 const WIZARD_SECTIONS = SECTIONS.filter((s) => s.inWizard).map((s) => s.id);
 
 function cell(row: Row | undefined, i: number) {
-  return (row?.cells[i] ?? "").trim();
+  return (cellsOf(row)[i] ?? "").trim();
 }
 
 function nameOf(data: AppData, driverId: string): string {
   for (const id of WIZARD_SECTIONS) {
-    const r = data.sections[id]?.rows.find((x) => x.driverId === driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    const r = rows.find((x) => x.driverId === driverId);
     const n = cell(r, 0);
     if (n) return n;
   }
@@ -62,7 +64,9 @@ function nameOf(data: AppData, driverId: string): string {
 function allDriverIds(data: AppData): string[] {
   const ids = new Set<string>();
   for (const id of WIZARD_SECTIONS) {
-    for (const r of data.sections[id]?.rows ?? []) ids.add(r.driverId);
+    const rows = data.sections[id]?.rows;
+    if (!Array.isArray(rows)) continue;
+    for (const r of rows) ids.add(r.driverId);
   }
   return [...ids];
 }
@@ -79,7 +83,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
   for (const driverId of allDriverIds(data)) {
     const names = new Map<string, { sectionId: string; rowId: string; name: string }>();
     for (const sectionId of WIZARD_SECTIONS) {
-      const row = data.sections[sectionId]?.rows.find((r) => r.driverId === driverId);
+      const row = rowsOf(data.sections[sectionId]).find((r) => r.driverId === driverId);
       if (!row) {
         push({
           id: `missing_row:${driverId}:${sectionId}`,
@@ -116,7 +120,13 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
 
     const uniqueNames = [...new Set([...names.values()].map((n) => normName(n.name)).filter(Boolean))];
     if (uniqueNames.length > 1) {
-      const sample = [...names.values()].map((n) => `${n.sectionId}: “${n.name}”`).join("; ");
+      const sample = [...names.values()]
+        .map((n) => {
+          const sid = n.sectionId == null ? "" : typeof n.sectionId === "string" ? n.sectionId : String(n.sectionId);
+          const nm = n.name == null ? "" : typeof n.name === "string" ? n.name : String(n.name);
+          return `${sid}: “${nm}”`;
+        })
+        .join("; ");
       push({
         id: `name_mismatch:${driverId}`,
         kind: "name_mismatch",
@@ -171,7 +181,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
   for (const def of SECTIONS) {
     if (!["dmv", "medical", "queries", "ssccdl"].includes(def.id)) continue;
     const sec = data.sections[def.id];
-    if (!sec) continue;
+    if (!sec || !Array.isArray(sec.rows)) continue;
     for (const row of sec.rows) {
       for (let col = 0; col < def.types.length; col++) {
         if (def.types[col] !== "status") continue;
@@ -179,7 +189,8 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
         const expCol = expiryPair(def.id, col);
         if (expCol == null) continue; // e.g. SSC — no expiry pair
         const rawDate = cell(row, expCol);
-        const header = sec.headers[col] ?? `col ${col}`;
+        const hdrs = headersOf(sec);
+        const header = hdrs[col] ?? `col ${col}`;
 
         if ((status === "Valid" || status === "Applied") && !rawDate) {
           push({
@@ -202,7 +213,7 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
             kind: "date_without_status",
             severity: "medium",
             title: "Date without status",
-            detail: `${sec.headers[expCol] ?? "Expiry"} is “${fmtCell(rawDate)}” but status is empty.`,
+            detail: `${headersOf(sec)[expCol] ?? "Expiry"} is “${fmtCell(rawDate)}” but status is empty.`,
             driverId: row.driverId,
             driverName: cell(row, 0) || nameOf(data, row.driverId),
             sectionId: def.id,
@@ -263,17 +274,19 @@ export function collectDataQualityFindings(data: AppData): DataQualityFinding[] 
     const rank: DataQualitySeverity[] = ["high", "medium", "low", "info"];
     const dr = rank.indexOf(a.severity) - rank.indexOf(b.severity);
     if (dr) return dr;
-    return a.driverName.localeCompare(b.driverName, undefined, { sensitivity: "base" });
+    const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    return asN(a.driverName).localeCompare(asN(b.driverName), undefined, { sensitivity: "base" });
   });
 }
 
 export function dataQualityCounts(findings: DataQualityFinding[]) {
+  const list = Array.isArray(findings) ? findings : [];
   return {
-    all: findings.length,
-    high: findings.filter((f) => f.severity === "high").length,
-    medium: findings.filter((f) => f.severity === "medium").length,
-    low: findings.filter((f) => f.severity === "low").length,
-    info: findings.filter((f) => f.severity === "info").length,
+    all: list.length,
+    high: list.filter((f) => f.severity === "high").length,
+    medium: list.filter((f) => f.severity === "medium").length,
+    low: list.filter((f) => f.severity === "low").length,
+    info: list.filter((f) => f.severity === "info").length,
   };
 }
 
@@ -283,15 +296,21 @@ export function filterDataQualityFindings(
   opts?: { severity?: DataQualitySeverity | "all"; q?: string },
 ): DataQualityFinding[] {
   const severity = opts?.severity ?? "all";
-  const q = (opts?.q ?? "").trim().toLowerCase();
-  return findings.filter((f) => {
+  const q = (
+    opts?.q == null ? "" : typeof opts.q === "string" ? opts.q : String(opts.q)
+  )
+    .trim()
+    .toLowerCase();
+  const list = Array.isArray(findings) ? findings : [];
+  return list.filter((f) => {
     if (severity !== "all" && f.severity !== severity) return false;
     if (!q) return true;
+    const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
     return (
-      f.driverName.toLowerCase().includes(q) ||
-      f.title.toLowerCase().includes(q) ||
-      f.detail.toLowerCase().includes(q) ||
-      (f.sectionId ?? "").toLowerCase().includes(q)
+      asText(f.driverName).toLowerCase().includes(q) ||
+      asText(f.title).toLowerCase().includes(q) ||
+      asText(f.detail).toLowerCase().includes(q) ||
+      asText(f.sectionId).toLowerCase().includes(q)
     );
   });
 }

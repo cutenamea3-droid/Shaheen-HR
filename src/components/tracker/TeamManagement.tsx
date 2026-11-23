@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trash2, UserPlus } from "lucide-react";
-import { createPortalAccount, listPortalAccounts, updatePortalAccess, type PortalAccount, type PortalRole } from "@/lib/cloud";
+import {
+  createPortalAccount,
+  healPortalAccount,
+  listPortalAccounts,
+  updatePortalAccess,
+  type PortalAccount,
+  type PortalRole,
+} from "@/lib/cloud";
 import {
   createLocalAccount,
   ensureLocalOwner,
@@ -11,12 +18,17 @@ import {
 } from "@/lib/portal-local";
 import { usePortalAccount } from "./LockGate";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 export function TeamManagement() {
   const { account: currentAccount } = usePortalAccount();
   const [accounts, setAccounts] = useState<PortalAccount[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -30,10 +42,11 @@ export function TeamManagement() {
     }
     const local = listLocalAccounts();
     const byId = new Map<string, PortalAccount>();
-    for (const a of [...cloud, ...local]) byId.set(a.user_id, a);
+    for (const a of [...cloud, ...local]) byId.set(a.user_id, healPortalAccount(a));
     // Prefer local email matches for edits done offline
-    for (const a of local) byId.set(a.user_id, a);
-    const merged = [...byId.values()].sort((a, b) => a.email.localeCompare(b.email));
+    for (const a of local) byId.set(a.user_id, healPortalAccount(a));
+    const asEmail = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+    const merged = [...byId.values()].sort((a, b) => asEmail(a.email).localeCompare(asEmail(b.email)));
     setAccounts(merged);
   };
 
@@ -68,8 +81,8 @@ export function TeamManagement() {
       const next = { ...target, role, active: isActive };
       upsertLocalAccount(next);
       logLocalActivity({
-        actorName: currentAccount.display_name || currentAccount.email,
-        action: `Updated access for ${target.email} → ${role}${isActive ? "" : " (disabled)"}`,
+        actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+        action: `Updated access for ${asText(target.email)} → ${asText(role)}${isActive ? "" : " (disabled)"}`,
         sectionId: "accounts",
       });
       setMessage("Account access updated.");
@@ -82,12 +95,15 @@ export function TeamManagement() {
   };
 
   const rename = (target: PortalAccount, displayName: string) => {
-    const next = { ...target, display_name: displayName.trim() || target.display_name };
+    const next = {
+      ...target,
+      display_name: asText(displayName).trim() || asText(target.display_name),
+    };
     upsertLocalAccount(next);
     setAccounts((prev) => prev.map((a) => (a.user_id === target.user_id ? next : a)));
     logLocalActivity({
-      actorName: currentAccount.display_name || currentAccount.email,
-      action: `Renamed account ${target.email} to “${next.display_name}”`,
+      actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+      action: `Renamed account ${asText(target.email)} to “${asText(next.display_name)}”`,
       sectionId: "accounts",
     });
   };
@@ -97,7 +113,7 @@ export function TeamManagement() {
       setMessage("You cannot remove your own account.");
       return;
     }
-    if (!confirm(`Remove ${target.display_name} (${target.email})?`)) return;
+    if (!confirm(`Remove ${asText(target.display_name)} (${asText(target.email)})?`)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -109,8 +125,8 @@ export function TeamManagement() {
         /* ignore */
       }
       logLocalActivity({
-        actorName: currentAccount.display_name || currentAccount.email,
-        action: `Removed account ${target.email}`,
+        actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+        action: `Removed account ${asText(target.email)}`,
         sectionId: "accounts",
       });
       setMessage("Account removed.");
@@ -137,17 +153,23 @@ export function TeamManagement() {
           setMessage("");
           try {
             try {
-              await createPortalAccount({ email, displayName: name, password });
+              const nextName = (name.trim() || nameRef.current?.value || "").trim();
+              const nextEmail = (email.trim() || emailRef.current?.value || "").trim();
+              const nextPassword = (password || passwordRef.current?.value || "").trim();
+              await createPortalAccount({ email: nextEmail, displayName: nextName, password: nextPassword });
             } catch {
               /* edge function / cloud may be unavailable — local create below */
             }
-            const created = await createLocalAccount({ email, displayName: name, password });
+            const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
+            const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
+            const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
+            const created = await createLocalAccount({ email: nextEmail, displayName: nextName, password: nextPassword });
             setName("");
             setEmail("");
             setPassword("");
             logLocalActivity({
-              actorName: currentAccount.display_name || currentAccount.email,
-              action: `Created account ${created.email}`,
+              actorName: asText(currentAccount.display_name) || asText(currentAccount.email),
+              action: `Created account ${asText(created.email)}`,
               sectionId: "accounts",
             });
             setMessage("Standard account created.");
@@ -161,15 +183,15 @@ export function TeamManagement() {
       >
         <label className="text-sm font-bold">
           Name
-          <input required maxLength={80} className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={name} onChange={(event) => setName(event.target.value)} />
+          <input ref={nameRef} data-testid="team-user-name" required maxLength={80} className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={asText(name)} onChange={(event) => setName(event.target.value)} onInput={(event) => setName((event.target as HTMLInputElement).value)} />
         </label>
         <label className="text-sm font-bold">
           Email
-          <input required type="email" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={email} onChange={(event) => setEmail(event.target.value)} />
+          <input ref={emailRef} data-testid="team-user-email" required type="email" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={asText(email)} onChange={(event) => setEmail(event.target.value)} onInput={(event) => setEmail((event.target as HTMLInputElement).value)} />
         </label>
         <label className="text-sm font-bold">
           Temporary password
-          <input required type="password" minLength={8} autoComplete="new-password" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <input ref={passwordRef} data-testid="team-user-password" required type="password" minLength={8} autoComplete="new-password" className="mt-1 h-10 w-full rounded-lg border bg-card px-3 font-normal" value={asText(password)} onChange={(event) => setPassword(event.target.value)} onInput={(event) => setPassword((event.target as HTMLInputElement).value)} />
         </label>
         <button disabled={busy} className="ui-press inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 font-semibold text-primary-foreground disabled:opacity-60">
           <UserPlus className="size-4" /> Add user
@@ -197,20 +219,21 @@ export function TeamManagement() {
                 <td className="p-3 font-semibold">
                   <input
                     className="h-9 w-full max-w-[12rem] rounded-lg border bg-card px-2 font-semibold"
-                    aria-label={`Name for ${member.email}`}
-                    defaultValue={member.display_name}
+                    aria-label={`Name for ${asText(member.email)}`}
+                    defaultValue={asText(member.display_name)}
                     disabled={busy}
                     onBlur={(event) => {
-                      if (event.target.value.trim() !== member.display_name) rename(member, event.target.value);
+                      if (event.target.value.trim() !== asText(member.display_name))
+                        rename(member, event.target.value);
                     }}
                   />
                 </td>
-                <td className="p-3">{member.email}</td>
+                <td className="p-3">{asText(member.email)}</td>
                 <td className="p-3">
                   <select
                     className="h-9 rounded-lg border bg-card px-2"
-                    aria-label={`Role for ${member.email}`}
-                    value={member.role}
+                    aria-label={`Role for ${asText(member.email)}`}
+                    value={asText(member.role) === "admin" ? "admin" : "standard"}
                     disabled={busy || member.user_id === currentAccount.user_id}
                     onChange={(event) => void changeAccess(member, event.target.value as PortalRole, member.active)}
                   >

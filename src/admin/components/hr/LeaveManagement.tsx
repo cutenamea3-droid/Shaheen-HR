@@ -5,19 +5,24 @@ import { leaveRoster, listLeaveDaysInMonth } from "@/admin/lib/leave-management"
 import { useAdminNav } from "@/admin/lib/admin-nav";
 import { SectionTitle, todayStr } from "./common";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 /**
  * Leave Management — balances + month ledger from existing attendance leave days.
  * Does not invent accrual policy (uses leaveBalance / openingLeave / joinMonth).
  */
 export function LeaveManagement() {
-  const { employees, records } = useApp();
+  const { employees: employeesRaw, records: recordsRaw } = useApp();
+  const employees = Array.isArray(employeesRaw) ? employeesRaw : [];
+  const records =
+    recordsRaw && typeof recordsRaw === "object" && !Array.isArray(recordsRaw) ? recordsRaw : {};
   const requestTab = useAdminNav((s) => s.requestTab);
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const asOf = month === todayStr().slice(0, 7) ? todayStr() : `${month}-28`;
 
   const roster = useMemo(() => leaveRoster(employees, records, asOf), [employees, records, asOf]);
   const days = useMemo(() => listLeaveDaysInMonth(month, employees, records), [month, employees, records]);
-  const nameOf = (id: string) => employees.find((e) => e.id === id)?.name ?? id;
+  const nameOf = (id: string) => asText(employees.find((e) => e.id === id)?.name) || asText(id);
 
   return (
     <div className="space-y-4">
@@ -30,7 +35,7 @@ export function LeaveManagement() {
               type="month"
               className="field w-auto"
               aria-label="Leave month"
-              value={month}
+              value={asText(month)}
               onChange={(e) => e.target.value && setMonth(e.target.value)}
             />
             <button type="button" className="btn-ghost" onClick={() => requestTab("attendance", "leave")}>
@@ -60,8 +65,8 @@ export function LeaveManagement() {
             <tbody>
               {roster.map((row) => (
                 <tr key={row.employeeId} className="border-b border-border/60">
-                  <td className="py-2 pr-3 font-medium">{row.name}</td>
-                  <td className="py-2 pr-3">{row.joinMonth}</td>
+                  <td className="py-2 pr-3 font-medium">{asText(row.name)}</td>
+                  <td className="py-2 pr-3">{asText(row.joinMonth)}</td>
                   <td className="py-2 pr-3">{row.openingLeave}</td>
                   <td className="py-2 pr-3 font-semibold">{row.balanceAsOf}</td>
                   <td className="py-2 pr-3">{row.paidThisMonth}</td>
@@ -88,7 +93,7 @@ export function LeaveManagement() {
               <span className="font-semibold">{prettyDate(d.date)}</span>
               <span>{nameOf(d.employeeId)}</span>
               <span className="chip bg-muted/70 text-muted-foreground">{d.paid ? "Paid" : "Unpaid"}</span>
-              {d.note ? <span className="text-muted-foreground">— {d.note}</span> : null}
+              {d.note ? <span className="text-muted-foreground">— {asText(d.note)}</span> : null}
             </li>
           ))}
           {!days.length && <li className="text-sm text-muted-foreground">No leave marked this month.</li>}

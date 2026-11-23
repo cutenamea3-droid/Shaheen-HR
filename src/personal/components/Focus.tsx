@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn, Field, Panel, SectionHead } from "./common";
 import { usePersonal } from "@/personal/lib/store";
-import type { FocusActivityKind, StudyMode } from "@/personal/lib/types";
+import { normalizeCourse, normalizeFocusSession } from "@/personal/lib/assessment-phases";
+import type { Course, FocusActivityKind, FocusSession, StudyMode } from "@/personal/lib/types";
 import { VU_FOCUS_MODES, VU_TIMER_PRESETS } from "@/personal/lib/vu-rhythm";
+
+const asTxt = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
 
 type Phase = "focus" | "break" | "idle";
 type TimerProfile = "preset" | "pomodoro" | "deep";
@@ -27,10 +30,16 @@ function presetToActivity(id: string): FocusActivityKind {
 }
 
 export function Focus() {
-  const courses = usePersonal((s) => s.courses);
+  const coursesRaw = usePersonal((s) => s.courses);
+  const sessionsRaw = usePersonal((s) => s.sessions);
+  const courses = (Array.isArray(coursesRaw) ? coursesRaw : [])
+    .map((c) => normalizeCourse(c as Partial<Course> & Pick<Course, "id">))
+    .filter((c) => !!c.id);
+  const sessions = (Array.isArray(sessionsRaw) ? sessionsRaw : [])
+    .map((s) => normalizeFocusSession(s as Partial<FocusSession> & Pick<FocusSession, "id">))
+    .filter((s) => !!s.id);
   const settings = usePersonal((s) => s.settings);
   const addSession = usePersonal((s) => s.addSession);
-  const sessions = usePersonal((s) => s.sessions);
   const toggleDiscipline = usePersonal((s) => s.toggleDiscipline);
 
   const [courseId, setCourseId] = useState<string>(courses[0]?.id ?? "cs101");
@@ -39,6 +48,9 @@ export function Focus() {
   const [presetId, setPresetId] = useState(VU_TIMER_PRESETS[0]?.id ?? "lecture");
   const [activityKind, setActivityKind] = useState<FocusActivityKind>("lecture");
   const [lessonLabel, setLessonLabel] = useState("");
+  const lessonLabelRef = useRef<HTMLInputElement>(null);
+  const readLessonLabel = () =>
+    (asTxt(lessonLabel).trim() || lessonLabelRef.current?.value || "").trim();
   const [phase, setPhase] = useState<Phase>("idle");
   const [left, setLeft] = useState(settings.pomodoroFocus * 60);
   const [running, setRunning] = useState(false);
@@ -78,9 +90,9 @@ export function Focus() {
               endedAt: ended,
               minutes,
               mode,
-              label: lessonLabel.trim() || ACTIVITY_LABELS[activityKind],
+              label: readLessonLabel() || ACTIVITY_LABELS[activityKind],
               activityKind,
-              ...(lessonLabel.trim() ? { lessonLabel: lessonLabel.trim() } : {}),
+              ...(readLessonLabel() ? { lessonLabel: readLessonLabel() } : {}),
             });
             focusAccum.current = 0;
             startedAt.current = null;
@@ -140,9 +152,9 @@ export function Focus() {
           endedAt: end,
           minutes,
           mode,
-          label: lessonLabel.trim() || `${ACTIVITY_LABELS[activityKind]} (manual stop)`,
+          label: readLessonLabel() || `${ACTIVITY_LABELS[activityKind]} (manual stop)`,
           activityKind,
-          ...(lessonLabel.trim() ? { lessonLabel: lessonLabel.trim() } : {}),
+          ...(readLessonLabel() ? { lessonLabel: readLessonLabel() } : {}),
         });
         setShowRecall(activityKind !== "break");
       }
@@ -259,10 +271,10 @@ export function Focus() {
 
           <div className="space-y-3">
             <Field label="Course">
-              <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+              <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} — {c.title}
+                  <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                    {asTxt(c.code)} — {asTxt(c.title)}
                   </option>
                 ))}
               </select>
@@ -282,9 +294,12 @@ export function Focus() {
             </Field>
             <Field label="Lesson / topic (optional)">
               <input
+                ref={lessonLabelRef}
                 className="hp-field"
-                value={lessonLabel}
+                data-testid="personal-focus-lesson"
+                value={asTxt(lessonLabel)}
                 onChange={(e) => setLessonLabel(e.target.value)}
+                onInput={(e) => setLessonLabel((e.target as HTMLInputElement).value)}
                 placeholder="e.g. CS101 Lec 05 · owner label only"
               />
             </Field>
@@ -314,13 +329,13 @@ export function Focus() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={filterCourse}
+              value={asTxt(filterCourse)}
               onChange={(e) => setFilterCourse(e.target.value)}
             >
               <option value="all">All courses</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code}
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
+                  {asTxt(c.code)}
                 </option>
               ))}
             </select>
@@ -333,11 +348,11 @@ export function Focus() {
             {filtered.slice(0, 20).map((s) => (
               <li key={s.id} className="flex justify-between gap-3 py-2 text-sm">
                 <span>
-                  {courses.find((c) => c.id === s.courseId)?.code ?? "—"} · {s.label}
+                  {asTxt(courses.find((c) => c.id === s.courseId)?.code) || "—"} · {asTxt(s.label)}
                   {s.activityKind ? (
                     <span className="text-[var(--hp-muted)]">
                       {" "}
-                      · {ACTIVITY_LABELS[s.activityKind] ?? s.activityKind}
+                      · {ACTIVITY_LABELS[s.activityKind] ?? asTxt(s.activityKind)}
                     </span>
                   ) : null}
                 </span>
