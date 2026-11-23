@@ -52,6 +52,14 @@ export function SalaryPayments() {
     return m;
   }, [liveEmployees, showMockUi]);
 
+  /** Live Team roster by default; synthetic MOCK names only when mock chrome is opted in. */
+  const dueRoster = useMemo(() => {
+    if (showMockUi) return [...SYNTHETIC_EMPLOYEES];
+    return liveEmployees
+      .filter((e) => !e.inactive)
+      .map((e) => ({ id: e.id, name: e.name, deptLabel: "" as string }));
+  }, [liveEmployees, showMockUi]);
+
   const monthRows = useMemo(() => {
     return payments
       .filter((p) => p.month === month)
@@ -75,10 +83,7 @@ export function SalaryPayments() {
 
   const ensureRowsForRoster = () => {
     setErr("");
-    const ids = [
-      ...liveEmployees.map((e) => e.id),
-      ...(showMockUi ? SYNTHETIC_EMPLOYEES.map((e) => e.id) : []),
-    ];
+    const ids = dueRoster.map((e) => e.id);
     for (const id of ids) {
       ensureMeta(id);
       const dom =
@@ -178,10 +183,20 @@ export function SalaryPayments() {
       </div>
 
       <div className="admin-emp-card space-y-3">
-        <h3 className="font-bold">Seed / update due amounts (mock)</h3>
-        <p className="text-sm text-muted-foreground">Enter whole PKR due for an employee, then Apply. Does not set status to Paid.</p>
+        <h3 className="font-bold">
+          {showMockUi ? "Seed / update due amounts (mock)" : "Update due amounts (live Team)"}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Enter whole PKR due for an employee, then Apply. Does not set status to Paid.
+          {showMockUi
+            ? " Synthetic MOCK employees are shown only because mock chrome is enabled."
+            : " Only active live Team employees appear here — no Ayesha/Bilal/Camila/Danish MOCK seeds."}
+        </p>
         <div className="space-y-2">
-          {[...SYNTHETIC_EMPLOYEES].map((e) => (
+          {dueRoster.length === 0 && (
+            <p className="text-sm text-muted-foreground">No active Team employees yet. Add people under Team / Directory.</p>
+          )}
+          {dueRoster.map((e) => (
             <div key={e.id} className="grid gap-2 md:grid-cols-[1fr_160px] md:items-end">
               <div>
                 <div className="text-sm font-semibold">{asText(e.name)}</div>
@@ -204,7 +219,7 @@ export function SalaryPayments() {
             </div>
           ))}
         </div>
-        <button type="button" className="btn-primary" onClick={ensureRowsForRoster}>
+        <button type="button" className="btn-primary" onClick={ensureRowsForRoster} disabled={dueRoster.length === 0}>
           Apply due amounts
         </button>
         {err && (
@@ -323,7 +338,13 @@ export function SalaryPayments() {
             })}
           </tbody>
         </table>
-        {monthRows.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No payment rows for this month/filter. Apply due amounts or reset mock seed from Directory.</p>}
+        {monthRows.length === 0 && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            {showMockUi
+              ? "No payment rows for this month/filter. Apply due amounts or reset mock seed from Directory."
+              : "No payment rows for this month/filter. Apply due amounts for live Team employees above."}
+          </p>
+        )}
       </div>
     </div>
   );

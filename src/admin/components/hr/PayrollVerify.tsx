@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
 import { SYNTHETIC_EMPLOYEES, useEmployeeFinanceMock } from "@/admin/lib/employee-finance-mock";
+import { shouldShowFinanceMockUi } from "@/admin/lib/employee-finance-mode";
 import { useOtApprovalStore } from "@/admin/lib/ot-approval";
 import {
   HISTORICAL_ADDITIONAL_DAY_RATE_PKR,
@@ -44,12 +45,15 @@ export function PayrollVerify() {
   const [bonusDraft, setBonusDraft] = useState<Record<string, string>>({});
   const [err, setErr] = useState("");
 
+  const showMockUi = shouldShowFinanceMockUi();
   const roster = useMemo(() => {
     const ids = new Map<string, string>();
     for (const e of liveEmployees) ids.set(e.id, e.name);
-    for (const e of SYNTHETIC_EMPLOYEES) ids.set(e.id, e.name);
+    if (showMockUi) {
+      for (const e of SYNTHETIC_EMPLOYEES) ids.set(e.id, e.name);
+    }
     return ids;
-  }, [liveEmployees]);
+  }, [liveEmployees, showMockUi]);
 
   const rows = useMemo(() => {
     const out = [];
