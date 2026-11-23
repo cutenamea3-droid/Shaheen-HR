@@ -1190,40 +1190,10 @@ body:has(.admin-theme) { background-color: var(--brand-soft-white, #F7F8FA); }
   }
 }
 
-/* Personal CV page — cream / orange reference look */
-.cv-theme {
-  --background: #f6f1e8;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --muted: #efe8dc;
-  --muted-foreground: #6b635a;
-  --primary: #f97316;
-  --primary-foreground: #fffaf5;
-  --secondary: #fff7ed;
-  --secondary-foreground: #9a3412;
-  --accent: #ffedd5;
-  --accent-foreground: #9a3412;
-  --border: #eadfce;
-  --ring: #f97316;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, #ffe8d2 0%, transparent 55%),
-    radial-gradient(900px 420px at 90% 0%, #fff3e0 0%, transparent 50%),
-    var(--background);
-  color: var(--foreground);
-}
-.cv-theme .cv-serif {
-  font-family: var(--font-serif);
-  font-optical-sizing: auto;
-}
-@keyframes cv-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-/* Use forwards (not both) so delayed sections stay visible if animation is skipped/late. */
-.cv-rise { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .cv-rise { animation: cv-rise 200ms cubic-bezier(.2,.7,.2,1) forwards; }
-}
+/* Personal CV portfolio tokens live in src/cv/cv-portfolio.css (scoped .cv-theme).
+   Keep reduced-motion safety for shared dashboard motion utilities here. */
 @media (prefers-reduced-motion: reduce) {
-  .cv-rise, .ui-enter { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .ui-enter { animation: none !important; opacity: 1 !important; transform: none !important; }
   .ui-lift, .ui-press, .panel, .btn, .btn-primary, .btn-ghost, .btn-danger, .shadow-card { transition: none !important; }
   .ui-lift:hover, .ui-press:hover, .panel:hover, .btn:hover, .btn-primary:hover, .shadow-card:hover { transform: none !important; }
   .ui-glow::before, .panel::before { display: none !important; }
@@ -1277,12 +1247,7 @@ html[data-density="compact"] .admin-stat-value {
   font-size: 1.35rem;
 }
 
-@media print {
-  .cv-no-print { display: none !important; }
-  .cv-theme { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; }
-  .cv-theme .cv-rise { animation: none !important; opacity: 1 !important; transform: none !important; }
-  .cv-nav { position: static !important; box-shadow: none !important; }
-}
+/* CV print rules: see src/cv/cv-portfolio.css (scoped under .cv-theme). */
 
 /* ---------- Enterprise UI polish (additive; CSS/theme only) ---------- */
 /* Shared chrome clarity — does not alter filters, Applied+Expiry, New/OO, or dark-mode toggle logic */

@@ -104,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap",
       },
       {
         rel: "stylesheet",
@@ -144,14 +144,17 @@ function RootComponent() {
   // `/admin` does not structurally mismatch the shell (React #418).
   // Admin / Access Denied / CV skip Driver LockGate.
   const useDriverLock = hydrated && !(isAdmin || isDenied || isPublic);
+  // First paint must keep dashboard chrome (matches prerendered `/` shell). Hide
+  // AppSwitcher / banner only after hydrate on the public CV portfolio.
+  const showDashboardChrome = !hydrated || !isPublic;
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <MaintenanceBanner />
-      <AppSwitcher />
+      {showDashboardChrome && <MaintenanceBanner />}
+      {showDashboardChrome && <AppSwitcher />}
       <ModuleRedirector />
-      <div className="with-switcher">
+      <div className={showDashboardChrome ? "with-switcher" : undefined}>
         {useDriverLock ? (
           <LockGate>
             <Outlet />
