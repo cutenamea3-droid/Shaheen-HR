@@ -157,10 +157,10 @@ export function AccessorialsBoard({
             setBusy(true);
             setError(null);
             try {
-              const nextDesc = (description.trim() || descriptionRef.current?.value || "").trim();
-              const nextAmount = (amount.trim() || amountRef.current?.value || "").trim();
-              const nextHours = (hours.trim() || hoursRef.current?.value || "").trim();
-              const nextFree = (freeTimeNote.trim() || freeTimeNoteRef.current?.value || "").trim();
+              const nextDesc = (asText(description).trim() || descriptionRef.current?.value || "").trim();
+              const nextAmount = (asText(amount).trim() || amountRef.current?.value || "").trim();
+              const nextHours = (asText(hours).trim() || hoursRef.current?.value || "").trim();
+              const nextFree = (asText(freeTimeNote).trim() || freeTimeNoteRef.current?.value || "").trim();
               const amount_manual = nextAmount === "" ? null : Number(nextAmount);
               const hours_manual = nextHours === "" ? null : Number(nextHours);
               await saveAccessorial({

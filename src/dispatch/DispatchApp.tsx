@@ -1028,7 +1028,10 @@ function DriverUpdatesBoard({
                   <button
                     type="button"
                     className="dispatch-btn-primary"
-                    disabled={busyId === load.id || (!draft.location.trim() && !draft.notes.trim())}
+                    disabled={
+                      busyId === load.id ||
+                      (!asFormText(draft.location).trim() && !asFormText(draft.notes).trim())
+                    }
                     onClick={async () => {
                       setBusyId(load.id);
                       setError(null);
@@ -1041,8 +1044,9 @@ function DriverUpdatesBoard({
                           document.querySelector<HTMLInputElement>(
                             `[data-testid="dispatch-check-notes-${load.id}"]`,
                           )?.value ?? "";
-                        const location = draft.location.trim() || locDom.trim();
-                        const notes = (draft.notes.trim() || notesDom.trim()) || "Manual check-call";
+                        const location = asFormText(draft.location).trim() || locDom.trim();
+                        const notes =
+                          (asFormText(draft.notes).trim() || notesDom.trim()) || "Manual check-call";
                         await addCheckCall({
                           load_id: load.id,
                           notes,
@@ -1312,7 +1316,7 @@ function LoadEditor({
           <input
             className="dispatch-field"
             type="datetime-local"
-            value={form.planned_pickup_at}
+            value={asFormText(form.planned_pickup_at)}
             onChange={(e) => setForm({ ...form, planned_pickup_at: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, planned_pickup_at: (e.target as HTMLInputElement).value }))}
           />
@@ -1322,7 +1326,7 @@ function LoadEditor({
           <input
             className="dispatch-field"
             type="datetime-local"
-            value={form.actual_pickup_at}
+            value={asFormText(form.actual_pickup_at)}
             onChange={(e) => setForm({ ...form, actual_pickup_at: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, actual_pickup_at: (e.target as HTMLInputElement).value }))}
           />
@@ -1332,7 +1336,7 @@ function LoadEditor({
           <input
             className="dispatch-field"
             type="datetime-local"
-            value={form.planned_delivery_at}
+            value={asFormText(form.planned_delivery_at)}
             onChange={(e) => setForm({ ...form, planned_delivery_at: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, planned_delivery_at: (e.target as HTMLInputElement).value }))}
           />
@@ -1342,7 +1346,7 @@ function LoadEditor({
           <input
             className="dispatch-field"
             type="datetime-local"
-            value={form.actual_delivery_at}
+            value={asFormText(form.actual_delivery_at)}
             onChange={(e) => setForm({ ...form, actual_delivery_at: e.target.value })}
             onInput={(e) => setForm((f) => ({ ...f, actual_delivery_at: (e.target as HTMLInputElement).value }))}
           />
@@ -1475,7 +1479,7 @@ function LoadEditor({
                 Type
                 <select
                   className="dispatch-field"
-                  value={stop.stop_type}
+                  value={asFormText(stop.stop_type)}
                   onChange={(e) =>
                     setStop(i, { stop_type: e.target.value as LoadStop["stop_type"] })
                   }
@@ -1603,7 +1607,7 @@ function LoadEditor({
               disabled={opsBusy || load.status === "cancelled" || load.status === "closed"}
               onClick={async () => {
                 const nextCancel = (
-                  form.cancel_reason.trim() ||
+                  asFormText(form.cancel_reason).trim() ||
                   cancelReasonRef.current?.value ||
                   ""
                 ).trim();
@@ -1639,7 +1643,7 @@ function LoadEditor({
                 const pickup = toIsoOrNull(form.planned_pickup_at);
                 const delivery = toIsoOrNull(form.planned_delivery_at);
                 const nextReschedule = (
-                  form.reschedule_note.trim() ||
+                  asFormText(form.reschedule_note).trim() ||
                   rescheduleNoteRef.current?.value ||
                   ""
                 ).trim();
@@ -1737,7 +1741,7 @@ function LoadEditor({
               disabled={opsBusy || load.status !== "delivered"}
               onClick={async () => {
                 const nextClose = (
-                  form.closeout_note.trim() ||
+                  asFormText(form.closeout_note).trim() ||
                   closeoutNoteRef.current?.value ||
                   ""
                 ).trim();
@@ -1772,7 +1776,7 @@ function LoadEditor({
               disabled={opsBusy || load.status !== "closed"}
               onClick={async () => {
                 const nextReopen = (
-                  form.reopen_reason.trim() ||
+                  asFormText(form.reopen_reason).trim() ||
                   reopenReasonRef.current?.value ||
                   ""
                 ).trim();
@@ -2072,14 +2076,14 @@ function LoadEditor({
           disabled={busy}
           onClick={async () => {
             const loadNumber = (
-              form.load_number.trim() ||
+              asFormText(form.load_number).trim() ||
               loadNumberRef.current?.value ||
               ""
             ).trim();
             if (!loadNumber) return;
             const customer =
-              form.customer_name || customerRef.current?.value || "";
-            const notes = form.notes || notesRef.current?.value || "";
+              asFormText(form.customer_name) || customerRef.current?.value || "";
+            const notes = asFormText(form.notes) || notesRef.current?.value || "";
             const driver = safeDrivers.find((d) => d.id === form.assigned_driver_id);
             await onSaved({
               ...(form.id ? { id: form.id } : {}),
@@ -2379,13 +2383,13 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             data-testid="dispatch-issue-title"
             className="dispatch-field"
             placeholder="Title"
-            value={title}
+            value={asFormText(title)}
             onChange={(e) => setTitle(e.target.value)}
             onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
           />
           <select
             className="dispatch-field"
-            value={loadId}
+            value={asFormText(loadId)}
             onChange={(e) => setLoadId(e.target.value)}
           >
             <option value="">No load link</option>
@@ -2397,7 +2401,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
           </select>
           <select
             className="dispatch-field"
-            value={level}
+            value={asFormText(level)}
             onChange={(e) => setLevel(e.target.value as DispatchIssue["escalation_level"])}
           >
             <option value="ops">ops</option>
@@ -2410,7 +2414,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
             data-testid="dispatch-issue-detail"
             className="dispatch-field"
             placeholder="Detail"
-            value={detail}
+            value={asFormText(detail)}
             onChange={(e) => setDetail(e.target.value)}
             onInput={(e) => setDetail((e.target as HTMLInputElement).value)}
           />
@@ -2636,7 +2640,7 @@ function HistoryBoard({
         <section className="dispatch-panel">
           <select
             className="dispatch-field mb-3 max-w-sm"
-            value={driverId}
+            value={asFormText(driverId)}
             onChange={(e) => setDriverId(e.target.value)}
           >
             {safeDrivers.map((d) => (
@@ -2674,7 +2678,7 @@ function HistoryBoard({
               Load
               <select
                 className="dispatch-field min-w-[14rem]"
-                value={loadId}
+                value={asFormText(loadId)}
                 onChange={(e) => setLoadId(e.target.value)}
               >
                 {safeLoads.map((l) => (

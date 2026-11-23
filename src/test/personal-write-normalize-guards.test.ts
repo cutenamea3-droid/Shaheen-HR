@@ -422,6 +422,20 @@ describe("Personal store write-path normalize guards", () => {
     expect(opsBoards).toMatch(/value=\{asText\(loadId\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(status\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(driverId\)\}/);
+    expect(dispatchApp).toMatch(/asFormText\(form\.cancel_reason\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(form\.reschedule_note\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(form\.closeout_note\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(form\.reopen_reason\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(form\.load_number\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(draft\.location\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.planned_pickup_at\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(stop\.stop_type\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(form\.categoryId\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(form\.scope\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(statusFilter\)\}/);
+    expect(closeoutUi).toMatch(/asText\(description\)\.trim\(\)/);
+    expect(opsBoards).toMatch(/asText\(title\)\.trim\(\)/);
+    expect(opsBoards).toMatch(/value=\{asText\(title\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

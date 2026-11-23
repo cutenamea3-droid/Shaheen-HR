@@ -222,7 +222,7 @@ export function FollowUpsBoard({
           data-testid="dispatch-fu-title"
           className="dispatch-field"
           placeholder="Reminder title"
-          value={title}
+          value={asText(title)}
           onChange={(e) => setTitle(e.target.value)}
           onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
         />
@@ -231,7 +231,7 @@ export function FollowUpsBoard({
           data-testid="dispatch-fu-due"
           className="dispatch-field"
           type="datetime-local"
-          value={dueAt}
+          value={asText(dueAt)}
           onChange={(e) => setDueAt(e.target.value)}
           onInput={(e) => setDueAt((e.target as HTMLInputElement).value)}
         />
@@ -248,7 +248,7 @@ export function FollowUpsBoard({
           data-testid="dispatch-fu-notes"
           className="dispatch-field"
           placeholder="Notes (optional)"
-          value={notes}
+          value={asText(notes)}
           onChange={(e) => setNotes(e.target.value)}
           onInput={(e) => setNotes((e.target as HTMLInputElement).value)}
         />
@@ -257,9 +257,9 @@ export function FollowUpsBoard({
         type="button"
         className="dispatch-btn-primary w-fit"
         onClick={async () => {
-          const nextTitle = (title.trim() || fuTitleRef.current?.value || "").trim();
-          const nextDue = (dueAt.trim() || fuDueRef.current?.value || "").trim();
-          const nextNotes = (notes.trim() || fuNotesRef.current?.value || "").trim();
+          const nextTitle = (asText(title).trim() || fuTitleRef.current?.value || "").trim();
+          const nextDue = (asText(dueAt).trim() || fuDueRef.current?.value || "").trim();
+          const nextNotes = (asText(notes).trim() || fuNotesRef.current?.value || "").trim();
           if (!nextTitle || !nextDue) {
             setError("Title and due time are required.");
             return;

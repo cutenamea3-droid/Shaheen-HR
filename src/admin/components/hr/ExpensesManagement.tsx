@@ -322,10 +322,10 @@ export function ExpensesManagement() {
       <div className="admin-toolbar flex-wrap gap-2">
         <label>
           <span className="sr-only">Month</span>
-          <input type="month" className="field w-40" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />
+          <input type="month" className="field w-40" value={asText(month)} onChange={(e) => e.target.value && setMonth(e.target.value)} />
         </label>
-        <input className="field w-48" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="field w-36" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | ExpenseStatus)}>
+        <input className="field w-48" placeholder="Search…" value={asText(q)} onChange={(e) => setQ(e.target.value)} />
+        <select className="field w-36" value={asText(statusFilter)} onChange={(e) => setStatusFilter(e.target.value as "all" | ExpenseStatus)}>
           <option value="all">All statuses</option>
           {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -333,7 +333,7 @@ export function ExpensesManagement() {
             </option>
           ))}
         </select>
-        <select className="field w-40" value={scopeFilter} onChange={(e) => setScopeFilter(e.target.value as "all" | ExpenseScope)}>
+        <select className="field w-40" value={asText(scopeFilter)} onChange={(e) => setScopeFilter(e.target.value as "all" | ExpenseScope)}>
           <option value="all">All scopes</option>
           {(Object.keys(EXPENSE_SCOPE_LABEL) as ExpenseScope[]).map((s) => (
             <option key={s} value={s}>
@@ -341,7 +341,7 @@ export function ExpensesManagement() {
             </option>
           ))}
         </select>
-        <select className="field w-40" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select className="field w-40" value={asText(categoryFilter)} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="all">All categories</option>
           {activeCats.map((c) => (
             <option key={asText(c.id)} value={asText(c.id)}>
@@ -380,7 +380,7 @@ export function ExpensesManagement() {
           </label>
           <label>
             <span className="lbl">Category</span>
-            <select className="field" value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
+            <select className="field" value={asText(form.categoryId)} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
               {activeCats.map((c) => (
                 <option key={asText(c.id)} value={asText(c.id)}>
                   {asText(c.name)}
@@ -418,7 +418,7 @@ export function ExpensesManagement() {
             <span className="lbl">Scope</span>
             <select
               className="field"
-              value={form.scope}
+              value={asText(form.scope)}
               onChange={(e) => {
                 const scope = e.target.value as ExpenseScope;
                 setForm((f) => ({ ...f, scope }));
@@ -697,7 +697,7 @@ export function ExpensesManagement() {
         <div className="admin-emp-card space-y-3">
           <h3 className="font-bold">Optional budget ({month})</h3>
           <div className="admin-toolbar gap-2">
-            <select className="field" value={budgetCat} onChange={(e) => setBudgetCat(e.target.value)}>
+            <select className="field" value={asText(budgetCat)} onChange={(e) => setBudgetCat(e.target.value)}>
               {activeCats.map((c) => (
                 <option key={asText(c.id)} value={asText(c.id)}>
                   {asText(c.name)}
