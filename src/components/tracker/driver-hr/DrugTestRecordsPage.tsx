@@ -70,7 +70,8 @@ export function DrugTestRecordsPage() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<DrugPairStatus | "all">("all");
   const [reasonFilter, setReasonFilter] = useState("all");
-  const [groupByDriver, setGroupByDriver] = useState(false);
+  /** Always default ON; visit-only toggle — remount/refresh resets to grouped. */
+  const [groupByDriver, setGroupByDriver] = useState(true);
   /** Add panel collapsed by default. */
   const [adding, setAdding] = useState(false);
   const [addFormKey, setAddFormKey] = useState(0);
