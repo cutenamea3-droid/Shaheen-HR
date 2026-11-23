@@ -35,6 +35,7 @@ import {
 import { applyTheme, setDarkMode, useDarkMode } from "@/lib/theme";
 import { Moon, Sun } from "lucide-react";
 import { DensityToggle } from "./DensityToggle";
+import { ComplianceDrBackupControls } from "./ComplianceDrBackupControls";
 import { SECTIONS, headersOf } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
@@ -307,7 +308,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header
-          className="tracker-no-print flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card"
+          className="tracker-no-print relative flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-card"
           role="banner"
         >
           <div className="min-w-0 space-y-1">
@@ -386,51 +387,57 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             >
               <ClipboardList className="size-4" /> Export DOT Audit Summary
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const json = exportBackup();
-                const blob = new Blob([json], { type: "application/json" });
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = `shaheen-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-                toast.success("Backup downloaded", { description: backupCoverageSummary(json) });
-              }}
-              title={`Download tracker backup — ${backupCoverageSummary()}`}
-              className={btn}
-            >
-              <Download className="size-4" /> Backup
-            </button>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              title="Restore tracker backup (plans, notes, docs, follow-ups, records; mock drug/CCF when present)"
-              className={btn}
-            >
-              <Upload className="size-4" /> Restore
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                try {
-                  importBackup(await f.text());
-                  toast.success("Backup restored", {
-                    description:
-                      "Plans, notes, docs, and follow-ups restored. Secure drug/CCF stays in cloud.",
-                  });
-                } catch {
-                  toast.error("That file is not a valid backup");
-                }
-                e.target.value = "";
-              }}
-            />
+            {account.role === "admin" ? (
+              <ComplianceDrBackupControls />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = exportBackup();
+                    const blob = new Blob([json], { type: "application/json" });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `shaheen-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+                    toast.success("Backup downloaded", { description: backupCoverageSummary(json) });
+                  }}
+                  title={`Download tracker backup — ${backupCoverageSummary()}`}
+                  className={btn}
+                >
+                  <Download className="size-4" /> Backup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  title="Restore tracker backup (plans, notes, docs, follow-ups, records; mock drug/CCF when present)"
+                  className={btn}
+                >
+                  <Upload className="size-4" /> Restore
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    try {
+                      importBackup(await f.text());
+                      toast.success("Backup restored", {
+                        description:
+                          "Plans, notes, docs, and follow-ups restored. Secure drug/CCF stays in cloud.",
+                      });
+                    } catch {
+                      toast.error("That file is not a valid backup");
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            )}
             <button
               type="button"
               onClick={() => {

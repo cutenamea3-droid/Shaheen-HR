@@ -239,6 +239,10 @@ export function retrySync() {
 
 // ---------- cloud sync ----------
 const dirty = new Set<string>();
+/** Snapshot of unsynced section ids (Compliance DR offline hint / tests). */
+export function getDirtySectionIdsForTests(): string[] {
+  return [...dirty];
+}
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 let lastStamp = "";
