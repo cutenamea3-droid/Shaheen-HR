@@ -37,6 +37,10 @@ import {
   type FollowUp,
   type FollowUpStatus,
 } from "./follow-ups";
+import {
+  guardAddDriverIdentity,
+  wouldCreateSameIdMultiRow,
+} from "./driver-multirow-guards";
 
 const KEY = "shaheen-driver-tracker-v1";
 /** Pending unsynced section ids — survives reload so stale cloud cannot wipe newer local edits. */
@@ -627,16 +631,54 @@ export function deleteDriver(driverId: string) {
 }
 
 /** values: sectionId -> cells array (same length as the section's columns) */
-export function addDriver(values: Record<string, string[]>) {
+export type AddDriverResult =
+  | { ok: true; driverId: string }
+  | { ok: false; error: string };
+
+/**
+ * Create a new driver across wizard sections.
+ * Store-level identity gate (SHRP-161): refuses when name/CDL matches an existing
+ * driver unless `acknowledgeIdentityDuplicate` is true. Never merges or deletes.
+ */
+export function addDriver(
+  values: Record<string, string[]>,
+  opts?: {
+    acknowledgeIdentityDuplicate?: boolean;
+    name?: string;
+    cdl?: string;
+  },
+): AddDriverResult {
+  const valuesMap = values && typeof values === "object" && !Array.isArray(values) ? values : {};
+  const nameFromInfo = Array.isArray(valuesMap.info) ? String(valuesMap.info[0] ?? "").trim() : "";
+  const cdlFromSsccdl = Array.isArray(valuesMap.ssccdl)
+    ? String(valuesMap.ssccdl[1] ?? "").trim()
+    : "";
+  const cdlFromDmv = Array.isArray(valuesMap.dmv) ? String(valuesMap.dmv[1] ?? "").trim() : "";
+  const identity = {
+    name: (opts?.name ?? nameFromInfo).trim(),
+    cdl: (opts?.cdl ?? (cdlFromSsccdl || cdlFromDmv)).trim(),
+  };
+  const gate = guardAddDriverIdentity(
+    state,
+    identity,
+    opts?.acknowledgeIdentityDuplicate
+      ? { acknowledgeIdentityDuplicate: true }
+      : undefined,
+  );
+  if (!gate.ok) {
+    return { ok: false, error: gate.message };
+  }
+
   const driverId = "d_" + uid();
   const addedAt = Date.now();
-  const valuesMap = values && typeof values === "object" && !Array.isArray(values) ? values : {};
   update((d) => {
     const sections = { ...d.sections };
     for (const [sid, cells] of Object.entries(valuesMap)) {
       const prev = sections[sid];
       // Skip unknown section ids — spreading undefined.rows previously crashed Add Driver.
       if (!prev || !Array.isArray(prev.rows)) continue;
+      // Defense: never append a second compliance row for this brand-new id (shouldn't exist).
+      if (wouldCreateSameIdMultiRow({ ...d, sections }, sid, driverId)) continue;
       sections[sid] = {
         ...prev,
         rows: [
@@ -655,7 +697,7 @@ export function addDriver(values: Record<string, string[]>) {
     }
     return { ...d, sections };
   });
-  return driverId;
+  return { ok: true, driverId };
 }
 
 /**
@@ -850,14 +892,22 @@ export function clearComplianceTodayViewState(): { clearedChecklistKeys: number 
   return { clearedChecklistKeys };
 }
 
-/** Adds an empty row for an existing driver in a section where they are missing (keeps rows line-by-line). */
-export function addRowForDriver(sectionId: string, driverId: string, name: string) {
+/**
+ * Adds an empty row for an existing driver in a section where they are missing.
+ * SHRP-161: refuses when a compliance section already has a row for this driverId
+ * (prevents unintentional same-id multi-rows). Returns false when skipped.
+ */
+export function addRowForDriver(sectionId: string, driverId: string, name: string): boolean {
+  let added = false;
   update((d) => {
     const sec = d.sections[sectionId];
     if (!sec) return d;
     const existing = Array.isArray(sec.rows) ? sec.rows : [];
+    // Shared guard: compliance single-row sections + any section that already has the id.
+    if (wouldCreateSameIdMultiRow(d, sectionId, driverId)) return d;
     if (existing.some((r) => r.driverId === driverId)) return d;
     const cells = headersOf(sec).map((_, i) => (i === 0 ? name : ""));
+    added = true;
     return {
       ...d,
       sections: {
@@ -872,6 +922,7 @@ export function addRowForDriver(sectionId: string, driverId: string, name: strin
       },
     };
   });
+  return added;
 }
 
 /** Manual record lists (extra driver documents, owner operators, mechanics) — kept apart from the driver sections. */

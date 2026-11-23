@@ -75,7 +75,16 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
         return c;
       });
     }
-    addDriver(out);
+    const result = addDriver(out, {
+      name: b.name,
+      cdl: b.cdl,
+      acknowledgeIdentityDuplicate: dupAck,
+    });
+    if (!result.ok) {
+      setStep(0);
+      setErr(result.error);
+      return;
+    }
     toast.success(
       `${asText(b.name)} added as New Driver (onboarding) — use Move to Active when ready`,
     );
