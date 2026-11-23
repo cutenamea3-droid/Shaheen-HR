@@ -1,6 +1,7 @@
 /**
- * Personal CV / portfolio content — source of truth from the existing `/cv` page.
- * Metrics marked `unverified` need owner confirmation before treating as public claims.
+ * Personal CV content — source of truth from the existing `/cv` page.
+ * Recruiter-friendly resume (web + A4 PDF). Metrics marked `unverified`
+ * need owner confirmation before treating as public claims.
  */
 
 export const PROFILE = {
