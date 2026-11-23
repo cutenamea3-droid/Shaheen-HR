@@ -66,16 +66,16 @@ function reportToast(report: DrRestoreReport) {
 const toolbarBtnBase =
   "ui-press inline-flex h-9 items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-55 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-current [&_svg]:opacity-100";
 
-/** Secondary: near-black label + strong ink border on white/card (not washed grey). */
+/** Secondary: near-black label + solid ink border on white/card (not washed grey). */
 const toolbarBtnSecondary =
-  `${toolbarBtnBase} border-ink/50 bg-card text-foreground hover:border-primary hover:bg-accent hover:text-foreground`;
+  `${toolbarBtnBase} border-ink bg-card text-foreground hover:border-primary hover:bg-accent hover:text-foreground`;
 
 /** Backup Now: solid brand fill + light text for WCAG AA contrast on the fill. */
 const toolbarBtnPrimary =
   `${toolbarBtnBase} border-primary bg-brand text-primary-foreground hover:brightness-105`;
 
 const panelBtn =
-  "ui-press inline-flex items-center gap-1 rounded-md border-2 border-ink/50 bg-card px-2 py-1 text-xs font-semibold text-foreground hover:border-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-55 [&_svg]:text-current [&_svg]:opacity-100";
+  "ui-press inline-flex items-center gap-1 rounded-md border-2 border-ink bg-card px-2 py-1 text-xs font-semibold text-foreground hover:border-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-55 [&_svg]:text-current [&_svg]:opacity-100";
 
 type BusyKind = "backup-now" | "complete" | "restore" | null;
 
@@ -279,7 +279,7 @@ export function ComplianceDrBackupControls({ className = "" }: { className?: str
       />
       <button
         type="button"
-        className={cn(toolbarBtnSecondary, panelOpen && "border-primary text-primary")}
+        className={cn(toolbarBtnSecondary, panelOpen && "border-primary")}
         title="Backup status, coverage, encryption, daily reminder, off-site stop"
         aria-expanded={panelOpen}
         aria-controls="compliance-dr-status-panel"
