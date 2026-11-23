@@ -15,14 +15,21 @@ describe("sections migrate/link tolerate missing rows", () => {
   });
 
   it("migrateData does not throw when a section omits rows", () => {
-    const parsed = JSON.parse(exportBackup()) as {
+    const envelope = JSON.parse(exportBackup()) as {
+      data?: { sections: Record<string, Record<string, unknown>> };
+      sections?: Record<string, Record<string, unknown>>;
+    };
+    const parsed = (envelope.data ?? envelope) as {
       sections: Record<string, Record<string, unknown>>;
     };
-    const cdl = { ...parsed.sections.cdl };
+    const cdl = { ...parsed.sections.ssccdl };
     delete cdl.rows;
-    parsed.sections.cdl = cdl;
+    parsed.sections.ssccdl = cdl;
     importBackup(JSON.stringify(parsed));
-    const again = JSON.parse(exportBackup());
+    const againEnv = JSON.parse(exportBackup()) as {
+      data?: Parameters<typeof migrateData>[0];
+    } & Parameters<typeof migrateData>[0];
+    const again = (againEnv.data ?? againEnv) as Parameters<typeof migrateData>[0];
     expect(() => migrateData(again)).not.toThrow();
     expect(() => linkDrivers(again)).not.toThrow();
     expect(() => syncInactiveRoster(again)).not.toThrow();

@@ -17,6 +17,8 @@ import {
 } from "./sections";
 import { applyDriverClass, applyRosterKind } from "./driver-meta";
 import { applyDateOfHire } from "./driver-hr/hire-date";
+import { getDriverDrugTestMode } from "./driver-hr/drug-test-mode";
+import { useDrugTestMock } from "./driver-hr/drug-test-mock";
 import {
   cloudLoad,
   cloudSave,
@@ -26,6 +28,7 @@ import {
   subscribePortalAuth,
 } from "./cloud";
 import { isPreviewIsolated } from "./preview-isolated";
+import { clearAllFuturePlanExpanded } from "./future-plan-expand";
 import {
   FOLLOW_UP_SECTION_ID,
   FOLLOW_UP_HEADERS,
@@ -89,8 +92,7 @@ export function parseCloudSectionJson(raw: string): SectionData | undefined {
         const row = r as unknown as Record<string, unknown>;
         const id = typeof row.id === "string" ? row.id : "";
         if (!id) return null;
-        const driverId =
-          typeof row.driverId === "string" && row.driverId ? row.driverId : id;
+        const driverId = typeof row.driverId === "string" && row.driverId ? row.driverId : id;
         const cells = Array.isArray(row.cells)
           ? row.cells.map((c) => (c == null ? "" : String(c)))
           : [];
@@ -102,7 +104,9 @@ export function parseCloudSectionJson(raw: string): SectionData | undefined {
       widths: Array.isArray(o.widths) ? o.widths.map((w) => Number(w) || 0) : [],
       hidden: Array.isArray(o.hidden) ? o.hidden.map((h) => !!h) : [],
       rows,
-      ...(Array.isArray(o.dismissed) ? { dismissed: o.dismissed.filter((x): x is string => typeof x === "string") } : {}),
+      ...(Array.isArray(o.dismissed)
+        ? { dismissed: o.dismissed.filter((x): x is string => typeof x === "string") }
+        : {}),
     };
   } catch {
     return undefined;
@@ -524,7 +528,10 @@ export function setCell(sectionId: string, rowId: string, col: number, value: st
       rows: sec.rows.map((r) => {
         if (r.id !== rowId) return r;
         const cells = cellsOf(r);
-        const next = cells.length > col ? cells.slice() : [...cells, ...Array(col - cells.length + 1).fill("")];
+        const next =
+          cells.length > col
+            ? cells.slice()
+            : [...cells, ...Array(col - cells.length + 1).fill("")];
         next[col] = value == null ? "" : typeof value === "string" ? value : String(value);
         return { ...r, cells: next };
       }),
@@ -581,8 +588,7 @@ export function deleteDriver(driverId: string) {
 export function addDriver(values: Record<string, string[]>) {
   const driverId = "d_" + uid();
   const addedAt = Date.now();
-  const valuesMap =
-    values && typeof values === "object" && !Array.isArray(values) ? values : {};
+  const valuesMap = values && typeof values === "object" && !Array.isArray(values) ? values : {};
   update((d) => {
     const sections = { ...d.sections };
     for (const [sid, cells] of Object.entries(valuesMap)) {
@@ -637,22 +643,169 @@ export function setDriverDateOfHire(driverId: string, next: string) {
 export function resetToSpreadsheet() {
   update(() => buildSeed());
 }
-export function exportBackup() {
-  return JSON.stringify(state, null, 2);
+
+/** Backup envelope app id — keeps legacy raw AppData restore working. */
+export const BACKUP_APP_ID = "shaheen-driver-tracker";
+
+export type BackupCoverage = {
+  plans: boolean;
+  notes: boolean;
+  docs: boolean;
+  followUps: boolean;
+  records: boolean;
+  /** mock = in-file drug/CCF slice; secure-cloud = Prod RPCs not in JSON; none = empty mock */
+  drugTests: "mock" | "secure-cloud" | "none";
+};
+
+export type TrackerBackupEnvelope = {
+  app: typeof BACKUP_APP_ID;
+  version: 2;
+  exportedAt: string;
+  coverage: BackupCoverage;
+  data: AppData;
+  /** Present only when mock/isolated drug events exist — never pull secure Prod rows into JSON. */
+  drugTests?: unknown[];
+};
+
+function backupCoverageForExport(includeMockDrug: boolean): BackupCoverage {
+  return {
+    plans: true,
+    notes: true,
+    docs: true,
+    followUps: true,
+    records: true,
+    drugTests: includeMockDrug ? "mock" : getDrugBackupCoverageTag(),
+  };
 }
+
+function getDrugBackupCoverageTag(): BackupCoverage["drugTests"] {
+  return getDriverDrugTestMode() === "secure" ? "secure-cloud" : "none";
+}
+
+function readMockDrugEventsForBackup(): unknown[] | undefined {
+  if (getDriverDrugTestMode() === "secure") return undefined;
+  const events = useDrugTestMock.getState().events;
+  return Array.isArray(events) && events.length ? events : undefined;
+}
+
+function restoreMockDrugEventsFromBackup(events: unknown) {
+  if (getDriverDrugTestMode() === "secure") return;
+  if (!Array.isArray(events)) return;
+  useDrugTestMock.setState({ events: events as never });
+}
+
+function isAppDataShape(v: unknown): v is AppData {
+  return (
+    !!v &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    !!(v as AppData).sections &&
+    typeof (v as AppData).sections === "object" &&
+    !Array.isArray((v as AppData).sections)
+  );
+}
+
+/**
+ * Full tracker JSON backup.
+ * Always includes Compliance Today plans / temp notes / docs / follow-ups / record tabs.
+ * Drug/CCF: included only from in-memory mock (preview/isolated). Secure Prod drug rows stay in cloud RPCs — not copied into downloadable JSON.
+ */
+export function exportBackup() {
+  const drugTests = readMockDrugEventsForBackup();
+  const envelope: TrackerBackupEnvelope = {
+    app: BACKUP_APP_ID,
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    coverage: backupCoverageForExport(Boolean(drugTests?.length)),
+    data: state,
+    ...(drugTests?.length ? { drugTests } : {}),
+  };
+  return JSON.stringify(envelope, null, 2);
+}
+
+/** Human-readable coverage line for Backup button title / toast. */
+export function backupCoverageSummary(json?: string): string {
+  try {
+    if (json) {
+      const parsed = JSON.parse(json) as TrackerBackupEnvelope | AppData;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        "coverage" in parsed &&
+        (parsed as TrackerBackupEnvelope).coverage
+      ) {
+        const c = (parsed as TrackerBackupEnvelope).coverage;
+        const drug =
+          c.drugTests === "mock"
+            ? "drug/CCF (mock)"
+            : c.drugTests === "secure-cloud"
+              ? "drug/CCF (cloud only — not in file)"
+              : "drug/CCF (none in file)";
+        return `plans · notes · docs · follow-ups · records · ${drug}`;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  const tag = getDrugBackupCoverageTag();
+  const drug =
+    tag === "secure-cloud"
+      ? "drug/CCF (cloud only — not in file)"
+      : tag === "mock"
+        ? "drug/CCF (mock when present)"
+        : "drug/CCF (mock when present)";
+  return `plans · notes · docs · follow-ups · records · ${drug}`;
+}
+
 export function importBackup(json: string) {
   const parsed = JSON.parse(json) as unknown;
+  let data: AppData | null = null;
+  let drugSlice: unknown = undefined;
+
   if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    Array.isArray(parsed) ||
-    !(parsed as AppData).sections ||
-    typeof (parsed as AppData).sections !== "object" ||
-    Array.isArray((parsed as AppData).sections)
+    parsed &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed) &&
+    (parsed as TrackerBackupEnvelope).app === BACKUP_APP_ID &&
+    isAppDataShape((parsed as TrackerBackupEnvelope).data)
   ) {
+    data = (parsed as TrackerBackupEnvelope).data;
+    drugSlice = (parsed as TrackerBackupEnvelope).drugTests;
+  } else if (isAppDataShape(parsed)) {
+    data = parsed;
+  }
+
+  if (!data) {
     throw new Error("Not a valid backup file");
   }
-  update(() => migrateData(parsed as AppData).data);
+  update(() => migrateData(data!).data);
+  if (drugSlice !== undefined) restoreMockDrugEventsFromBackup(drugSlice);
+}
+
+/**
+ * Clears My Compliance Today *view* state only — not documents, Future Plans, notes, or cloud data.
+ * Removes today's dashboard checklist ticks + Future Plan expand accordion session.
+ */
+export function clearComplianceTodayViewState(): { clearedChecklistKeys: number } {
+  let clearedChecklistKeys = 0;
+  try {
+    if (typeof localStorage !== "undefined") {
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("shaheen-checklist-")) keys.push(k);
+      }
+      for (const k of keys) {
+        localStorage.removeItem(k);
+        clearedChecklistKeys += 1;
+      }
+      localStorage.removeItem("shaheen-compliance-today-detail");
+    }
+  } catch {
+    /* ignore */
+  }
+  clearAllFuturePlanExpanded();
+  return { clearedChecklistKeys };
 }
 
 /** Adds an empty row for an existing driver in a section where they are missing (keeps rows line-by-line). */
@@ -717,8 +870,9 @@ export function setRecordPersonActive(sectionId: string, personName: string, val
   const key = recordPersonKey(personName);
   if (!key) return;
   const label =
-    (value == null ? "" : typeof value === "string" ? value : String(value)).trim().toLowerCase() ===
-    "inactive"
+    (value == null ? "" : typeof value === "string" ? value : String(value))
+      .trim()
+      .toLowerCase() === "inactive"
       ? "Inactive"
       : "Active";
   update((d) => {
@@ -900,7 +1054,9 @@ export function moveRecordPerson(fromId: string, toId: string, personName: strin
 
 /** Rename every document row for a person within a record section so person-card grouping stays intact. */
 export function renameRecordPerson(sectionId: string, oldName: string, newName: string) {
-  const next = (newName == null ? "" : typeof newName === "string" ? newName : String(newName)).trim();
+  const next = (
+    newName == null ? "" : typeof newName === "string" ? newName : String(newName)
+  ).trim();
   if (!next) return;
   const key = recordPersonKey(oldName);
   if (!key || recordPersonKey(next) === key) return;
