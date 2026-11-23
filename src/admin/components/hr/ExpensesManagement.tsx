@@ -263,14 +263,18 @@ export function ExpensesManagement() {
         }
       />
 
-      <div className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-warn" role="status">
-        <strong>Mode:</strong> {expensesModeLabel(mode)}. Browser-local only until Admin expenses migration is applied and
-        Attendance cloud sync (PR #19) is verified. Not stored in attendance <code>app_state</code>. No bank/IBAN in this
-        module. Live cloud persistence is <strong>not</strong> claimed from this local store.
-      </div>
+      {/* Live (default) hides the old orange Mode / PR #19 jargon banner. Secure mode: short note only. */}
+      {mode === "secure" ? (
+        <div
+          className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground"
+          role="status"
+        >
+          {expensesModeLabel(mode)}. Your expense records sync with Admin cloud.
+        </div>
+      ) : null}
 
       <p className="text-sm text-muted-foreground">
-        Help: Use <em>Company / all</em> for a single company total (do not also enter the same amount per employee). Use{" "}
+        Use <em>Company / all</em> for a single company total (do not also enter the same amount per employee). Use{" "}
         <em>One</em> / <em>Multiple</em> to tag people without splitting the amount. Salary payments live under{" "}
         <strong>Salary pay</strong> — they are not expenses.
       </p>
