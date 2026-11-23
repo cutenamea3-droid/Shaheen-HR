@@ -17,6 +17,7 @@ import {
   ClipboardList,
   FlaskConical,
   Bell,
+  Eraser,
 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg.asset.json";
@@ -38,6 +39,8 @@ import { SECTIONS, headersOf } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
 import {
+  backupCoverageSummary,
+  clearComplianceTodayViewState,
   exportBackup,
   importBackup,
   loadFromStorage,
@@ -150,8 +153,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       const headers = headersOf(sec);
       c[def.id] = sec.rows.filter(
         (r) =>
-          !rowOrdinaryComplianceMuted(def, r, data) &&
-          analyzeRow(def, headers, r).issues.length,
+          !rowOrdinaryComplianceMuted(def, r, data) && analyzeRow(def, headers, r).issues.length,
       ).length;
     }
     return c;
@@ -387,18 +389,26 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
             <button
               type="button"
               onClick={() => {
-                const blob = new Blob([exportBackup()], { type: "application/json" });
+                const json = exportBackup();
+                const blob = new Blob([json], { type: "application/json" });
                 const a = document.createElement("a");
                 a.href = URL.createObjectURL(blob);
                 a.download = `shaheen-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+                toast.success("Backup downloaded", { description: backupCoverageSummary(json) });
               }}
+              title={`Download tracker backup — ${backupCoverageSummary()}`}
               className={btn}
             >
               <Download className="size-4" /> Backup
             </button>
-            <button type="button" onClick={() => fileRef.current?.click()} className={btn}>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              title="Restore tracker backup (plans, notes, docs, follow-ups, records; mock drug/CCF when present)"
+              className={btn}
+            >
               <Upload className="size-4" /> Restore
             </button>
             <input
@@ -411,13 +421,39 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
                 if (!f) return;
                 try {
                   importBackup(await f.text());
-                  toast.success("Backup restored");
+                  toast.success("Backup restored", {
+                    description:
+                      "Plans, notes, docs, and follow-ups restored. Secure drug/CCF stays in cloud.",
+                  });
                 } catch {
                   toast.error("That file is not a valid backup");
                 }
                 e.target.value = "";
               }}
             />
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  !confirm(
+                    "Clear My Compliance Today view state only?\n\nThis clears today’s checklist ticks and collapsed Future Plan panels.\nIt does NOT delete documents, saved Future Plans, notes, or cloud data.",
+                  )
+                ) {
+                  return;
+                }
+                const { clearedChecklistKeys } = clearComplianceTodayViewState();
+                toast.success("My Compliance Today view cleared", {
+                  description:
+                    clearedChecklistKeys > 0
+                      ? `Removed ${clearedChecklistKeys} checklist day(s). Documents and plans unchanged.`
+                      : "Expand panels reset. Documents and plans unchanged.",
+                });
+              }}
+              title="Clear My Compliance Today view (checklist + expand) — does not delete plans or docs"
+              className={btn}
+            >
+              <Eraser className="size-4" /> Clear Today
+            </button>
             <button
               type="button"
               onClick={() => {

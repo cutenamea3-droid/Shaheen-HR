@@ -19,27 +19,40 @@ describe("store mutations tolerate missing section.rows", () => {
   });
 
   it("addRowForDriver heals a corrupt CDL section without throwing", () => {
-    const parsed = JSON.parse(exportBackup()) as {
+    const envelope = JSON.parse(exportBackup()) as {
+      data?: { sections: Record<string, Record<string, unknown>> };
+      sections?: Record<string, Record<string, unknown>>;
+    };
+    const parsed = (envelope.data ?? envelope) as {
       sections: Record<string, Record<string, unknown>>;
     };
-    const cdl = { ...parsed.sections.cdl };
+    const cdl = { ...parsed.sections.ssccdl };
     delete cdl.rows;
-    parsed.sections.cdl = cdl;
+    parsed.sections.ssccdl = cdl;
     importBackup(JSON.stringify(parsed));
-    expect(() => addRowForDriver("cdl", "d_audit_rows", "Audit Driver")).not.toThrow();
-    const after = JSON.parse(exportBackup()) as {
+    expect(() => addRowForDriver("ssccdl", "d_audit_rows", "Audit Driver")).not.toThrow();
+    const afterEnv = JSON.parse(exportBackup()) as {
+      data?: { sections: Record<string, { rows?: { driverId: string }[] }> };
+      sections?: Record<string, { rows?: { driverId: string }[] }>;
+    };
+    const after = (afterEnv.data ?? afterEnv) as {
       sections: Record<string, { rows?: { driverId: string }[] }>;
     };
-    expect(after.sections.cdl?.rows?.some((r) => r.driverId === "d_audit_rows")).toBe(true);
+    expect(after.sections.ssccdl?.rows?.some((r) => r.driverId === "d_audit_rows")).toBe(true);
   });
 
   it("addRecord pads when cells is not an array", async () => {
-    const { addRecord, exportBackup: exp } = await import("@/lib/store");
-    expect(() => addRecord("extra_driver_documents", null as unknown as string[])).not.toThrow();
-    const after = JSON.parse(exp()) as {
+    const { addRecord, exportBackup: exp, RECORD_SECTION_IDS } = await import("@/lib/store");
+    const sectionId = RECORD_SECTION_IDS[0];
+    expect(() => addRecord(sectionId, null as unknown as string[])).not.toThrow();
+    const afterEnv = JSON.parse(exp()) as {
+      data?: { sections: Record<string, { rows?: { cells?: string[] }[] }> };
+      sections?: Record<string, { rows?: { cells?: string[] }[] }>;
+    };
+    const after = (afterEnv.data ?? afterEnv) as {
       sections: Record<string, { rows?: { cells?: string[] }[] }>;
     };
-    const rows = after.sections.extra_driver_documents?.rows ?? [];
+    const rows = after.sections[sectionId]?.rows ?? [];
     const last = rows[rows.length - 1];
     expect(Array.isArray(last?.cells)).toBe(true);
     expect(last?.cells?.[5]).toBe("Active");

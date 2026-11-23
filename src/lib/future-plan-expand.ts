@@ -64,6 +64,11 @@ export function clearFuturePlanExpandedIf(key: string) {
   if (expandedKey === key) setFuturePlanExpanded(null);
 }
 
+/** Collapse all Future Plan / suggestion panels (My Compliance Today view reset). */
+export function clearAllFuturePlanExpanded() {
+  setFuturePlanExpanded(null);
+}
+
 export function subscribeFuturePlanExpand(listener: Listener): () => void {
   listeners.add(listener);
   return () => {
