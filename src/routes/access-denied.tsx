@@ -86,13 +86,20 @@ function AccessDeniedPage() {
   }, [authEpoch]);
 
   useEffect(() => {
-    if (!ready || !mod || needAdmin) return;
-    // Seat arrived after a stale deny (e.g. Compliance login while Personal/Dispatch
-    // seats were already known) — leave Access Denied for the real home.
+    if (needAdmin) return;
+    // Dual-auth: never sticky-deny Compliance. An Admin seat alone used to keep
+    // owners on /access-denied?module=compliance forever. Always return to `/`
+    // so LockGate can sign into Driver Auth; portal ACL still enforces after login.
+    if (mod === "compliance") {
+      void navigate({ to: "/", replace: true });
+      return;
+    }
+    if (!ready || !mod) return;
+    // Seat arrived after a stale deny — leave Access Denied for the real home.
     // Do NOT auto-leave admin-only privilege denies (Drug Tests / Team / Activity).
     const home = homePathFor(grants);
     if (home === "/access-denied") return;
-    if (mod === "compliance" && canAccessPath(grants, "/")) {
+    if (canAccessPath(grants, home)) {
       void navigate({ to: home, replace: true });
     }
   }, [ready, grants, mod, needAdmin, navigate]);

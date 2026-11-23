@@ -10,9 +10,9 @@ import {
 } from "@/lib/module-access";
 
 /**
- * After sessions settle, bounce users away from Compliance URLs they lack seats for.
- * Admin keeps its own LoginGate — never Access-Deny `/admin` just because Compliance
- * was already probed.
+ * After sessions settle, bounce users away from non-independent module URLs they
+ * lack seats for. Compliance + Admin keep their own LoginGates — never Access-Deny
+ * one because the other module's seat was already probed (dual-auth).
  */
 export function ModuleRedirector() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -66,44 +66,15 @@ export function ModuleRedirector() {
     const mod = moduleForPath(pathname);
     if (mod === "public" || mod === "access-denied" || !mod) return;
 
-    // Compliance-only denial (Admin-only on Driver URLs).
-    // Admin LoginGate is never hard-denied here.
+    // Compliance + Admin are independent LoginGates — never hard-deny either
+    // from the other module's seat (fixes sticky /access-denied?module=compliance).
     if (!shouldDenyModulePath(grants, pathname)) return;
 
-    let alive = true;
-    void (async () => {
-      // Never bounce an authenticated Compliance session to Access Denied.
-      // LockGate only mounts children after driver_portal_accounts succeeds;
-      // a lagging seat probe must not sticky-deny the owner after login.
-      if (mod === "compliance") {
-        try {
-          const { hasPortalSession } = await import("@/lib/cloud");
-          if (!alive) return;
-          if (await hasPortalSession()) return;
-        } catch {
-          /* fall through — re-probe once more before deny */
-        }
-        try {
-          const fresh = await probeModuleGrants();
-          if (!alive) return;
-          if (fresh.compliance) {
-            setGrants(fresh);
-            return;
-          }
-        } catch {
-          /* fall through to deny */
-        }
-      }
-      if (!alive) return;
-      void navigate({
-        to: "/access-denied",
-        search: { module: mod },
-        replace: true,
-      });
-    })();
-    return () => {
-      alive = false;
-    };
+    void navigate({
+      to: "/access-denied",
+      search: { module: mod },
+      replace: true,
+    });
   }, [ready, grants, pathname, navigate]);
 
   return null;
