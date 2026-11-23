@@ -449,7 +449,7 @@ export function Vault() {
           <textarea
             className="hp-field min-h-[120px] py-2"
             data-testid="personal-vault-notes"
-            value={vaultNotes}
+            value={asTxt(vaultNotes)}
             onChange={(e) => setVaultNotes(e.target.value)}
             onInput={(e) => setVaultNotes((e.target as HTMLTextAreaElement).value)}
             placeholder="Do not store real passwords here. Semester goals only."

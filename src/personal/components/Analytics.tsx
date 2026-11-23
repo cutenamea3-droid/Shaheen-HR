@@ -339,7 +339,7 @@ export function Analytics() {
               ref={gLabelRef}
               className="hp-field"
               data-testid="personal-grade-label"
-              value={gLabel}
+              value={asTxt(gLabel)}
               onChange={(e) => setGLabel(e.target.value)}
               onInput={(e) => setGLabel((e.target as HTMLInputElement).value)}
               placeholder="e.g. Quiz 1 (from Grade Book)"
@@ -451,7 +451,7 @@ export function Analytics() {
               max={100}
               ref={swPctRef}
               data-testid="personal-sw-pct"
-              value={swPct}
+              value={asTxt(swPct)}
               onChange={(e) => setSwPct(e.target.value)}
               onInput={(e) => setSwPct((e.target as HTMLInputElement).value)}
               placeholder="empty"
@@ -465,7 +465,7 @@ export function Analytics() {
               max={100}
               ref={fePctRef}
               data-testid="personal-fe-pct"
-              value={fePct}
+              value={asTxt(fePct)}
               onChange={(e) => setFePct(e.target.value)}
               onInput={(e) => setFePct((e.target as HTMLInputElement).value)}
               placeholder="empty"

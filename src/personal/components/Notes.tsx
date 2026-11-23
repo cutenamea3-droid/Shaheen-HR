@@ -143,12 +143,12 @@ export function Notes() {
           <Field label="Course">
             <select
               className="hp-field"
-              value={courseId}
+              value={asTxt(courseId)}
               onChange={(e) => setCourseId(e.target.value)}
             >
               <option value="general">General revision</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)}
                 </option>
               ))}
@@ -159,7 +159,7 @@ export function Notes() {
               ref={titleRef}
               className="hp-field"
               data-testid="personal-note-title"
-              value={title}
+              value={asTxt(title)}
               onChange={(e) => setTitle(e.target.value)}
               onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
             />
@@ -183,7 +183,7 @@ export function Notes() {
               ref={bodyRef}
               className="hp-field min-h-[140px] py-2"
               data-testid="personal-note-body"
-              value={body}
+              value={asTxt(body)}
               onChange={(e) => setBody(e.target.value)}
               onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
               placeholder="Revision bullets, formulas, VULMS reminders — owner text only…"

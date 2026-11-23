@@ -417,7 +417,7 @@ export function EquipmentBoard({
                           <li key={l.id} className="flex flex-wrap items-center gap-2 text-xs">
                             <span>
                               {asText(l.load_number)} · {statusLabel(l.status)}
-                              {l.equipment ? ` · ${l.equipment}` : ""}
+                              {asText(l.equipment) ? ` · ${asText(l.equipment)}` : ""}
                             </span>
                             <button type="button" className="dispatch-btn-ghost" onClick={() => onOpen(l.id)}>
                               Update

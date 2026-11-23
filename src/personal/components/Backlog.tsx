@@ -50,9 +50,9 @@ export function Backlog() {
         }}
       >
         <Field label="Course">
-          <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+          <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
             {courses.map((c) => (
-              <option key={c.id} value={c.id}>
+              <option key={asTxt(c.id)} value={asTxt(c.id)}>
                 {asTxt(c.code)}
               </option>
             ))}
@@ -63,7 +63,7 @@ export function Backlog() {
             ref={labelRef}
             className="hp-field"
             data-testid="personal-backlog-label"
-            value={label}
+            value={asTxt(label)}
             onChange={(e) => setLabel(e.target.value)}
             onInput={(e) => setLabel((e.target as HTMLInputElement).value)}
             placeholder="e.g. Watch missed CS101 video week 3"
@@ -74,7 +74,7 @@ export function Backlog() {
             ref={minsRef}
             className="hp-field"
             data-testid="personal-backlog-mins"
-            value={mins}
+            value={asTxt(mins)}
             onChange={(e) => setMins(e.target.value)}
             onInput={(e) => setMins((e.target as HTMLInputElement).value)}
           />

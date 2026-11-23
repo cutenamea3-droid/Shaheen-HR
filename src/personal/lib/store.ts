@@ -549,7 +549,12 @@ export const usePersonal = create<PersonalStore>()(
           ),
           dayPlans: healDayPlans(raw.dayPlans, current.dayPlans),
           discipline: migrateDiscipline(arr(raw.discipline, current.discipline)),
-          vaultNotes: typeof raw.vaultNotes === "string" ? raw.vaultNotes : current.vaultNotes,
+          vaultNotes:
+            raw.vaultNotes == null
+              ? current.vaultNotes
+              : typeof raw.vaultNotes === "string"
+                ? raw.vaultNotes
+                : String(raw.vaultNotes),
           gradeEntries: arr(raw.gradeEntries, []).map((g) =>
             normalizeGradeEntry(g as Partial<GradeEntry> & Pick<GradeEntry, "id">),
           ),

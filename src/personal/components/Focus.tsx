@@ -297,7 +297,7 @@ export function Focus() {
                 ref={lessonLabelRef}
                 className="hp-field"
                 data-testid="personal-focus-lesson"
-                value={lessonLabel}
+                value={asTxt(lessonLabel)}
                 onChange={(e) => setLessonLabel(e.target.value)}
                 onInput={(e) => setLessonLabel((e.target as HTMLInputElement).value)}
                 placeholder="e.g. CS101 Lec 05 · owner label only"

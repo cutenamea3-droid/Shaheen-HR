@@ -380,7 +380,7 @@ export function Assessments() {
               ref={titleRef}
               className="hp-field"
               data-testid="personal-assessment-title"
-              value={title}
+              value={asTxt(title)}
               onChange={(e) => setTitle(e.target.value)}
               onInput={(e) => setTitle((e.target as HTMLInputElement).value)}
             />
@@ -389,7 +389,7 @@ export function Assessments() {
             <input
               className="hp-field"
               type="date"
-              value={dueDate}
+              value={asTxt(dueDate)}
               onChange={(e) => setDueDate(e.target.value)}
             />
           </Field>
@@ -403,10 +403,10 @@ export function Assessments() {
             </select>
           </Field>
           <Field label="Course">
-            <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+            <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
               <option value="general">General</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)}
                 </option>
               ))}

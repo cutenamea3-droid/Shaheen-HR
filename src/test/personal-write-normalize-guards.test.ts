@@ -39,6 +39,8 @@ describe("Personal store write-path normalize guards", () => {
     expect(analyticsUi).toMatch(/normalizeWeeklyReview\(/);
     expect(analyticsUi).toMatch(/useState\(asTxt\(review\.wins\)\)/);
     expect(analyticsUi).toMatch(/value=\{asTxt\(wins\)\}/);
+    expect(analyticsUi).toMatch(/value=\{asTxt\(gLabel\)\}/);
+    expect(vaultUi).toMatch(/value=\{asTxt\(vaultNotes\)\}/);
     const teamUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/TeamManagement.tsx"),
       "utf8",
@@ -389,6 +391,13 @@ describe("Personal store write-path normalize guards", () => {
     expect(src).toMatch(/normalizeExamPrepTask\(t\)/);
     expect(src).toMatch(/normalizeWeeklyReview\(r,/);
     expect(src).toMatch(/typeof vaultNotes === "string" \? vaultNotes : String\(vaultNotes\)/);
+    expect(src).toMatch(/typeof raw\.vaultNotes === "string"\s*\?\s*raw\.vaultNotes\s*:\s*String\(raw\.vaultNotes\)/);
+    expect(notesUi).toMatch(/value=\{asTxt\(title\)\}/);
+    expect(notesUi).toMatch(/value=\{asTxt\(body\)\}/);
+    expect(assessmentsUi).toMatch(/value=\{asTxt\(title\)\}/);
+    expect(backlogUi).toMatch(/value=\{asTxt\(label\)\}/);
+    expect(focusUi).toMatch(/value=\{asTxt\(lessonLabel\)\}/);
+    expect(opsBoards).toMatch(/asText\(l\.equipment\)/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {
