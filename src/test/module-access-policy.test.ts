@@ -62,19 +62,17 @@ describe("module-access policy (Compliance + Attendance)", () => {
     expect(moduleForPath("/access-denied")).toBe("access-denied");
   });
 
-  it("never Access-Denies Admin LoginGate", () => {
+  it("never Access-Denies Compliance or Admin LoginGates (dual-auth)", () => {
     const complianceOnly = seatsToGrants([{ module: "compliance", role: "admin", active: true }]);
+    const adminOnly = seatsToGrants([{ module: "admin-hr", role: "admin", active: true }]);
     expect(isIndependentLoginModule("admin-hr")).toBe(true);
-    expect(isIndependentLoginModule("compliance")).toBe(false);
+    expect(isIndependentLoginModule("compliance")).toBe(true);
 
     expect(canAccessPath(complianceOnly, "/admin")).toBe(false);
     expect(shouldDenyModulePath(complianceOnly, "/admin")).toBe(false);
     expect(shouldDenyModulePath(complianceOnly, "/")).toBe(false);
-  });
-
-  it("still Access-Denies Compliance URLs for Admin-only seats", () => {
-    const adminOnly = seatsToGrants([{ module: "admin-hr", role: "admin", active: true }]);
-    expect(shouldDenyModulePath(adminOnly, "/")).toBe(true);
+    // Admin JWT alone must NOT sticky-deny Compliance — LockGate signs into Driver Auth.
+    expect(shouldDenyModulePath(adminOnly, "/")).toBe(false);
     expect(shouldDenyModulePath(adminOnly, "/admin")).toBe(false);
     expect(shouldDenyModulePath({ compliance: null, "admin-hr": null }, "/")).toBe(false);
   });

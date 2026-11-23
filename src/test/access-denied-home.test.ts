@@ -8,19 +8,20 @@ import { homePathFor, canAccessPath, shouldDenyModulePath } from "@/lib/module-a
  *   /access-denied?module=compliance
  *   "You do not have permission for Driver Compliance."
  *
- * Trigger: Admin-HR soft/local seat without Compliance grant + visit `/`
- * (ModuleRedirector). Broken follow-up: AccessDenied defaulted homePath to `/`,
- * which re-entered the deny loop; Production F5 on /access-denied also threw #418.
+ * Trigger (fixed): Admin-HR seat without Compliance grant + visit `/` used to
+ * ModuleRedirector → sticky Access Denied. Dual-auth fix: Compliance is an
+ * independent LoginGate — never hard-deny `/`; access-denied?module=compliance
+ * always returns to `/` so LockGate can sign in.
  */
 describe("access-denied home path (auth race / sticky loop)", () => {
-  it("admin-hr-only cannot open Compliance and homes on /admin", () => {
+  it("admin-hr-only still reaches Compliance LoginGate (no sticky deny)", () => {
     const grants = {
       compliance: null,
       "admin-hr": "admin" as const,
     };
     expect(canAccessPath(grants, "/")).toBe(false);
     expect(canAccessPath(grants, "/admin")).toBe(true);
-    expect(shouldDenyModulePath(grants, "/")).toBe(true);
+    expect(shouldDenyModulePath(grants, "/")).toBe(false);
     expect(shouldDenyModulePath(grants, "/admin")).toBe(false);
     expect(homePathFor(grants)).toBe("/admin");
   });
@@ -46,7 +47,7 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).toMatch(/authEpoch/);
     expect(src).toMatch(/shaheen-lock/);
     expect(src).toMatch(/shaheen-portal-ready/);
-    expect(src).toMatch(/hasPortalSession/);
+    expect(src).toMatch(/independent LoginGates/);
   });
 
   it("LockGate announces portal-ready after ACL sign-in", () => {
@@ -62,11 +63,11 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     expect(src).not.toMatch(/getDispatchAccount/);
   });
 
-  it("AccessDenied page leaves after Compliance seat arrives", () => {
+  it("AccessDenied page leaves Compliance deny immediately to / (LoginGate)", () => {
     const src = readFileSync(resolve(process.cwd(), "src/routes/access-denied.tsx"), "utf8");
     expect(src).toMatch(/onAuthStateChange/);
-    expect(src).toMatch(/canAccessPath\(grants, "\/"\)/);
-    expect(src).toMatch(/navigate\(\{ to: home, replace: true \}\)/);
+    expect(src).toMatch(/mod === "compliance"/);
+    expect(src).toMatch(/navigate\(\{ to: "\/", replace: true \}\)/);
   });
 
   it("AdminOnly privilege deny uses need=admin (not module-missing copy)", () => {

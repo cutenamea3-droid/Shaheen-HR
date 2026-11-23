@@ -83,18 +83,20 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
 }
 
 /**
- * Admin keeps its own LoginGate + auth storage.
- * Missing an Admin seat must NOT mean Access Denied — the user still needs
- * `/admin` login. Compliance is different: seats without Compliance are bounced
- * off Driver URLs.
+ * Compliance and Admin use separate Auth projects + LoginGates.
+ * Missing a seat in one module must NEVER Access-Deny the other module's URLs —
+ * that sticky-denied `/access-denied?module=compliance` when an Admin JWT was
+ * already present but Driver Auth had not signed in yet (owner dual-login).
+ * Enforce ACL inside each LoginGate / RLS instead.
  */
 export function isIndependentLoginModule(mod: ModuleId | "public" | "access-denied" | null): boolean {
-  return mod === "admin-hr";
+  return mod === "admin-hr" || mod === "compliance";
 }
 
 /**
  * Whether ModuleRedirector should send the user to /access-denied for this path.
- * Pure + testable. Returns false while anonymous (no seats) so LoginGates can run.
+ * Pure + testable. Independent login modules (Compliance + Admin) are never
+ * hard-denied here — their LoginGates + portal ACL/RLS enforce access.
  */
 export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
@@ -105,7 +107,6 @@ export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): bo
   const hasAnySeat = Boolean(g.compliance || g["admin-hr"]);
   if (!hasAnySeat) return false;
 
-  // Compliance URLs only: Admin-only without a Compliance seat → Access Denied.
   return !canAccessPath(grants, pathname);
 }
 
