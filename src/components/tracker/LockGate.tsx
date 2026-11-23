@@ -12,7 +12,10 @@ import {
   type PortalAccount,
 } from "@/lib/cloud";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
-import { AboutPanel } from "./AboutPanel";
+import { ForgotPasswordLink } from "@/components/portal-login/ForgotPasswordLink";
+import { PasswordField } from "@/components/portal-login/PasswordField";
+import { PortalLoginCard, PortalLoginShell } from "@/components/portal-login/PortalLoginShell";
+import { AboutPanel } from "@/components/tracker/AboutPanel";
 
 export { isPreviewIsolated } from "@/lib/preview-isolated";
 
@@ -197,54 +200,42 @@ export function LockGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
-      <div className="grid w-full max-w-6xl items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
-        <div className="order-2 lg:order-1">
-          <AboutPanel />
-        </div>
-        <form
-          onSubmit={async (event) => {
-            event.preventDefault();
-            if (busy) return;
-            setBusy(true);
-            setError("");
-            try {
-              const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
-              const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
-              const { account: next, created } = await signInPortalAccount(nextEmail, nextPassword);
-              setAccount(healPortalAccount(next));
-              setPassword("");
-              // Seat probes must refresh after ACL is ready — auth events can race ahead.
-              window.dispatchEvent(new Event("shaheen-portal-ready"));
-              if (created) {
-                toast.success("Driver Compliance account created", {
-                  description:
-                    "Signed in. Cloud will upload seed data if the remote store is empty.",
-                });
-              } else {
-                toast.success("Signed in");
-              }
-            } catch (e) {
-              const message = e instanceof Error ? e.message : "Could not sign in.";
-              setError(message);
-              toast.error("Sign-in failed", { description: message, duration: 12000 });
-            } finally {
-              setBusy(false);
+    <PortalLoginShell about={<AboutPanel compact />}>
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (busy) return;
+          setBusy(true);
+          setError("");
+          try {
+            const nextEmail = (asText(email).trim() || emailRef.current?.value || "").trim();
+            const nextPassword = (asText(password) || passwordRef.current?.value || "").trim();
+            const { account: next, created } = await signInPortalAccount(nextEmail, nextPassword);
+            setAccount(healPortalAccount(next));
+            setPassword("");
+            // Seat probes must refresh after ACL is ready — auth events can race ahead.
+            window.dispatchEvent(new Event("shaheen-portal-ready"));
+            if (created) {
+              toast.success("Driver Compliance account created", {
+                description: "Signed in. Your data will sync when cloud is ready.",
+              });
+            } else {
+              toast.success("Signed in");
             }
-          }}
-          className="ui-lift ui-glow order-1 mx-auto w-full max-w-md rounded-3xl border border-t-4 border-t-primary bg-card p-8 shadow-card lg:order-2"
+          } catch (e) {
+            const message = e instanceof Error ? e.message : "Could not sign in.";
+            setError(message);
+            toast.error("Sign-in failed", { description: message, duration: 12000 });
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <PortalLoginCard
+          logoSrc={logo.url}
+          title="Driver Compliance Portal"
+          subtitle="Sign in with your individual account"
         >
-          <img
-            src={logo.url}
-            alt="Shaheen Transport LLC"
-            className="mx-auto h-40 w-auto rounded-xl"
-          />
-          <h1 className="mt-4 text-center text-2xl font-extrabold text-foreground">
-            Driver Compliance Portal
-          </h1>
-          <p className="mt-1 text-center text-sm text-muted-foreground">
-            Sign in with your individual account
-          </p>
           {error && (
             <p
               role="alert"
@@ -268,21 +259,26 @@ export function LockGate({ children }: { children: ReactNode }) {
             onInput={(event) => setEmail((event.target as HTMLInputElement).value)}
             className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground"
           />
-          <label className="mt-4 block text-sm font-bold text-foreground" htmlFor="portal-password">
-            Password
-          </label>
-          <input
+          <PasswordField
             id="portal-password"
-            data-testid="portal-password"
-            type="password"
-            autoComplete="current-password"
-            required
-            ref={passwordRef}
+            testId="portal-password"
             value={asText(password)}
-            onChange={(event) => setPassword(event.target.value)}
-            onInput={(event) => setPassword((event.target as HTMLInputElement).value)}
-            className="mt-1 h-11 w-full rounded-xl border bg-card px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            onChange={setPassword}
+            inputRef={passwordRef}
           />
+          <div className="mt-1 flex justify-end">
+            <ForgotPasswordLink
+              email={asText(email)}
+              resetPasswordForEmail={async (mail) => {
+                if (!isSupabaseConfigured()) {
+                  return { error: { message: "Cloud sign-in is not configured on this build." } };
+                }
+                const redirectTo = `${window.location.origin}/`;
+                const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo });
+                return { error: error ? { message: error.message } : null };
+              }}
+            />
+          </div>
           <button
             type="submit"
             data-testid="portal-sign-in"
@@ -292,16 +288,15 @@ export function LockGate({ children }: { children: ReactNode }) {
             <Lock className="size-5" /> {busy ? "Signing in…" : "Sign in"}
           </button>
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            First visit for this email auto-creates the Auth account with the password you type
-            (nothing is invented). If signup asks to confirm email, turn off Confirm email in
-            Supabase Auth settings, then try again.
+            Use the email and password from your administrator. On first visit, your account may be
+            created automatically with the password you enter.
           </p>
           <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
             <ShieldCheck className="size-4 text-ok" /> Access is managed by your Driver Compliance
             administrator
           </p>
-        </form>
-      </div>
-    </div>
+        </PortalLoginCard>
+      </form>
+    </PortalLoginShell>
   );
 }
