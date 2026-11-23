@@ -100,7 +100,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
             className="cv-faq-panel"
             initial={reduce ? false : { height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={reduce ? undefined : { height: 0, opacity: 0 }}
+            exit={{ height: 0, opacity: reduce ? 1 : 0 }}
             transition={{ duration: reduce ? 0 : 0.26, ease: [0.2, 0.7, 0.2, 1] }}
           >
             <p>{a}</p>
@@ -196,13 +196,11 @@ export function CvPortfolio() {
                         <motion.span
                           layoutId="cv-nav-pill"
                           className="cv-nav-pill"
-                          transition={{
-                            type: "spring",
-                            stiffness: 420,
-                            damping: 36,
-                            mass: 0.7,
-                            duration: reduce ? 0 : undefined,
-                          }}
+                          transition={
+                            reduce
+                              ? { duration: 0 }
+                              : { type: "spring", stiffness: 420, damping: 36, mass: 0.7 }
+                          }
                         />
                       ) : null}
                       <span className="cv-nav-label">{item.label}</span>
