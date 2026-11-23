@@ -198,18 +198,18 @@
 }
 .cv-theme .cv-btn-ghost:hover { background: color-mix(in srgb, var(--cv-charcoal) 4%, transparent); }
 
-/* —— Hero: brand-first, NO empty initials panel —— */
+/* —— Hero: brand-first + portrait (no empty initials / Currently card) —— */
 .cv-theme .cv-hero {
   position: relative;
   display: grid;
-  gap: 2.75rem;
+  gap: 2.5rem;
   padding: 4.75rem 0 3.25rem;
-  align-items: end;
+  align-items: center;
 }
 @media (min-width: 1024px) {
   .cv-theme .cv-hero {
-    grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.55fr);
-    gap: 2.75rem;
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.7fr);
+    gap: 3rem;
     padding: 5.5rem 0 3.5rem;
     min-height: min(62vh, 600px);
   }
@@ -284,63 +284,46 @@
   margin-top: 2rem;
 }
 
-/* Compact “Currently” panel — supportive, not dominant empty card */
-.cv-theme .cv-now {
-  position: relative;
-  align-self: center;
-  padding: 1.35rem 1.35rem 1.4rem;
-  border-radius: 1.15rem;
-  background: var(--cv-paper);
-  border: 1px solid var(--cv-line);
-  box-shadow: 0 18px 40px -32px rgba(26, 23, 20, 0.4);
-  overflow: hidden;
+/* Hero portrait — 4:5 frame, violet border/shadow; PDF stays photo-free */
+.cv-theme .cv-portrait-wrap {
+  justify-self: center;
+  width: min(100%, 18.5rem);
 }
-.cv-theme .cv-now-inner { position: relative; }
-.cv-theme .cv-now-kicker {
+@media (min-width: 768px) {
+  .cv-theme .cv-portrait-wrap { width: min(100%, 20.5rem); }
+}
+@media (min-width: 1024px) {
+  .cv-theme .cv-portrait-wrap {
+    width: min(100%, 22.5rem);
+    justify-self: end;
+  }
+}
+.cv-theme .cv-portrait {
   margin: 0;
-  font-size: 0.7em;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--cv-violet-mid);
+  position: relative;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: color-mix(in srgb, var(--cv-violet-soft) 50%, #fff);
+  border: 2px solid color-mix(in srgb, var(--cv-violet-mid) 42%, transparent);
+  box-shadow:
+    0 24px 52px -26px rgba(76, 29, 149, 0.38),
+    0 10px 28px -22px rgba(26, 23, 20, 0.35);
 }
-.cv-theme .cv-now h2 {
-  margin: 0.55rem 0 0;
-  font-family: var(--cv-serif);
-  font-size: clamp(1.35em, 2vw, 1.65em);
-  font-weight: 550;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-.cv-theme .cv-now p {
-  margin: 0.55rem 0 0;
-  color: var(--cv-mute);
-  font-size: 0.95em;
-  line-height: 1.5;
-}
-.cv-theme .cv-now-list {
-  margin: 1.15rem 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.55rem;
-}
-.cv-theme .cv-now-list li {
-  display: flex;
-  gap: 0.55rem;
-  align-items: baseline;
-  font-size: 0.92em;
-  font-weight: 650;
-  color: var(--cv-charcoal);
-}
-.cv-theme .cv-now-list li::before {
+.cv-theme .cv-portrait::after {
   content: "";
-  width: 0.4rem;
-  height: 0.4rem;
-  margin-top: 0.35rem;
-  border-radius: 999px;
-  background: var(--cv-violet-mid);
-  flex-shrink: 0;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #fff 40%, transparent);
+}
+.cv-theme .cv-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 12%;
 }
 
 /* —— Section chrome —— */

@@ -13,8 +13,13 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
   it("portfolio has editorial hero without empty initials panel", () => {
     const tsx = readFileSync(resolve(process.cwd(), "src/cv/CvPortfolio.tsx"), "utf8");
     const css = readFileSync(resolve(process.cwd(), "src/cv/cv-portfolio.css"), "utf8");
-    expect(tsx).not.toMatch(/cv-stage|cv-stage-mono|cv-portrait/);
-    expect(css).not.toMatch(/cv-stage-mono|cv-portrait/);
+    expect(tsx).not.toMatch(/cv-stage|cv-stage-mono/);
+    expect(css).not.toMatch(/cv-stage-mono/);
+    expect(tsx).toMatch(/cv-portrait/);
+    expect(tsx).toMatch(/\/cv\/portrait\.(webp|jpg)/);
+    expect(tsx).not.toMatch(/cv-now/);
+    const resumeSrc = readFileSync(resolve(process.cwd(), "src/cv/resume-pdf.ts"), "utf8");
+    expect(resumeSrc).not.toMatch(/addImage|\/cv\/portrait/);
     expect(css).toMatch(/clamp\(3\.6em,\s*7\.2vw,\s*5\.5em\)/);
     expect(css).toMatch(/min\(1360px|min\(1400px|min\(1440px/);
     expect(css).toMatch(/font-size:\s*23px/);

@@ -257,22 +257,20 @@ export function CvPortfolio() {
             </div>
           </Rise>
 
-          <Rise className="cv-now" aria-label="Current focus">
-            <div className="cv-now-inner">
-              <p className="cv-now-kicker">Currently</p>
-              <h2>
-                Leading HR &amp; safety compliance for a growing fleet operation.
-              </h2>
-              <p>
-                Building the systems I use daily — driver compliance and admin attendance —
-                while keeping records audit-ready.
-              </p>
-              <ul className="cv-now-list">
-                <li>Driver document &amp; HOS oversight</li>
-                <li>Attendance &amp; workforce operations</li>
-                <li>Internal product design &amp; shipping</li>
-              </ul>
-            </div>
+          <Rise className="cv-portrait-wrap">
+            <figure className="cv-portrait">
+              <picture>
+                <source srcSet="/cv/portrait.webp" type="image/webp" />
+                <img
+                  src="/cv/portrait.jpg"
+                  alt="Portrait of Muhammad Yousaf Shahzad"
+                  width={800}
+                  height={1000}
+                  decoding="async"
+                  fetchPriority="high"
+                />
+              </picture>
+            </figure>
           </Rise>
         </header>
 
