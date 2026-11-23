@@ -22,6 +22,14 @@ describe("Compliance DR toolbar visibility (SHRP-162)", () => {
     expect(src).toMatch(/bg-card/);
   });
 
+  it("uses high-contrast primary fill and solid secondary ink labels", () => {
+    expect(src).toMatch(/bg-brand text-primary-foreground/);
+    expect(src).toMatch(/border-ink\/50/);
+    expect(src).toMatch(/\[&_svg\]:text-current/);
+    expect(src).not.toMatch(/bg-secondary text-secondary-foreground/);
+    expect(src).not.toMatch(/hover:text-primary(?!-)/);
+  });
+
   it("exposes honest unavailable / busy reasons", () => {
     expect(src).toMatch(/Backup Now in progress/);
     expect(src).toMatch(/Complete Backup in progress/);

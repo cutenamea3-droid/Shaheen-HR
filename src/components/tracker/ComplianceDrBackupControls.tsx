@@ -59,18 +59,23 @@ function reportToast(report: DrRestoreReport) {
   else toast.success(title, { description: desc });
 }
 
-/** Shared header-toolbar chrome — dark readable text on card/light surfaces. */
+/**
+ * Header-toolbar chrome — high contrast on card surfaces (light + dark).
+ * Icons inherit label color via text-current (never muted / 50% opacity at rest).
+ */
 const toolbarBtnBase =
-  "ui-press inline-flex h-9 items-center gap-1.5 rounded-lg border-2 bg-card px-3 text-sm font-bold text-foreground shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-55";
+  "ui-press inline-flex h-9 items-center gap-1.5 rounded-lg border-2 px-3 text-sm font-bold shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-55 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-current [&_svg]:opacity-100";
 
+/** Secondary: near-black label + strong ink border on white/card (not washed grey). */
 const toolbarBtnSecondary =
-  `${toolbarBtnBase} border-border hover:border-primary hover:text-primary`;
+  `${toolbarBtnBase} border-ink/50 bg-card text-foreground hover:border-primary hover:bg-accent hover:text-foreground`;
 
+/** Backup Now: solid brand fill + light text for WCAG AA contrast on the fill. */
 const toolbarBtnPrimary =
-  `${toolbarBtnBase} border-primary bg-secondary text-secondary-foreground hover:border-primary hover:bg-brand hover:text-primary-foreground`;
+  `${toolbarBtnBase} border-primary bg-brand text-primary-foreground hover:brightness-105`;
 
 const panelBtn =
-  "ui-press inline-flex items-center rounded-md border-2 border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-55";
+  "ui-press inline-flex items-center gap-1 rounded-md border-2 border-ink/50 bg-card px-2 py-1 text-xs font-semibold text-foreground hover:border-primary hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-55 [&_svg]:text-current [&_svg]:opacity-100";
 
 type BusyKind = "backup-now" | "complete" | "restore" | null;
 
