@@ -57,6 +57,9 @@ export function needsExplicitConflictUx(opts: {
   cloudMeaningful: boolean;
   diverge: boolean;
   pendingUnsynced: boolean;
+  /** Soft-refresh: Entered-0 local vs filled cloud — Prefer cloud, no sticky conflict. */
+  autoPreferCloud?: boolean;
 }): boolean {
+  if (opts.autoPreferCloud) return false;
   return opts.pendingUnsynced && opts.localMeaningful && opts.cloudMeaningful && opts.diverge;
 }

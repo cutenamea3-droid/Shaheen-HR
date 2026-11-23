@@ -12,10 +12,12 @@ import {
 } from "./hr-local-pending";
 import {
   decideHrSync,
+  hrAttendanceEntryCount,
   isHrMeaningful,
   isHrPayloadEmpty,
   isHrSeedLike,
   refuseSeedOrEmptyPush,
+  shouldAutoPreferCloud,
 } from "./hr-sync-protect";
 import { hrPayloadsDiverge, needsExplicitConflictUx, type HrSyncUi } from "./hr-sync-status";
 import { withNormalizedTasks } from "./normalize-tasks";
@@ -93,9 +95,9 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
   }
   const local = snapshot();
 
-  // Never auto-upload empty/seed over an existing (or empty) cloud copy.
-  // Fetch current cloud first when local looks like seed/empty.
-  if (isHrSeedLike(local) || isHrPayloadEmpty(local)) {
+  // Never auto-upload empty/seed / zero-attendance over a filled cloud copy.
+  // Fetch cloud when local looks like seed, empty, or Entered-0 (no punches).
+  if (isHrSeedLike(local) || isHrPayloadEmpty(local) || hrAttendanceEntryCount(local) === 0) {
     const { data: cloudRow, error: cloudErr } = await readCloudRow(userId);
     if (cloudErr) {
       setStatus("error");
@@ -105,6 +107,11 @@ async function push(userId: string, attempt = 0): Promise<boolean> {
     const cloudData = cloudRow?.data;
     if (refuseSeedOrEmptyPush(local, cloudData)) {
       console.warn("[HR cloud] refused seed/empty upload (protects app_state + local)");
+      // Soft-refresh: Prefer cloud instead of leaving sticky Not Synced.
+      if (shouldAutoPreferCloud(local, cloudData) && cloudData && !isHrPayloadEmpty(cloudData)) {
+        applyHrPayload(cloudData);
+        lastStamp = cloudRow?.updated_at ?? lastStamp;
+      }
       clearHrPendingUnsynced();
       setStatus("synced");
       return false;
@@ -322,6 +329,23 @@ export async function startSync(userId: string) {
   await whenAttendanceHydrated();
   const local = snapshot();
   const unsynced = hasHrPendingUnsynced();
+  // Soft-refresh: roster-only / zero-attendance local + filled cloud → Prefer cloud
+  // (never sticky Not Synced; never upload empty punches over cloud).
+  {
+    const { data: peek, error: peekErr } = await readCloudRow(userId);
+    if (!peekErr && shouldAutoPreferCloud(local, peek?.data)) {
+      clearHrPendingUnsynced();
+      setHrLocalOnlySessionFlag(false);
+      if (peek?.data && !isHrPayloadEmpty(peek.data)) {
+        applyHrPayload(peek.data);
+        lastStamp = peek.updated_at ?? lastStamp;
+      }
+      setStatus("synced");
+      wireLiveSync(userId);
+      return;
+    }
+  }
+
   // Pending real local vs meaningful divergent cloud → explicit conflict UX (never silent LWW).
   if (unsynced && !isHrSeedLike(local) && isHrMeaningful(local) && !isHrPayloadEmpty(local)) {
     const { data, error } = await readCloudRow(userId);
@@ -340,9 +364,21 @@ export async function startSync(userId: string) {
         cloudMeaningful,
         diverge: hrPayloadsDiverge(local, cloudData, KEYS),
         pendingUnsynced: true,
+        autoPreferCloud: shouldAutoPreferCloud(local, cloudData),
       })
     ) {
       openConflict(cloudData, data?.updated_at ?? "");
+      wireLiveSync(userId);
+      return;
+    }
+    // Prefer cloud when local attendance looks empty — do not push empty over cloud.
+    if (shouldAutoPreferCloud(local, cloudData)) {
+      clearHrPendingUnsynced();
+      if (cloudData && !isHrPayloadEmpty(cloudData)) {
+        applyHrPayload(cloudData);
+        lastStamp = data?.updated_at ?? lastStamp;
+      }
+      setStatus("synced");
       wireLiveSync(userId);
       return;
     }
