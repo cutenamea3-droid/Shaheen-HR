@@ -233,7 +233,7 @@ export function TeamManagement() {
                   <select
                     className="h-9 rounded-lg border bg-card px-2"
                     aria-label={`Role for ${asText(member.email)}`}
-                    value={member.role}
+                    value={asText(member.role) === "admin" ? "admin" : "standard"}
                     disabled={busy || member.user_id === currentAccount.user_id}
                     onChange={(event) => void changeAccess(member, event.target.value as PortalRole, member.active)}
                   >

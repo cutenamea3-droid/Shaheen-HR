@@ -139,7 +139,7 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                 <td className="p-3">
                   <select
                     className="field h-8 w-32"
-                    value={m.role}
+                    value={asText(m.role) === "admin" ? "admin" : "standard"}
                     onChange={(e) => {
                       const nextRole = e.target.value as Role;
                       upsert({ ...m, role: nextRole });

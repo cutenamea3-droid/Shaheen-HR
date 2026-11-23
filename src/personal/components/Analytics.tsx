@@ -33,6 +33,7 @@ import {
 import {
   buildWeeklyStats,
   emptyWeeklyReview,
+  normalizeWeeklyReview,
   weekStartMonday,
 } from "@/personal/lib/weekly-review";
 
@@ -132,21 +133,24 @@ export function Analytics() {
 
   const whatIf = estimateCourseAggregate({
     semesterWorkPct: (() => {
-      const raw = (swPct === "" ? swPctRef.current?.value ?? "" : swPct).trim();
+      const raw = asTxt(swPct === "" ? swPctRef.current?.value ?? "" : swPct).trim();
       return raw === "" ? null : Number(raw);
     })(),
     finalExamPct: (() => {
-      const raw = (fePct === "" ? fePctRef.current?.value ?? "" : fePct).trim();
+      const raw = asTxt(fePct === "" ? fePctRef.current?.value ?? "" : fePct).trim();
       return raw === "" ? null : Number(raw);
     })(),
   });
 
   const weekStart = weekStartMonday(todayKey());
   const weekly = buildWeeklyStats(weekStart, sessions, discipline, assessments);
-  const review = weeklyReviews[weekStart] ?? emptyWeeklyReview(weekStart);
-  const [wins, setWins] = useState(review.wins);
-  const [blockers, setBlockers] = useState(review.blockers);
-  const [nextFocus, setNextFocus] = useState(review.nextFocus);
+  const review = normalizeWeeklyReview(
+    weeklyReviews[weekStart] ?? emptyWeeklyReview(weekStart),
+    weekStart,
+  );
+  const [wins, setWins] = useState(asTxt(review.wins));
+  const [blockers, setBlockers] = useState(asTxt(review.blockers));
+  const [nextFocus, setNextFocus] = useState(asTxt(review.nextFocus));
   const winsRef = useRef<HTMLTextAreaElement>(null);
   const blockersRef = useRef<HTMLTextAreaElement>(null);
   const nextFocusRef = useRef<HTMLTextAreaElement>(null);
@@ -500,7 +504,7 @@ export function Analytics() {
               ref={winsRef}
               data-testid="personal-weekly-wins"
               className="hp-field min-h-[72px] py-2"
-              value={wins}
+              value={asTxt(wins)}
               onChange={(e) => setWins(e.target.value)}
               onInput={(e) => setWins((e.target as HTMLTextAreaElement).value)}
               placeholder="Verified submits, handout coverage…"
@@ -511,7 +515,7 @@ export function Analytics() {
               ref={blockersRef}
               data-testid="personal-weekly-blockers"
               className="hp-field min-h-[72px] py-2"
-              value={blockers}
+              value={asTxt(blockers)}
               onChange={(e) => setBlockers(e.target.value)}
               onInput={(e) => setBlockers((e.target as HTMLTextAreaElement).value)}
               placeholder="What slipped — no invented excuses needed"
@@ -522,7 +526,7 @@ export function Analytics() {
               ref={nextFocusRef}
               data-testid="personal-weekly-next"
               className="hp-field min-h-[72px] py-2"
-              value={nextFocus}
+              value={asTxt(nextFocus)}
               onChange={(e) => setNextFocus(e.target.value)}
               onInput={(e) => setNextFocus((e.target as HTMLTextAreaElement).value)}
               placeholder="1–3 finishable targets"
@@ -533,9 +537,9 @@ export function Analytics() {
               onClick={() => {
                 upsertWeeklyReview({
                   weekStart,
-                  wins: wins || winsRef.current?.value || "",
-                  blockers: blockers || blockersRef.current?.value || "",
-                  nextFocus: nextFocus || nextFocusRef.current?.value || "",
+                  wins: asTxt(wins) || winsRef.current?.value || "",
+                  blockers: asTxt(blockers) || blockersRef.current?.value || "",
+                  nextFocus: asTxt(nextFocus) || nextFocusRef.current?.value || "",
                   updatedAt: Date.now(),
                 });
                 toggleDiscipline("weekly-review");

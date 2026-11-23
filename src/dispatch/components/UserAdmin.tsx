@@ -143,7 +143,7 @@ export function UserAdmin({ actor }: { actor: DispatchAccount }) {
                 <td className="p-2">
                   <select
                     className="dispatch-field h-8 w-36"
-                    value={a.role}
+                    value={asText(a.role) === "admin" ? "admin" : "dispatcher"}
                     disabled={busy}
                     onChange={(e) => {
                       const next = e.target.value as DispatchRole;

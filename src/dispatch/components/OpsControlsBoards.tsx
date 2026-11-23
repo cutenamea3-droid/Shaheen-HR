@@ -146,13 +146,13 @@ function DocList({
                   </span>
                 </p>
                 <p className="text-xs text-[color:var(--dispatch-muted)]">
-                  BOL {load.bol_status} · POD {load.pod_status}
+                  BOL {asText(load.bol_status)} · POD {asText(load.pod_status)}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   className="dispatch-field w-auto text-xs"
-                  value={load[field]}
+                  value={asText(load[field])}
                   disabled={busyId === load.id}
                   onChange={(e) => void onPatch(load, field, e.target.value as DocStatus)}
                 >
@@ -404,7 +404,9 @@ export function EquipmentBoard({
                   <td className="font-semibold">{asText(row.driver.display_name)}</td>
                   <td>{asText(row.unit_number) || "—"}</td>
                   <td className="text-xs">
-                    {labels.length ? labels.join(", ") : "— (none recorded)"}
+                    {labels.length
+                      ? labels.map((x) => asText(x)).filter(Boolean).join(", ")
+                      : "— (none recorded)"}
                   </td>
                   <td>
                     {!active.length ? (

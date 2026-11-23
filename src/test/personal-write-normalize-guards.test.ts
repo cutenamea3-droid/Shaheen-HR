@@ -36,6 +36,9 @@ describe("Personal store write-path normalize guards", () => {
     expect(analyticsUi).toMatch(/normalizeGradeEntry\(/);
     expect(analyticsUi).toMatch(/normalizeCourseGrade\(/);
     expect(analyticsUi).toMatch(/asTxt\(g\.letter\)/);
+    expect(analyticsUi).toMatch(/normalizeWeeklyReview\(/);
+    expect(analyticsUi).toMatch(/useState\(asTxt\(review\.wins\)\)/);
+    expect(analyticsUi).toMatch(/value=\{asTxt\(wins\)\}/);
     const teamUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/TeamManagement.tsx"),
       "utf8",
@@ -48,6 +51,8 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(userAdmin).toMatch(/healDispatchAccount/);
     expect(userAdmin).toMatch(/asText\(a\.display_name\)/);
+    expect(userAdmin).toMatch(/value=\{asText\(a\.role\) === "admin"/);
+    expect(teamUi).toMatch(/value=\{asText\(m\.role\) === "admin"/);
     const attendanceUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/Attendance.tsx"),
       "utf8",
@@ -177,6 +182,7 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(complianceTeam).toMatch(/healPortalAccount/);
     expect(complianceTeam).toMatch(/\{asText\(member\.email\)\}/);
+    expect(complianceTeam).toMatch(/value=\{asText\(member\.role\) === "admin"/);
     const recordsUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/Records.tsx"),
       "utf8",
@@ -286,6 +292,8 @@ describe("Personal store write-path normalize guards", () => {
     expect(dispatchCloud).toMatch(/Cannot cancel a \$\{asText\(load\.status\)\}/);
     expect(opsBoards).toMatch(/\{asText\(l\.load_number\)\}/);
     expect(opsBoards).toMatch(/\{asText\(load\.load_number\)\}/);
+    expect(opsBoards).toMatch(/value=\{asText\(load\[field\]\)\}/);
+    expect(opsBoards).toMatch(/BOL \{asText\(load\.bol_status\)\}/);
     const closeoutBoards = readFileSync(
       resolve(process.cwd(), "src/dispatch/components/CloseoutBoards.tsx"),
       "utf8",
