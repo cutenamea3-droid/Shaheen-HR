@@ -36,6 +36,7 @@ import { AuditHistory } from "@/admin/components/hr/AuditHistory";
 import { useApp } from "@/admin/lib/store";
 import { supabase } from "@/admin/integrations/supabase/client";
 import {
+  getConflictCloud,
   getSyncStatus,
   hasOpenHrConflict,
   hrSyncStatusLabel,
@@ -47,10 +48,95 @@ import {
   stopSync,
   subscribeSync,
 } from "@/admin/lib/cloud-sync";
-import { isHrPayloadEmpty, isHrMeaningful } from "@/admin/lib/hr-sync-protect";
+import {
+  hrAttendanceEntryCount,
+  isHrPayloadEmpty,
+  isHrMeaningful,
+  shouldAutoPreferCloud,
+} from "@/admin/lib/hr-sync-protect";
 import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
+
+/** Explicit conflict chooser — Prefer cloud when this browser looks empty (Entered 0). */
+function ConflictChooser() {
+  const local = useApp((s) => ({ employees: s.employees, records: s.records }));
+  const cloud = getConflictCloud();
+  const preferCloud = shouldAutoPreferCloud(local, cloud);
+
+  // Soft-refresh recovery: empty local + filled cloud → Prefer cloud without a click.
+  useEffect(() => {
+    if (!preferCloud || !cloud) return;
+    void resolveHrConflict("use_cloud");
+  }, [preferCloud, cloud]);
+
+  return (
+    <div
+      className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm"
+      role="alertdialog"
+    >
+      <p className="font-semibold text-warn">
+        Not Synced — this browser and the cloud both have attendance changes. Nothing is
+        overwritten until you choose.
+      </p>
+      {preferCloud ? (
+        <p className="text-warn">
+          This browser looks empty (no attendance punches / Entered 0) while cloud has real
+          records. Restoring from cloud automatically…
+        </p>
+      ) : (
+        <ol className="list-decimal space-y-1 pl-5 text-warn">
+          <li>
+            Always click <strong>Download backup</strong> first.
+          </li>
+          <li>
+            If this browser looks empty but cloud had your real records, choose{" "}
+            <strong>Use cloud</strong>.
+          </li>
+          <li>
+            Only choose <strong>Keep this browser</strong> if you are sure the browser copy is
+            correct.
+          </li>
+        </ol>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn" onClick={() => downloadBackup()}>
+          Download backup
+        </button>
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={() => void resolveHrConflict("use_cloud")}
+        >
+          {preferCloud ? "Use cloud (recommended)" : "Use cloud (replace this browser)"}
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const blob = {
+              employees: local.employees,
+              records: local.records,
+            };
+            if (
+              isHrPayloadEmpty(blob) ||
+              !isHrMeaningful(blob) ||
+              hrAttendanceEntryCount(blob) === 0
+            ) {
+              const ok = window.confirm(
+                "This browser looks empty or incomplete (no attendance punches). Uploading it can replace cloud attendance with empty data.\n\nOnly continue if you are sure. Prefer Use cloud instead.",
+              );
+              if (!ok) return;
+            }
+            void resolveHrConflict("keep_local");
+          }}
+        >
+          Keep this browser (upload)
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function SyncBadge() {
   const s = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
@@ -93,61 +179,7 @@ function SyncBadge() {
         )}
       </div>
       {conflict && (
-        <div
-          className="space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm"
-          role="alertdialog"
-        >
-          <p className="font-semibold text-warn">
-            Not Synced — this browser and the cloud both have attendance changes. Nothing is
-            overwritten until you choose.
-          </p>
-          <ol className="list-decimal space-y-1 pl-5 text-warn">
-            <li>
-              Always click <strong>Download backup</strong> first.
-            </li>
-            <li>
-              If this browser looks empty (e.g. Entered 0) but cloud had your real records, choose{" "}
-              <strong>Use cloud</strong>.
-            </li>
-            <li>
-              Only choose <strong>Keep this browser</strong> if you are sure the browser copy is the
-              correct one — uploading empty local data can replace cloud.
-            </li>
-          </ol>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn" onClick={() => downloadBackup()}>
-              Download backup
-            </button>
-            <button
-              type="button"
-              className="btn-danger"
-              onClick={() => void resolveHrConflict("use_cloud")}
-            >
-              Use cloud (replace this browser)
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                const local = useApp.getState();
-                const blob = {
-                  employees: local.employees,
-                  records: local.records,
-                };
-                // Extra confirm when browser looks empty — never silent upload of empty over cloud.
-                if (isHrPayloadEmpty(blob) || !isHrMeaningful(blob)) {
-                  const ok = window.confirm(
-                    "This browser looks empty or incomplete. Uploading it can replace cloud attendance with empty data.\n\nOnly continue if you are sure. Prefer Use cloud instead.",
-                  );
-                  if (!ok) return;
-                }
-                void resolveHrConflict("keep_local");
-              }}
-            >
-              Keep this browser (upload)
-            </button>
-          </div>
-        </div>
+        <ConflictChooser />
       )}
     </div>
   );

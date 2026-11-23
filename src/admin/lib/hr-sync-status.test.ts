@@ -130,6 +130,15 @@ describe("Batch 1 attendance sync tests 1–17", () => {
         pendingUnsynced: true,
       }),
     ).toBe(false);
+    expect(
+      needsExplicitConflictUx({
+        localMeaningful: true,
+        cloudMeaningful: true,
+        diverge: true,
+        pendingUnsynced: true,
+        autoPreferCloud: true,
+      }),
+    ).toBe(false);
   });
 
   it("13. identical pending local+cloud does not require conflict UX", () => {

@@ -19,7 +19,11 @@ function asRecord(data: unknown): Record<string, unknown> | null {
   return data as Record<string, unknown>;
 }
 
-function recordEntryCount(records: unknown): number {
+/** Count attendance day-rows (employee punches across days). */
+export function hrAttendanceEntryCount(data: unknown): number {
+  const o = asRecord(data);
+  if (!o) return 0;
+  const records = o.records;
   if (!records || typeof records !== "object" || Array.isArray(records)) return 0;
   let n = 0;
   for (const day of Object.values(records as Record<string, unknown>)) {
@@ -52,7 +56,7 @@ export function isHrPayloadEmpty(data: unknown): boolean {
   if (isHrPayloadMissing(data)) return true;
   const o = asRecord(data)!;
   const employees = Array.isArray(o.employees) ? o.employees : [];
-  return employees.length === 0 && recordEntryCount(o.records) === 0;
+  return employees.length === 0 && hrAttendanceEntryCount(o) === 0;
 }
 
 /** Bundled first-run seed (logs ignored so sign-in activity does not mask seed). */
@@ -66,7 +70,22 @@ export function isHrMeaningful(data: unknown): boolean {
   if (isHrPayloadMissing(data)) return false;
   const o = asRecord(data)!;
   const employees = Array.isArray(o.employees) ? o.employees : [];
-  return employees.length > 0 || recordEntryCount(o.records) > 0;
+  return employees.length > 0 || hrAttendanceEntryCount(o) > 0;
+}
+
+/**
+ * Soft-refresh recovery: local looks empty for attendance (Entered 0 class) while
+ * cloud has real punches — Prefer cloud automatically. Roster-only local (employees
+ * but zero attendance rows) must not sticky-conflict against a filled cloud.
+ */
+export function shouldAutoPreferCloud(local: unknown, cloud: unknown | null | undefined): boolean {
+  if (cloud == null || isHrPayloadEmpty(cloud) || !isHrMeaningful(cloud)) return false;
+  if (isHrSeedLike(local) || isHrPayloadEmpty(local)) return true;
+  const localRows = hrAttendanceEntryCount(local);
+  const cloudRows = hrAttendanceEntryCount(cloud);
+  // Entered-0 / soft-refresh: browser has no punches; cloud does.
+  if (localRows === 0 && cloudRows > 0) return true;
+  return false;
 }
 
 export type HrSyncDecision =
@@ -79,7 +98,8 @@ export type HrSyncDecision =
  * Decide pull/apply/push when cloud row + local snapshot are known.
  * - Empty/missing cloud never applies (never wipes localStorage).
  * - Seed/empty local never pushes over meaningful cloud.
- * - When both sides are meaningful: apply cloud unless `unsynced` (pending real local edits).
+ * - Local with 0 attendance rows vs cloud with punches → apply_cloud (soft refresh).
+ * - When both sides are meaningful with local punches: apply cloud unless `unsynced`.
  */
 export function decideHrSync(
   local: unknown,
@@ -103,7 +123,8 @@ export function decideHrSync(
     return "keep_local";
   }
 
-  // Meaningful cloud exists.
+  // Meaningful cloud exists — Prefer cloud when local attendance looks empty.
+  if (shouldAutoPreferCloud(local, cloud)) return "apply_cloud";
   if (localSeed || !localMeaningful) return "apply_cloud";
   if (unsynced) return "keep_local";
   return "apply_cloud";
@@ -123,6 +144,8 @@ export function mayAutoPushLocal(local: unknown, cloud: unknown | null | undefin
 
 /** Block seed/empty uploads when cloud already has real data. */
 export function refuseSeedOrEmptyPush(local: unknown, cloud: unknown | null | undefined): boolean {
+  // Never upload zero-attendance local over cloud that has punches (soft-refresh trap).
+  if (shouldAutoPreferCloud(local, cloud)) return true;
   if (!isHrSeedLike(local) && isHrMeaningful(local)) return false;
   if (cloud != null && isHrMeaningful(cloud) && !isHrPayloadEmpty(cloud)) return true;
   // Also refuse uploading pure seed into empty cloud (avoid polluting app_state with defaults).

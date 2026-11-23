@@ -2,11 +2,13 @@ import seed from "@/admin/data/seed.json";
 import { test, expect } from "vitest";
 import {
   decideHrSync,
+  hrAttendanceEntryCount,
   isHrPayloadEmpty,
   isHrPayloadMissing,
   isHrSeedLike,
   isHrMeaningful,
   refuseSeedOrEmptyPush,
+  shouldAutoPreferCloud,
 } from "./hr-sync-protect";
 
 const emptyShaped = {
@@ -75,4 +77,25 @@ test("refuse seed/empty push over existing meaningful cloud", () => {
   // Also refuse uploading pure seed into empty cloud (no auto-seed pollution).
   expect(refuseSeedOrEmptyPush(seed, null)).toBe(true);
   expect(refuseSeedOrEmptyPush(seed, emptyShaped)).toBe(true);
+});
+
+test("soft-refresh: roster-only local (Entered 0) auto-prefers cloud with punches", () => {
+  const rosterOnly = {
+    ...richLocal,
+    records: {},
+  };
+  expect(hrAttendanceEntryCount(rosterOnly)).toBe(0);
+  expect(isHrMeaningful(rosterOnly)).toBe(true); // employees still present
+  expect(shouldAutoPreferCloud(rosterOnly, richLocal)).toBe(true);
+  expect(decideHrSync(rosterOnly, richLocal, { unsynced: true })).toBe("apply_cloud");
+  expect(refuseSeedOrEmptyPush(rosterOnly, richLocal)).toBe(true);
+});
+
+test("dual meaningful with local punches still keep_local when unsynced", () => {
+  const other = {
+    ...richLocal,
+    records: { "2026-11-02": { e1: { status: "present" } } },
+  };
+  expect(shouldAutoPreferCloud(richLocal, other)).toBe(false);
+  expect(decideHrSync(richLocal, other, { unsynced: true })).toBe("keep_local");
 });
