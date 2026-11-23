@@ -436,7 +436,7 @@ export function ExpensesManagement() {
             <span className="lbl">Status</span>
             <select
               className="field"
-              value={form.status}
+              value={asText(form.status)}
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as ExpenseStatus }))}
             >
               {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (
@@ -557,7 +557,7 @@ export function ExpensesManagement() {
                   ) : (
                     <select
                       className="field h-8 w-32"
-                      value={e.status}
+                      value={asText(e.status)}
                       onChange={(ev) => setExpenseStatus(e.id, ev.target.value as ExpenseStatus)}
                     >
                       {(Object.keys(EXPENSE_STATUS_LABEL) as ExpenseStatus[]).map((s) => (

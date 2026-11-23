@@ -361,7 +361,7 @@ export function Attendance() {
                   </span>
                 </button>
                 <div className="admin-toolbar" onClick={(ev) => ev.stopPropagation()}>
-                  <select className="field w-auto" value={r.status} onChange={(ev) => setStatus(ev.target.value as Status)}>
+                  <select className="field w-auto" value={asText(r.status)} onChange={(ev) => setStatus(ev.target.value as Status)}>
                     <option value="present">Present</option>
                     <option value="half">Half day</option>
                     <option value="leave">Leave</option>

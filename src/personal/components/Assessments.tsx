@@ -36,7 +36,7 @@ function DeadlineChip({ source }: { source: DeadlineSource | undefined }) {
           : "bg-[var(--hp-border)] text-[var(--hp-muted)]";
   return (
     <span className={`rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${cls}`}>
-      {badge.label}
+      {asTxt(badge.label)}
     </span>
   );
 }
@@ -236,7 +236,7 @@ export function Assessments() {
         <div className="mb-3 flex flex-wrap gap-2">
           {EXAM_PREP_STARTERS.map((s) => (
             <Btn
-              key={`${s.examKind}-${s.label}`}
+              key={`${asTxt(s.examKind)}-${asTxt(s.label)}`}
               variant="ghost"
               className="!py-1"
               onClick={() =>

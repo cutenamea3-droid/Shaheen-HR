@@ -215,7 +215,7 @@ export function AccessorialsBoard({
                   <div className="flex flex-wrap gap-2">
                     <select
                       className="dispatch-field"
-                      value={a.status}
+                      value={asText(a.status)}
                       disabled={busy}
                       onChange={async (e) => {
                         setBusy(true);

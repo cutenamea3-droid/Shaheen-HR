@@ -1222,7 +1222,7 @@ function LoadEditor({
           Status
           <select
             className="dispatch-field"
-            value={form.status}
+            value={asFormText(form.status)}
             onChange={(e) => setForm({ ...form, status: e.target.value as LoadStatus })}
           >
             {Object.entries(LOAD_STATUS_LABELS).map(([k, label]) => (

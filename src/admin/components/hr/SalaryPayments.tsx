@@ -209,16 +209,18 @@ export function SalaryPayments() {
               return (
                 <tr key={p.id} className="border-b border-border/70 align-top">
                   <td className="py-3 pr-2">
-                    <div className="font-semibold">{nameById.get(p.employeeId) ?? p.employeeId}</div>
-                    <div className="text-xs text-muted-foreground">{p.month}</div>
+                    <div className="font-semibold">
+                      {asText(nameById.get(p.employeeId) ?? p.employeeId)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{asText(p.month)}</div>
                   </td>
                   <td className="py-3 pr-2 whitespace-nowrap">{formatPkr(p.amountDuePkr)}</td>
                   <td className="py-3 pr-2 whitespace-nowrap">{formatPkr(p.amountPaidPkr)}</td>
                   <td className="py-3 pr-2">
                     <select
                       className="field w-auto"
-                      value={p.status}
-                      aria-label={`Status for ${nameById.get(p.employeeId)}`}
+                      value={asText(p.status)}
+                      aria-label={`Status for ${asText(nameById.get(p.employeeId))}`}
                       onChange={(e) => setPaymentStatus(p.id, e.target.value as SalaryPaymentStatus)}
                     >
                       {(Object.keys(SALARY_PAYMENT_STATUS_LABEL) as SalaryPaymentStatus[]).map((st) => (

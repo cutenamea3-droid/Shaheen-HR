@@ -250,7 +250,7 @@ export function FollowUpTracker() {
                     </Link>
                   )}
                   <select
-                    value={fu.status}
+                    value={asText(fu.status)}
                     onChange={(e) => {
                       updateFollowUp(fu.id, { status: e.target.value as FollowUpStatus });
                       toast.success("Follow-up updated");

@@ -79,6 +79,8 @@ describe("Personal store write-path normalize guards", () => {
     expect(expensesUi).toMatch(/\{asText\(c\.name\)\}/);
     expect(expensesUi).toMatch(/value=\{asText\(form\.title\)\}/);
     expect(expensesUi).toMatch(/value=\{asText\(form\.note\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(form\.status\)\}/);
+    expect(expensesUi).toMatch(/value=\{asText\(e\.status\)\}/);
     const hrTodayUi = readFileSync(
       resolve(process.cwd(), "src/admin/components/hr/MyHrToday.tsx"),
       "utf8",
@@ -227,8 +229,16 @@ describe("Personal store write-path normalize guards", () => {
     expect(followUpUi).toMatch(/\{asText\(fu\.driver\)\}/);
     expect(followUpUi).toMatch(/\{asText\(fu\.subject\)\}/);
     expect(followUpUi).toMatch(/\{asText\(fu\.status\)\}/);
+    expect(followUpUi).toMatch(/value=\{asText\(fu\.status\)\}/);
     expect(attendanceUi).toMatch(/\{asText\(r\.status\)\}/);
+    expect(attendanceUi).toMatch(/value=\{asText\(r\.status\)\}/);
     expect(overtimeUi).toMatch(/\{asText\(r\.status\)\}/);
+    const salaryPayUi = readFileSync(
+      resolve(process.cwd(), "src/admin/components/hr/SalaryPayments.tsx"),
+      "utf8",
+    );
+    expect(salaryPayUi).toMatch(/value=\{asText\(p\.status\)\}/);
+    expect(salaryPayUi).toMatch(/\{asText\(p\.month\)\}/);
     const closeoutLib = readFileSync(
       resolve(process.cwd(), "src/dispatch/lib/closeout.ts"),
       "utf8",
@@ -302,8 +312,11 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(closeoutUi).toMatch(/\{asText\(a\.description\)\}/);
+    expect(closeoutUi).toMatch(/value=\{asText\(a\.status\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(form\.customer_name\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(form\.load_number\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.status\)\}/);
+    expect(assessmentsUi).toMatch(/\{asTxt\(badge\.label\)\}/);
     const fileCompleteUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/FileCompletenessPanel.tsx"),
       "utf8",
