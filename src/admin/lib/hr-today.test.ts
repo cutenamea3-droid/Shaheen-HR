@@ -84,5 +84,8 @@ describe("hrTodaySyncLabel", () => {
     expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "unsynced" })).toBe(
       "Not Synced",
     );
+    expect(hrTodaySyncLabel({ previewIsolated: false, localOnly: false, status: "connecting" })).toBe(
+      "Connecting…",
+    );
   });
 });

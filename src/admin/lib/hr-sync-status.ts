@@ -19,8 +19,10 @@ export function hrSyncStatusLabel(status: HrSyncUi): string {
       return "Cloud Saved";
     case "syncing":
       return "Saving";
-    case "unsynced":
     case "connecting":
+      // Soft refresh / boot — never flash "Not Synced" while session restores.
+      return "Connecting…";
+    case "unsynced":
       return "Not Synced";
     case "error":
       return "Connection Error";

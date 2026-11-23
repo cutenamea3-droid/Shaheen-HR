@@ -331,17 +331,29 @@ export async function startSync(userId: string) {
     setStatus("synced");
     return;
   }
-  // Capture local-only flag before clearing the guard (reconnect must not wipe pending edits).
-  const pendingBefore = readPendingUnsynced();
+  // Capture flags before clearing the local-only guard (reconnect must not wipe real edits).
+  const hadLocalOnly = hasHrLocalOnlySessionFlag();
+  const hadUnsynced = hasHrPendingUnsynced();
+  const pendingBefore = reconnectTreatAsUnsynced({
+    unsyncedFlag: hadUnsynced,
+    localOnlyFlag: hadLocalOnly,
+  });
   stopLocalOnlyGuard();
   setHrLocalOnlySessionFlag(false);
-  if (pendingBefore) markHrPendingUnsynced();
   clearConflict();
 
   currentUser = userId;
   // Wait for localStorage rehydrate so we don't push seed over a newer cloud copy.
   await whenAttendanceHydrated();
   const local = snapshot();
+  // Empty / seed / Entered-0 local must never sticky-trap Not Synced after reconnect.
+  const emptyish =
+    isHrSeedLike(local) || isHrPayloadEmpty(local) || hrAttendanceEntryCount(local) === 0;
+  if (emptyish) {
+    clearHrPendingUnsynced();
+  } else if (pendingBefore) {
+    markHrPendingUnsynced();
+  }
   const unsynced = hasHrPendingUnsynced();
   // Soft-refresh: roster-only / zero-attendance local + filled cloud → Prefer cloud
   // (never sticky Not Synced; never upload empty punches over cloud).

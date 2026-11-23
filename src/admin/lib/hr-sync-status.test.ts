@@ -43,7 +43,7 @@ describe("Batch 1 attendance sync tests 1–17", () => {
     expect(hrSyncStatusLabel("synced")).toBe("Cloud Saved");
     expect(hrSyncStatusLabel("syncing")).toBe("Saving");
     expect(hrSyncStatusLabel("unsynced")).toBe("Not Synced");
-    expect(hrSyncStatusLabel("connecting")).toBe("Not Synced");
+    expect(hrSyncStatusLabel("connecting")).toBe("Connecting…");
     expect(hrSyncStatusLabel("conflict")).toBe("Not Synced");
     expect(hrSyncStatusLabel("error")).toBe("Connection Error");
     expect(hrSyncStatusLabel("paused")).toBe("Sign In Required");

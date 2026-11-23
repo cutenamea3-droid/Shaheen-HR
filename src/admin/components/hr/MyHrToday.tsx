@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/admin/lib/store";
-import { getSyncStatus, subscribeSync } from "@/admin/lib/cloud-sync";
 import { prettyDate } from "@/admin/lib/calc";
-import { buildHrToday, hrTodaySyncLabel, openTasksDue, type HrTodayIssueKind } from "@/admin/lib/hr-today";
+import { buildHrToday, openTasksDue, type HrTodayIssueKind } from "@/admin/lib/hr-today";
 import { useEmployeeFinanceMock } from "@/admin/lib/employee-finance-mock";
 import { useAdminNav, type AttFocus } from "@/admin/lib/admin-nav";
 import { useHrReminders } from "@/admin/lib/hr-reminders";
 import { useHrAuditHistory } from "@/admin/lib/hr-audit-history";
 import { usePerfFollowUps } from "@/admin/lib/perf-followups";
-import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { SectionTitle, todayStr } from "./common";
 
 const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
@@ -37,8 +35,9 @@ const FILTERS: { id: "all" | HrTodayIssueKind; label: string }[] = [
 
 /**
  * Full-page daily HR work center (Admin tab) — counterpart to Compliance “My Compliance Today”.
+ * Sync status lives only in the Admin shell (SyncBadge / CloudReconnectBanner) — no duplicate chip.
  */
-export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
+export function MyHrToday(_props: { localOnly?: boolean } = {}) {
   const [date, setDate] = useState(todayStr());
   const [filter, setFilter] = useState<"all" | HrTodayIssueKind>("all");
   const [remTitle, setRemTitle] = useState("");
@@ -62,7 +61,6 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   const ensureMeta = useEmployeeFinanceMock((s) => s.ensureMeta);
   const requestTab = useAdminNav((s) => s.requestTab);
   const requestAttendance = useAdminNav((s) => s.requestAttendance);
-  const syncStatus = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
   // Select stable store slices — NEVER call dueOnOrBefore/openFollowUps inside the
   // zustand selector (they allocate a new array every getSnapshot → React #185
   // "Maximum update depth exceeded" after My HR Today first paint).
@@ -109,11 +107,6 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
   );
 
   const dueTasks = useMemo(() => openTasksDue(tasks, date), [tasks, date]);
-  const syncLabel = hrTodaySyncLabel({
-    previewIsolated: isPreviewIsolated(),
-    localOnly,
-    status: syncStatus,
-  });
 
   const issues = filter === "all" ? summary.issues : summary.issues.filter((i) => i.kind === filter);
 
@@ -136,9 +129,6 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
         sub={`${prettyDate(date)} · Daily work center for attendance, leave, and bank completeness.`}
         right={
           <div className="admin-toolbar gap-2">
-            <span className="chip bg-primary/10 font-semibold text-primary" title="Sync status (Batch 1 labels; #19 owns reconnect UX)">
-              {syncLabel}
-            </span>
             <input
               type="date"
               className="field w-auto"

@@ -148,11 +148,13 @@ function SyncBadge() {
   const tone =
     s === "error" || conflict
       ? "destructive"
-      : s === "unsynced" || s === "connecting"
+      : s === "unsynced"
         ? "warn"
-        : "primary";
+        : s === "connecting"
+          ? "muted"
+          : "primary";
   return (
-    <div className="mb-3 space-y-2">
+    <div className="mb-3 space-y-2" data-testid="admin-sync-badge">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BackupButtons />
         {s === "error" ? (
@@ -171,7 +173,9 @@ function SyncBadge() {
                 ? "bg-destructive/10 text-destructive"
                 : tone === "warn"
                   ? "bg-warn-soft text-warn"
-                  : "bg-primary/10 text-primary"
+                  : tone === "muted"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-primary/10 text-primary"
             }`}
           >
             <span
@@ -205,15 +209,22 @@ function CloudReconnectBanner({
   const busyRef = useRef(false);
   const reconnectPassRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    // One-click path: focus password so Enter / Sign In completes cloud reconnect.
+    reconnectPassRef.current?.focus();
+  }, []);
+
   return (
     <div
       className="mb-3 space-y-2 rounded-lg border border-warn/40 bg-warn-soft px-3 py-2 text-sm"
       role="status"
+      data-testid="admin-cloud-reconnect"
     >
       <p className="font-semibold text-warn">
-        Sign In Required — local session; cloud sync paused. Sign in with Supabase to sync this
-        browser’s attendance. Pending local edits are kept; if cloud also changed, you will choose
-        which copy to keep (nothing is overwritten silently).
+        Sign In Required — this browser is on a local session (cloud sync paused). Sign in once with
+        the same Admin password to enable Cloud Saved. Soft refresh will keep the cloud session
+        after that. Empty local attendance prefers cloud automatically (nothing overwritten
+        silently when both sides have real edits).
       </p>
       <form
         className="flex flex-col gap-2 sm:flex-row sm:items-end"
@@ -272,7 +283,7 @@ function CloudReconnectBanner({
               setErr("Couldn't reach the server. Try again.");
               return;
             }
-            setMsg("Connected — uploading protected local changes when needed…");
+            setMsg("Signed in — syncing from cloud when this browser looks empty…");
             {
               const sessMail = data.session?.user.email;
               const mail =
@@ -290,7 +301,7 @@ function CloudReconnectBanner({
         }}
       >
         <label className="block min-w-0 flex-1">
-          <span className="lbl">Supabase password for {email}</span>
+          <span className="lbl">Password for {email}</span>
           <input
             ref={reconnectPassRef}
             data-testid="admin-cloud-reconnect-password"
@@ -309,8 +320,14 @@ function CloudReconnectBanner({
             required
           />
         </label>
-        <button type="submit" className="btn-primary shrink-0" disabled={busy} aria-busy={busy}>
-          {busy ? "Connecting…" : "Connect cloud sync"}
+        <button
+          type="submit"
+          className="btn-primary shrink-0"
+          disabled={busy}
+          aria-busy={busy}
+          data-testid="admin-cloud-reconnect-submit"
+        >
+          {busy ? "Signing in…" : "Sign In"}
         </button>
       </form>
       {err && (
@@ -638,17 +655,33 @@ export function AdminApp() {
       setReady(true);
       return;
     }
+    let cancelled = false;
+    /** Avoid re-running startSync on every TOKEN_REFRESHED / duplicate INITIAL_SESSION. */
+    let cloudUid: string | null = null;
+    /** Monotonic apply generation — late local-only resolves must not clobber a newer cloud apply. */
+    let applyGen = 0;
     const apply = async (uid: string | null, mail: string) => {
+      if (cancelled) return;
+      const gen = ++applyGen;
       if (uid) {
-        await startSync(uid);
+        if (cloudUid !== uid) {
+          cloudUid = uid;
+          await startSync(uid);
+          if (cancelled || gen !== applyGen) return;
+        }
+        if (gen !== applyGen) return;
         setLocalOnly(false);
         setEmail(mail);
         setAuthedState(true);
       } else {
+        // Only clear cloud if this generation is still current (no newer SIGNED_IN won the race).
+        cloudUid = null;
         stopSync();
         try {
           const { readHrLocalSessionEmail } = await import("@/admin/lib/hr-auth-local");
+          if (cancelled || gen !== applyGen || cloudUid) return;
           const localMail = readHrLocalSessionEmail();
+          if (cancelled || gen !== applyGen || cloudUid) return;
           if (localMail) {
             setLocalOnly(true);
             setEmail(localMail);
@@ -661,22 +694,51 @@ export function AdminApp() {
             setAuthedState(false);
           }
         } catch {
+          if (cancelled || gen !== applyGen || cloudUid) return;
           stopLocalOnlyGuard();
           setLocalOnly(false);
           setEmail("");
           setAuthedState(false);
         }
       }
-      setReady(true);
+      if (!cancelled && gen === applyGen) setReady(true);
     };
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => apply(data.session?.user.id ?? null, data.session?.user.email ?? ""));
+    // Soft refresh: restore Supabase session first. Also listen for INITIAL_SESSION /
+    // TOKEN_REFRESHED — ignoring those left a local-only badge when getSession raced.
+    void supabase.auth.getSession().then(async ({ data }) => {
+      let session = data.session;
+      if (!session) {
+        // One recovery tick: storage/refresh can lag the first getSession on soft refresh.
+        const { data: again } = await supabase.auth.getSession();
+        session = again.session;
+      }
+      if (!session) {
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            const { data: after } = await supabase.auth.getSession();
+            session = after.session;
+          }
+        } catch {
+          /* stay signed out / local-only */
+        }
+      }
+      if (cancelled) return;
+      await apply(session?.user.id ?? null, session?.user.email ?? "");
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((ev, session) => {
-      if (ev === "SIGNED_IN" || ev === "SIGNED_OUT")
+      if (
+        ev === "SIGNED_IN" ||
+        ev === "SIGNED_OUT" ||
+        ev === "INITIAL_SESSION" ||
+        ev === "TOKEN_REFRESHED" ||
+        ev === "USER_UPDATED"
+      ) {
         void apply(session?.user.id ?? null, session?.user.email ?? "");
+      }
     });
     return () => {
+      cancelled = true;
       sub.subscription.unsubscribe();
       stopLocalOnlyGuard();
     };
@@ -700,6 +762,7 @@ export function AdminApp() {
             setLocalOnly(false);
             setEmail(mail);
             setAuthedState(true);
+            // Soft refresh keeps Cloud Saved via persisted Supabase session.
           });
         }}
       />
