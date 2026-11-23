@@ -292,17 +292,20 @@ export function CvPortfolio() {
               <h2 id="education-heading">Education &amp; languages</h2>
             </div>
             <div className="cv-edu-grid">
-              <div>
+              <div className="cv-edu-col">
+                <p className="cv-edu-col-label">Education</p>
                 {EDUCATION.map((ed) => (
                   <div key={ed.title} className="cv-edu-item">
                     <h3>{ed.title}</h3>
-                    <p>
+                    <p className="cv-edu-meta">
                       {ed.place} · <span className="note">{ed.note}</span>
                     </p>
+                    <p className="cv-edu-detail">{ed.detail}</p>
                   </div>
                 ))}
               </div>
-              <div>
+              <div className="cv-edu-col">
+                <p className="cv-edu-col-label">Languages</p>
                 <ul className="cv-lang-list">
                   {LANGUAGES.map((lang) => (
                     <li key={lang.name}>

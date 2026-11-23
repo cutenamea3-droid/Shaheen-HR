@@ -32,6 +32,11 @@ export const EXPERIENCE = [
     company: "Shaheen Transport LLC",
     time: "Sep 2026 – Present",
     text: "Overseeing employee attendance, managing driver CDL and medical records, handling compliance files and fleet Hours of Service (HOS) logs using ReguLog ELD and Rawen software.",
+    bullets: [
+      "Own day-to-day attendance tracking and employee record accuracy across the fleet HR desk.",
+      "Maintain driver CDL, medical, and compliance files with clear renewal visibility.",
+      "Run fleet HOS logging in ReguLog ELD and Rawen; keep compliance readiness visible to operations.",
+    ],
     current: true,
   },
   {
@@ -39,6 +44,9 @@ export const EXPERIENCE = [
     company: "ULP Digital",
     time: "Jul 2026 – Sep 2026",
     text: "Executing outbound sales and digital marketing strategies.",
+    bullets: [
+      "Ran outbound sales motions aligned to digital marketing campaigns and qualified leads toward close.",
+    ],
     current: false,
   },
   {
@@ -46,6 +54,9 @@ export const EXPERIENCE = [
     company: "Step More In Solution PVT (LTD)",
     time: "Mar 2026 – Jun 2026",
     text: "Executed outbound sales strategies to meet organizational targets and managed end-to-end client communications.",
+    bullets: [
+      "Executed outbound sales against targets and owned end-to-end client communication.",
+    ],
     current: false,
   },
   {
@@ -53,6 +64,9 @@ export const EXPERIENCE = [
     company: "The Global Estimation",
     time: "Nov 2024 – Apr 2025",
     text: "Proactive lead generation and account handling to secure new business, with a heavy focus on cold calling.",
+    bullets: [
+      "Generated leads and handled accounts with a heavy focus on cold calling.",
+    ],
     current: false,
   },
   {
@@ -60,6 +74,9 @@ export const EXPERIENCE = [
     company: "Ak Internationals",
     time: "2021 – 2023",
     text: "High-volume outbound calling, product pitching, customer inquiries and foundational sales techniques.",
+    bullets: [
+      "High-volume outbound calling, product pitching, and foundational sales technique.",
+    ],
     current: false,
   },
 ] as const;
@@ -99,16 +116,22 @@ export const EDUCATION = [
     title: "BS Information Technology (BSIT)",
     place: "Virtual University of Pakistan",
     note: "Enrolled · 2026",
+    detail:
+      "Undergraduate IT program covering systems, databases, and applied computing — studying alongside full-time HR and compliance work.",
   },
   {
     title: "Intermediate in Computer Science (ICS)",
     place: "Islamiya Higher Secondary College",
     note: "Grade C+",
+    detail:
+      "Higher-secondary computer science stream with programming fundamentals, mathematics, and core IT subjects.",
   },
   {
     title: "Matriculation in Computer Science",
     place: "Al-Nasir High School",
     note: "Grade B+",
+    detail:
+      "Secondary education with a computer science focus — early grounding in computing and problem-solving.",
   },
 ] as const;
 
@@ -163,11 +186,11 @@ export const LANGUAGES = [
 export const INTERESTS = [
   {
     title: "Video editing & content",
-    text: "High-energy anime edits with beat syncing, velocity and keyframe animation in CapCut and VN Editor.",
+    text: "High-energy anime edits with beat syncing, velocity, and keyframe animation in CapCut and VN Editor — sharpening timing, hierarchy, and shipping polished cuts on deadline.",
   },
   {
     title: "Tech exploration",
-    text: "Building web apps, AI-assisted development and command-line tools on mobile.",
+    text: "Building web apps and AI-assisted tools with Lovable, Vercel, GitHub, Termux, and Gemini CLI — the same craft behind the compliance and attendance products above.",
   },
 ] as const;
 

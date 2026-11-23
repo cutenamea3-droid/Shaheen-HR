@@ -30,9 +30,10 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
 
   it("A4 PDF uses ATS type scale and fills 1–2 pages", async () => {
     const pdfSrc = readFileSync(resolve(process.cwd(), "src/cv/resume-pdf.ts"), "utf8");
-    expect(pdfSrc).toMatch(/margin\s*=\s*16/);
-    expect(pdfSrc).toMatch(/setFontSize\(26\)/);
-    expect(pdfSrc).toMatch(/11\.(0|2|5)/);
+    expect(pdfSrc).toMatch(/margin\s*=\s*14/);
+    expect(pdfSrc).toMatch(/setFontSize\(23\)/);
+    expect(pdfSrc).toMatch(/10\.(2|5|6|8)/);
+    expect(pdfSrc).not.toMatch(/roundedRect/); // no empty cream filler bands
     const { buildResumePdf } = await import("@/cv/resume-pdf");
     const pages = buildResumePdf().getNumberOfPages();
     expect(pages).toBeGreaterThanOrEqual(1);
