@@ -228,7 +228,7 @@ export function Notes() {
             >
               <option value="all">All tags</option>
               {REVISION_TAG_PRESETS.map((t) => (
-                <option key={t} value={t}>
+                <option key={asTxt(t)} value={asTxt(t)}>
                   {t}
                 </option>
               ))}

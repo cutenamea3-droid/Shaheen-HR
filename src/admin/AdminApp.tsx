@@ -52,6 +52,8 @@ import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
 
+const asText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+
 function SyncBadge() {
   const s = useSyncExternalStore(subscribeSync, getSyncStatus, () => "connecting" as const);
   const conflict = s === "conflict" || hasOpenHrConflict();
@@ -195,8 +197,8 @@ function CloudReconnectBanner({
               clearHrLocalSession,
             } = await import("@/admin/lib/hr-auth-local");
 
-            const nextPass = (pass || reconnectPassRef.current?.value || "").trim();
-            const result = await attemptHrLogin(email, nextPass, {
+            const nextPass = (asText(pass) || reconnectPassRef.current?.value || "").trim();
+            const result = await attemptHrLogin(asText(email), nextPass, {
               signInWithPassword: async (creds) => {
                 const { error } = await supabase.auth.signInWithPassword(creds);
                 return {
@@ -259,7 +261,7 @@ function CloudReconnectBanner({
             data-testid="admin-cloud-reconnect-password"
             type="password"
             className="field"
-            value={pass}
+            value={asText(pass)}
             onChange={(e) => {
               setPass(e.target.value);
               if (err) setErr("");
@@ -400,8 +402,8 @@ function Login({
             // Prefer live DOM values so browser autofill that skipped onChange still signs in.
             const form = e.currentTarget;
             const fd = new FormData(form);
-            const mailRaw = String(fd.get("email") ?? emailRef.current?.value ?? email);
-            const passRaw = String(fd.get("password") ?? passRef.current?.value ?? pass);
+            const mailRaw = asText(fd.get("email") ?? emailRef.current?.value ?? email);
+            const passRaw = asText(fd.get("password") ?? passRef.current?.value ?? pass);
             if (mailRaw !== email) setEmail(mailRaw);
             if (passRaw !== pass) setPass(passRaw);
 
@@ -439,7 +441,7 @@ function Login({
 
               if (result.ok) {
                 setErr("");
-                const normalized = mailRaw.trim().toLowerCase();
+                const normalized = asText(mailRaw).trim().toLowerCase();
                 if (result.mode === "local") {
                   onLocalAuth(normalized);
                   // Keep busy until parent swaps to the dashboard (local path).
@@ -453,12 +455,7 @@ function Login({
                 if (uid) {
                   {
                     const sessMail = data.session?.user.email;
-                    const mail =
-                      sessMail == null
-                        ? ""
-                        : (typeof sessMail === "string" ? sessMail : String(sessMail))
-                            .trim()
-                            .toLowerCase();
+                    const mail = asText(sessMail).trim().toLowerCase();
                     onCloudAuth(mail || normalized, uid);
                   }
                   return;
@@ -495,7 +492,7 @@ function Login({
               type="email"
               className="field"
               data-testid="admin-email"
-              value={email}
+              value={asText(email)}
               onChange={(e) => {
                 setEmail(e.target.value);
                 clearErrOnEdit();
@@ -515,7 +512,7 @@ function Login({
               type="password"
               className="field"
               data-testid="admin-password"
-              value={pass}
+              value={asText(pass)}
               onChange={(e) => {
                 setPass(e.target.value);
                 clearErrOnEdit();

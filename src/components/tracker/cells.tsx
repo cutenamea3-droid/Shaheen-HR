@@ -124,7 +124,7 @@ export function EditableText({
         <textarea
           ref={ref}
           data-testid="editable-text"
-          value={draft}
+          value={asCellText(draft)}
           onChange={(e) => {
             const v = e.target.value;
             setDraft(v);
@@ -139,7 +139,7 @@ export function EditableText({
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-              commit(draft || ref.current?.value || "");
+              commit(asCellText(draft) || ref.current?.value || "");
               setEditing(false);
             }
             if (e.key === "Escape") {
@@ -152,7 +152,7 @@ export function EditableText({
         />
         <SaveBar
           onSave={() => {
-            const next = draft || ref.current?.value || "";
+            const next = asCellText(draft) || ref.current?.value || "";
             commit(next);
             setEditing(false);
           }}
@@ -227,7 +227,7 @@ export function DateCell({
           ref={datePickerRef}
           data-testid="date-cell-picker"
           type="date"
-          value={parseISO(draft) ? draft : ""}
+          value={parseISO(asCellText(draft)) ? asCellText(draft) : ""}
           onChange={(e) => change(e.target.value)}
           onInput={(e) => change((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1 text-base"
@@ -235,7 +235,7 @@ export function DateCell({
         <input
           ref={dateTextRef}
           data-testid="date-cell-text"
-          value={draft}
+          value={asCellText(draft)}
           onChange={(e) => change(e.target.value)}
           onInput={(e) => change((e.target as HTMLInputElement).value)}
           placeholder="…or type text (e.g. New Driver!)"
@@ -243,7 +243,11 @@ export function DateCell({
         />
         <SaveBar
           onSave={() => {
-            const next = draft || dateTextRef.current?.value || datePickerRef.current?.value || "";
+            const next =
+              asCellText(draft) ||
+              dateTextRef.current?.value ||
+              datePickerRef.current?.value ||
+              "";
             onSave(next);
             setEditing(false);
           }}
@@ -363,7 +367,7 @@ export function StatusToggle({
           <input
             ref={customRef}
             data-testid="status-custom"
-            value={custom}
+            value={asCellText(custom)}
             onChange={(e) => setCustom(e.target.value)}
             onInput={(e) => setCustom((e.target as HTMLInputElement).value)}
             placeholder="Custom…"
@@ -371,9 +375,9 @@ export function StatusToggle({
           />
           <button
             type="button"
-            disabled={!(custom.trim() || customRef.current?.value?.trim())}
+            disabled={!(asCellText(custom).trim() || customRef.current?.value?.trim())}
             onClick={() => {
-              const next = (custom.trim() || customRef.current?.value || "").trim();
+              const next = (asCellText(custom).trim() || customRef.current?.value || "").trim();
               if (!next) return;
               onSave(next);
               setCustom("");

@@ -530,6 +530,21 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(myAccountUi).toMatch(/value=\{asText\(current\)\}/);
     expect(myAccountUi).toMatch(/value=\{asText\(pass\)\}/);
+    const adminAppUi = readFileSync(resolve(process.cwd(), "src/admin/AdminApp.tsx"), "utf8");
+    expect(adminAppUi).toMatch(/value=\{asText\(email\)\}/);
+    expect(adminAppUi).toMatch(/value=\{asText\(pass\)\}/);
+    expect(adminAppUi).toMatch(/asText\(mailRaw\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(q\)\}/);
+    expect(dashboardUi).toMatch(/value=\{asText\(report\)\}/);
+    expect(dashboardUi).toMatch(/value=\{asText\(secF\)\}/);
+    expect(notesUi).toMatch(/key=\{asTxt\(t\)\} value=\{asTxt\(t\)\}/);
+    expect(inspectionUi).toMatch(/value=\{asText\(q\)\}/);
+    const cellsUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/cells.tsx"),
+      "utf8",
+    );
+    expect(cellsUi).toMatch(/value=\{asCellText\(draft\)\}/);
+    expect(cellsUi).toMatch(/value=\{asCellText\(custom\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {
