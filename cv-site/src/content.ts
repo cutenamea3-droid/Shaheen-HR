@@ -1,0 +1,251 @@
+/**
+ * Shared CV facts — source of truth from the existing `/cv` page.
+ * Web portfolio and A4 PDF are separate React surfaces that both read this file.
+ *
+ * Unverified metrics stay in data for later approval but MUST NOT appear on
+ * public web or PDF until the owner confirms (`METRICS_PUBLIC = false`).
+ */
+
+export const METRICS_PUBLIC = false;
+
+export const PROFILE = {
+  fullName: "Muhammad Yousaf Shahzad",
+  shortName: "Yousaf Shahzad",
+  brand: "YOUSAF",
+  brandAccent: "SHAHZAD",
+  monogram: "YS",
+  role: "HR & Safety Compliance Manager",
+  company: "Shaheen Transport LLC",
+  location: "Lahore, Pakistan",
+  phone: "03196658197",
+  phoneHref: "tel:+923196658197",
+  email: "yousafranaitx@gmail.com",
+  emailHref: "mailto:yousafranaitx@gmail.com",
+  tags: ["HR", "Fleet Compliance", "Sales", "Web Apps"] as const,
+  summary:
+    "Data-driven HR, Fleet Compliance, and Sales professional combining operational oversight with technical automation. Builds cloud workforce dashboards while keeping driver compliance and attendance systems reliable day to day.",
+} as const;
+
+export const EXPERIENCE = [
+  {
+    role: "Human Resources & Safety Compliance Manager",
+    company: "Shaheen Transport LLC",
+    time: "Sep 2026 – Present",
+    text: "Overseeing employee attendance, managing driver CDL and medical records, handling compliance files and fleet Hours of Service (HOS) logs using ReguLog ELD and Rawen software.",
+    bullets: [
+      "Own day-to-day attendance tracking and employee record accuracy across the fleet HR desk.",
+      "Maintain driver CDL, medical, and compliance files with clear renewal visibility.",
+      "Run fleet HOS logging in ReguLog ELD and Rawen; surface expiry gaps before they block ops.",
+    ],
+    current: true,
+  },
+  {
+    role: "Sales Executive",
+    company: "ULP Digital",
+    time: "Jul 2026 – Sep 2026",
+    text: "Executing outbound sales and digital marketing strategies.",
+    bullets: [
+      "Ran outbound sales motions aligned to digital marketing campaigns and qualified leads toward close.",
+    ],
+    current: false,
+  },
+  {
+    role: "Sales Executive",
+    company: "Step More In Solution PVT (LTD)",
+    time: "Mar 2026 – Jun 2026",
+    text: "Executed outbound sales strategies to meet organizational targets and managed end-to-end client communications.",
+    bullets: [
+      "Executed outbound sales against targets and owned end-to-end client communication.",
+    ],
+    current: false,
+  },
+  {
+    role: "Telemarketer & Client Account Handler",
+    company: "The Global Estimation",
+    time: "Nov 2024 – Apr 2025",
+    text: "Proactive lead generation and account handling to secure new business, with a heavy focus on cold calling.",
+    bullets: [
+      "Generated leads and handled accounts with a heavy focus on cold calling.",
+    ],
+    current: false,
+  },
+  {
+    role: "Sales Agent",
+    company: "Ak Internationals",
+    time: "2021 – 2023",
+    text: "High-volume outbound calling, product pitching, customer inquiries and foundational sales techniques.",
+    bullets: [
+      "High-volume outbound calling, product pitching, and foundational sales technique.",
+    ],
+    current: false,
+  },
+] as const;
+
+/** Sanitized product case studies — no internal credentials, schemas, or prod IDs. */
+export const PROJECTS = [
+  {
+    id: "compliance",
+    name: "Driver Compliance Portal",
+    eyebrow: "Product",
+    summary:
+      "A fleet compliance workspace for tracking driver documents, medical cards, drug tests, and future renewal plans — designed so HR can see what needs action today without digging through folders.",
+    outcomes: [
+      "Unified driver dossiers with expiry-aware alerts",
+      "Today / future-plan views for renewal workload",
+      "Operational history and readiness summaries for audits",
+    ],
+    stack: ["React", "TanStack Router", "Supabase", "Vite"],
+  },
+  {
+    id: "admin",
+    name: "Admin & Attendance Desk",
+    eyebrow: "Product",
+    summary:
+      "An isolated HR desk for employee attendance, directory, expenses, and payroll-adjacent workflows — visually and architecturally separated from the driver compliance module.",
+    outcomes: [
+      "Attendance tracking with clear employee records",
+      "Directory, expenses, and activity logging in one shell",
+      "Module isolation so Compliance and Admin never share stores",
+    ],
+    stack: ["React", "Zustand", "Supabase Auth", "jsPDF"],
+  },
+] as const;
+
+export const EDUCATION = [
+  {
+    title: "BS Information Technology (BSIT)",
+    place: "Virtual University of Pakistan",
+    note: "Enrolled · 2026",
+    detail:
+      "Undergraduate IT program covering systems, databases, networks, and applied computing — pursued alongside full-time HR and fleet compliance work at Shaheen Transport.",
+  },
+  {
+    title: "Intermediate in Computer Science (ICS)",
+    place: "Islamiya Higher Secondary College",
+    note: "Grade C+",
+    detail:
+      "Higher-secondary computer science stream with programming fundamentals, mathematics, and core IT subjects that set up later product and automation work.",
+  },
+  {
+    title: "Matriculation in Computer Science",
+    place: "Al-Nasir High School",
+    note: "Grade B+",
+    detail:
+      "Secondary education with a computer science focus — early grounding in computing, logic, and structured problem-solving.",
+  },
+] as const;
+
+export type SkillItem = { label: string; icon: string; tone: "violet" | "teal" | "amber" | "rose" | "slate" | "indigo" };
+
+export const SKILL_GROUPS: { id: string; label: string; items: SkillItem[] }[] = [
+  {
+    id: "hr",
+    label: "HR & Compliance",
+    items: [
+      { label: "Attendance Tracking", icon: "📅", tone: "teal" },
+      { label: "Safety Compliance", icon: "🛡️", tone: "violet" },
+      { label: "HOS Logs", icon: "⏱️", tone: "amber" },
+      { label: "ReguLog ELD", icon: "🚛", tone: "indigo" },
+      { label: "Rawen", icon: "🗂️", tone: "slate" },
+      { label: "CDL & Medical Records", icon: "🩺", tone: "rose" },
+    ],
+  },
+  {
+    id: "sales",
+    label: "Sales & Communication",
+    items: [
+      { label: "Cold Calling", icon: "📞", tone: "rose" },
+      { label: "Client Acquisition", icon: "🤝", tone: "violet" },
+      { label: "Strategic Communication", icon: "💬", tone: "teal" },
+      { label: "Direct Sales", icon: "🎯", tone: "amber" },
+      { label: "Lead Generation", icon: "📈", tone: "indigo" },
+    ],
+  },
+  {
+    id: "tech",
+    label: "Tech & Digital",
+    items: [
+      { label: "Lovable", icon: "💜", tone: "violet" },
+      { label: "Vercel", icon: "▲", tone: "slate" },
+      { label: "GitHub", icon: "⌘", tone: "indigo" },
+      { label: "Termux", icon: "💻", tone: "teal" },
+      { label: "Gemini CLI", icon: "✨", tone: "amber" },
+      { label: "CapCut", icon: "🎬", tone: "rose" },
+      { label: "VN Editor", icon: "🎞️", tone: "violet" },
+      { label: "Keyframe Animation", icon: "🪄", tone: "teal" },
+    ],
+  },
+];
+
+export const LANGUAGES = [
+  { name: "English", level: "Professional" },
+  { name: "Urdu", level: "Native" },
+  { name: "Punjabi", level: "Native" },
+] as const;
+
+export const INTERESTS = [
+  {
+    title: "Video editing & content",
+    text: "High-energy anime edits with beat syncing, velocity, and keyframe animation in CapCut and VN Editor — sharpening timing, hierarchy, and shipping polished cuts on deadline.",
+  },
+  {
+    title: "Tech exploration",
+    text: "Building web apps and AI-assisted tools with Lovable, Vercel, GitHub, Termux, and Gemini CLI — the same craft behind the compliance and attendance products above.",
+  },
+] as const;
+
+/**
+ * Held back from public web + PDF until owner approval (`METRICS_PUBLIC`).
+ * `unverified: true` = from prior CV page, not independently validated.
+ */
+export const METRICS = [
+  {
+    value: "60+",
+    caption: "Drivers managed for DOT/DMV compliance",
+    unverified: true,
+  },
+  {
+    value: "100%",
+    caption: "Compliance rate maintained",
+    unverified: true,
+  },
+  {
+    value: "500+",
+    caption: "Daily outbound calls executed",
+    unverified: true,
+  },
+  {
+    value: "15+",
+    caption: "Enterprise projects secured in one month",
+    unverified: true,
+  },
+  {
+    value: "20+",
+    caption: "Employees managed weekly for HR/Payroll",
+    unverified: true,
+  },
+] as const;
+
+export const FAQ = [
+  {
+    q: "What do you focus on day to day?",
+    a: "Driver document compliance, attendance oversight, and keeping the Shaheen Transport HR systems accurate and usable for the team.",
+  },
+  {
+    q: "Do you build the software you use?",
+    a: "Yes — I designed and ship the Driver Compliance and Admin & Attendance web apps used internally, from UX through deployment.",
+  },
+  {
+    q: "How can I reach you?",
+    a: "Email yousafranaitx@gmail.com or call 03196658197. Based in Lahore, Pakistan.",
+  },
+] as const;
+
+export const NAV = [
+  { id: "home", label: "Home" },
+  { id: "experience", label: "Experience" },
+  { id: "projects", label: "Projects" },
+  { id: "skills", label: "Skills" },
+  { id: "education", label: "Education" },
+  { id: "contact", label: "Contact" },
+] as const;
