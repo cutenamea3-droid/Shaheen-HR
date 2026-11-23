@@ -22,6 +22,7 @@ import {
   Wallet,
   Scale,
 } from "lucide-react";
+import { AdminIslandBoundary } from "@/admin/components/AdminIslandBoundary";
 import { MyAccount } from "@/admin/components/hr/MyAccount";
 import { TeamManagement } from "@/admin/components/hr/TeamManagement";
 import { SystemLogs } from "@/admin/components/hr/SystemLogs";
@@ -58,11 +59,16 @@ import { attemptHrLogin } from "@/admin/lib/hr-login";
 import { isPreviewIsolated } from "@/lib/preview-isolated";
 import { BackupButtons, downloadBackup } from "@/admin/components/hr/Settings";
 
-/** Explicit conflict chooser — Prefer cloud when this browser looks empty (Entered 0). */
+/**
+ * Explicit conflict chooser — Prefer cloud when this browser looks empty (Entered 0).
+ * Selectors must return stable primitives/refs (never a fresh object) or Zustand + React
+ * hit #185 Maximum update depth and the Admin route ErrorBoundary ("didn't load").
+ */
 function ConflictChooser() {
-  const local = useApp((s) => ({ employees: s.employees, records: s.records }));
+  const employees = useApp((s) => s.employees);
+  const records = useApp((s) => s.records);
   const cloud = getConflictCloud();
-  const preferCloud = shouldAutoPreferCloud(local, cloud);
+  const preferCloud = shouldAutoPreferCloud({ employees, records }, cloud);
 
   // Soft-refresh recovery: empty local + filled cloud → Prefer cloud without a click.
   useEffect(() => {
@@ -114,10 +120,7 @@ function ConflictChooser() {
           type="button"
           className="btn"
           onClick={() => {
-            const blob = {
-              employees: local.employees,
-              records: local.records,
-            };
+            const blob = { employees, records };
             if (
               isHrPayloadEmpty(blob) ||
               !isHrMeaningful(blob) ||
@@ -179,7 +182,9 @@ function SyncBadge() {
         )}
       </div>
       {conflict && (
-        <ConflictChooser />
+        <AdminIslandBoundary label="sync conflict">
+          <ConflictChooser />
+        </AdminIslandBoundary>
       )}
     </div>
   );

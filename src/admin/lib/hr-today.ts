@@ -58,6 +58,33 @@ function needsReviewNote(c: ReturnType<typeof calcDay>, rec: DayRec): boolean {
  * Daily HR work-center rollup from existing attendance / leave / finance completeness.
  * Display-only — does not change payroll calc.
  */
+const DEFAULT_SETTINGS: Settings = {
+  company: "",
+  grace: 15,
+  breakMin: 60,
+  breakLeeway: 10,
+  satTargetHours: 5,
+  overpay: false,
+};
+
+function coerceSettings(raw: unknown): Settings {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...DEFAULT_SETTINGS };
+  const s = raw as Partial<Settings>;
+  const num = (v: unknown, fallback: number) => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    company: s.company == null ? "" : typeof s.company === "string" ? s.company : String(s.company),
+    grace: num(s.grace, DEFAULT_SETTINGS.grace),
+    breakMin: num(s.breakMin, DEFAULT_SETTINGS.breakMin),
+    breakLeeway: num(s.breakLeeway, DEFAULT_SETTINGS.breakLeeway),
+    satTargetHours: num(s.satTargetHours, DEFAULT_SETTINGS.satTargetHours),
+    overpay: Boolean(s.overpay),
+  };
+}
+
 export function buildHrToday(opts: {
   date: string;
   employees: Employee[];
@@ -69,11 +96,15 @@ export function buildHrToday(opts: {
   lowLeaveThreshold?: number;
 }): HrTodaySummary {
   const date = opts.date;
-  const employees = Array.isArray(opts.employees) ? opts.employees : [];
-  const depts = Array.isArray(opts.depts) ? opts.depts : [];
+  const employees = (Array.isArray(opts.employees) ? opts.employees : []).filter(
+    (e): e is Employee => !!e && typeof e === "object" && !Array.isArray(e),
+  );
+  const depts = (Array.isArray(opts.depts) ? opts.depts : []).filter(
+    (d): d is Dept => !!d && typeof d === "object" && !Array.isArray(d),
+  );
   const records =
     opts.records && typeof opts.records === "object" && !Array.isArray(opts.records) ? opts.records : {};
-  const settings = opts.settings;
+  const settings = coerceSettings(opts.settings);
   const bankMissing = new Set(
     Array.isArray(opts.bankMissingIds)
       ? opts.bankMissingIds
