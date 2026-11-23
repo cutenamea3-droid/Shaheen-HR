@@ -357,11 +357,11 @@ export function EmployeeDirectory() {
                     <span className="lbl">Institution</span>
                     <select
                       className="field"
-                      value={form.institutionId}
+                      value={asText(form.institutionId)}
                       onChange={(e) => setForm((f) => ({ ...f, institutionId: e.target.value }))}
                     >
                       {institutions.map((i) => (
-                        <option key={i.id} value={i.id}>
+                        <option key={asText(i.id)} value={asText(i.id)}>
                           {asText(i.name)} — {pkInstitutionKindLabel(i.kind)}
                           {!i.isBank ? " (wallet)" : ""}
                         </option>
@@ -416,7 +416,7 @@ export function EmployeeDirectory() {
                   </label>
                   <label>
                     <span className="lbl">Effective from</span>
-                    <input type="date" className="field" value={form.effectiveFrom} onChange={(e) => e.target.value && setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} />
+                    <input type="date" className="field" value={asText(form.effectiveFrom)} onChange={(e) => e.target.value && setForm((f) => ({ ...f, effectiveFrom: e.target.value }))} />
                   </label>
                   <label>
                     <span className="lbl">Note</span>

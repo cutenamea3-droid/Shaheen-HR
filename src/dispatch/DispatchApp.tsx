@@ -770,20 +770,20 @@ function LoadsBoard({
         />
         <select
           className="dispatch-field"
-          value={status}
+          value={asFormText(status)}
           onChange={(e) => setStatus(e.target.value as typeof status)}
         >
           <option value="active">Active</option>
           <option value="all">All statuses</option>
           {Object.entries(LOAD_STATUS_LABELS).map(([k, label]) => (
-            <option key={k} value={k}>
+            <option key={asFormText(k)} value={asFormText(k)}>
               {label}
             </option>
           ))}
         </select>
         <select
           className="dispatch-field"
-          value={driverId}
+          value={asFormText(driverId)}
           onChange={(e) => setDriverId(e.target.value as typeof driverId)}
         >
           <option value="all">All drivers</option>
@@ -1249,7 +1249,7 @@ function LoadEditor({
           Assign roster driver
           <select
             className="dispatch-field"
-            value={form.assigned_driver_id}
+            value={asFormText(form.assigned_driver_id)}
             onChange={(e) => setForm({ ...form, assigned_driver_id: e.target.value })}
           >
             <option value="">Unassigned</option>
@@ -1283,7 +1283,7 @@ function LoadEditor({
           BOL status
           <select
             className="dispatch-field"
-            value={form.bol_status}
+            value={asFormText(form.bol_status)}
             onChange={(e) => setForm({ ...form, bol_status: e.target.value as DocStatus })}
           >
             {["missing", "pending", "received", "verified", "exception"].map((s) => (
@@ -1297,7 +1297,7 @@ function LoadEditor({
           POD status
           <select
             className="dispatch-field"
-            value={form.pod_status}
+            value={asFormText(form.pod_status)}
             onChange={(e) => setForm({ ...form, pod_status: e.target.value as DocStatus })}
           >
             {["missing", "pending", "received", "verified", "exception"].map((s) => (
@@ -2390,7 +2390,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
           >
             <option value="">No load link</option>
             {safeLoads.map((l) => (
-              <option key={l.id} value={l.id}>
+              <option key={asFormText(l.id)} value={asFormText(l.id)}>
                 {asFormText(l.load_number)}
               </option>
             ))}
@@ -2678,7 +2678,7 @@ function HistoryBoard({
                 onChange={(e) => setLoadId(e.target.value)}
               >
                 {safeLoads.map((l) => (
-                  <option key={l.id} value={l.id}>
+                  <option key={asFormText(l.id)} value={asFormText(l.id)}>
                     {asFormText(l.load_number)} · {statusLabel(l.status)}
                   </option>
                 ))}

@@ -235,10 +235,10 @@ export function FollowUpsBoard({
           onChange={(e) => setDueAt(e.target.value)}
           onInput={(e) => setDueAt((e.target as HTMLInputElement).value)}
         />
-        <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+        <select className="dispatch-field" value={asText(loadId)} onChange={(e) => setLoadId(e.target.value)}>
           <option value="">No load link</option>
           {safeLoads.map((l) => (
-            <option key={l.id} value={l.id}>
+            <option key={asText(l.id)} value={asText(l.id)}>
               {asText(l.load_number)}
             </option>
           ))}

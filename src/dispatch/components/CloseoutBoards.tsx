@@ -80,9 +80,9 @@ export function AccessorialsBoard({
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="grid gap-1 text-xs">
             Load
-            <select className="dispatch-field" value={loadId} onChange={(e) => setLoadId(e.target.value)}>
+            <select className="dispatch-field" value={asText(loadId)} onChange={(e) => setLoadId(e.target.value)}>
               {safeLoads.map((l) => (
-                <option key={l.id} value={l.id}>
+                <option key={asText(l.id)} value={asText(l.id)}>
                   {asText(l.load_number)} · {statusLabel(l.status)} · pay{" "}
                   {paymentStatusLabel(l.payment_status)}
                 </option>
@@ -105,7 +105,7 @@ export function AccessorialsBoard({
               ref={descriptionRef}
               data-testid="dispatch-accessorial-description"
               className="dispatch-field"
-              value={description}
+              value={asText(description)}
               onChange={(e) => setDescription(e.target.value)}
               onInput={(e) => setDescription((e.target as HTMLInputElement).value)}
               placeholder="What happened (manual)"
@@ -118,7 +118,7 @@ export function AccessorialsBoard({
               data-testid="dispatch-accessorial-amount"
               className="dispatch-field"
               inputMode="decimal"
-              value={amount}
+              value={asText(amount)}
               onChange={(e) => setAmount(e.target.value)}
               onInput={(e) => setAmount((e.target as HTMLInputElement).value)}
               placeholder="Leave blank — never invent rate"
@@ -131,7 +131,7 @@ export function AccessorialsBoard({
               data-testid="dispatch-accessorial-hours"
               className="dispatch-field"
               inputMode="decimal"
-              value={hours}
+              value={asText(hours)}
               onChange={(e) => setHours(e.target.value)}
               onInput={(e) => setHours((e.target as HTMLInputElement).value)}
               placeholder="Optional — not free-time calc"
@@ -143,7 +143,7 @@ export function AccessorialsBoard({
               ref={freeTimeNoteRef}
               data-testid="dispatch-accessorial-freetime"
               className="dispatch-field"
-              value={freeTimeNote}
+              value={asText(freeTimeNote)}
               onChange={(e) => setFreeTimeNote(e.target.value)}
               onInput={(e) => setFreeTimeNote((e.target as HTMLInputElement).value)}
             />

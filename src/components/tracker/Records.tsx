@@ -274,7 +274,7 @@ export function Records() {
                       onChange={(e) => shiftCategory(asText(p.name), e.target.value)}
                     >
                       {RECORD_TABS.map((t) => (
-                        <option key={t.id} value={t.id}>
+                        <option key={asText(t.id)} value={asText(t.id)}>
                           {t.short}
                         </option>
                       ))}

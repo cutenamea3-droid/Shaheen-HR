@@ -99,7 +99,7 @@ export function Reports() {
   };
 
   const onReopen = () => {
-    const nextReason = (reopenReason.trim() || reopenReasonRef.current?.value || "").trim();
+    const nextReason = (asText(reopenReason).trim() || reopenReasonRef.current?.value || "").trim();
     const r = reopenMonth(month, who, nextReason);
     if (!r.ok) {
       setCloseMsg(r.error);
@@ -138,7 +138,7 @@ export function Reports() {
                 data-testid="admin-reopen-reason"
                 className="field min-w-[220px] flex-1"
                 placeholder="Reopen reason (required)"
-                value={reopenReason}
+                value={asText(reopenReason)}
                 onChange={(e) => setReopenReason(e.target.value)}
                 onInput={(e) => setReopenReason((e.target as HTMLInputElement).value)}
                 aria-label="Reopen reason"
@@ -152,7 +152,7 @@ export function Reports() {
         {monthRec?.closedAt && (
           <p className="text-sm text-muted-foreground">
             Closed by {monthRec.closedBy} · {new Date(monthRec.closedAt).toLocaleString()}
-            {monthRec.reopenReason ? ` · Last reopen: ${monthRec.reopenReason}` : ""}
+            {monthRec.reopenReason ? ` · Last reopen: ${asText(monthRec.reopenReason)}` : ""}
           </p>
         )}
         {closeMsg && <p className="text-sm font-medium text-primary">{closeMsg}</p>}
@@ -243,12 +243,12 @@ export function Reports() {
               <select
                 className="field w-auto min-w-[200px]"
                 aria-label="Employee for report"
-                value={empId}
+                value={asText(empId)}
                 onChange={(e) => setEmpId(e.target.value)}
               >
                 <option value="">Select employee</option>
                 {employees.map((e) => (
-                  <option key={e.id} value={e.id}>
+                  <option key={asText(e.id)} value={asText(e.id)}>
                     {asText(e.name)}
                   </option>
                 ))}

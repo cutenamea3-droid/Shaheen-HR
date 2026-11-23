@@ -117,7 +117,7 @@ export function SalaryPayments() {
               type="month"
               className="field w-auto"
               aria-label="Payment month"
-              value={month}
+              value={asText(month)}
               onChange={(e) => e.target.value && setMonth(e.target.value)}
             />
             <button type="button" className="btn-primary" onClick={exportCsv}>

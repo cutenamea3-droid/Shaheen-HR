@@ -408,6 +408,20 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(hireUi).toMatch(/const safeDraft = asHireText\(draft\)/);
     expect(dispatchApp).toMatch(/key=\{asFormText\(d\.id\)\} value=\{asFormText\(d\.id\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.bol_status\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.pod_status\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.assigned_driver_id\)\}/);
+    expect(dispatchApp).toMatch(/key=\{asFormText\(l\.id\)\} value=\{asFormText\(l\.id\)\}/);
+    expect(closeoutUi).toMatch(/value=\{asText\(description\)\}/);
+    expect(closeoutUi).toMatch(/key=\{asText\(l\.id\)\} value=\{asText\(l\.id\)\}/);
+    expect(salaryPayUi).toMatch(/value=\{asText\(month\)\}/);
+    expect(reportsUi).toMatch(/value=\{asText\(reopenReason\)\}/);
+    expect(reportsUi).toMatch(/value=\{asText\(empId\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(form\.institutionId\)\}/);
+    expect(directoryUi).toMatch(/value=\{asText\(form\.effectiveFrom\)\}/);
+    expect(opsBoards).toMatch(/value=\{asText\(loadId\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(status\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(driverId\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

@@ -203,7 +203,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
           <select className="field w-auto" value={remEmp} onChange={(e) => setRemEmp(e.target.value)} aria-label="Reminder employee">
             <option value="">Optional employee</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>
+              <option key={asText(e.id)} value={asText(e.id)}>
                 {asText(e.name)}
               </option>
             ))}

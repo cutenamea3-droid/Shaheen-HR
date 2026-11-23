@@ -530,7 +530,7 @@ function FuturePlans() {
           <option value="all">All sections</option>
           {SECTIONS.filter((s) => ["dmv", "medical", "queries", "ssccdl"].includes(s.id)).map(
             (s) => (
-              <option key={s.id} value={s.id}>
+              <option key={asText(s.id)} value={asText(s.id)}>
                 {asText(s.title)}
               </option>
             ),

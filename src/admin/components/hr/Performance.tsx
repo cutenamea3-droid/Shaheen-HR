@@ -104,7 +104,7 @@ export function Performance() {
           <select className="field w-auto" value={fuEmp} onChange={(e) => setFuEmp(e.target.value)} aria-label="Follow-up employee">
             <option value="">Employee</option>
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>
+              <option key={asText(e.id)} value={asText(e.id)}>
                 {asText(e.name)}
               </option>
             ))}

@@ -742,7 +742,7 @@ export function ExpensesManagement() {
           <select className="field" value={finEmpId} onChange={(e) => setFinEmpId(e.target.value)}>
             <option value="">Select employee…</option>
             {roster.map((e) => (
-              <option key={e.id} value={e.id}>
+              <option key={asText(e.id)} value={asText(e.id)}>
                 {asText(e.name)}
               </option>
             ))}
