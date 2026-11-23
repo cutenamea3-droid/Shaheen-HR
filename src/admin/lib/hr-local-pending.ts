@@ -47,6 +47,9 @@ export function hasHrLocalOnlySessionFlag(
  * On cloud reconnect, treat as pending local work when either the unsynced bit
  * or a prior local-only session flag is set — so we never silently apply cloud
  * over edits made while sync was paused.
+ *
+ * Callers must clear this for empty / Entered-0 local (prefer cloud) so a
+ * prior local-only soft session cannot sticky-trap Not Synced / conflict.
  */
 export function reconnectTreatAsUnsynced(opts: {
   unsyncedFlag: boolean;

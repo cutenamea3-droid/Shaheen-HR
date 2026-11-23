@@ -10,6 +10,7 @@ import {
   refuseSeedOrEmptyPush,
   shouldAutoPreferCloud,
 } from "./hr-sync-protect";
+import { needsExplicitConflictUx } from "./hr-sync-status";
 
 const emptyShaped = {
   depts: [],
@@ -88,6 +89,16 @@ test("soft-refresh: roster-only local (Entered 0) auto-prefers cloud with punche
   expect(isHrMeaningful(rosterOnly)).toBe(true); // employees still present
   expect(shouldAutoPreferCloud(rosterOnly, richLocal)).toBe(true);
   expect(decideHrSync(rosterOnly, richLocal, { unsynced: true })).toBe("apply_cloud");
+  // Zero-attendance + prior local-only "unsynced" must still Prefer cloud (no sticky conflict).
+  expect(
+    needsExplicitConflictUx({
+      localMeaningful: true,
+      cloudMeaningful: true,
+      diverge: true,
+      pendingUnsynced: true,
+      autoPreferCloud: shouldAutoPreferCloud(rosterOnly, richLocal),
+    }),
+  ).toBe(false);
   expect(refuseSeedOrEmptyPush(rosterOnly, richLocal)).toBe(true);
 });
 
