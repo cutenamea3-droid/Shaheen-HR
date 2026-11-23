@@ -471,6 +471,16 @@ describe("Personal store write-path normalize guards", () => {
     expect(auditHistUi).toMatch(/value=\{asText\(month\)\}/);
     expect(drugRegUi).toMatch(/value=\{asDrugText\(q\)\}/);
     expect(drugRegUi).toMatch(/value=\{asDrugText\(statusFilter\)\}/);
+    expect(dispatchApp).toMatch(/asFormText\(commSummary\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(checkNotes\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(excKind\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/asFormText\(seniorNote\)\.trim\(\)/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(commSummary\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(summary\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(email\)\}/);
+    expect(teamUi).toMatch(/asText\(name\)\.trim\(\)/);
+    expect(teamUi).toMatch(/value=\{asText\(name\)\}/);
+    expect(teamUi).toMatch(/value=\{asText\(role\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

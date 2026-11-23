@@ -1845,7 +1845,7 @@ function LoadEditor({
                 Kind
                 <select
                   className="dispatch-field"
-                  value={commKind}
+                  value={asFormText(commKind)}
                   onChange={(e) => setCommKind(e.target.value as CommunicationKind)}
                 >
                   <option value="call">Call</option>
@@ -1860,7 +1860,7 @@ function LoadEditor({
                   ref={commSummaryRef}
                   data-testid="dispatch-comm-summary"
                   className="dispatch-field"
-                  value={commSummary}
+                  value={asFormText(commSummary)}
                   onChange={(e) => setCommSummary(e.target.value)}
                   onInput={(e) => setCommSummary((e.target as HTMLInputElement).value)}
                 />
@@ -1872,7 +1872,7 @@ function LoadEditor({
                     ref={commDecisionRef}
                     data-testid="dispatch-comm-decision"
                     className="dispatch-field"
-                    value={commDecision}
+                    value={asFormText(commDecision)}
                     onChange={(e) => setCommDecision(e.target.value)}
                     onInput={(e) => setCommDecision((e.target as HTMLInputElement).value)}
                   />
@@ -1884,7 +1884,7 @@ function LoadEditor({
                   ref={commDetailRef}
                   data-testid="dispatch-comm-detail"
                   className="dispatch-field"
-                  value={commDetail}
+                  value={asFormText(commDetail)}
                   onChange={(e) => setCommDetail(e.target.value)}
                   onInput={(e) => setCommDetail((e.target as HTMLInputElement).value)}
                 />
@@ -1895,9 +1895,9 @@ function LoadEditor({
               className="dispatch-btn-primary mt-2"
               disabled={opsBusy}
               onClick={async () => {
-                const nextSummary = (commSummary.trim() || commSummaryRef.current?.value || "").trim();
-                const nextDecision = (commDecision.trim() || commDecisionRef.current?.value || "").trim();
-                const nextDetail = (commDetail.trim() || commDetailRef.current?.value || "").trim();
+                const nextSummary = (asFormText(commSummary).trim() || commSummaryRef.current?.value || "").trim();
+                const nextDecision = (asFormText(commDecision).trim() || commDecisionRef.current?.value || "").trim();
+                const nextDetail = (asFormText(commDetail).trim() || commDetailRef.current?.value || "").trim();
                 const err = validateCommunication({
                   kind: commKind,
                   summary: nextSummary,
@@ -1978,7 +1978,7 @@ function LoadEditor({
                 data-testid="dispatch-check-location"
                 className="dispatch-field"
                 placeholder="Manual location"
-                value={checkLocation}
+                value={asFormText(checkLocation)}
                 onChange={(e) => setCheckLocation(e.target.value)}
                 onInput={(e) => setCheckLocation((e.target as HTMLInputElement).value)}
               />
@@ -1987,7 +1987,7 @@ function LoadEditor({
                 data-testid="dispatch-check-notes"
                 className="dispatch-field"
                 placeholder="Notes"
-                value={checkNotes}
+                value={asFormText(checkNotes)}
                 onChange={(e) => setCheckNotes(e.target.value)}
                 onInput={(e) => setCheckNotes((e.target as HTMLInputElement).value)}
               />
@@ -1996,8 +1996,8 @@ function LoadEditor({
               type="button"
               className="dispatch-btn-primary mt-2"
               onClick={async () => {
-                const nextNotes = (checkNotes.trim() || checkNotesRef.current?.value || "").trim();
-                const nextLoc = (checkLocation.trim() || checkLocationRef.current?.value || "").trim();
+                const nextNotes = (asFormText(checkNotes).trim() || checkNotesRef.current?.value || "").trim();
+                const nextLoc = (asFormText(checkLocation).trim() || checkLocationRef.current?.value || "").trim();
                 if (!nextNotes) return;
                 await addCheckCall({
                   load_id: load.id,
@@ -2033,7 +2033,7 @@ function LoadEditor({
                 ref={excKindRef}
                 data-testid="dispatch-exc-kind"
                 className="dispatch-field"
-                value={excKind}
+                value={asFormText(excKind)}
                 onChange={(e) => setExcKind(e.target.value)}
                 onInput={(e) => setExcKind((e.target as HTMLInputElement).value)}
               />
@@ -2041,7 +2041,7 @@ function LoadEditor({
                 ref={excNotesRef}
                 data-testid="dispatch-exc-notes"
                 className="dispatch-field"
-                value={excNotes}
+                value={asFormText(excNotes)}
                 onChange={(e) => setExcNotes(e.target.value)}
                 onInput={(e) => setExcNotes((e.target as HTMLInputElement).value)}
                 placeholder="Notes"
@@ -2051,8 +2051,8 @@ function LoadEditor({
               type="button"
               className="dispatch-btn-ghost mt-2"
               onClick={async () => {
-                const nextKind = (excKind.trim() || excKindRef.current?.value || "Delay").trim() || "Delay";
-                const nextNotes = (excNotes.trim() || excNotesRef.current?.value || "").trim();
+                const nextKind = (asFormText(excKind).trim() || excKindRef.current?.value || "Delay").trim() || "Delay";
+                const nextNotes = (asFormText(excNotes).trim() || excNotesRef.current?.value || "").trim();
                 await saveException({
                   load_id: load.id,
                   kind: nextKind,
@@ -2152,7 +2152,7 @@ function RosterBoard({
           data-testid="dispatch-roster-name"
           className="dispatch-field"
           placeholder="Driver name"
-          value={name}
+          value={asFormText(name)}
           onChange={(e) => setName(e.target.value)}
           onInput={(e) => setName((e.target as HTMLInputElement).value)}
         />
@@ -2161,7 +2161,7 @@ function RosterBoard({
           data-testid="dispatch-roster-unit"
           className="dispatch-field w-28"
           placeholder="Unit #"
-          value={unit}
+          value={asFormText(unit)}
           onChange={(e) => setUnit(e.target.value)}
           onInput={(e) => setUnit((e.target as HTMLInputElement).value)}
         />
@@ -2169,8 +2169,8 @@ function RosterBoard({
           type="button"
           className="dispatch-btn-primary"
           onClick={async () => {
-            const nextName = (name.trim() || nameRef.current?.value || "").trim();
-            const nextUnit = (unit.trim() || unitRef.current?.value || "").trim();
+            const nextName = (asFormText(name).trim() || nameRef.current?.value || "").trim();
+            const nextUnit = (asFormText(unit).trim() || unitRef.current?.value || "").trim();
             if (!nextName) return;
             await onSave({ display_name: nextName, unit_number: nextUnit || null });
             setName("");
@@ -2240,7 +2240,7 @@ function HandoverBoard({
         followUps: Array.isArray(followUps) ? followUps : [],
       });
       if (hints && !hintsReady) {
-        setWatch((prev) => (prev.trim() ? prev : hints));
+        setWatch((prev) => (asFormText(prev).trim() ? prev : hints));
         setHintsReady(true);
       }
     })();
@@ -2262,7 +2262,7 @@ function HandoverBoard({
           ref={summaryRef}
           data-testid="dispatch-handover-summary"
           className="dispatch-field min-h-24"
-          value={summary}
+          value={asFormText(summary)}
           onChange={(e) => setSummary(e.target.value)}
           onInput={(e) => setSummary((e.target as HTMLTextAreaElement).value)}
         />
@@ -2273,7 +2273,7 @@ function HandoverBoard({
           ref={watchRef}
           data-testid="dispatch-handover-watch"
           className="dispatch-field min-h-20"
-          value={watch}
+          value={asFormText(watch)}
           onChange={(e) => setWatch(e.target.value)}
           onInput={(e) => setWatch((e.target as HTMLTextAreaElement).value)}
         />
@@ -2284,7 +2284,7 @@ function HandoverBoard({
           ref={prioritiesRef}
           data-testid="dispatch-handover-priorities"
           className="dispatch-field min-h-20"
-          value={priorities}
+          value={asFormText(priorities)}
           onChange={(e) => setPriorities(e.target.value)}
           onInput={(e) => setPriorities((e.target as HTMLTextAreaElement).value)}
         />
@@ -2295,13 +2295,14 @@ function HandoverBoard({
           ref={toDispatcherRef}
           data-testid="dispatch-handover-to"
           className="dispatch-field"
-          value={toDispatcher}
+          value={asFormText(toDispatcher)}
           onChange={(e) => setToDispatcher(e.target.value)}
           onInput={(e) => setToDispatcher((e.target as HTMLInputElement).value)}
         />
       </label>
       <p className="text-xs text-[color:var(--dispatch-muted)]">
-        Open loads included: {openLoads.map((l) => l.load_number).join(", ") || "none"}
+        Open loads included:{" "}
+        {openLoads.map((l) => asFormText(l.load_number)).join(", ") || "none"}
       </p>
       <div className="flex flex-wrap gap-2">
         <button
@@ -2311,7 +2312,7 @@ function HandoverBoard({
             const nextSummary = summary || summaryRef.current?.value || "";
             const nextWatch = watch || watchRef.current?.value || "";
             const nextPriorities = priorities || prioritiesRef.current?.value || "";
-            const nextTo = (toDispatcher.trim() || toDispatcherRef.current?.value || "").trim();
+            const nextTo = (asFormText(toDispatcher).trim() || toDispatcherRef.current?.value || "").trim();
             const saved = await saveHandover({
               shift_date: new Date().toISOString().slice(0, 10),
               from_dispatcher: asFormText(account.display_name),
@@ -2423,7 +2424,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
           type="button"
           className="dispatch-btn-primary"
           onClick={async () => {
-            const nextTitle = (title.trim() || issueTitleRef.current?.value || "").trim();
+            const nextTitle = (asFormText(title).trim() || issueTitleRef.current?.value || "").trim();
             const nextDetail = detail || issueDetailRef.current?.value || "";
             if (!nextTitle) return;
             await saveIssue({
@@ -2494,7 +2495,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                       data-testid="dispatch-senior-note"
                       className="dispatch-field"
                       placeholder="Who/when you informed — desk record only"
-                      value={seniorNote}
+                      value={asFormText(seniorNote)}
                       onChange={(e) => setSeniorNote(e.target.value)}
                       onInput={(e) => setSeniorNote((e.target as HTMLInputElement).value)}
                     />
@@ -2507,7 +2508,7 @@ function IssuesBoard({ loads }: { loads: DispatchLoad[] }) {
                         ...issue,
                         senior_informed: true,
                         senior_informed_note:
-                          (seniorNote.trim() || seniorNoteRef.current?.value || "").trim() ||
+                          (asFormText(seniorNote).trim() || seniorNoteRef.current?.value || "").trim() ||
                           "Marked informed by desk",
                         senior_informed_at: new Date().toISOString(),
                       });
@@ -2846,7 +2847,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
           data-testid="dispatch-invite-email"
           className="dispatch-field"
           placeholder="Email"
-          value={email}
+          value={asFormText(email)}
           onChange={(e) => setEmail(e.target.value)}
           onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
         />
@@ -2855,7 +2856,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
           data-testid="dispatch-invite-name"
           className="dispatch-field"
           placeholder="Display name"
-          value={displayName}
+          value={asFormText(displayName)}
           onChange={(e) => setDisplayName(e.target.value)}
           onInput={(e) => setDisplayName((e.target as HTMLInputElement).value)}
         />
@@ -2865,7 +2866,7 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
           className="dispatch-field"
           type="password"
           placeholder="Temp password (8+)"
-          value={password}
+          value={asFormText(password)}
           onChange={(e) => setPassword(e.target.value)}
           onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
         />
@@ -2876,9 +2877,9 @@ function TeamBoard({ account }: { account: DispatchAccount }) {
             setMsg(null);
             try {
               await inviteDispatchUser({
-                email: (email.trim() || emailRef.current?.value || "").trim(),
-                displayName: (displayName.trim() || displayNameRef.current?.value || "").trim(),
-                password: (password.trim() || passwordRef.current?.value || "").trim(),
+                email: (asFormText(email).trim() || emailRef.current?.value || "").trim(),
+                displayName: (asFormText(displayName).trim() || displayNameRef.current?.value || "").trim(),
+                password: (asFormText(password).trim() || passwordRef.current?.value || "").trim(),
                 role: "dispatcher",
               });
               setEmail("");

@@ -37,8 +37,11 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
         onSubmit={(e) => {
           e.preventDefault();
           const fd = new FormData(e.currentTarget);
-          const display = String(fd.get("admin-team-name") ?? name).trim() || name.trim();
-          const mail = (String(fd.get("admin-team-email") ?? email).trim() || email.trim()).toLowerCase();
+          const display =
+            String(fd.get("admin-team-name") ?? name).trim() || asText(name).trim();
+          const mail = (
+            String(fd.get("admin-team-email") ?? email).trim() || asText(email).trim()
+          ).toLowerCase();
           if (!display || !mail) return;
           const asMail = (v: unknown) =>
             (v == null ? "" : typeof v === "string" ? v : String(v)).trim().toLowerCase();
@@ -60,7 +63,7 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
             className="field"
             name="admin-team-name"
             data-testid="admin-team-name"
-            value={name}
+            value={asText(name)}
             onChange={(e) => setName(e.target.value)}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
             required
@@ -73,7 +76,7 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
             type="email"
             name="admin-team-email"
             data-testid="admin-team-email"
-            value={email}
+            value={asText(email)}
             onChange={(e) => setEmail(e.target.value)}
             onInput={(e) => setEmail((e.target as HTMLInputElement).value)}
             required
@@ -81,7 +84,7 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
         </label>
         <label>
           <span className="lbl">Role</span>
-          <select className="field" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <select className="field" value={asText(role)} onChange={(e) => setRole(e.target.value as Role)}>
             <option value="standard">Standard</option>
             <option value="admin">Admin</option>
           </select>
@@ -126,7 +129,7 @@ export function TeamManagement({ adminEmail }: { adminEmail: string }) {
                     aria-label={`Name for ${asText(m.email)}`}
                     defaultValue={asText(m.name)}
                     onBlur={(e) => {
-                      const next = e.target.value.trim();
+                      const next = asText(e.target.value).trim();
                       if (next && next !== asText(m.name)) {
                         upsert({ ...m, name: next });
                         addLog(adminEmail, `Renamed account ${asText(m.email)} to “${next}”`);
