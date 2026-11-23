@@ -35,9 +35,8 @@ export const Route = createFileRoute("/access-denied")({
  * ModuleRedirector → /access-denied?module=compliance (sticky loop) and on
  * Production the access-denied URL also threw React #418 on refresh.
  *
- * Also re-probes on Driver Auth changes: signing into Compliance while another
- * seat (Personal/Dispatch) was already probed used to leave a sticky false deny
- * until a manual path change.
+ * Re-probes on Driver Auth / portal-ready: Compliance login must leave this page
+ * as soon as a Compliance seat is known (never sticky deny for the owner).
  */
 function AccessDeniedPage() {
   const { module, need } = Route.useSearch();

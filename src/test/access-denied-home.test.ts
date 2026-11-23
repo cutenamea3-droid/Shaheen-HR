@@ -17,25 +17,12 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     const grants = {
       compliance: null,
       "admin-hr": "admin" as const,
-      personal: null,
-      dispatch: null,
     };
     expect(canAccessPath(grants, "/")).toBe(false);
     expect(canAccessPath(grants, "/admin")).toBe(true);
     expect(shouldDenyModulePath(grants, "/")).toBe(true);
     expect(shouldDenyModulePath(grants, "/admin")).toBe(false);
     expect(homePathFor(grants)).toBe("/admin");
-  });
-
-  it("retired dispatch seats do not home to /dispatch in this app", () => {
-    const grants = {
-      compliance: null,
-      "admin-hr": null,
-      personal: null,
-      dispatch: "dispatcher" as const,
-    };
-    expect(homePathFor(grants)).toBe("/access-denied");
-    expect(shouldDenyModulePath(grants, "/")).toBe(false);
   });
 
   it("AccessDenied route resolves home via probe + homePathFor (not hardcoded /)", () => {
@@ -97,20 +84,14 @@ describe("access-denied home path (auth race / sticky loop)", () => {
     const grants = {
       compliance: "admin" as const,
       "admin-hr": null,
-      personal: null,
-      dispatch: null,
     };
     expect(shouldDenyModulePath(grants, "/admin")).toBe(false);
-    expect(shouldDenyModulePath(grants, "/personal")).toBe(false);
-    expect(shouldDenyModulePath(grants, "/dispatch")).toBe(false);
   });
 
   it("compliance grant still reaches / (authorized refresh path)", () => {
     const grants = {
       compliance: "admin" as const,
       "admin-hr": "admin" as const,
-      personal: null,
-      dispatch: null,
     };
     expect(canAccessPath(grants, "/")).toBe(true);
     expect(shouldDenyModulePath(grants, "/")).toBe(false);

@@ -11,8 +11,8 @@
 
 ## Site rules (Compliance + Attendance app)
 
-- Two modules in this deployable: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …) and Admin & Attendance (`src/admin/` → `/admin`). Personal Study and Dispatch Operations UIs are **not** served here (`/personal` and `/dispatch` soft-land with a clear message). Why: owner split to stop four-dashboard Access Denied races.
-- Never share data, stores, or database clients across Driver ↔ Admin. Personal/Dispatch source trees may remain unwired for history; do not re-link them into routes/switcher/probes without a new owner request.
-- Keep production wiring: Driver `VITE_SUPABASE_*` (`okzcwctsgurumnnzuxgg`) and Admin Lovable Cloud client — do not re-point. Zero Prod SQL deletes/overwrites without explicit approval.
+- Two modules only: Driver Compliance (`src/` routes `/`, `/drivers`, `/s/*`, …) and Admin & Attendance (`src/admin/` → `/admin`). Personal Study and Dispatch Operations code is **not** in this repository. Why: long-term stability — one site, two fully separated systems.
+- Never share data, stores, or database clients across Driver ↔ Admin.
+- Keep production wiring: Driver `VITE_SUPABASE_*` (`okzcwctsgurumnnzuxgg`) and Admin Lovable Cloud client — do not re-point. Zero Prod SQL deletes/overwrites without explicit approval. Existing Personal/Dispatch **cloud** tables/projects stay intact (no cloud deletes from this app).
 - Never bridge JWTs across Auth projects; localStorage roles / nav hide are not source of truth — enforce RLS/RPC/ACL.
 - Admin colors stay under `.admin-theme`.

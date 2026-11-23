@@ -16,15 +16,10 @@ describe("App routing", () => {
   });
 });
 
-describe("Combined site", () => {
+describe("Combined site (Compliance + Admin only)", () => {
   it("serves Admin & Attendance at /admin", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(router.matchRoutes("/admin").at(-1)?.routeId).toBe("/admin");
-  });
-
-  it("serves HR Personal at /personal", () => {
-    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-    expect(router.matchRoutes("/personal").at(-1)?.routeId).toBe("/personal");
   });
 
   it.each([
@@ -37,17 +32,16 @@ describe("Combined site", () => {
     "/drug-tests",
     "/records",
     "/s/dmv",
-    "/dispatch",
-    "/personal",
     "/access-denied",
   ])("matches the %s route", (path) => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
     expect(router.matchRoutes(path).at(-1)?.routeId).not.toBe(rootRouteId);
   });
 
-  it("serves Dispatch Operations at /dispatch", () => {
+  it("does not register Personal or Dispatch routes", () => {
     const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
-    expect(router.matchRoutes("/dispatch").at(-1)?.routeId).toBe("/dispatch");
+    expect(router.matchRoutes("/personal").at(-1)?.routeId).toBe(rootRouteId);
+    expect(router.matchRoutes("/dispatch").at(-1)?.routeId).toBe(rootRouteId);
   });
 
   it("serves Access Denied at /access-denied", () => {

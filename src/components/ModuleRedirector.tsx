@@ -12,7 +12,7 @@ import {
 /**
  * After sessions settle, bounce users away from Compliance URLs they lack seats for.
  * Admin keeps its own LoginGate — never Access-Deny `/admin` just because Compliance
- * was already probed. Personal/Dispatch are retired from this app (soft landing routes).
+ * was already probed.
  */
 export function ModuleRedirector() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -65,8 +65,6 @@ export function ModuleRedirector() {
     if (!ready) return;
     const mod = moduleForPath(pathname);
     if (mod === "public" || mod === "access-denied" || !mod) return;
-    // Soft-landing routes for retired portals — do not Access-Deny them.
-    if (mod === "personal" || mod === "dispatch") return;
 
     // Compliance-only denial (Admin-only on Driver URLs).
     // Admin LoginGate is never hard-denied here.
@@ -74,14 +72,24 @@ export function ModuleRedirector() {
 
     let alive = true;
     void (async () => {
-      // LockGate only mounts children after driver_portal_accounts succeeds.
-      // A lagging seat probe must not bounce an authenticated Compliance session
-      // to Access Denied (seen on /drug-tests while /records worked after nav).
+      // Never bounce an authenticated Compliance session to Access Denied.
+      // LockGate only mounts children after driver_portal_accounts succeeds;
+      // a lagging seat probe must not sticky-deny the owner after login.
       if (mod === "compliance") {
         try {
           const { hasPortalSession } = await import("@/lib/cloud");
           if (!alive) return;
           if (await hasPortalSession()) return;
+        } catch {
+          /* fall through — re-probe once more before deny */
+        }
+        try {
+          const fresh = await probeModuleGrants();
+          if (!alive) return;
+          if (fresh.compliance) {
+            setGrants(fresh);
+            return;
+          }
         } catch {
           /* fall through to deny */
         }

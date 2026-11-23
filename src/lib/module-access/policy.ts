@@ -17,7 +17,6 @@ function activeModules(grants: ModuleGrants): ModuleId[] {
   const out: ModuleId[] = [];
   if (g.compliance) out.push("compliance");
   if (g["admin-hr"]) out.push("admin-hr");
-  // personal / dispatch seats are ignored in this Compliance + Attendance app
   return out;
 }
 
@@ -36,11 +35,6 @@ export function privilegesFor(grants: ModuleGrants): Privilege[] {
 
 export function hasPrivilege(grants: ModuleGrants, privilege: Privilege): boolean {
   return privilegesFor(grants).includes(privilege);
-}
-
-/** @deprecated Dispatch portal removed from this app — always false. */
-export function isDispatchOnly(_grants: ModuleGrants): boolean {
-  return false;
 }
 
 /**
@@ -64,9 +58,6 @@ export function moduleForPath(pathname: string): ModuleId | "public" | "access-d
   if (pathname === "/cv" || pathname.startsWith("/cv/")) return "public";
   if (pathname === "/access-denied" || pathname.startsWith("/access-denied/")) return "access-denied";
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return "admin-hr";
-  // Soft-landing routes remain classified so ModuleRedirector can skip denial.
-  if (pathname === "/personal" || pathname.startsWith("/personal/")) return "personal";
-  if (pathname === "/dispatch" || pathname.startsWith("/dispatch/")) return "dispatch";
   // Driver Compliance owns remaining app routes (/, /drivers, /s/*, …)
   if (
     pathname === "/" ||
@@ -76,6 +67,7 @@ export function moduleForPath(pathname: string): ModuleId | "public" | "access-d
     pathname.startsWith("/account") ||
     pathname.startsWith("/team") ||
     pathname.startsWith("/activity") ||
+    pathname.startsWith("/alerts") ||
     pathname.startsWith("/s/")
   ) {
     return "compliance";
@@ -87,8 +79,6 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
   if (mod === "public" || mod === "access-denied") return true;
   if (!mod) return false;
-  // Retired portals: soft landing is always reachable (no seat required).
-  if (mod === "personal" || mod === "dispatch") return true;
   return Boolean(asGrants(grants)[mod]);
 }
 
@@ -96,10 +86,10 @@ export function canAccessPath(grants: ModuleGrants, pathname: string): boolean {
  * Admin keeps its own LoginGate + auth storage.
  * Missing an Admin seat must NOT mean Access Denied — the user still needs
  * `/admin` login. Compliance is different: seats without Compliance are bounced
- * off Driver URLs. Personal/Dispatch soft landings are never hard-denied.
+ * off Driver URLs.
  */
 export function isIndependentLoginModule(mod: ModuleId | "public" | "access-denied" | null): boolean {
-  return mod === "admin-hr" || mod === "personal" || mod === "dispatch";
+  return mod === "admin-hr";
 }
 
 /**
@@ -109,7 +99,6 @@ export function isIndependentLoginModule(mod: ModuleId | "public" | "access-deni
 export function shouldDenyModulePath(grants: ModuleGrants, pathname: string): boolean {
   const mod = moduleForPath(pathname);
   if (mod === "public" || mod === "access-denied" || !mod) return false;
-  // Independent portals / soft landings: never hard-deny.
   if (isIndependentLoginModule(mod)) return false;
 
   const g = asGrants(grants);
@@ -134,7 +123,6 @@ export function resolveAccess(grants: ModuleGrants, pathname = "/"): ResolvedAcc
   return {
     grants: normalized,
     privileges: privilegesFor(normalized),
-    dispatchOnly: false,
     selectableModules: selectableModulesFor(normalized, { pathname }),
     homePath: homePathFor(normalized),
   };
@@ -159,7 +147,6 @@ export function seatsToGrants(
     } else if (seat.module === "admin-hr" && (seat.role === "admin" || seat.role === "standard")) {
       grants["admin-hr"] = seat.role;
     }
-    // personal / dispatch seats ignored in this app
   }
   return grants;
 }

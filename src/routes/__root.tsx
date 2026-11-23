@@ -19,8 +19,8 @@ import { ModuleRedirector, useHomePathAfterProbe } from "@/components/ModuleRedi
 import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
-  // Same as ErrorComponent: Admin-/Dispatch-only seats must not be sent to `/`
-  // (Compliance Access Denied loop). Probe after mount; default `/` until then.
+  // Admin-only seats must not be sent to `/` (Compliance Access Denied loop).
+  // Probe after mount; default `/` until then.
   const homePath = useHomePathAfterProbe();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -137,14 +137,12 @@ function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hydrated = useHydrated();
   const isAdmin = pathname.startsWith("/admin");
-  const isRetiredPortal = pathname.startsWith("/dispatch") || pathname.startsWith("/personal");
   const isDenied = pathname.startsWith("/access-denied");
   const isPublic = pathname === "/cv";
   // SPA shell is prerendered for `/` only. Defer LockGate until after hydration so
-  // `/admin` (and retired /personal|/dispatch soft landings) do not structurally
-  // mismatch the shell (React #418). Admin / Access Denied / retired portals / CV
-  // skip Driver LockGate.
-  const useDriverLock = hydrated && !(isAdmin || isRetiredPortal || isDenied || isPublic);
+  // `/admin` does not structurally mismatch the shell (React #418).
+  // Admin / Access Denied / CV skip Driver LockGate.
+  const useDriverLock = hydrated && !(isAdmin || isDenied || isPublic);
 
   return (
     <QueryClientProvider client={queryClient}>

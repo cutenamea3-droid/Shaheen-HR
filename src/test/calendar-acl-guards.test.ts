@@ -3,7 +3,6 @@ import { eventsInRange, eventsOnDay } from "@/lib/plan-calendar";
 import {
   resolveAccess,
   seatsToGrants,
-  isDispatchOnly,
   homePathFor,
   selectableModulesFor,
   denialRedirect,
@@ -22,10 +21,7 @@ describe("calendar / ACL corrupt-shape guards", () => {
     expect(seatsToGrants(null as never)).toEqual({
       compliance: null,
       "admin-hr": null,
-      personal: null,
-      dispatch: null,
     });
-    expect(isDispatchOnly(null as never)).toBe(false);
   });
 
   it("homePathFor / selectableModulesFor / denialRedirect tolerate null grants", () => {
