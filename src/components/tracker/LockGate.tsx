@@ -16,6 +16,7 @@ import { ForgotPasswordLink } from "@/components/portal-login/ForgotPasswordLink
 import { PasswordField } from "@/components/portal-login/PasswordField";
 import { PortalLoginCard, PortalLoginShell } from "@/components/portal-login/PortalLoginShell";
 import { AboutPanel } from "@/components/tracker/AboutPanel";
+import { PersistentDriverShell } from "@/components/tracker/AppShell";
 
 export { isPreviewIsolated } from "@/lib/preview-isolated";
 
@@ -194,7 +195,8 @@ export function LockGate({ children }: { children: ReactNode }) {
             cloud sync cannot connect.
           </div>
         )}
-        {children}
+        {/* One shell for all Driver routes — section switches only swap Outlet children. */}
+        <PersistentDriverShell>{children}</PersistentDriverShell>
       </PortalAccountContext.Provider>
     );
   }
