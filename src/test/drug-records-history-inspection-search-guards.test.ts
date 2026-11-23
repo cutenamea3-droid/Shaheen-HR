@@ -14,6 +14,16 @@ describe("drug records / history / inspection search coerce", () => {
     expect(src).toMatch(/\.map\(asDrugText\)/);
   });
 
+  it("DrugTestRecordsPage Group by driver defaults ON (no cross-session persist)", () => {
+    const src = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/DrugTestRecordsPage.tsx"),
+      "utf8",
+    );
+    expect(src).toMatch(/const \[groupByDriver,\s*setGroupByDriver\]\s*=\s*useState\(true\)/);
+    expect(src).not.toMatch(/localStorage.*groupByDriver|groupByDriver.*localStorage/);
+    expect(src).not.toMatch(/sessionStorage.*groupByDriver|groupByDriver.*sessionStorage/);
+  });
+
   it("ComplianceHistory + InspectionReadiness search coerce scalars", () => {
     const hist = readFileSync(
       resolve(process.cwd(), "src/components/tracker/ComplianceHistoryPanel.tsx"),
