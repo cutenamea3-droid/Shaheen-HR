@@ -27,7 +27,7 @@ import {
 } from "@/lib/store";
 import { ActiveToggle, DateCell, EditableText, StatusToggle } from "./cells";
 import { AddDriverDialog } from "./AddDriverDialog";
-import { FuturePlanSuggest } from "./FuturePlanSuggest";
+import { FuturePlanCell } from "./FuturePlanCell";
 import { ListScopeFilter } from "./ListScopeFilter";
 import { TempNotesBadge } from "./TempNotesBadge";
 import { DensityToggle } from "./DensityToggle";
@@ -759,34 +759,30 @@ export function DataTable({
                           {t === "secret" && (
                             <EditableText value={v} onSave={save} mask tone={tone} boxed={!!tone} />
                           )}
-                          {(t === "note" || t === "plan" || t === "tempnote") && (
-                            <div>
-                              <EditableText
-                                value={v}
-                                onSave={save}
-                                boxed
-                                tone={tone ?? (v.trim() && t === "plan" ? undefined : tone)}
-                                placeholder={
-                                  t === "plan"
-                                    ? "Add future plan"
-                                    : t === "tempnote"
-                                      ? "Add temporary reminder (never highlights)"
-                                      : "Add note"
-                                }
-                              />
-                              {t === "plan" && (
-                                <div className="mt-1">
-                                  <FuturePlanSuggest
-                                    suggestion={suggestPlanForCell(sectionId, ci, row)}
-                                    existingPlan={v}
-                                    sectionId={sectionId}
-                                    rowId={row.id}
-                                    planCol={ci}
-                                    compact
-                                  />
-                                </div>
-                              )}
-                            </div>
+                          {t === "plan" && (
+                            <FuturePlanCell
+                              sectionId={sectionId}
+                              rowId={row.id}
+                              planCol={ci}
+                              value={v}
+                              onSave={save}
+                              tone={tone}
+                              suggestion={suggestPlanForCell(sectionId, ci, row)}
+                              compact
+                            />
+                          )}
+                          {(t === "note" || t === "tempnote") && (
+                            <EditableText
+                              value={v}
+                              onSave={save}
+                              boxed
+                              tone={tone}
+                              placeholder={
+                                t === "tempnote"
+                                  ? "Add temporary reminder (never highlights)"
+                                  : "Add note"
+                              }
+                            />
                           )}
                           {t === "date" && (
                             <DateCell
