@@ -16,7 +16,6 @@ import {
   cellsOf,
   formatDriverStatus,
   headersOf,
-  rowsOf,
   type DriverStatus,
   type Row,
 } from "@/lib/sections";
@@ -25,9 +24,7 @@ import {
   analyzeRow,
   complianceScore,
   matchesExpFilter,
-  rowAlertsMuted,
   rowDriverStatus,
-  rowIsActive,
   statusExpiryCol,
   type ExpFilter,
 } from "@/lib/alerts";
@@ -42,6 +39,11 @@ import {
   type DriverProfileCompletion,
   type DuplicateDriverWarning,
 } from "@/lib/driver-profile-completion";
+import {
+  allComplianceDriverIds,
+  buildDriverCardModel,
+  primaryRowForDriver,
+} from "@/lib/driver-selectors";
 import { deleteDriver, setCell, useData } from "@/lib/store";
 import { useDensity } from "@/lib/density";
 import { loadDriverCardsPrefs, saveDriverCardsPrefs } from "@/lib/uiprefs";
@@ -153,53 +155,28 @@ export function DriverCards({
   const allDrivers = useMemo(() => {
     const asName = (v: unknown) =>
       (v == null ? "" : typeof v === "string" ? v : String(v)).trim();
-    const map = new Map<string, Driver>();
-    for (const def of CARD_SECTIONS) {
-      const sec = data.sections[def.id];
-      if (!sec || !Array.isArray(sec.rows)) continue;
-      for (const raw of sec.rows) {
-        const r = { ...raw, cells: cellsOf(raw) };
-        let d = map.get(r.driverId);
-        if (!d) {
-          d = {
-            driverId: r.driverId,
-            name: asName(r.cells[0]),
-            active: rowIsActive(def, r, data),
-            status: rowDriverStatus(def, r, data),
-            issues: 0,
-            phone: "",
-            cdl: "",
-            state: "",
-            completion: buildDriverProfileCompletion(data, r.driverId),
-            scope: listScopeOf(data, r.driverId),
-          };
-          map.set(r.driverId, d);
-        }
-        // Always refresh status from latest row so toggles apply immediately.
-        d.active = rowIsActive(def, r, data);
-        d.status = rowDriverStatus(def, r, data);
-        d.scope = listScopeOf(data, r.driverId);
-        if (!asName(d.name)) d.name = asName(r.cells[0]);
-        // Issue counts only for ordinary company lists (New/OO have dedicated scopes).
-        const muted = rowAlertsMuted(def, r, data) || d.scope !== "company";
-        if (!muted) d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
-        const aidx = def.types.indexOf("active");
-        if (aidx >= 0 && !d.statusTarget)
-          d.statusTarget = { sectionId: def.id, rowId: r.id, col: aidx };
-        def.types.forEach((t, i) => {
-          if (t === "state" && !d.state) d.state = asName(r.cells[i]).trim();
-        });
-        if (def.id === "info") d.phone = asName(r.cells[1]).trim();
-        if (def.id === "ssccdl") d.cdl = asName(r.cells[1]).trim();
-      }
-    }
-    // Refresh completion once per driver from full saved data (not mid-loop partial).
-    for (const d of map.values()) {
-      d.completion = buildDriverProfileCompletion(data, d.driverId);
-    }
-    return [...map.values()].sort((a, b) =>
-      asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
-    );
+    // One shared model per stable driverId — phone/CDL/% from the same primary rows.
+    return allComplianceDriverIds(data)
+      .map((driverId) => {
+        const m = buildDriverCardModel(data, driverId);
+        const d: Driver = {
+          driverId: m.driverId,
+          name: m.name,
+          active: m.active,
+          status: m.status,
+          issues: m.issues,
+          phone: m.phone,
+          cdl: m.cdl,
+          state: m.state,
+          completion: buildDriverProfileCompletion(data, driverId),
+          scope: m.scope,
+        };
+        if (m.statusTarget) d.statusTarget = m.statusTarget;
+        return d;
+      })
+      .sort((a, b) =>
+        asName(a.name).localeCompare(asName(b.name), undefined, { sensitivity: "base" }),
+      );
   }, [data]);
 
   const scopeCounts = useMemo(() => {
@@ -393,7 +370,9 @@ export function DriverCards({
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground">{d.phone || "—"}</div>
+                        <div className="text-sm text-muted-foreground" data-driver-phone>
+                          {d.phone || "—"}
+                        </div>
                         {mute && <div className="mt-1 text-xs font-semibold text-warn">{mute}</div>}
                       </div>
                     </div>
@@ -576,8 +555,7 @@ function DriverFile({
   const shown = liveCompletion.driverId === completion.driverId ? liveCompletion : completion;
   const statusInfo = useMemo(() => {
     for (const def of CARD_SECTIONS) {
-      const sec = data.sections[def.id];
-      const row = rowsOf(sec).find((r) => r.driverId === driverId);
+      const row = primaryRowForDriver(data, def.id, driverId);
       if (!row) continue;
       const col = def.types.indexOf("active");
       if (col < 0) continue;
@@ -665,10 +643,7 @@ function DriverFile({
         <RateCardPanel driverId={driverId} />
         <DrugTestRegister driverId={driverId} driverName={safeName} />
         {CARD_SECTIONS.map((def) => {
-          const sec = data.sections[def.id];
-          const row = Array.isArray(sec?.rows)
-            ? sec.rows.find((r) => r.driverId === driverId)
-            : undefined;
+          const row = primaryRowForDriver(data, def.id, driverId);
           return (
             <section key={def.id} className="tracker-profile-section">
               <h3 className="tracker-profile-section-h">

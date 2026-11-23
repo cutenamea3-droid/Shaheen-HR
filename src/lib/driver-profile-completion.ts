@@ -11,15 +11,19 @@
  */
 import { complianceScore, normStatus } from "./alerts";
 import {
+  allComplianceDriverIds,
+  driverDisplayName,
+  findSameIdMultiRowFindings,
+  primaryRowForDriver,
+} from "./driver-selectors";
+import {
   buildInspectionItems,
   type InspectionItem,
   type InspectionStatus,
 } from "./inspection-readiness";
 import {
-  SECTIONS,
   cellsOf,
   normName,
-  rowsOf,
   type AppData,
   type Row,
 } from "./sections";
@@ -95,7 +99,7 @@ export type DriverProfileCompletion = {
 export type DuplicateDriverWarning = {
   driverId: string;
   peerIds: string[];
-  reason: "same_name" | "same_cdl";
+  reason: "same_name" | "same_cdl" | "same_id_multi_row";
   label: string;
   detail: string;
   /** Explicit: never auto-applied. */
@@ -103,7 +107,7 @@ export type DuplicateDriverWarning = {
 };
 
 export const DUPLICATE_DRIVER_POLICY =
-  "Possible duplicate drivers are warned by stable driver ID only. The app never auto-merges or deletes duplicates.";
+  "Possible duplicate drivers are warned by stable driver ID only. Same-ID multi-rows are flagged for review. The app never auto-merges or deletes duplicates.";
 
 const INFO_FIELDS: { col: number; key: string; label: string }[] = [
   { col: 1, key: "phone", label: "Phone" },
@@ -123,18 +127,13 @@ function cell(row: Row | undefined, i: number) {
   return (cellsOf(row)[i] ?? "").trim();
 }
 
+/** Always the shared primary row — never first/last-wins divergence. */
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
-  const rows = data.sections[sectionId]?.rows;
-  if (!Array.isArray(rows)) return undefined;
-  return rows.find((r) => r.driverId === driverId);
+  return primaryRowForDriver(data, sectionId, driverId);
 }
 
 function driverName(data: AppData, driverId: string): string {
-  for (const id of ["dmv", "ssccdl", "medical", "queries", "docs", "info"]) {
-    const n = cell(rowFor(data, id, driverId), 0);
-    if (n) return n;
-  }
-  return "(unnamed)";
+  return driverDisplayName(data, driverId);
 }
 
 function mapCategoryToSection(category: string): ProfileSectionId {
@@ -265,15 +264,6 @@ export function driverProfileCompletionPercent(data: AppData, driverId: string):
   return buildDriverProfileCompletion(data, driverId).percent;
 }
 
-function allDriverIds(data: AppData): string[] {
-  const ids = new Set<string>();
-  for (const def of SECTIONS) {
-    if (def.id === "inactive") continue;
-    for (const r of rowsOf(data.sections[def.id])) ids.add(r.driverId);
-  }
-  return [...ids];
-}
-
 function cdlOf(data: AppData, driverId: string): string {
   const row = rowFor(data, "ssccdl", driverId);
   return cell(row, 1).replace(/\s+/g, "").toUpperCase();
@@ -281,10 +271,10 @@ function cdlOf(data: AppData, driverId: string): string {
 
 /**
  * Detect possible duplicate drivers by stable IDs (same normalized name or same CDL,
- * different driverId). Review-only — never merges or deletes.
+ * different driverId) PLUS same-driverId multi-row residue. Review-only — never merges or deletes.
  */
 export function findDuplicateDriverWarnings(data: AppData): DuplicateDriverWarning[] {
-  const ids = allDriverIds(data);
+  const ids = allComplianceDriverIds(data);
   const byName = new Map<string, string[]>();
   const byCdl = new Map<string, string[]>();
 
@@ -313,15 +303,15 @@ export function findDuplicateDriverWarnings(data: AppData): DuplicateDriverWarni
     detail: string,
   ) => {
     const peerIds = peers.filter((p) => p !== driverId);
-    if (!peerIds.length) return;
     const existing = byDriver.get(driverId);
     if (existing) {
       const merged = [...new Set([...existing.peerIds, ...peerIds])];
       byDriver.set(driverId, {
         ...existing,
         peerIds: merged,
-        reason: existing.reason === reason ? reason : existing.reason,
+        reason: existing.reason === "same_id_multi_row" ? existing.reason : reason,
         detail: `${existing.detail} · ${detail}`,
+        label: existing.reason === "same_id_multi_row" ? existing.label : label,
       });
       return;
     }
@@ -358,6 +348,16 @@ export function findDuplicateDriverWarnings(data: AppData): DuplicateDriverWarni
         `CDL ${cdl} shared by ${list.length} driver IDs (${list.join(", ")})`,
       );
     }
+  }
+
+  for (const finding of findSameIdMultiRowFindings(data)) {
+    push(
+      finding.driverId,
+      [],
+      "same_id_multi_row",
+      finding.label,
+      finding.detail,
+    );
   }
 
   return [...byDriver.values()];

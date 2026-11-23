@@ -15,6 +15,7 @@ import {
 } from "./alerts";
 import { SECTIONS, cellsOf, headersOf, rowsOf, type AppData, type Row } from "./sections";
 import { isOwnerOperator } from "./driver-meta";
+import { driverDisplayName, primaryRowForDriver } from "./driver-selectors";
 
 /** Honest inspection status — only these values. */
 export type InspectionStatus =
@@ -89,17 +90,11 @@ function cell(row: Row | undefined, i: number) {
 }
 
 function rowFor(data: AppData, sectionId: string, driverId: string): Row | undefined {
-  const rows = data.sections[sectionId]?.rows;
-  if (!Array.isArray(rows)) return undefined;
-  return rows.find((r) => r.driverId === driverId);
+  return primaryRowForDriver(data, sectionId, driverId);
 }
 
 function driverName(data: AppData, driverId: string): string {
-  for (const id of ["dmv", "ssccdl", "medical", "queries", "docs", "info"]) {
-    const n = cell(rowFor(data, id, driverId), 0);
-    if (n) return n;
-  }
-  return "(unnamed)";
+  return driverDisplayName(data, driverId);
 }
 
 /**

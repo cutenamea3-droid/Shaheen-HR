@@ -39,6 +39,8 @@ import {
 } from "./follow-ups";
 
 const KEY = "shaheen-driver-tracker-v1";
+/** Pending unsynced section ids — survives reload so stale cloud cannot wipe newer local edits. */
+const DIRTY_KEY = "shaheen-driver-tracker-dirty-v1";
 /** Manual record lists stored as tracker_sections rows (same cloud table). */
 export const RECORD_SECTION_IDS = ["rec_drivers", "rec_owners", "rec_mechanics"] as const;
 /** Re-export for callers / tests. */
@@ -200,7 +202,7 @@ function markAllSectionsDirty() {
     state.sections && typeof state.sections === "object" && !Array.isArray(state.sections)
       ? state.sections
       : {};
-  Object.keys(sections).forEach((id) => dirty.add(id));
+  Object.keys(sections).forEach((id) => markDirty(id));
 }
 
 /** localStorage is a short cache only — Supabase tracker_sections is source of truth once signed in. */
@@ -243,6 +245,35 @@ const dirty = new Set<string>();
 export function getDirtySectionIdsForTests(): string[] {
   return [...dirty];
 }
+
+function persistDirty() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    if (!dirty.size) localStorage.removeItem(DIRTY_KEY);
+    else localStorage.setItem(DIRTY_KEY, JSON.stringify([...dirty]));
+  } catch {
+    /* cache-only; never block saves */
+  }
+}
+
+function loadPendingDirty(): Set<string> {
+  try {
+    if (typeof localStorage === "undefined") return new Set();
+    const raw = localStorage.getItem(DIRTY_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((x): x is string => typeof x === "string" && !!x));
+  } catch {
+    return new Set();
+  }
+}
+
+function markDirty(id: string) {
+  dirty.add(id);
+  persistDirty();
+}
+
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 let lastStamp = "";
@@ -266,6 +297,7 @@ async function flush() {
     if (!dirty.size) return;
     ids = [...dirty];
     dirty.clear();
+    persistDirty();
     setSync("syncing");
     const sections = Object.fromEntries(ids.map((id) => [id, JSON.stringify(state.sections[id])]));
     const r = await cloudSave({ data: { sections } });
@@ -291,7 +323,7 @@ async function flush() {
       toast.success("All changes are saved to the cloud again");
     }
   } catch (e) {
-    ids.forEach((id) => dirty.add(id));
+    ids.forEach((id) => markDirty(id));
     setSync("error");
     failCount++;
     if (failCount === 1 || failCount % 10 === 0)
@@ -336,23 +368,29 @@ async function pullCloud(force = false) {
       await flush();
       return;
     }
-    // Remote is source of truth: apply cloud rows, keep any local-only keys only until uploaded.
+    // Pending local edits (survived reload via DIRTY_KEY) must not be overwritten by stale cloud.
+    const pendingLocal = !cloudReady ? loadPendingDirty() : new Set<string>();
+    for (const id of pendingLocal) markDirty(id);
+
+    // Remote is source of truth for clean sections; keep local for pending dirty ones.
     // One corrupt section must not fail the whole pull (outer catch → "error" sync forever).
     const sections = { ...state.sections };
     for (const id of ids) {
+      if (pendingLocal.has(id) && state.sections[id]) continue;
       const parsed = parseCloudSectionJson(remoteSections[id]);
       if (parsed !== undefined) sections[id] = parsed;
       else console.warn(`[cloud] skipped corrupt tracker section "${id}"`);
     }
-    if (!cloudReady) dirty.clear();
+    if (!cloudReady && !pendingLocal.size) dirty.clear();
+    persistDirty();
     const m = migrateData(ensureRecordSections({ ...state, sections }));
     state = m.data;
-    m.changed.forEach((id) => dirty.add(id));
+    m.changed.forEach((id) => markDirty(id));
     // Upload record shells / follow-ups (or other local-only sections) missing from remote.
     for (const id of RECORD_SECTION_IDS) {
-      if (!remoteSections[id]) dirty.add(id);
+      if (!remoteSections[id]) markDirty(id);
     }
-    if (!remoteSections[FOLLOW_UP_SECTION_ID]) dirty.add(FOLLOW_UP_SECTION_ID);
+    if (!remoteSections[FOLLOW_UP_SECTION_ID]) markDirty(FOLLOW_UP_SECTION_ID);
     if (dirty.size) scheduleFlush();
     lastStamp = r.stamp;
     cloudReady = true;
@@ -460,7 +498,7 @@ function update(fn: (d: AppData) => AppData) {
       ? prev.sections
       : {};
   for (const id of Object.keys(nextSections))
-    if (nextSections[id] !== prevSections[id]) dirty.add(id);
+    if (nextSections[id] !== prevSections[id]) markDirty(id);
   persist();
   emit();
   scheduleFlush();

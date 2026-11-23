@@ -12,6 +12,8 @@ describe("AddDriverDialog missing-section + autofill guards", () => {
     expect(src).toMatch(/if \(!sec\) continue;/);
     expect(src).toMatch(/const headers = headersOf\(sec\)/);
     expect(src).toMatch(/data-testid="add-driver-name"/);
-    expect(src).toMatch(/onInput=\{\(e\) => setBase\(\(b\) =>/);
+    expect(src).toMatch(/onInput=\{\(e\) => \{/);
+    expect(src).toMatch(/setBase\(\(b\) =>/);
+    expect(src).toMatch(/findAddDriverIdentityMatches/);
   });
 });
