@@ -788,7 +788,7 @@ function LoadsBoard({
         >
           <option value="all">All drivers</option>
           {safeDrivers.map((d) => (
-            <option key={d.id} value={d.id}>
+            <option key={asFormText(d.id)} value={asFormText(d.id)}>
               {asFormText(d.display_name)}
             </option>
           ))}
@@ -1254,7 +1254,7 @@ function LoadEditor({
           >
             <option value="">Unassigned</option>
             {safeDrivers.map((d) => (
-              <option key={d.id} value={d.id}>
+              <option key={asFormText(d.id)} value={asFormText(d.id)}>
                 {asFormText(d.display_name)}
                 {d.unit_number ? ` · #${asFormText(d.unit_number)}` : ""}
               </option>
@@ -2640,7 +2640,7 @@ function HistoryBoard({
             onChange={(e) => setDriverId(e.target.value)}
           >
             {safeDrivers.map((d) => (
-              <option key={d.id} value={d.id}>
+              <option key={asFormText(d.id)} value={asFormText(d.id)}>
                 {asFormText(d.display_name)}
               </option>
             ))}

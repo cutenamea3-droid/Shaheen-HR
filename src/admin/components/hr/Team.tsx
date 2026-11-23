@@ -77,7 +77,7 @@ export function Team() {
           <span className="lbl">Department</span>
           <select className="field" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
             {depts.map((d) => (
-              <option key={d.id} value={d.id}>
+              <option key={asText(d.id)} value={asText(d.id)}>
                 {asText(d.name)} ({fmtTime(d.start)}–{fmtTime(d.end)})
               </option>
             ))}
@@ -145,7 +145,7 @@ export function Team() {
                     }
                   >
                     {depts.map((d) => (
-                      <option key={d.id} value={d.id}>
+                      <option key={asText(d.id)} value={asText(d.id)}>
                         {asText(d.name)}
                       </option>
                     ))}

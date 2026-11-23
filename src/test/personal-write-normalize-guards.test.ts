@@ -397,7 +397,17 @@ describe("Personal store write-path normalize guards", () => {
     expect(assessmentsUi).toMatch(/value=\{asTxt\(title\)\}/);
     expect(backlogUi).toMatch(/value=\{asTxt\(label\)\}/);
     expect(focusUi).toMatch(/value=\{asTxt\(lessonLabel\)\}/);
+    expect(focusUi).toMatch(/key=\{asTxt\(c\.id\)\} value=\{asTxt\(c\.id\)\}/);
     expect(opsBoards).toMatch(/asText\(l\.equipment\)/);
+    expect(assessmentsUi).toMatch(/value=\{asTxt\(prepLabel\)\}/);
+    expect(tasksUi).toMatch(/value=\{asText\(title\)\}/);
+    expect(tasksUi).toMatch(/value=\{asText\(due\)\}/);
+    const hireUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/HireDateField.tsx"),
+      "utf8",
+    );
+    expect(hireUi).toMatch(/const safeDraft = asHireText\(draft\)/);
+    expect(dispatchApp).toMatch(/key=\{asFormText\(d\.id\)\} value=\{asFormText\(d\.id\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

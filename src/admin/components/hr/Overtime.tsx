@@ -139,10 +139,10 @@ export function Overtime() {
         }
         right={
           <div className="flex flex-wrap gap-2">
-            <select className="field w-auto" value={dept} onChange={(e) => setDept(e.target.value)} aria-label="Department">
+            <select className="field w-auto" value={asText(dept)} onChange={(e) => setDept(e.target.value)} aria-label="Department">
               <option value="">All departments</option>
               {depts.map((d) => (
-                <option key={d.id} value={d.id}>
+                <option key={asText(d.id)} value={asText(d.id)}>
                   {asText(d.name)}
                 </option>
               ))}
@@ -150,7 +150,7 @@ export function Overtime() {
             <input
               type="month"
               className="field w-auto"
-              value={month}
+              value={asText(month)}
               onChange={(e) => e.target.value && setMonth(e.target.value)}
               aria-label="Month"
             />

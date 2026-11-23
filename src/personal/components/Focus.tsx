@@ -271,9 +271,9 @@ export function Focus() {
 
           <div className="space-y-3">
             <Field label="Course">
-              <select className="hp-field" value={courseId} onChange={(e) => setCourseId(e.target.value)}>
+              <select className="hp-field" value={asTxt(courseId)} onChange={(e) => setCourseId(e.target.value)}>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={asTxt(c.id)} value={asTxt(c.id)}>
                     {asTxt(c.code)} — {asTxt(c.title)}
                   </option>
                 ))}
@@ -329,12 +329,12 @@ export function Focus() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={filterCourse}
+              value={asTxt(filterCourse)}
               onChange={(e) => setFilterCourse(e.target.value)}
             >
               <option value="all">All courses</option>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)}
                 </option>
               ))}

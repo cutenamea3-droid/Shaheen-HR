@@ -258,11 +258,11 @@ export function Assessments() {
           <Field label="Course">
             <select
               className="hp-field"
-              value={prepCourseId}
+              value={asTxt(prepCourseId)}
               onChange={(e) => setPrepCourseId(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)}
                 </option>
               ))}
@@ -286,7 +286,7 @@ export function Assessments() {
                 ref={prepLabelRef}
                 className="hp-field"
                 data-testid="personal-prep-label"
-                value={prepLabel}
+                value={asTxt(prepLabel)}
                 onChange={(e) => setPrepLabel(e.target.value)}
                 onInput={(e) => setPrepLabel((e.target as HTMLInputElement).value)}
                 placeholder="Owner task…"

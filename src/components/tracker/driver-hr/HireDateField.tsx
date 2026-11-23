@@ -16,16 +16,18 @@ import { useViewMode } from "@/lib/viewmode";
 export function HireDateField({ driverId }: { driverId: string }) {
   const data = useData();
   const view = useViewMode();
-  const value = dateOfHireOf(data, driverId);
+  const asHireText = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+  const value = asHireText(dateOfHireOf(data, driverId));
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const pickerRef = useRef<HTMLInputElement>(null);
   const typedRef = useRef<HTMLInputElement>(null);
   const los = lengthOfService(value);
+  const safeDraft = asHireText(draft);
 
   const commit = (raw: string) => {
     const fromDom = (typedRef.current?.value || pickerRef.current?.value || "").trim();
-    const next = (raw.trim() || fromDom).trim();
+    const next = (asHireText(raw).trim() || fromDom).trim();
     const parsed = parseHireDateInput(next);
     if (parsed === null) {
       toast.error("Use MM/DD/YYYY or pick a date");
@@ -49,7 +51,7 @@ export function HireDateField({ driverId }: { driverId: string }) {
           ref={pickerRef}
           data-testid="hire-date-picker"
           type="date"
-          value={parseISO(draft) ? draft : ""}
+          value={parseISO(safeDraft) ? safeDraft : ""}
           onChange={(e) => setDraft(e.target.value)}
           onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           className="w-full rounded-lg border-2 border-primary bg-card px-2.5 py-1.5 text-base"
@@ -58,7 +60,11 @@ export function HireDateField({ driverId }: { driverId: string }) {
         <input
           ref={typedRef}
           data-testid="hire-date-typed"
-          value={draft.includes("-") && parseISO(draft) ? formatHireDateDisplay(draft) : draft}
+          value={
+            safeDraft.includes("-") && parseISO(safeDraft)
+              ? formatHireDateDisplay(safeDraft)
+              : safeDraft
+          }
           onChange={(e) => setDraft(e.target.value)}
           onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
           placeholder="MM/DD/YYYY"
@@ -68,7 +74,7 @@ export function HireDateField({ driverId }: { driverId: string }) {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => commit(draft)}
+            onClick={() => commit(safeDraft)}
             className="rounded-lg bg-brand px-3 py-1.5 text-sm font-bold text-primary-foreground"
           >
             Save

@@ -344,7 +344,7 @@ export function ExpensesManagement() {
         <select className="field w-40" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
           <option value="all">All categories</option>
           {activeCats.map((c) => (
-            <option key={c.id} value={c.id}>
+            <option key={asText(c.id)} value={asText(c.id)}>
               {asText(c.name)}
             </option>
           ))}
@@ -382,7 +382,7 @@ export function ExpensesManagement() {
             <span className="lbl">Category</span>
             <select className="field" value={form.categoryId} onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}>
               {activeCats.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asText(c.id)} value={asText(c.id)}>
                   {asText(c.name)}
                   {c.custom ? " (custom)" : ""}
                 </option>
@@ -699,7 +699,7 @@ export function ExpensesManagement() {
           <div className="admin-toolbar gap-2">
             <select className="field" value={budgetCat} onChange={(e) => setBudgetCat(e.target.value)}>
               {activeCats.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asText(c.id)} value={asText(c.id)}>
                   {asText(c.name)}
                 </option>
               ))}

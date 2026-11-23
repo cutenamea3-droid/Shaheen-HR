@@ -258,11 +258,11 @@ export function Analytics() {
           <Field label="Course letter (CGPA)">
             <select
               className="hp-field"
-              value={letterCourseId}
+              value={asTxt(letterCourseId)}
               onChange={(e) => setLetterCourseId(e.target.value)}
             >
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)} ({c.creditHours ?? "?"} CH)
                 </option>
               ))}
@@ -346,9 +346,9 @@ export function Analytics() {
             />
           </Field>
           <Field label="Course">
-            <select className="hp-field" value={gCourseId} onChange={(e) => setGCourseId(e.target.value)}>
+            <select className="hp-field" value={asTxt(gCourseId)} onChange={(e) => setGCourseId(e.target.value)}>
               {courses.map((c) => (
-                <option key={c.id} value={c.id}>
+                <option key={asTxt(c.id)} value={asTxt(c.id)}>
                   {asTxt(c.code)}
                 </option>
               ))}
@@ -360,7 +360,7 @@ export function Analytics() {
               data-testid="personal-grade-score"
               className="hp-field"
               type="number"
-              value={gScore}
+              value={asTxt(gScore)}
               onChange={(e) => setGScore(e.target.value)}
               onInput={(e) => setGScore((e.target as HTMLInputElement).value)}
             />
@@ -371,7 +371,7 @@ export function Analytics() {
               data-testid="personal-grade-max"
               className="hp-field"
               type="number"
-              value={gMax}
+              value={asTxt(gMax)}
               onChange={(e) => setGMax(e.target.value)}
               onInput={(e) => setGMax((e.target as HTMLInputElement).value)}
             />

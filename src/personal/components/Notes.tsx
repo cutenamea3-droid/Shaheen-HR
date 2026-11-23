@@ -223,7 +223,7 @@ export function Notes() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={filterTag}
+              value={asTxt(filterTag)}
               onChange={(e) => setFilterTag(e.target.value)}
             >
               <option value="all">All tags</option>
@@ -295,7 +295,7 @@ export function Notes() {
           action={
             <select
               className="hp-field !w-auto !py-1.5 text-sm"
-              value={linkCourse}
+              value={asTxt(linkCourse)}
               onChange={(e) => setLinkCourse(e.target.value)}
             >
               {courses.map((c) => (

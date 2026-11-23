@@ -95,13 +95,13 @@ export function Tasks() {
         className="panel mb-4 grid gap-3 md:grid-cols-[1fr_160px_170px_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          const nextTitle = (title.trim() || titleRef.current?.value || "").trim();
+          const nextTitle = (asText(title).trim() || titleRef.current?.value || "").trim();
           if (!nextTitle) return;
-          addTask({ title: nextTitle, kind, due });
+          addTask({ title: nextTitle, kind, due: asText(due) });
           setTitle("");
         }}
       >
-        <label><span className="lbl">Task</span><input ref={titleRef} data-testid="admin-task-title" className="field" value={title} onChange={(e) => setTitle(e.target.value)} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} /></label>
+        <label><span className="lbl">Task</span><input ref={titleRef} data-testid="admin-task-title" className="field" value={asText(title)} onChange={(e) => setTitle(e.target.value)} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} /></label>
         <label>
           <span className="lbl">Type</span>
           <select className="field" value={kind} onChange={(e) => setKind(e.target.value as Task["kind"])}>
@@ -109,7 +109,7 @@ export function Tasks() {
             <option value="daily">Every day</option>
           </select>
         </label>
-        <label><span className="lbl">{kind === "dated" ? "Due date" : "Starts"}</span><input type="date" className="field" value={due} onChange={(e) => e.target.value && setDue(e.target.value)} /></label>
+        <label><span className="lbl">{kind === "dated" ? "Due date" : "Starts"}</span><input type="date" className="field" value={asText(due)} onChange={(e) => e.target.value && setDue(e.target.value)} /></label>
         <button className="btn-primary">Add task</button>
       </form>
       <div className="space-y-2">

@@ -111,7 +111,7 @@ export function ComplianceHistoryPanel() {
           >
             <option value="">All drivers</option>
             {drivers.map((d) => (
-              <option key={d.id} value={d.id}>
+              <option key={asText(d.id)} value={asText(d.id)}>
                 {asText(d.name)}
               </option>
             ))}
