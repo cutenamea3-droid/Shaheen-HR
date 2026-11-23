@@ -1,5 +1,7 @@
 /**
- * Recruiter-friendly A4 résumé (1–2 pages) — print-first, not a web screenshot.
+ * ATS-friendly A4 résumé builder — SEPARATE from the web portfolio.
+ * Specs: 15–18mm margins · name 24–28pt · headings 12–14pt · body 10.5–11.5pt
+ * Unconfirmed metrics are excluded until METRICS_PUBLIC is approved.
  */
 import { jsPDF } from "jspdf";
 import {
@@ -7,73 +9,70 @@ import {
   EXPERIENCE,
   LANGUAGES,
   METRICS,
+  METRICS_PUBLIC,
   PROFILE,
   PROJECTS,
   SKILL_GROUPS,
 } from "./content";
 
-const INK: [number, number, number] = [26, 26, 26];
-const MUTED: [number, number, number] = [68, 68, 68];
-const ACCENT: [number, number, number] = [55, 48, 163];
-const LINE: [number, number, number] = [200, 196, 188];
-const SOFT: [number, number, number] = [240, 238, 234];
+const INK: [number, number, number] = [28, 25, 23];
+const MUTED: [number, number, number] = [70, 66, 60];
+const ACCENT: [number, number, number] = [67, 56, 202];
+const LINE: [number, number, number] = [210, 205, 196];
 
-type Doc = jsPDF & { __y: number; __page: number };
+type Doc = jsPDF & { __y: number };
 
 function wrap(doc: jsPDF, text: string, maxWidth: number): string[] {
   return doc.splitTextToSize(text, maxWidth) as string[];
 }
 
 function ensureSpace(d: Doc, need: number, margin: number, pageH: number) {
-  if (d.__y + need <= pageH - margin) return;
+  if (d.__y + need <= pageH - margin - 6) return;
   d.addPage();
-  d.__page += 1;
   d.__y = margin;
-  // subtle top rule on continuation pages
-  d.setDrawColor(...LINE);
-  d.setLineWidth(0.3);
-  d.line(margin, d.__y, d.internal.pageSize.getWidth() - margin, d.__y);
-  d.__y += 6;
 }
 
-function sectionRule(d: Doc, title: string, margin: number, pageW: number) {
-  ensureSpace(d, 10, margin, d.internal.pageSize.getHeight());
+function sectionTitle(d: Doc, title: string, margin: number, pageW: number, pageH: number) {
+  ensureSpace(d, 10, margin, pageH);
+  d.__y += 1.5;
   d.setTextColor(...INK);
   d.setFont("helvetica", "bold");
-  d.setFontSize(9.5);
+  d.setFontSize(12); // 12–14pt headings
   d.text(title.toUpperCase(), margin, d.__y);
-  d.__y += 1.8;
-  d.setDrawColor(...INK);
-  d.setLineWidth(0.45);
-  d.line(margin, d.__y, pageW - margin, d.__y);
+  d.__y += 2;
+  d.setDrawColor(...ACCENT);
+  d.setLineWidth(0.55);
+  d.line(margin, d.__y, margin + 16, d.__y);
+  d.setDrawColor(...LINE);
+  d.setLineWidth(0.25);
+  d.line(margin + 18, d.__y, pageW - margin, d.__y);
   d.__y += 5;
 }
 
+/** Build a dedicated A4 résumé (1–2 pages). Does not mirror the web portfolio. */
 export function buildResumePdf(): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }) as Doc;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margin = 14;
+  const margin = 15; // 15–18mm
   const contentW = pageW - margin * 2;
-
   doc.__y = margin;
-  doc.__page = 1;
 
-  // Header
+  // Name 24–28pt
   doc.setTextColor(...INK);
   doc.setFont("times", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(24);
   doc.text(PROFILE.fullName, margin, doc.__y);
-  doc.__y += 6.2;
+  doc.__y += 7;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10.5);
+  doc.setFontSize(11);
   doc.setTextColor(...ACCENT);
-  doc.text(`${PROFILE.role} · ${PROFILE.company}`, margin, doc.__y);
+  doc.text(`${PROFILE.role}  |  ${PROFILE.company}`, margin, doc.__y);
   doc.__y += 5;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.2);
+  doc.setFontSize(10.5);
   doc.setTextColor(...MUTED);
   doc.text(
     `${PROFILE.location}  ·  ${PROFILE.phone}  ·  ${PROFILE.email}`,
@@ -82,163 +81,149 @@ export function buildResumePdf(): jsPDF {
   );
   doc.__y += 4;
   doc.setDrawColor(...INK);
-  doc.setLineWidth(0.7);
+  doc.setLineWidth(0.6);
   doc.line(margin, doc.__y, pageW - margin, doc.__y);
-  doc.__y += 7;
+  doc.__y += 5.5;
 
-  // Summary
-  sectionRule(doc, "Professional summary", margin, pageW);
+  // Summary — body 10.5–11.5pt
+  sectionTitle(doc, "Professional summary", margin, pageW, pageH);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.4);
+  doc.setFontSize(10.5);
   doc.setTextColor(...MUTED);
   const summary = wrap(doc, PROFILE.summary, contentW);
-  ensureSpace(doc, summary.length * 4 + 2, margin, pageH);
+  ensureSpace(doc, summary.length * 4.2 + 2, margin, pageH);
   doc.text(summary, margin, doc.__y);
-  doc.__y += summary.length * 4 + 3;
+  doc.__y += summary.length * 4.2 + 2;
 
-  // Metrics box
-  const metricLines = METRICS.map((m) => `${m.value} — ${m.caption}`);
-  const metricWrapped = metricLines.flatMap((line) => wrap(doc, `•  ${line}`, contentW - 4));
-  const boxH = 7 + metricWrapped.length * 3.6 + 5;
-  ensureSpace(doc, boxH + 2, margin, pageH);
-  doc.setFillColor(...SOFT);
-  doc.roundedRect(margin, doc.__y, contentW, boxH, 1.2, 1.2, "F");
-  let by = doc.__y + 4.5;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(...INK);
-  doc.text("Selected highlights", margin + 2.5, by);
-  by += 4;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.4);
-  doc.setTextColor(...MUTED);
-  for (const line of metricWrapped) {
-    doc.text(line, margin + 2.5, by);
-    by += 3.6;
+  if (METRICS_PUBLIC) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10.5);
+    doc.setTextColor(...MUTED);
+    for (const m of METRICS) {
+      const line = wrap(doc, `•  ${m.value} — ${m.caption}`, contentW);
+      ensureSpace(doc, line.length * 4.4 + 1, margin, pageH);
+      doc.text(line, margin, doc.__y);
+      doc.__y += line.length * 4.4 + 1;
+    }
+    doc.__y += 2;
   }
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(7.4);
-  doc.setTextColor(...ACCENT);
-  doc.text(
-    "Metrics flagged for confirmation — from prior CV page; not independently verified.",
-    margin + 2.5,
-    by + 0.5,
-  );
-  doc.__y += boxH + 5;
 
   // Skills
-  sectionRule(doc, "Core skills", margin, pageW);
+  sectionTitle(doc, "Core skills", margin, pageW, pageH);
   for (const group of SKILL_GROUPS) {
     const label = `${group.label}: `;
-    const body = group.items.join(" · ");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(10.5);
     const labelW = doc.getTextWidth(label);
-    const lines = wrap(doc, body, contentW - labelW);
-    ensureSpace(doc, lines.length * 3.7 + 1.2, margin, pageH);
+    const lines = wrap(doc, group.items.join(", "), contentW - labelW);
+    ensureSpace(doc, lines.length * 4.1 + 1.5, margin, pageH);
     doc.setTextColor(...INK);
     doc.text(label, margin, doc.__y);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...MUTED);
     doc.text(lines[0] ?? "", margin + labelW, doc.__y);
     for (let i = 1; i < lines.length; i++) {
-      doc.__y += 3.7;
+      doc.__y += 4.1;
       doc.text(lines[i]!, margin + labelW, doc.__y);
     }
     doc.__y += 4.2;
   }
-  doc.__y += 1.5;
 
-  // Experience
-  sectionRule(doc, "Experience", margin, pageW);
+  // Experience — full facts, slightly tighter leading to fill one A4 cleanly
+  sectionTitle(doc, "Experience", margin, pageW, pageH);
   for (const job of EXPERIENCE) {
-    const roleLines = wrap(doc, job.role, contentW - 42);
+    const roleLines = wrap(doc, job.role, contentW - 48);
     const body = wrap(doc, job.text, contentW);
-    const blockH = roleLines.length * 3.8 + 3.6 + body.length * 3.5 + 3.2;
-    ensureSpace(doc, blockH, margin, pageH);
+    const need = roleLines.length * 3.9 + 3.8 + body.length * 3.9 + 3.2;
+    ensureSpace(doc, need, margin, pageH);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.6);
+    doc.setFontSize(10.8);
     doc.setTextColor(...INK);
     doc.text(roleLines, margin, doc.__y);
-    doc.setFontSize(8.5);
+    doc.setFontSize(10.5);
     doc.setTextColor(...ACCENT);
     doc.text(job.time, pageW - margin, doc.__y, { align: "right" });
-    doc.__y += roleLines.length * 3.8;
+    doc.__y += roleLines.length * 3.9;
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.7);
+    doc.setFontSize(10.5);
     doc.setTextColor(...MUTED);
     doc.text(job.company, margin, doc.__y);
-    doc.__y += 3.6;
+    doc.__y += 3.7;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.7);
+    doc.setFontSize(10.5);
     doc.setTextColor(...MUTED);
     doc.text(body, margin, doc.__y);
-    doc.__y += body.length * 3.5 + 3.2;
+    doc.__y += body.length * 3.9 + 3.2;
   }
 
-  // Projects (compact one-liners + stack)
-  sectionRule(doc, "Projects", margin, pageW);
+  // Projects — short ATS blurbs so Education can share page 1
+  const projectBlurbs: Record<string, string> = {
+    compliance:
+      "Fleet compliance workspace for driver documents, medical cards, drug tests, and renewal plans.",
+    admin:
+      "Isolated HR desk for attendance, directory, expenses, and payroll-adjacent workflows.",
+  };
+  sectionTitle(doc, "Projects", margin, pageW, pageH);
   for (const project of PROJECTS) {
-    const oneLine = `${project.summary} (${project.stack.join(", ")})`;
-    const body = wrap(doc, oneLine, contentW);
-    ensureSpace(doc, 3.8 + body.length * 3.4 + 3, margin, pageH);
+    const blurb = projectBlurbs[project.id] ?? project.summary;
+    const line = `${blurb} (${project.stack.join(", ")})`;
+    const body = wrap(doc, line, contentW);
+    ensureSpace(doc, 4 + body.length * 4 + 3, margin, pageH);
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.4);
+    doc.setFontSize(11);
     doc.setTextColor(...INK);
     doc.text(project.name, margin, doc.__y);
-    doc.__y += 3.8;
+    doc.__y += 4;
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(10.5);
     doc.setTextColor(...MUTED);
     doc.text(body, margin, doc.__y);
-    doc.__y += body.length * 3.4 + 3;
+    doc.__y += body.length * 4 + 3;
   }
 
-  // Education + Languages kept together when possible
-  const eduBlock =
-    EDUCATION.length * 9 + 14 + 10;
-  ensureSpace(doc, eduBlock, margin, pageH);
-  sectionRule(doc, "Education", margin, pageW);
+  sectionTitle(doc, "Education", margin, pageW, pageH);
   for (const ed of EDUCATION) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9.2);
+    doc.setFontSize(10.8);
     doc.setTextColor(...INK);
     doc.text(ed.title, margin, doc.__y);
-    doc.__y += 3.5;
+    doc.__y += 4;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(10.5);
     doc.setTextColor(...MUTED);
     doc.text(`${ed.place}  ·  `, margin, doc.__y);
     const placeW = doc.getTextWidth(`${ed.place}  ·  `);
-    doc.setTextColor(...ACCENT);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(...ACCENT);
     doc.text(ed.note, margin + placeW, doc.__y);
-    doc.__y += 4.8;
+    doc.__y += 5.5;
   }
 
-  sectionRule(doc, "Languages", margin, pageW);
+  sectionTitle(doc, "Languages", margin, pageW, pageH);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(10.5);
   doc.setTextColor(...MUTED);
-  const langLine = LANGUAGES.map((l) => `${l.name} (${l.level})`).join("   ·   ");
-  doc.text(langLine, margin, doc.__y);
+  doc.text(LANGUAGES.map((l) => `${l.name} (${l.level})`).join("   ·   "), margin, doc.__y);
   doc.__y += 6;
 
-  // Footer on each page
+  // Page footers
   const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.25);
+    doc.line(margin, pageH - 11, pageW - margin, pageH - 11);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(...MUTED);
-    doc.text("Muhammad Yousaf Shahzad — Curriculum Vitae", margin, pageH - 8);
+    doc.text("Muhammad Yousaf Shahzad — Curriculum Vitae", margin, pageH - 7);
     doc.setTextColor(...ACCENT);
-    doc.text(`Page ${i} of ${total}`, pageW - margin, pageH - 8, { align: "right" });
+    doc.text(`Page ${i} of ${total}`, pageW - margin, pageH - 7, { align: "right" });
   }
 
   return doc;

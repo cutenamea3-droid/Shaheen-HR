@@ -1,8 +1,12 @@
 /**
- * Personal CV content — source of truth from the existing `/cv` page.
- * Recruiter-friendly resume (web + A4 PDF). Metrics marked `unverified`
- * need owner confirmation before treating as public claims.
+ * Shared CV facts — source of truth from the existing `/cv` page.
+ * Web portfolio and A4 PDF are separate React surfaces that both read this file.
+ *
+ * Unverified metrics stay in data for later approval but MUST NOT appear on
+ * public web or PDF until the owner confirms (`METRICS_PUBLIC = false`).
  */
+
+export const METRICS_PUBLIC = false;
 
 export const PROFILE = {
   fullName: "Muhammad Yousaf Shahzad",
@@ -65,7 +69,7 @@ export const PROJECTS = [
   {
     id: "compliance",
     name: "Driver Compliance Portal",
-    eyebrow: "Case study",
+    eyebrow: "Product",
     summary:
       "A fleet compliance workspace for tracking driver documents, medical cards, drug tests, and future renewal plans — designed so HR can see what needs action today without digging through folders.",
     outcomes: [
@@ -78,7 +82,7 @@ export const PROJECTS = [
   {
     id: "admin",
     name: "Admin & Attendance Desk",
-    eyebrow: "Case study",
+    eyebrow: "Product",
     summary:
       "An isolated HR desk for employee attendance, directory, expenses, and payroll-adjacent workflows — visually and architecturally separated from the driver compliance module.",
     outcomes: [
@@ -166,8 +170,8 @@ export const INTERESTS = [
 ] as const;
 
 /**
- * Highlight metrics shown on the portfolio.
- * `unverified: true` = present on the prior CV page but not independently validated for this redesign.
+ * Held back from public web + PDF until owner approval (`METRICS_PUBLIC`).
+ * `unverified: true` = from prior CV page, not independently validated.
  */
 export const METRICS = [
   {
