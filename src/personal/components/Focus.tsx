@@ -282,11 +282,11 @@ export function Focus() {
             <Field label="Activity kind">
               <select
                 className="hp-field"
-                value={activityKind}
+                value={asTxt(activityKind)}
                 onChange={(e) => setActivityKind(e.target.value as FocusActivityKind)}
               >
                 {(Object.keys(ACTIVITY_LABELS) as FocusActivityKind[]).map((k) => (
-                  <option key={k} value={k}>
+                  <option key={asTxt(k)} value={asTxt(k)}>
                     {ACTIVITY_LABELS[k]}
                   </option>
                 ))}
@@ -306,7 +306,7 @@ export function Focus() {
             <Field label="Day mode tag">
               <select
                 className="hp-field"
-                value={mode}
+                value={asTxt(mode)}
                 onChange={(e) => setMode(e.target.value as StudyMode)}
               >
                 <option value="normal">Normal</option>

@@ -111,7 +111,7 @@ function CourseEditor({
           <input
             ref={codeRef}
             className="hp-field"
-            value={codeV}
+            value={asTxt(codeV)}
             onChange={(e) => setCodeV(e.target.value)}
             onInput={(e) => setCodeV((e.target as HTMLInputElement).value)}
             disabled={!isTbd && code !== "TBD"}
@@ -121,7 +121,7 @@ function CourseEditor({
           <input
             ref={titleRef}
             className="hp-field"
-            value={titleV}
+            value={asTxt(titleV)}
             onChange={(e) => setTitleV(e.target.value)}
             onInput={(e) => setTitleV((e.target as HTMLInputElement).value)}
           />
@@ -132,7 +132,7 @@ function CourseEditor({
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank if unknown"
-            value={totalV}
+            value={asTxt(totalV)}
             onChange={(e) => setTotalV(e.target.value)}
             onInput={(e) => setTotalV((e.target as HTMLInputElement).value)}
           />
@@ -143,7 +143,7 @@ function CourseEditor({
             className="hp-field"
             inputMode="numeric"
             placeholder="Leave blank — do not invent"
-            value={doneV}
+            value={asTxt(doneV)}
             onChange={(e) => setDoneV(e.target.value)}
             onInput={(e) => setDoneV((e.target as HTMLInputElement).value)}
           />
@@ -153,7 +153,7 @@ function CourseEditor({
         <textarea
           ref={notesRef}
           className="hp-field min-h-[72px] py-2"
-          value={notesV}
+          value={asTxt(notesV)}
           onChange={(e) => setNotesV(e.target.value)}
           onInput={(e) => setNotesV((e.target as HTMLTextAreaElement).value)}
         />

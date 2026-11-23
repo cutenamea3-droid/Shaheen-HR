@@ -367,7 +367,7 @@ export function Vault() {
               data-testid="personal-vault-password"
               className="hp-field"
               type="password"
-              value={pw}
+              value={asTxt(pw)}
               onChange={(e) => setPw(e.target.value)}
               onInput={(e) => setPw((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
@@ -379,7 +379,7 @@ export function Vault() {
               data-testid="personal-vault-password2"
               className="hp-field"
               type="password"
-              value={pw2}
+              value={asTxt(pw2)}
               onChange={(e) => setPw2(e.target.value)}
               onInput={(e) => setPw2((e.target as HTMLInputElement).value)}
               autoComplete="new-password"
@@ -389,8 +389,8 @@ export function Vault() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Btn
             onClick={async () => {
-              const nextPw = (pw || pwRef.current?.value || "").trim();
-              const nextPw2 = (pw2 || pw2Ref.current?.value || "").trim();
+              const nextPw = (asTxt(pw) || pwRef.current?.value || "").trim();
+              const nextPw2 = (asTxt(pw2) || pw2Ref.current?.value || "").trim();
               if (nextPw.length < 4 || nextPw !== nextPw2) {
                 setMsg("Invalid credentials.");
                 return;

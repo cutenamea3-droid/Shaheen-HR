@@ -361,7 +361,7 @@ function SectionAlerts({
         </div>
         <div className="flex items-center gap-2">
           <select
-            value={report}
+            value={asText(report)}
             onChange={(e) => setReport(e.target.value as typeof report)}
             className="h-10 rounded-lg border-2 bg-card px-2 text-sm font-semibold"
           >
@@ -523,7 +523,7 @@ function FuturePlans() {
           </div>
         </div>
         <select
-          value={secF}
+          value={asText(secF)}
           onChange={(e) => setSecF(e.target.value)}
           className="h-10 rounded-lg border-2 bg-card px-2 text-sm font-semibold"
         >

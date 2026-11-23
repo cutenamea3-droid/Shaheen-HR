@@ -765,7 +765,7 @@ function LoadsBoard({
         <input
           className="dispatch-field sm:col-span-2"
           placeholder="Search load, customer, driver, location…"
-          value={q}
+          value={asFormText(q)}
           onChange={(e) => setQ(e.target.value)}
         />
         <select
