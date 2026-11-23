@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import {
+  createContext,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Link, useLocation, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FileText,
@@ -39,6 +48,7 @@ import { ComplianceDrBackupControls } from "./ComplianceDrBackupControls";
 import { SECTIONS, headersOf } from "@/lib/sections";
 import { analyzeRow, rowOrdinaryComplianceMuted } from "@/lib/alerts";
 import { exportDotAuditSummary } from "@/lib/dot-audit";
+import { navIsPending, shellMeta } from "@/lib/shell-meta";
 import {
   backupCoverageSummary,
   clearComplianceTodayViewState,
@@ -53,6 +63,9 @@ import {
 } from "@/lib/store";
 import { AlertsBell } from "./AlertsDrawer";
 import { QuickFind } from "./QuickFind";
+
+/** When set, page-level <AppShell> only guards + renders children (chrome is persistent). */
+const ShellChromeContext = createContext(false);
 
 export const SECTION_ICONS: Record<string, typeof FileText> = {
   dmv: FileText,
@@ -113,16 +126,50 @@ function ShellBreadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   );
 }
 
-// While switching to Admin & Attendance, the old Driver page can render once outside
-// the Driver lock; show nothing instead of crashing.
-export function AppShell(props: ShellProps) {
-  return useOptionalPortalAccount() ? <AppShellInner {...props} /> : null;
+/**
+ * Persistent chrome for signed-in Driver Compliance (mounted once in LockGate).
+ * Avoids remounting sidebar badges / QuickFind / AlertsBell on every section switch.
+ */
+export function PersistentDriverShell({ children }: { children: ReactNode }) {
+  return (
+    <ShellChromeContext.Provider value={true}>
+      <AppShellInner>{children}</AppShellInner>
+    </ShellChromeContext.Provider>
+  );
 }
 
-function AppShellInner({ title, subtitle, children }: ShellProps) {
+// While switching to Admin & Attendance, the old Driver page can render once outside
+// the Driver lock; show nothing instead of crashing.
+// Inside PersistentDriverShell, only render page children (no nested chrome).
+export function AppShell({ title: _title, subtitle: _subtitle, children }: ShellProps) {
+  const portal = useOptionalPortalAccount();
+  const inChrome = useContext(ShellChromeContext);
+  if (!portal) return null;
+  if (inChrome) return <>{children}</>;
+  return <AppShellInner>{children}</AppShellInner>;
+}
+
+function AppShellInner({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  // TanStack's Transitioner assigns React.startTransition on each render, which
+  // lets location/crumbs update while the previous route body stays painted.
+  // Re-assign sync commits after that so chrome + Outlet swap in one paint.
+  // (Safe: AppShell sits under Matches → Transitioner always runs first.)
+  router.startTransition = async (fn) => {
+    const ack = router._rendered as unknown[] | undefined;
+    if (ack) ack.length = 0;
+    fn();
+    return true;
+  };
+
   const data = useData();
+  // Defer sidebar issue badges so route content can paint first (proven hot path).
+  const deferredData = useDeferredValue(data);
   const loaded = useLoaded();
   const loc = useLocation();
+  const navigating = useRouterState({ select: navIsPending });
+  const meta = useMemo(() => shellMeta(loc.pathname), [loc.pathname]);
+  const { title, subtitle } = meta;
   const { account } = usePortalAccount();
   const [collapsed, setCollapsedState] = useState(false);
   useEffect(() => {
@@ -146,7 +193,7 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const def of SECTIONS) {
-      const sec = data.sections[def.id];
+      const sec = deferredData.sections[def.id];
       if (!sec || !Array.isArray(sec.rows)) {
         c[def.id] = 0;
         continue;
@@ -154,11 +201,12 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
       const headers = headersOf(sec);
       c[def.id] = sec.rows.filter(
         (r) =>
-          !rowOrdinaryComplianceMuted(def, r, data) && analyzeRow(def, headers, r).issues.length,
+          !rowOrdinaryComplianceMuted(def, r, deferredData) &&
+          analyzeRow(def, headers, r).issues.length,
       ).length;
     }
     return c;
-  }, [data]);
+  }, [deferredData]);
 
   const groupLbl = (label: string) =>
     !collapsed ? <p className="shell-nav-group">{label}</p> : null;
@@ -482,13 +530,33 @@ function AppShellInner({ title, subtitle, children }: ShellProps) {
         <div
           id="main-content"
           tabIndex={-1}
-          className="ui-enter shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none"
+          className="shell-main-pad flex min-h-0 flex-1 flex-col overflow-auto outline-none"
+          data-nav-pending={navigating ? "true" : "false"}
         >
-          {loaded ? (
-            children
-          ) : (
+          {navigating && (
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="nav-pending"
+              className="tracker-no-print mb-3 rounded-lg border border-border/70 bg-muted/40 px-4 py-3 text-sm font-semibold text-muted-foreground"
+            >
+              Opening {title}…
+            </div>
+          )}
+          {!loaded ? (
             <div className="p-10 text-lg text-muted-foreground" role="status">
               Loading your data…
+            </div>
+          ) : (
+            <div
+              key={loc.pathname}
+              className="ui-enter flex min-h-0 flex-1 flex-col"
+              // Hide previous route body while the router is still resolving so
+              // chrome never sits over stale Drug Tests (or other) content.
+              hidden={navigating}
+              aria-hidden={navigating || undefined}
+            >
+              {children}
             </div>
           )}
         </div>
@@ -520,6 +588,7 @@ function NavItem({
       to={to}
       title={label}
       aria-current={active ? "page" : undefined}
+      activeOptions={{ exact: true }}
       className={cn(
         "tracker-nav flex items-center gap-3 rounded-2xl text-[15px] font-semibold",
         collapsed ? "justify-center px-2 py-2.5" : "px-4 py-2.5",

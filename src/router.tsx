@@ -10,6 +10,8 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Show pending UI immediately when a destination needs work (loaders / slow mounts).
+    defaultPendingMs: 0,
   });
 
   return router;
