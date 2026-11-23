@@ -28,7 +28,7 @@ describe("My Compliance Today redesign (SHRP-150)", () => {
     expect(src).toMatch(/Expiry \/ due/);
     expect(src).toMatch(/neededAction/);
     expect(src).toMatch(/Full record/);
-    expect(src).toMatch(/Future Plan \(manual edit\)/);
+    expect(src).toMatch(/My Saved Future Plan/);
     expect(src).toMatch(/FuturePlanSuggest/);
   });
 

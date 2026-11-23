@@ -2,20 +2,15 @@ import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { FuturePlanSuggestion } from "@/lib/plan-dates";
-import {
-  futurePlanCollapsedCount,
-  futurePlanExpandKey,
-} from "@/lib/future-plan-expand";
+import { futurePlanExpandKey } from "@/lib/future-plan-expand";
 import { useFuturePlanExpand } from "@/lib/use-future-plan-expand";
 import { setCell } from "@/lib/store";
 
 /**
- * Suggestion panel — never auto-writes. Apply Suggestion copies into the plan cell
- * via authorized setCell; manual plans stay until the user applies or edits.
- *
- * Hidden by default unless `embedded` (parent FuturePlanCell already expanded).
- * Standalone usage (e.g. Alerts work center) also stays collapsed until the user opens it.
- * Never auto-expands.
+ * Automatic suggestion panel — never auto-writes.
+ * Collapsed by default as "View Automatic Suggestion".
+ * Apply Suggestion requires explicit action; confirm before replacing a different saved plan.
+ * Open/close never modifies saved data. Never auto-expands.
  */
 export function FuturePlanSuggest({
   suggestion,
@@ -24,7 +19,6 @@ export function FuturePlanSuggest({
   rowId,
   planCol,
   compact,
-  embedded = false,
 }: {
   suggestion: FuturePlanSuggestion | null;
   existingPlan: string;
@@ -32,18 +26,31 @@ export function FuturePlanSuggest({
   rowId: string;
   planCol: number | null;
   compact?: boolean;
-  /** When true, parent already gates visibility — render panel only (no nested toggle). */
-  embedded?: boolean;
 }) {
   const key =
     planCol != null ? futurePlanExpandKey(sectionId, rowId, planCol) : `${sectionId}:${rowId}:plan`;
-  // Embedded panels are gated by FuturePlanCell — never clear the parent's expand key.
-  const { open, toggle } = useFuturePlanExpand(key, { clearOnUnmount: !embedded });
+  const { open, toggle } = useFuturePlanExpand(key);
 
   if (!suggestion || planCol == null) return null;
 
+  const savedTrim = existingPlan.trim();
+  const suggestionTrim = suggestion.text.trim();
+  const matchesSaved =
+    Boolean(savedTrim) &&
+    savedTrim === suggestionTrim &&
+    suggestion.available &&
+    !suggestion.suppressReapply;
+  const suggestionActionable = Boolean(suggestion.available && !suggestion.suppressReapply);
+
   const apply = () => {
     if (!suggestion.available || suggestion.suppressReapply) return;
+    if (matchesSaved) return;
+    if (savedTrim && savedTrim !== suggestionTrim) {
+      const ok = window.confirm(
+        "Replace your saved Future Plan with this automatic suggestion?\n\nYour current saved plan will be overwritten.",
+      );
+      if (!ok) return;
+    }
     try {
       setCell(sectionId, rowId, planCol, suggestion.text);
       toast.success("Future Plan updated from suggestion");
@@ -54,40 +61,24 @@ export function FuturePlanSuggest({
     }
   };
 
-  const suggestionActionable = Boolean(suggestion.available && !suggestion.suppressReapply);
-  const count = futurePlanCollapsedCount({
-    hasSuggestion: true,
-    suggestionActionable,
-    hasSavedPlan: Boolean(existingPlan.trim()),
-  });
-
   const panel = (
     <div
       className={cn(
-        "rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm",
+        "rounded-lg border border-foreground/15 bg-muted/30 px-3 py-2 text-sm",
         compact && "px-2.5 py-1.5 text-[13px]",
       )}
       data-future-plan-suggest
     >
-      <div className="font-bold text-foreground">Future Plan suggestion</div>
       {suggestion.suppressReapply ? (
-        <p className="mt-1 font-semibold text-info">{suggestion.text}</p>
+        <p className="font-semibold text-info">{suggestion.text}</p>
       ) : !suggestion.available ? (
-        <p className="mt-1 font-semibold text-warn">{suggestion.text}</p>
+        <p className="font-semibold text-warn">{suggestion.text}</p>
+      ) : matchesSaved ? (
+        <p className="font-semibold text-muted-foreground">Already matches saved plan.</p>
       ) : (
         <>
-          <p className="mt-1 font-semibold text-primary">{suggestion.text}</p>
+          <p className="font-semibold text-foreground">{suggestion.text}</p>
           <dl className="mt-2 grid gap-1 text-[13px] text-muted-foreground sm:grid-cols-2">
-            <div>
-              <dt className="inline font-bold text-foreground">Source expiry: </dt>
-              <dd className="inline">{suggestion.expiryLabel ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="inline font-bold text-foreground">Lead time: </dt>
-              <dd className="inline">
-                {suggestion.leadDays != null ? `${suggestion.leadDays} calendar days` : "—"}
-              </dd>
-            </div>
             <div>
               <dt className="inline font-bold text-foreground">Reminder: </dt>
               <dd
@@ -100,82 +91,50 @@ export function FuturePlanSuggest({
                 {suggestion.overdue ? " (overdue)" : ""}
               </dd>
             </div>
-            <div className="sm:col-span-2">
-              <dt className="inline font-bold text-foreground">Saved plan: </dt>
+            <div>
+              <dt className="inline font-bold text-foreground">Source expiry: </dt>
+              <dd className="inline">{suggestion.expiryLabel ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="inline font-bold text-foreground">Lead time: </dt>
               <dd className="inline">
-                {existingPlan.trim() ? existingPlan : "None — suggestion not applied yet"}
+                {suggestion.leadDays != null ? `${suggestion.leadDays} calendar days` : "—"}
               </dd>
             </div>
           </dl>
-          {existingPlan.trim() && existingPlan.trim() !== suggestion.text.trim() && (
-            <p className="mt-1 text-[12px] font-semibold text-muted-foreground">
-              Manual plan preserved — Apply Suggestion only when you choose to replace it.
-            </p>
+          {suggestionActionable && (
+            <button
+              type="button"
+              onClick={apply}
+              className="ui-press mt-2 inline-flex items-center rounded-lg border-2 border-primary bg-primary px-3 py-1.5 text-sm font-bold text-primary-foreground hover:opacity-95"
+            >
+              Apply Suggestion
+            </button>
           )}
-          <button
-            type="button"
-            onClick={apply}
-            className="ui-press mt-2 inline-flex items-center rounded-lg border-2 border-primary bg-primary px-3 py-1.5 text-sm font-bold text-primary-foreground hover:opacity-95"
-          >
-            Apply Suggestion
-          </button>
         </>
       )}
     </div>
   );
 
-  // Parent FuturePlanCell already expanded — show panel only.
-  if (embedded) return panel;
-
-  // Standalone: collapsed until user opens this driver/column.
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={false}
-        data-future-plan-suggest-toggle
-        className={cn(
-          "ui-press flex w-full max-w-full items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1 text-left text-sm font-bold text-foreground hover:bg-primary/10",
-          compact && "py-0.5 text-[13px]",
-        )}
-      >
-        <span className="shrink-0">Suggestions</span>
-        {count > 0 && (
-          <span
-            className={cn(
-              "inline-flex min-w-5 shrink-0 items-center justify-center rounded-md px-1 text-[11px] font-extrabold tabular-nums",
-              suggestionActionable ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
-            )}
-          >
-            {count}
-          </span>
-        )}
-        <span className="min-w-0 flex-1 truncate font-semibold text-muted-foreground">
-          {suggestion.text}
-        </span>
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      </button>
-    );
-  }
-
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <button
         type="button"
         onClick={toggle}
-        aria-expanded={true}
+        aria-expanded={open}
         data-future-plan-suggest-toggle
         className={cn(
-          "ui-press flex w-full max-w-full items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1 text-left text-sm font-bold text-foreground hover:bg-primary/10",
+          "ui-press flex w-full max-w-full items-center gap-1.5 rounded-md border border-foreground/15 bg-card px-2 py-1 text-left text-sm font-bold text-foreground hover:bg-muted/40",
           compact && "py-0.5 text-[13px]",
         )}
       >
-        <span className="shrink-0">Suggestions</span>
-        <span className="min-w-0 flex-1 truncate font-semibold text-muted-foreground">Hide</span>
-        <ChevronDown className="size-4 shrink-0 rotate-180 text-muted-foreground" aria-hidden />
+        <span className="min-w-0 flex-1">View Automatic Suggestion</span>
+        <ChevronDown
+          className={cn("size-4 shrink-0 text-muted-foreground transition", open && "rotate-180")}
+          aria-hidden
+        />
       </button>
-      {panel}
+      {open && panel}
     </div>
   );
 }

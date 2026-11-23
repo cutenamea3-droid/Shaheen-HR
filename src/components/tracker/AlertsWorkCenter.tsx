@@ -216,7 +216,7 @@ function ItemEditor({ item }: { item: WorkCenterItem }) {
       {item.planCol != null && (
         <div>
           <div className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-            Future Plan (manual edit)
+            My Saved Future Plan
           </div>
           <EditableText
             value={row.cells[item.planCol] ?? ""}

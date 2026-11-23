@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FuturePlanCell } from "@/components/tracker/FuturePlanCell";
 import { FuturePlanSuggest } from "@/components/tracker/FuturePlanSuggest";
@@ -37,27 +37,27 @@ afterEach(() => {
   } catch {
     /* ignore */
   }
+  vi.restoreAllMocks();
 });
 
 describe("FuturePlanCell", () => {
-  test("renders compact Plans control; suggestion panel hidden by default", () => {
+  test("shows My Saved Future Plan; suggestion collapsed by default", () => {
     render(
       <FuturePlanCell
         sectionId="dmv"
         rowId="r1"
         planCol={7}
-        value=""
+        value="Manual saved plan"
         onSave={() => {}}
         suggestion={suggestion()}
         compact
       />,
     );
-    expect(screen.getByRole("button", { name: /Plans/i })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
+    expect(screen.getByText(/My Saved Future Plan/i)).toBeTruthy();
+    expect(screen.getByText("Manual saved plan")).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: /View Automatic Suggestion/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Apply Suggestion")).toBeNull();
-    expect(screen.queryByText("Future Plan suggestion")).toBeNull();
   });
 
   test("expands only after click; second driver stays collapsed", () => {
@@ -82,18 +82,37 @@ describe("FuturePlanCell", () => {
       </div>,
     );
 
-    const buttons = screen.getAllByRole("button", { name: /Plans/i });
+    const buttons = screen.getAllByRole("button", { name: /View Automatic Suggestion/i });
     expect(buttons).toHaveLength(2);
     fireEvent.click(buttons[0]!);
     expect(buttons[0]).toHaveAttribute("aria-expanded", "true");
     expect(buttons[1]).toHaveAttribute("aria-expanded", "false");
     expect(screen.getByText("Apply Suggestion")).toBeTruthy();
-    expect(screen.getByText("Future Plan suggestion")).toBeTruthy();
+    expect(screen.getByText(/Source expiry/i)).toBeTruthy();
+    expect(screen.getByText(/Lead time/i)).toBeTruthy();
+    expect(screen.getByText(/Reminder/i)).toBeTruthy();
 
     // Opening the other driver collapses the first (accordion)
     fireEvent.click(buttons[1]!);
     expect(buttons[0]).toHaveAttribute("aria-expanded", "false");
     expect(buttons[1]).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("shows Already matches saved plan when texts equal", () => {
+    const text = "I will Apply on April 23 (Friday), 2027";
+    render(
+      <FuturePlanCell
+        sectionId="dmv"
+        rowId="r1"
+        planCol={7}
+        value={text}
+        onSave={() => {}}
+        suggestion={suggestion({ text })}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /View Automatic Suggestion/i }));
+    expect(screen.getByText("Already matches saved plan.")).toBeTruthy();
+    expect(screen.queryByText("Apply Suggestion")).toBeNull();
   });
 });
 
@@ -109,7 +128,23 @@ describe("FuturePlanSuggest standalone", () => {
       />,
     );
     expect(screen.queryByText("Apply Suggestion")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Suggestions/i }));
+    fireEvent.click(screen.getByRole("button", { name: /View Automatic Suggestion/i }));
     expect(screen.getByText("Apply Suggestion")).toBeTruthy();
+  });
+
+  test("confirm before replacing a different saved plan", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <FuturePlanSuggest
+        suggestion={suggestion()}
+        existingPlan="Keep my manual plan"
+        sectionId="dmv"
+        rowId="wc1"
+        planCol={7}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /View Automatic Suggestion/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Apply Suggestion/i }));
+    expect(confirmSpy).toHaveBeenCalled();
   });
 });
