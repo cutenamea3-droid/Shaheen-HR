@@ -179,37 +179,37 @@ export function buildHandoverWatchHints(input: {
   const lines: string[] = [];
   if (buckets.awaitingDocs.length) {
     lines.push(
-      `BOL/POD awaiting: ${buckets.awaitingDocs.map((l) => l.load_number).join(", ")}`,
+      `BOL/POD awaiting: ${buckets.awaitingDocs.map((l) => asTs(l.load_number)).join(", ")}`,
     );
   }
   const openIss = openEscalations(issues);
   if (openIss.length) {
     lines.push(
-      `Open issues: ${openIss.map((i) => i.title).slice(0, 6).join("; ")}`,
+      `Open issues: ${openIss.map((i) => asTs(i.title)).slice(0, 6).join("; ")}`,
     );
   }
   const needSenior = issuesMissingSeniorInformed(issues);
   if (needSenior.length) {
     lines.push(
-      `Senior Informed still manual/unchecked: ${needSenior.map((i) => i.title).slice(0, 4).join("; ")}`,
+      `Senior Informed still manual/unchecked: ${needSenior.map((i) => asTs(i.title)).slice(0, 4).join("; ")}`,
     );
   }
   const due = dueFollowUps(followUps);
   if (due.length) {
     lines.push(
-      `Follow-ups due: ${due.map((f) => f.title).slice(0, 6).join("; ")}`,
+      `Follow-ups due: ${due.map((f) => asTs(f.title)).slice(0, 6).join("; ")}`,
     );
   }
   const cancelled = loads.filter((l) => l.status === "cancelled").slice(0, 5);
   if (cancelled.length) {
     lines.push(
-      `Cancelled (manual reason on file): ${cancelled.map((l) => l.load_number).join(", ")}`,
+      `Cancelled (manual reason on file): ${cancelled.map((l) => asTs(l.load_number)).join(", ")}`,
     );
   }
   const awaitingClose = loads.filter((l) => l.status === "delivered").slice(0, 8);
   if (awaitingClose.length) {
     lines.push(
-      `Awaiting closeout (Delivered ≠ Closed ≠ Paid): ${awaitingClose.map((l) => l.load_number).join(", ")}`,
+      `Awaiting closeout (Delivered ≠ Closed ≠ Paid): ${awaitingClose.map((l) => asTs(l.load_number)).join(", ")}`,
     );
   }
   const unpaidClosed = loads
@@ -217,7 +217,7 @@ export function buildHandoverWatchHints(input: {
     .slice(0, 6);
   if (unpaidClosed.length) {
     lines.push(
-      `Closed but unpaid/partial (payment separate): ${unpaidClosed.map((l) => l.load_number).join(", ")}`,
+      `Closed but unpaid/partial (payment separate): ${unpaidClosed.map((l) => asTs(l.load_number)).join(", ")}`,
     );
   }
   return lines.join("\n");

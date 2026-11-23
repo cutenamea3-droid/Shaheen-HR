@@ -68,8 +68,8 @@ export function Assessments() {
   const [kind, setKind] = useState<AssessmentKind>("assignment");
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "cs101");
   const [dueDate, setDueDate] = useState("");
-  const [mid, setMid] = useState(settings.midtermRef);
-  const [fin, setFin] = useState(settings.finalsRef);
+  const [mid, setMid] = useState(asTxt(settings.midtermRef));
+  const [fin, setFin] = useState(asTxt(settings.finalsRef));
   const [prepCourseId, setPrepCourseId] = useState(courses[0]?.id ?? "cs101");
   const [prepLabel, setPrepLabel] = useState("");
   const [prepKind, setPrepKind] = useState<ExamPrepTask["examKind"]>("midterm");
@@ -146,7 +146,7 @@ export function Assessments() {
             <input
               className="hp-field"
               type="date"
-              value={mid}
+              value={asTxt(mid)}
               onChange={(e) => setMid(e.target.value)}
             />
           </Field>
@@ -154,7 +154,7 @@ export function Assessments() {
             <input
               className="hp-field"
               type="date"
-              value={fin}
+              value={asTxt(fin)}
               onChange={(e) => setFin(e.target.value)}
             />
           </Field>

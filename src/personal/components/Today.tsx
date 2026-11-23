@@ -349,8 +349,12 @@ export function Today() {
                 {next.due ? ` · locks ${asTxt(next.due)}` : ""} · verify status on VULMS
               </p>
             ) : null}
-            <p className="mt-2 text-sm leading-relaxed text-[var(--hp-muted)]">{rx.motivation}</p>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--hp-muted)]">{rx.howBehind}</p>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--hp-muted)]">
+              {asTxt(rx.motivation)}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--hp-muted)]">
+              {asTxt(rx.howBehind)}
+            </p>
             <p className="mt-3 text-[11px] font-semibold text-[var(--hp-teal)]">{VU_DAILY_HABIT}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -393,7 +397,12 @@ export function Today() {
         </div>
 
         <div className="relative z-[1] mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Stat label="Today load" value={formatMinutes(rx.dailyTotal)} hint={rx.math} accent="violet" />
+          <Stat
+            label="Today load"
+            value={formatMinutes(rx.dailyTotal)}
+            hint={asTxt(rx.math)}
+            accent="violet"
+          />
           <Stat
             label="To-Do pendency"
             value={String(rx.pendencyCount)}

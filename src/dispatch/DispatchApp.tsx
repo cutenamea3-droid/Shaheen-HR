@@ -1717,7 +1717,7 @@ function LoadEditor({
               Payment status (independent)
               <select
                 className="dispatch-field"
-                value={form.payment_status}
+                value={asFormText(form.payment_status)}
                 onChange={(e) =>
                   setForm({ ...form, payment_status: e.target.value as PaymentStatus })
                 }

@@ -36,21 +36,24 @@ export function toExpenseExportRows(
   const catName = (id: string) => cats.find((c) => c.id === id)?.name ?? id;
   return (Array.isArray(expenses) ? expenses : [])
     .filter((e) => !e.deletedAt)
-    .map((e) => ({
-      title: e.title,
-      category: catName(e.categoryId),
-      amountPkr: e.amountPkr,
-      expenseDate: e.expenseDate,
-      scope: EXPENSE_SCOPE_LABEL[e.scope],
-      employees:
-        e.scope === "all"
-          ? "(company total — not split)"
-          : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
-              .map((id) => nameById.get(id) ?? id)
-              .join("; "),
-      status: EXPENSE_STATUS_LABEL[e.status as ExpenseStatus],
-      note: e.note,
-    }));
+    .map((e) => {
+      const asExp = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
+      return {
+        title: asExp(e.title),
+        category: asExp(catName(e.categoryId)),
+        amountPkr: e.amountPkr,
+        expenseDate: asExp(e.expenseDate),
+        scope: asExp(EXPENSE_SCOPE_LABEL[e.scope] ?? e.scope),
+        employees:
+          e.scope === "all"
+            ? "(company total — not split)"
+            : (Array.isArray(e.employeeIds) ? e.employeeIds : [])
+                .map((id) => asExp(nameById.get(id) ?? id))
+                .join("; "),
+        status: asExp(EXPENSE_STATUS_LABEL[e.status as ExpenseStatus] ?? e.status),
+        note: asExp(e.note),
+      };
+    });
 }
 
 /** Simple printable HTML for browser PDF — no bank numbers. */

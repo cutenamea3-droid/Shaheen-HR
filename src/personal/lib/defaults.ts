@@ -121,9 +121,17 @@ export function migrateSettings(raw: Partial<PersonalSettings> | undefined): Per
         : base.weekdayMinutes;
   const asNum = (v: unknown, fb: number) =>
     typeof v === "number" && Number.isFinite(v) ? v : fb;
+  const asStr = (v: unknown, fb: string) =>
+    v == null ? fb : typeof v === "string" ? v : String(v);
+  const themeRaw = (raw as { theme?: unknown }).theme;
+  const theme = themeRaw === "light" || themeRaw === "dark" ? themeRaw : base.theme;
   return {
     ...base,
     ...raw,
+    theme,
+    studentLabel: asStr(raw.studentLabel, base.studentLabel),
+    program: asStr(raw.program, base.program),
+    semester: asStr(raw.semester, base.semester),
     weekdayMinutes: weekday,
     sundayMinutes: asNum(raw.sundayMinutes, base.sundayMinutes),
     dailyTargetMinutes: weekday,
@@ -137,6 +145,8 @@ export function migrateSettings(raw: Partial<PersonalSettings> | undefined): Per
       (raw as { pomodoroBreak?: unknown }).pomodoroBreak,
       base.pomodoroBreak,
     ),
+    midtermRef: asStr(raw.midtermRef, base.midtermRef),
+    finalsRef: asStr(raw.finalsRef, base.finalsRef),
   };
 }
 

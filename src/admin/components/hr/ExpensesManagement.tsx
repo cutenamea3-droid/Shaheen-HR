@@ -409,7 +409,7 @@ export function ExpensesManagement() {
             <input
               type="date"
               className="field"
-              value={form.expenseDate}
+              value={asText(form.expenseDate)}
               onChange={(e) => e.target.value && setForm((f) => ({ ...f, expenseDate: e.target.value }))}
               required
             />

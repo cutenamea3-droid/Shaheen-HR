@@ -296,6 +296,9 @@ describe("Personal store write-path normalize guards", () => {
       "utf8",
     );
     expect(defaultsLib).toMatch(/pomodoroFocus: asNum\(/);
+    expect(defaultsLib).toMatch(/midtermRef: asStr\(raw\.midtermRef/);
+    expect(defaultsLib).toMatch(/finalsRef: asStr\(raw\.finalsRef/);
+    expect(defaultsLib).toMatch(/studentLabel: asStr\(raw\.studentLabel/);
     expect(vaultUi).toMatch(/Number\.isFinite\(settings\.weekdayMinutes\)/);
     const rateCardUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/driver-hr/RateCardPanel.tsx"),
@@ -318,7 +321,18 @@ describe("Personal store write-path normalize guards", () => {
     expect(dispatchApp).toMatch(/value=\{asFormText\(form\.customer_name\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(form\.load_number\)\}/);
     expect(dispatchApp).toMatch(/value=\{asFormText\(form\.status\)\}/);
+    expect(dispatchApp).toMatch(/value=\{asFormText\(form\.payment_status\)\}/);
     expect(assessmentsUi).toMatch(/\{asTxt\(badge\.label\)\}/);
+    expect(assessmentsUi).toMatch(/useState\(asTxt\(settings\.midtermRef\)\)/);
+    const opsLib = readFileSync(
+      resolve(process.cwd(), "src/dispatch/lib/ops-controls.ts"),
+      "utf8",
+    );
+    expect(opsLib).toMatch(/asTs\(l\.load_number\)/);
+    expect(opsLib).toMatch(/asTs\(i\.title\)/);
+    expect(opsLib).toMatch(/asTs\(f\.title\)/);
+    expect(todayUi).toMatch(/hint=\{asTxt\(rx\.math\)\}/);
+    expect(attendanceUi).toMatch(/Number\.isFinite\(r\.otHours\)/);
     const fileCompleteUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/FileCompletenessPanel.tsx"),
       "utf8",

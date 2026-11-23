@@ -411,17 +411,25 @@ export function Attendance() {
                         )}
                         {r.otMarked && !c.extraDay && (
                           <span className="flex items-center gap-2 text-sm">
-                            <select className="field h-9 w-auto" value={r.otMode} onChange={(ev) => set({ otMode: ev.target.value as "auto" | "custom" })}>
+                            <select
+                              className="field h-9 w-auto"
+                              value={asText(r.otMode) === "custom" ? "custom" : "auto"}
+                              onChange={(ev) => set({ otMode: ev.target.value as "auto" | "custom" })}
+                            >
                               <option value="auto">Auto from shift</option>
                               <option value="custom">Custom hours</option>
                             </select>
-                            {r.otMode === "custom" && (
+                            {asText(r.otMode) === "custom" && (
                               <input
                                 type="number"
                                 step="0.25"
                                 min="0"
                                 className="field h-9 w-24"
-                                value={r.otHours}
+                                value={
+                                  typeof r.otHours === "number" && Number.isFinite(r.otHours)
+                                    ? r.otHours
+                                    : 0
+                                }
                                 onChange={(ev) => set({ otHours: +ev.target.value })}
                                 onInput={(ev) => set({ otHours: +(ev.target as HTMLInputElement).value })}
                               />
@@ -437,7 +445,13 @@ export function Attendance() {
                               min="0"
                               placeholder={c.worked != null ? fmtHours(c.worked) : "auto"}
                               className="field h-9 w-24"
-                              value={r.extraHours ?? ""}
+                              value={
+                                r.extraHours == null
+                                  ? ""
+                                  : typeof r.extraHours === "number" && Number.isFinite(r.extraHours)
+                                    ? r.extraHours
+                                    : ""
+                              }
                               onChange={(ev) => set({ extraHours: ev.target.value === "" ? null : +ev.target.value })}
                               onInput={(ev) => {
                                 const v = (ev.target as HTMLInputElement).value;
