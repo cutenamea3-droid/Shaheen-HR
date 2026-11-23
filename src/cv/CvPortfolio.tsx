@@ -107,25 +107,28 @@ export function CvPortfolio() {
 
   return (
     <div className="cv-theme">
+      <div className="cv-nav-chrome cv-no-print">
+        <div className="cv-shell">
+          <nav aria-label="Portfolio sections" className="cv-nav">
+            <a href="#home" className="cv-nav-brand">
+              {PROFILE.brand} <span className="accent">{PROFILE.brandAccent}</span>
+            </a>
+            <div className="cv-nav-links">
+              {NAV.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  aria-current={activeNav === item.id ? "true" : undefined}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+            <CvA4Resume label="Download CV" />
+          </nav>
+        </div>
+      </div>
       <div className="cv-shell">
-        <nav aria-label="Portfolio sections" className="cv-nav cv-no-print">
-          <a href="#home" className="cv-nav-brand">
-            {PROFILE.brand} <span className="accent">{PROFILE.brandAccent}</span>
-          </a>
-          <div className="cv-nav-links">
-            {NAV.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                aria-current={activeNav === item.id ? "true" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-          </div>
-          <CvA4Resume label="Download CV" />
-        </nav>
-
         <header id="home" className="cv-hero">
           <Rise>
             <p className="cv-kicker">Personal portfolio</p>
@@ -245,7 +248,7 @@ export function CvPortfolio() {
           <section aria-labelledby="skills-heading">
             <div className="cv-section-head">
               <h2 id="skills-heading">Skills</h2>
-              <p>Refined category lists — tools and methods used weekly.</p>
+              <p>Stylish skill tiles — tools and methods used weekly.</p>
             </div>
             <div className="cv-skills">
               <div className="cv-skill-tabs" role="tablist" aria-label="Skill categories">
@@ -268,12 +271,14 @@ export function CvPortfolio() {
                 aria-label={skillGroup?.label ?? "Skills"}
               >
                 <h3>{skillGroup?.label}</h3>
-                <div className="cv-skill-flow">
-                  {(skillGroup?.items ?? []).map((item, i, arr) => (
-                    <span key={item}>
-                      {item}
-                      {i < arr.length - 1 ? <span className="sep"> · </span> : null}
-                    </span>
+                <div className="cv-skill-tiles">
+                  {(skillGroup?.items ?? []).map((item) => (
+                    <div key={item.label} className="cv-skill-tile" data-tone={item.tone}>
+                      <span className="ico" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span className="lbl">{item.label}</span>
+                    </div>
                   ))}
                 </div>
               </div>

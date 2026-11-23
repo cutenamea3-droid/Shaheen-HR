@@ -16,10 +16,12 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     expect(tsx).not.toMatch(/cv-stage|cv-stage-mono|cv-portrait/);
     expect(css).not.toMatch(/cv-stage-mono|cv-portrait/);
     expect(css).toMatch(/clamp\(3\.6rem,\s*7\.2vw,\s*5\.5rem\)/);
-    expect(css).toMatch(/min\(1240px|min\(1280px/);
+    expect(css).toMatch(/min\(1260px|min\(1280px/);
     expect(tsx).toMatch(/cv-exp-row/);
     expect(tsx).toMatch(/cv-case/);
-    expect(tsx).toMatch(/cv-skill-flow/);
+    expect(tsx).toMatch(/cv-skill-tiles/);
+    expect(tsx).toMatch(/cv-nav-chrome/);
+    expect(css).toMatch(/background:\s*#fffcf8/);
   });
 
   it("keeps metrics off public surfaces", () => {
@@ -30,7 +32,7 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     const pdfSrc = readFileSync(resolve(process.cwd(), "src/cv/resume-pdf.ts"), "utf8");
     expect(pdfSrc).toMatch(/margin\s*=\s*16/);
     expect(pdfSrc).toMatch(/setFontSize\(26\)/);
-    expect(pdfSrc).toMatch(/10\.(5|6|8)/);
+    expect(pdfSrc).toMatch(/11\.(0|2|5)/);
     const { buildResumePdf } = await import("@/cv/resume-pdf");
     const pages = buildResumePdf().getNumberOfPages();
     expect(pages).toBeGreaterThanOrEqual(1);

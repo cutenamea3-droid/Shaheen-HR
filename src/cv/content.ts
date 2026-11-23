@@ -112,42 +112,44 @@ export const EDUCATION = [
   },
 ] as const;
 
-export const SKILL_GROUPS: { id: string; label: string; items: string[] }[] = [
+export type SkillItem = { label: string; icon: string; tone: "violet" | "teal" | "amber" | "rose" | "slate" | "indigo" };
+
+export const SKILL_GROUPS: { id: string; label: string; items: SkillItem[] }[] = [
   {
     id: "hr",
     label: "HR & Compliance",
     items: [
-      "Attendance Tracking",
-      "Safety Compliance",
-      "HOS Logs",
-      "ReguLog ELD",
-      "Rawen",
-      "CDL & Medical Records",
+      { label: "Attendance Tracking", icon: "📅", tone: "teal" },
+      { label: "Safety Compliance", icon: "🛡️", tone: "violet" },
+      { label: "HOS Logs", icon: "⏱️", tone: "amber" },
+      { label: "ReguLog ELD", icon: "🚛", tone: "indigo" },
+      { label: "Rawen", icon: "🗂️", tone: "slate" },
+      { label: "CDL & Medical Records", icon: "🩺", tone: "rose" },
     ],
   },
   {
     id: "sales",
     label: "Sales & Communication",
     items: [
-      "Cold Calling",
-      "Client Acquisition",
-      "Strategic Communication",
-      "Direct Sales",
-      "Lead Generation",
+      { label: "Cold Calling", icon: "📞", tone: "rose" },
+      { label: "Client Acquisition", icon: "🤝", tone: "violet" },
+      { label: "Strategic Communication", icon: "💬", tone: "teal" },
+      { label: "Direct Sales", icon: "🎯", tone: "amber" },
+      { label: "Lead Generation", icon: "📈", tone: "indigo" },
     ],
   },
   {
     id: "tech",
     label: "Tech & Digital",
     items: [
-      "Lovable",
-      "Vercel",
-      "GitHub",
-      "Termux",
-      "Gemini CLI",
-      "CapCut",
-      "VN Editor",
-      "Keyframe Animation",
+      { label: "Lovable", icon: "💜", tone: "violet" },
+      { label: "Vercel", icon: "▲", tone: "slate" },
+      { label: "GitHub", icon: "⌘", tone: "indigo" },
+      { label: "Termux", icon: "💻", tone: "teal" },
+      { label: "Gemini CLI", icon: "✨", tone: "amber" },
+      { label: "CapCut", icon: "🎬", tone: "rose" },
+      { label: "VN Editor", icon: "🎞️", tone: "violet" },
+      { label: "Keyframe Animation", icon: "🪄", tone: "teal" },
     ],
   },
 ];
