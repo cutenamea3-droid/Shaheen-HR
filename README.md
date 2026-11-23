@@ -1,8 +1,8 @@
 # Shaheen HR — Compliance + Attendance
 
 This deployable app serves **Driver Compliance** (`/`) and **Admin & Attendance** (`/admin`) only.
-Personal Study and Dispatch Operations UIs are retired from this app (soft landing on `/personal` and `/dispatch`).
-Cloud data for all modules was left intact — see Project store `docs/data-protection/pre-split-backup-inventory.md`.
+Personal Study and Dispatch Operations code is **not** in this repository.
+Existing Personal/Dispatch cloud data was left intact (no cloud deletes) — see Project store `docs/data-protection/pre-split-backup-inventory.md`.
 
 ---
 

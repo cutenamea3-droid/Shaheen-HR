@@ -16,10 +16,8 @@ import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as CvRouteImport } from './routes/cv'
-import { Route as DispatchRouteImport } from './routes/dispatch'
 import { Route as DriversRouteImport } from './routes/drivers'
 import { Route as DrugTestsRouteImport } from './routes/drug-tests'
-import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as RecordsRouteImport } from './routes/records'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as SSectionIdRouteImport } from './routes/s.$sectionId'
@@ -59,11 +57,6 @@ const CvRoute = CvRouteImport.update({
   path: '/cv',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DispatchRoute = DispatchRouteImport.update({
-  id: '/dispatch',
-  path: '/dispatch',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DriversRoute = DriversRouteImport.update({
   id: '/drivers',
   path: '/drivers',
@@ -72,11 +65,6 @@ const DriversRoute = DriversRouteImport.update({
 const DrugTestsRoute = DrugTestsRouteImport.update({
   id: '/drug-tests',
   path: '/drug-tests',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PersonalRoute = PersonalRouteImport.update({
-  id: '/personal',
-  path: '/personal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecordsRoute = RecordsRouteImport.update({
@@ -103,10 +91,8 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
-  '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
   '/drug-tests': typeof DrugTestsRoute
-  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -119,10 +105,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
-  '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
   '/drug-tests': typeof DrugTestsRoute
-  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -136,10 +120,8 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/alerts': typeof AlertsRoute
   '/cv': typeof CvRoute
-  '/dispatch': typeof DispatchRoute
   '/drivers': typeof DriversRoute
   '/drug-tests': typeof DrugTestsRoute
-  '/personal': typeof PersonalRoute
   '/records': typeof RecordsRoute
   '/team': typeof TeamRoute
   '/s/$sectionId': typeof SSectionIdRoute
@@ -154,10 +136,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alerts'
     | '/cv'
-    | '/dispatch'
     | '/drivers'
     | '/drug-tests'
-    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -170,10 +150,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alerts'
     | '/cv'
-    | '/dispatch'
     | '/drivers'
     | '/drug-tests'
-    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -186,10 +164,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/alerts'
     | '/cv'
-    | '/dispatch'
     | '/drivers'
     | '/drug-tests'
-    | '/personal'
     | '/records'
     | '/team'
     | '/s/$sectionId'
@@ -203,10 +179,8 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AlertsRoute: typeof AlertsRoute
   CvRoute: typeof CvRoute
-  DispatchRoute: typeof DispatchRoute
   DriversRoute: typeof DriversRoute
   DrugTestsRoute: typeof DrugTestsRoute
-  PersonalRoute: typeof PersonalRoute
   RecordsRoute: typeof RecordsRoute
   TeamRoute: typeof TeamRoute
   SSectionIdRoute: typeof SSectionIdRoute
@@ -263,13 +237,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CvRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dispatch': {
-      id: '/dispatch'
-      path: '/dispatch'
-      fullPath: '/dispatch'
-      preLoaderRoute: typeof DispatchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/drivers': {
       id: '/drivers'
       path: '/drivers'
@@ -282,13 +249,6 @@ declare module '@tanstack/react-router' {
       path: '/drug-tests'
       fullPath: '/drug-tests'
       preLoaderRoute: typeof DrugTestsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/personal': {
-      id: '/personal'
-      path: '/personal'
-      fullPath: '/personal'
-      preLoaderRoute: typeof PersonalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/records': {
@@ -323,10 +283,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AlertsRoute: AlertsRoute,
   CvRoute: CvRoute,
-  DispatchRoute: DispatchRoute,
   DriversRoute: DriversRoute,
   DrugTestsRoute: DrugTestsRoute,
-  PersonalRoute: PersonalRoute,
   RecordsRoute: RecordsRoute,
   TeamRoute: TeamRoute,
   SSectionIdRoute: SSectionIdRoute,

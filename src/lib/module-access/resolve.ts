@@ -4,8 +4,6 @@ import { resolveAccess } from "./policy";
 
 /**
  * Resolve module grants by probing Compliance + Admin auth boundaries only.
- * Personal / Dispatch are not probed in this Compliance + Attendance app
- * (avoids false Access Denied races from retired-module seats).
  * Never copies JWTs between Driver / Admin clients.
  */
 export async function probeModuleGrants(): Promise<ModuleGrants> {
@@ -13,8 +11,6 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
     return {
       compliance: "admin",
       "admin-hr": "admin",
-      personal: null,
-      dispatch: null,
     };
   }
 
@@ -75,8 +71,6 @@ export async function probeModuleGrants(): Promise<ModuleGrants> {
   } catch {
     /* Admin probe optional */
   }
-
-  // Personal + Dispatch intentionally not probed in this app.
 
   return grants;
 }

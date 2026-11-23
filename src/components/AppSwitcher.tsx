@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileCheck2, ShieldX, UsersRound } from "lucide-react";
+import { FileCheck2, UsersRound } from "lucide-react";
 import {
   EMPTY_GRANTS,
   companySwitcherModules,
@@ -12,7 +12,6 @@ import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Top bar that switches between Compliance and Admin & Attendance only.
- * Personal / Dispatch portals are not part of this deployable app.
  *
  * SPA shell is prerendered for `/` only (vite spa.prerender). Path-dependent
  * active/`aria-current` markup — including TanStack Link's built-in
@@ -26,10 +25,9 @@ export function AppSwitcher() {
   // Match the prerendered `/` shell until after hydration (not the real deep path).
   const path = hydrated ? pathname : "/";
   const isAdmin = path.startsWith("/admin");
-  const isDenied = path.startsWith("/access-denied");
   const isCv = path === "/cv";
-  const isRetiredPortal = path.startsWith("/personal") || path.startsWith("/dispatch");
-  const isDriver = !isAdmin && !isDenied && !isCv && !isRetiredPortal;
+  // Access Denied is never a third switcher tab — only Compliance + Admin.
+  const isDriver = !isAdmin && !isCv;
 
   const [grants, setGrants] = useState<ModuleGrants>(EMPTY_GRANTS);
   const [ready, setReady] = useState(false);
@@ -182,12 +180,6 @@ export function AppSwitcher() {
             <UsersRound className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Admin &amp; Attendance</span>
           </NavLink>
-        )}
-        {isDenied && (
-          <span className={`${base} ${on}`} aria-current="page">
-            <ShieldX className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Access denied</span>
-          </span>
         )}
       </nav>
     </header>

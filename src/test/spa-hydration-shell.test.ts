@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createRouter } from "@tanstack/react-router";
 import { QueryClient } from "@tanstack/react-query";
@@ -10,11 +10,11 @@ import { routeTree } from "@/routeTree.gen";
  * (vite.config tanstackStart.spa). Root shell path-dependent UI must defer until
  * after hydration or React 19 throws #418 on refresh of non-Driver deep links.
  *
- * This app serves Compliance + Admin only; /personal and /dispatch are soft landings.
+ * This app serves Compliance + Admin only — Personal/Dispatch routes are gone.
  */
 describe("SPA hydration shell safety", () => {
   /** Paths that skip Driver LockGate after hydration — must not structurally differ on first paint. */
-  const lockGateSkipPaths = ["/admin", "/personal", "/dispatch", "/access-denied", "/cv"] as const;
+  const lockGateSkipPaths = ["/admin", "/access-denied", "/cv"] as const;
   /** Paths that keep Driver LockGate — match prerendered `/` shell tree. */
   const lockGateKeepPaths = [
     "/",
@@ -73,17 +73,14 @@ describe("SPA hydration shell safety", () => {
     expect(sw).toContain("prerendered for `/`");
   });
 
-  it("isolates Admin route errors; Personal/Dispatch are soft landings", () => {
+  it("isolates Admin route errors; Personal/Dispatch routes are removed", () => {
     const admin = readFileSync(resolve(process.cwd(), "src/routes/admin.tsx"), "utf8");
     expect(admin).toMatch(/errorComponent:/);
     expect(admin).toMatch(/ModuleErrorPanel/);
-    for (const file of ["personal.tsx", "dispatch.tsx"] as const) {
-      const src = readFileSync(resolve(process.cwd(), `src/routes/${file}`), "utf8");
-      expect(src).toMatch(/not in this app/i);
-      expect(src).not.toMatch(/from ["']@\/personal\/PersonalApp["']/);
-      expect(src).not.toMatch(/from ["']@\/dispatch\/DispatchApp["']/);
-      expect(src).not.toMatch(/<\s*PersonalApp|<\s*DispatchApp/);
-    }
+    expect(existsSync(resolve(process.cwd(), "src/routes/personal.tsx"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "src/routes/dispatch.tsx"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "src/personal"))).toBe(false);
+    expect(existsSync(resolve(process.cwd(), "src/dispatch"))).toBe(false);
   });
 
   it("registers every refresh-sensitive portal path in the route tree", () => {
@@ -95,17 +92,11 @@ describe("SPA hydration shell safety", () => {
     }
   });
 
-  it("encodes LockGate skip paths for Admin + retired soft landings", () => {
-    expect([...lockGateSkipPaths]).toEqual([
-      "/admin",
-      "/personal",
-      "/dispatch",
-      "/access-denied",
-      "/cv",
-    ]);
+  it("encodes LockGate skip paths for Admin + public surfaces only", () => {
+    expect([...lockGateSkipPaths]).toEqual(["/admin", "/access-denied", "/cv"]);
     const root = readFileSync(resolve(process.cwd(), "src/routes/__root.tsx"), "utf8");
     expect(root).toContain('pathname.startsWith("/admin")');
-    expect(root).toMatch(/isRetiredPortal|startsWith\("\/dispatch"\)|startsWith\("\/personal"\)/);
+    expect(root).not.toMatch(/isRetiredPortal|startsWith\("\/dispatch"\)|startsWith\("\/personal"\)/);
     expect(root).toContain('pathname.startsWith("/access-denied")');
     expect(root).toMatch(/pathname\s*===\s*"\/cv"/);
     expect(root).toMatch(/useDriverLock\s*=\s*[\s\S]*hydrated/);
