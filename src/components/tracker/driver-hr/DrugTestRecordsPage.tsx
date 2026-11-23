@@ -12,9 +12,11 @@ import { useData } from "@/lib/store";
 import {
   addDrugTestEvent,
   deleteDrugTestEvent,
+  linkDrugTestEvents,
   listDrugTestsForDrivers,
   restoreDrugTestEvent,
   subscribeDrugTestMock,
+  unlinkDrugTestEvent,
   updateDrugTestEvent,
 } from "@/lib/driver-hr/drug-test-api";
 import {
@@ -31,8 +33,10 @@ import {
 import {
   DRUG_DOC_KIND_LABEL,
   DRUG_PAIR_STATUS_LABEL,
+  DRUG_PAIR_STATUS_PRIMARY,
   asDrugText,
   formatDrugDocKind,
+  listLinkableOpposites,
   newTestingEventId,
   pairDrugTestEvents,
   type DrugDocKind,
@@ -367,6 +371,92 @@ export function DrugTestRecordsPage() {
     }
   };
 
+  /** Persist logical pair into shared testing_event_id (staff). Prefer link-to-existing. */
+  const persistLink = async (row: TableRow) => {
+    if (!persistOk) {
+      toast.error(blocked ?? "Saving disabled");
+      return;
+    }
+    if (!row.federal || !row.medical) {
+      toast.error("Both CCF and MRO required to persist a link.");
+      return;
+    }
+    const sameTe =
+      asDrugText(row.federal.testingEventId).trim() === asDrugText(row.medical.testingEventId).trim() &&
+      asDrugText(row.federal.testingEventId).trim() !== "";
+    if (sameTe) {
+      toast.message("Already linked on the same testing event.");
+      return;
+    }
+    const target = asDrugText(row.federal.testingEventId).trim() || asDrugText(row.medical.testingEventId).trim();
+    const moving = asDrugText(row.federal.testingEventId).trim() === target ? row.medical : row.federal;
+    if (!target || !moving) {
+      toast.error("Missing testing event id for link.");
+      return;
+    }
+    if (
+      !confirm(
+        `Link CCF + MRO onto one testing event?\nSpecimen ${asDrugText(row.specimenId)} · ${asDrugText(row.reason)}\nThis updates testing_event_id only (no delete).`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await linkDrugTestEvents({
+        movingEventId: moving.id,
+        targetTestingEventId: target,
+        driverId: row.driverId,
+        actor,
+      });
+      toast.success("Linked CCF ↔ MRO (audit recorded)");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Link failed");
+    }
+  };
+
+  const persistUnlink = async (row: TableRow, side: "federal" | "medical") => {
+    if (!persistOk) {
+      toast.error(blocked ?? "Saving disabled");
+      return;
+    }
+    const ev = side === "federal" ? row.federal : row.medical;
+    if (!ev) return;
+    if (!confirm(`Unlink this ${side === "federal" ? "CCF" : "MRO"} into its own testing event? Docs are kept.`)) {
+      return;
+    }
+    try {
+      await unlinkDrugTestEvent({ eventId: ev.id, driverId: row.driverId, actor });
+      toast.success("Unlinked (audit recorded)");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Unlink failed");
+    }
+  };
+
+  /** Add Missing: prefer attaching to an existing opposite (link-to-existing first). */
+  const startAddMissing = (row: TableRow, kind: DrugDocKind) => {
+    const existingSide = kind === "federal_drug" ? row.medical : row.federal;
+    let te = asDrugText(row.testingEventId).trim();
+    if (existingSide) {
+      const linkable = listLinkableOpposites(existingSide, safeEvents.filter((e) => e.driverId === row.driverId));
+      // Prefer current row's event; else first linkable opposite's event.
+      te = asDrugText(existingSide.testingEventId).trim() || te;
+      if (!te && linkable[0]) te = asDrugText(linkable[0].testingEventId).trim();
+    }
+    setAddSideFor({
+      driverId: row.driverId,
+      testingEventId: te || newTestingEventId(),
+      kind,
+    });
+    setPickedDriverId(row.driverId);
+    setAddKind(kind);
+    setAdding(true);
+    setPairingHint(
+      te
+        ? "Add Missing — linking to the existing testing event first (Automatic Matching)."
+        : "Add Missing — no existing event id; Automatic Matching will search by specimen + reason.",
+    );
+  };
+
   if (!isAdmin) {
     return (
       <div className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-foreground/10 bg-card p-6 text-[15px] text-muted-foreground">
@@ -457,7 +547,7 @@ export function DrugTestRecordsPage() {
           aria-label="Pair status filter"
         >
           <option value="all">All pair statuses</option>
-          {(Object.keys(DRUG_PAIR_STATUS_LABEL) as DrugPairStatus[]).map((s) => (
+          {DRUG_PAIR_STATUS_PRIMARY.map((s) => (
             <option key={s} value={s}>
               {DRUG_PAIR_STATUS_LABEL[s]}
             </option>
@@ -707,6 +797,11 @@ export function DrugTestRecordsPage() {
               <dt className="text-[13px] font-bold text-muted-foreground">Collection date</dt>
               <dd>
                 {asDrugText(viewRow.eventDate) || asDrugText(viewRow.collectionContext) || "—"}
+                {viewRow.mroReviewDate ? (
+                  <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
+                    MRO review {asDrugText(viewRow.mroReviewDate)}
+                  </span>
+                ) : null}
               </dd>
             </div>
             <div>
@@ -765,21 +860,10 @@ export function DrugTestRecordsPage() {
                   persistOk={persistOk}
                   onView={() => setViewRow(row)}
                   onEdit={(ev) => setEditEv(ev)}
-                  onAddCcf={() =>
-                    setAddSideFor({
-                      driverId: row.driverId,
-                      // Prefer existing event id; only mint when the row has none.
-                      testingEventId: row.testingEventId || newTestingEventId(),
-                      kind: "federal_drug",
-                    })
-                  }
-                  onAddMro={() =>
-                    setAddSideFor({
-                      driverId: row.driverId,
-                      testingEventId: row.testingEventId || newTestingEventId(),
-                      kind: "medical_review",
-                    })
-                  }
+                  onAddCcf={() => startAddMissing(row, "federal_drug")}
+                  onAddMro={() => startAddMissing(row, "medical_review")}
+                  onLink={() => void persistLink(row)}
+                  onUnlink={(side) => void persistUnlink(row, side)}
                   onDelete={softDelete}
                 />
               ))}
@@ -803,20 +887,10 @@ export function DrugTestRecordsPage() {
                     persistOk={persistOk}
                     onView={() => setViewRow(row)}
                     onEdit={(ev) => setEditEv(ev)}
-                    onAddCcf={() =>
-                      setAddSideFor({
-                        driverId: row.driverId,
-                        testingEventId: row.testingEventId || newTestingEventId(),
-                        kind: "federal_drug",
-                      })
-                    }
-                    onAddMro={() =>
-                      setAddSideFor({
-                        driverId: row.driverId,
-                        testingEventId: row.testingEventId || newTestingEventId(),
-                        kind: "medical_review",
-                      })
-                    }
+                    onAddCcf={() => startAddMissing(row, "federal_drug")}
+                    onAddMro={() => startAddMissing(row, "medical_review")}
+                    onLink={() => void persistLink(row)}
+                    onUnlink={(side) => void persistUnlink(row, side)}
                     onDelete={softDelete}
                   />
                 )),
@@ -853,6 +927,8 @@ function RecordRow({
   onEdit,
   onAddCcf,
   onAddMro,
+  onLink,
+  onUnlink,
   onDelete,
 }: {
   row: TableRow;
@@ -863,8 +939,20 @@ function RecordRow({
   onEdit: (ev: DrugTestEvent) => void;
   onAddCcf: () => void;
   onAddMro: () => void;
+  onLink: () => void;
+  onUnlink: (side: "federal" | "medical") => void;
   onDelete: (ev: DrugTestEvent, label: string) => void;
 }) {
+  const canPersistLink =
+    Boolean(row.federal && row.medical) &&
+    (row.logicalPair ||
+      row.status === "review_needed" ||
+      asDrugText(row.federal?.testingEventId) !== asDrugText(row.medical?.testingEventId));
+  const linkedSameTe =
+    Boolean(row.federal && row.medical) &&
+    asDrugText(row.federal?.testingEventId).trim() !== "" &&
+    asDrugText(row.federal?.testingEventId).trim() === asDrugText(row.medical?.testingEventId).trim();
+
   return (
     <tr className="border-t border-foreground/10 align-top">
       <td className="px-3 py-2.5 font-semibold">
@@ -872,7 +960,10 @@ function RecordRow({
       </td>
       <td className="px-3 py-2.5">{asDrugText(row.reason) || "—"}</td>
       <td className="px-3 py-2.5 text-[14px]">
-        {asDrugText(row.eventDate) || asDrugText(row.collectionContext) || "—"}
+        <div>{asDrugText(row.eventDate) || asDrugText(row.collectionContext) || "—"}</div>
+        {row.mroReviewDate ? (
+          <div className="text-[12px] text-muted-foreground">MRO review {asDrugText(row.mroReviewDate)}</div>
+        ) : null}
       </td>
       <td className="px-3 py-2.5 font-mono text-[14px] font-semibold">
         {asDrugText(row.specimenId) || "—"}
@@ -915,6 +1006,9 @@ function RecordRow({
         <span className={cn("inline-flex rounded-md px-2 py-0.5 text-[13px] font-bold", DRUG_STATUS_TONE[row.status])}>
           {asDrugText(DRUG_PAIR_STATUS_LABEL[row.status])}
         </span>
+        {row.warning ? (
+          <div className="mt-1 max-w-[220px] text-[11px] leading-snug text-muted-foreground">{asDrugText(row.warning)}</div>
+        ) : null}
       </td>
       <td className="px-3 py-2.5">
         <div className="flex flex-wrap gap-1">
@@ -944,8 +1038,8 @@ function RecordRow({
               {!row.federal && (
                 <button
                   type="button"
-                  title="Add CCF"
-                  aria-label="Add Federal Drug CCF"
+                  title="Add Missing CCF (link to existing first)"
+                  aria-label="Add Missing Federal Drug CCF"
                   disabled={!persistOk}
                   onClick={onAddCcf}
                   className="rounded px-1.5 py-1 text-[13px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
@@ -956,13 +1050,49 @@ function RecordRow({
               {!row.medical && (
                 <button
                   type="button"
-                  title="Add MRO"
-                  aria-label="Add Medical Review MRO"
+                  title="Add Missing MRO (link to existing first)"
+                  aria-label="Add Missing Medical Review MRO"
                   disabled={!persistOk}
                   onClick={onAddMro}
                   className="rounded px-1.5 py-1 text-[13px] font-extrabold tracking-wide text-[var(--brand-orange)] hover:bg-accent disabled:opacity-40"
                 >
                   +MRO
+                </button>
+              )}
+              {canPersistLink && !linkedSameTe && (
+                <button
+                  type="button"
+                  title="Persist link (shared testing event)"
+                  aria-label="Link CCF and MRO"
+                  disabled={!persistOk}
+                  onClick={onLink}
+                  className="rounded px-1.5 py-1 text-[12px] font-bold text-[var(--brand-slate)] hover:bg-muted disabled:opacity-40"
+                >
+                  Link
+                </button>
+              )}
+              {linkedSameTe && row.federal && (
+                <button
+                  type="button"
+                  title="Unlink CCF"
+                  aria-label="Unlink Federal Drug"
+                  disabled={!persistOk}
+                  onClick={() => onUnlink("federal")}
+                  className="rounded px-1.5 py-1 text-[12px] font-bold text-muted-foreground hover:bg-muted disabled:opacity-40"
+                >
+                  Unlink CCF
+                </button>
+              )}
+              {linkedSameTe && row.medical && (
+                <button
+                  type="button"
+                  title="Unlink MRO"
+                  aria-label="Unlink Medical Review"
+                  disabled={!persistOk}
+                  onClick={() => onUnlink("medical")}
+                  className="rounded px-1.5 py-1 text-[12px] font-bold text-muted-foreground hover:bg-muted disabled:opacity-40"
+                >
+                  Unlink MRO
                 </button>
               )}
               {row.federal && (

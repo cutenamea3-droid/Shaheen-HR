@@ -11,7 +11,7 @@ import {
 import { SECTIONS } from "@/lib/sections";
 import { useDrugTestMock } from "@/lib/driver-hr/drug-test-mock";
 import { resolvePairing } from "@/lib/driver-hr/drug-test-matching";
-import type { DrugTestEvent } from "@/lib/driver-hr/drug-tests";
+import { pairDrugTestEvents, type DrugTestEvent } from "@/lib/driver-hr/drug-tests";
 import {
   buildCompleteArchive,
   buildZip,
@@ -178,6 +178,21 @@ describe("Compliance DR Complete Backup (SHRP-151)", () => {
     expect(manifest.verification).toBe("VERIFIED COMPLETE");
     expect(manifest.counts.drivers).toBe(driverIds.length);
     expect(manifest.counts.drugEvents).toBe(3);
+
+    // Backup preserves raw CCF/MRO events; deterministic pairing reconstructs Matched pairs.
+    const drugJson = JSON.parse(
+      new TextDecoder().decode(loaded.files.find((f) => f.path === "data/drug-tests/events.json")!.bytes),
+    ) as { events: DrugTestEvent[] };
+    expect(Array.isArray(drugJson.events)).toBe(true);
+    expect(drugJson.events.length).toBe(3);
+    const byDriver = new Map<string, DrugTestEvent[]>();
+    for (const e of drugJson.events) {
+      const list = byDriver.get(e.driverId) ?? [];
+      list.push(e);
+      byDriver.set(e.driverId, list);
+    }
+    const firstPairs = pairDrugTestEvents(byDriver.get(driverIds[0]!) ?? []);
+    expect(firstPairs.some((p) => p.status === "matched" && p.specimenId === "SP-A")).toBe(true);
 
     const app = JSON.parse(
       new TextDecoder().decode(loaded.files.find((f) => f.path === "data/tracker/appdata.json")!.bytes),

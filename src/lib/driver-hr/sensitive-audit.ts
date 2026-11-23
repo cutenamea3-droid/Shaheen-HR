@@ -12,7 +12,9 @@ export type SensitiveAuditAction =
   | "drug_test_delete"
   | "drug_test_soft_delete"
   | "drug_test_restore"
-  | "drug_test_list";
+  | "drug_test_list"
+  | "drug_test_link"
+  | "drug_test_unlink";
 
 export interface SensitiveAuditEntry {
   id: string;
@@ -37,6 +39,8 @@ const ACTION_SET = new Set<string>([
   "drug_test_soft_delete",
   "drug_test_restore",
   "drug_test_list",
+  "drug_test_link",
+  "drug_test_unlink",
 ]);
 
 function emit() {

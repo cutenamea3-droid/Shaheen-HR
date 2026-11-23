@@ -120,7 +120,7 @@ describe("Drug Test Records section", () => {
       ev({ id: "f1", kind: "federal_drug", specimenId: "A", reason: "Random", collectionContext: "C" }),
       ev({ id: "m1", kind: "medical_review", specimenId: "B", reason: "Random", collectionContext: "C" }),
     ]);
-    expect(mismatch[0]!.status).toBe("specimen_mismatch");
+    expect(mismatch[0]!.status).toBe("review_needed");
   });
 
   it("searchable history filter keeps multi rows for same driver", () => {
