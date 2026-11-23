@@ -22,7 +22,7 @@ describe("Final CV split: Framer portfolio + A4 PDF", () => {
     expect(tsx).toMatch(/cv-case/);
     expect(tsx).toMatch(/cv-skill-tiles/);
     expect(tsx).toMatch(/cv-nav-chrome/);
-    expect(css).toMatch(/background:\s*#fffcf8/);
+    expect(css).toMatch(/background:\s*#ffffff/);
   });
 
   it("keeps metrics off public surfaces", () => {
