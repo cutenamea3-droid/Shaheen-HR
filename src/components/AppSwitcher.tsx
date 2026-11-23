@@ -81,6 +81,9 @@ export function AppSwitcher() {
 
   const show = (id: ModuleId) => selectable.includes(id);
 
+  // Personal CV / portfolio is a public surface — never show dashboard switcher chrome.
+  if (hydrated && isCv) return null;
+
   const base =
     "ui-press inline-flex h-8 items-center justify-center gap-2 rounded-md px-2.5 text-[13px] font-semibold tracking-tight transition-colors sm:px-3";
   const on = "bg-primary text-primary-foreground shadow-sm";
