@@ -20,6 +20,7 @@ import {
   listScopeOf,
   type ListScope,
 } from "@/lib/driver-meta";
+import { primaryRowForDriver } from "@/lib/driver-selectors";
 import { SECTIONS, cellsOf, headersOf, type AppData } from "@/lib/sections";
 
 export type FinderEmploymentLabel = "Active" | "Leave" | "Inactive" | "New";
@@ -111,31 +112,58 @@ export function buildFinderDrivers(data: AppData): FinderDriver[] {
         d.issues += analyzeRow(def, headersOf(sec), r).issues.length;
       }
 
-      if (def.id === "ssccdl" && (cells[1] ?? "").trim()) d.cdl = (cells[1] ?? "").trim();
-      if (def.id === "dmv" && !d.cdl) d.cdl = (cells[1] ?? "").trim();
-
-      if (def.id === "info") d.infoRowId = r.id;
-      if (def.id === "docs") {
-        d.docsRowId = r.id;
-        let missing = 0;
-        def.types.forEach((t, i) => {
-          if (t !== "status") return;
-          const s = normStatus(cells[i] ?? "");
-          if (s === "Missing" || s === "Sign Missing" || s === "Invalid") missing++;
-        });
-        d.missingDocs = missing;
-      }
+      // Contact / row ids finalized from primary rows below — skip last-wins here.
     }
   }
 
   return [...map.values()]
-    .map((d) => ({
-      ...d,
-      expiring: driverExpiryDays(data, d.driverId).filter((n) => n <= 30).length,
-      expiryChecked: true,
-      tempNotes: countTempNotes(data, d.driverId),
-      firstAlert: alertsByDriver.get(d.driverId) ?? null,
-    }))
+    .map((d) => {
+      // Recompute issues + contact from primary rows only (same SoT as Cards/File).
+      let issues = 0;
+      for (const def of SECTIONS) {
+        if (def.id === "inactive") continue;
+        const row = primaryRowForDriver(data, def.id, d.driverId);
+        if (!row) continue;
+        const sec = data.sections[def.id];
+        if (!rowAlertsMuted(def, row, data) && d.scope === "company") {
+          issues += analyzeRow(def, headersOf(sec), row).issues.length;
+        }
+      }
+      const info = primaryRowForDriver(data, "info", d.driverId);
+      const docs = primaryRowForDriver(data, "docs", d.driverId);
+      const ssccdl = primaryRowForDriver(data, "ssccdl", d.driverId);
+      const dmv = primaryRowForDriver(data, "dmv", d.driverId);
+      const cdl =
+        (cellsOf(ssccdl)[1] ?? "").trim() || (cellsOf(dmv)[1] ?? "").trim() || d.cdl;
+      let missingDocs = 0;
+      if (docs) {
+        const docsDef = SECTIONS.find((s) => s.id === "docs");
+        const cells = cellsOf(docs);
+        docsDef?.types.forEach((t, i) => {
+          if (t !== "status") return;
+          const s = normStatus(cells[i] ?? "");
+          if (s === "Missing" || s === "Sign Missing" || s === "Invalid") missingDocs++;
+        });
+      }
+      const name =
+        (cellsOf(primaryRowForDriver(data, "dmv", d.driverId))[0] ?? "").trim() ||
+        (cellsOf(ssccdl)[0] ?? "").trim() ||
+        (cellsOf(info)[0] ?? "").trim() ||
+        d.name;
+      return {
+        ...d,
+        name,
+        cdl,
+        issues,
+        missingDocs,
+        infoRowId: info?.id ?? null,
+        docsRowId: docs?.id ?? null,
+        expiring: driverExpiryDays(data, d.driverId).filter((n) => n <= 30).length,
+        expiryChecked: true,
+        tempNotes: countTempNotes(data, d.driverId),
+        firstAlert: alertsByDriver.get(d.driverId) ?? null,
+      };
+    })
     .sort((a, b) => {
       const asN = (v: unknown) => (v == null ? "" : typeof v === "string" ? v : String(v));
       return asN(a.name).localeCompare(asN(b.name), undefined, { sensitivity: "base" });

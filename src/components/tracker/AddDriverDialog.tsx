@@ -1,10 +1,15 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SECTIONS, headersOf, type SectionDef } from "@/lib/sections";
 import { statusTone } from "@/lib/alerts";
+import {
+  findAddDriverIdentityMatches,
+  type AddDriverIdentityMatch,
+} from "@/lib/driver-selectors";
+import { DUPLICATE_DRIVER_POLICY } from "@/lib/driver-profile-completion";
 import { addDriver, useData } from "@/lib/store";
 import { TONE_BOX } from "./cells";
 
@@ -26,6 +31,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
   const [base, setBase] = useState({ name: "", cdl: "", state: "CA" });
   const [vals, setVals] = useState<Record<string, string[]>>({});
   const [err, setErr] = useState("");
+  const [dupAck, setDupAck] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
   const cdlRef = useRef<HTMLInputElement>(null);
   const stateRef = useRef<HTMLInputElement>(null);
@@ -34,6 +40,11 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
     cdl: (asText(base.cdl).trim() || cdlRef.current?.value || "").trim(),
     state: (asText(base.state).trim() || stateRef.current?.value || "CA").trim().toUpperCase() || "CA",
   });
+
+  const identityMatches = useMemo(
+    () => findAddDriverIdentityMatches(data, { name: base.name, cdl: base.cdl }),
+    [data, base.name, base.cdl],
+  );
 
   const cellsFor = (def: SectionDef) => vals[def.id] ?? def.types.map(() => "");
   const setV = (def: SectionDef, i: number, v: string) =>
@@ -44,15 +55,10 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
     setBase({ name: "", cdl: "", state: "CA" });
     setVals({});
     setErr("");
+    setDupAck(false);
   }
 
-  function finish() {
-    const b = readBase();
-    if (!b.name || !b.cdl) {
-      setStep(0);
-      setErr("Driver name and CDL number are required.");
-      return;
-    }
+  function saveDriver(b: { name: string; cdl: string; state: string }) {
     const out: Record<string, string[]> = {};
     for (const def of WIZ) {
       const sec = data.sections[def.id];
@@ -75,6 +81,24 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
     );
     onOpenChange(false);
     reset();
+  }
+
+  function finish() {
+    const b = readBase();
+    if (!b.name || !b.cdl) {
+      setStep(0);
+      setErr("Driver name and CDL number are required.");
+      return;
+    }
+    const matches = findAddDriverIdentityMatches(data, b);
+    if (matches.length && !dupAck) {
+      setStep(0);
+      setErr(
+        "Possible existing driver match — review below, then confirm to add a separate record. Nothing is merged or deleted.",
+      );
+      return;
+    }
+    saveDriver(b);
   }
 
   const steps = ["Driver", ...WIZ.map((s) => s.short)];
@@ -121,8 +145,14 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   ref={nameRef}
                   data-testid="add-driver-name"
                   value={asText(base.name)}
-                  onChange={(e) => setBase({ ...base, name: e.target.value })}
-                  onInput={(e) => setBase((b) => ({ ...b, name: (e.target as HTMLInputElement).value }))}
+                  onChange={(e) => {
+                    setBase({ ...base, name: e.target.value });
+                    setDupAck(false);
+                  }}
+                  onInput={(e) => {
+                    setBase((b) => ({ ...b, name: (e.target as HTMLInputElement).value }));
+                    setDupAck(false);
+                  }}
                   className={inputCls}
                   autoFocus
                 />
@@ -132,8 +162,14 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   ref={cdlRef}
                   data-testid="add-driver-cdl"
                   value={asText(base.cdl)}
-                  onChange={(e) => setBase({ ...base, cdl: e.target.value })}
-                  onInput={(e) => setBase((b) => ({ ...b, cdl: (e.target as HTMLInputElement).value }))}
+                  onChange={(e) => {
+                    setBase({ ...base, cdl: e.target.value });
+                    setDupAck(false);
+                  }}
+                  onInput={(e) => {
+                    setBase((b) => ({ ...b, cdl: (e.target as HTMLInputElement).value }));
+                    setDupAck(false);
+                  }}
                   className={inputCls}
                 />
               </Field>
@@ -149,6 +185,13 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                   className={inputCls}
                 />
               </Field>
+              {identityMatches.length > 0 && (
+                <IdentityMatchReview
+                  matches={identityMatches}
+                  ack={dupAck}
+                  onAck={setDupAck}
+                />
+              )}
               {err && (
                 <p className="rounded-lg bg-danger-soft px-3 py-2 font-semibold text-danger">
                   {asText(err)}
@@ -232,6 +275,13 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
                       setErr("Driver name and CDL number are required.");
                       return;
                     }
+                    const matches = findAddDriverIdentityMatches(data, b);
+                    if (matches.length && !dupAck) {
+                      setErr(
+                        "Possible existing driver match — review below, then confirm to continue. Nothing is merged or deleted.",
+                      );
+                      return;
+                    }
                   }
                   setErr("");
                   setStep(step + 1);
@@ -244,6 +294,7 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
             <button
               type="button"
               onClick={finish}
+              data-testid="add-driver-save"
               className="inline-flex items-center gap-1 rounded-lg bg-ok px-5 py-2 font-bold text-primary-foreground shadow-card"
             >
               <Check className="size-4" /> Save Driver
@@ -252,6 +303,56 @@ export function AddDriverDialog({ open, onOpenChange }: { open: boolean; onOpenC
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function IdentityMatchReview({
+  matches,
+  ack,
+  onAck,
+}: {
+  matches: AddDriverIdentityMatch[];
+  ack: boolean;
+  onAck: (v: boolean) => void;
+}) {
+  return (
+    <div
+      className="rounded-lg border border-warn/40 bg-warn-soft px-3 py-3 text-sm text-warn"
+      role="status"
+      data-testid="add-driver-identity-match"
+    >
+      <div className="font-extrabold">Possible existing driver — review before adding</div>
+      <p className="mt-1 text-xs font-semibold opacity-90">{DUPLICATE_DRIVER_POLICY}</p>
+      <ul className="mt-2 space-y-1.5">
+        {matches.map((m) => (
+          <li key={m.driverId} className="rounded-md bg-card/60 px-2 py-1.5 text-xs font-semibold text-foreground">
+            <span className="font-extrabold">{asText(m.name)}</span>
+            {" · "}
+            CDL {asText(m.cdl) || "—"}
+            {" · "}
+            <span className="font-mono text-[11px]">{m.driverId}</span>
+            {" · "}
+            {m.reason === "same_name_and_cdl"
+              ? "same name + CDL"
+              : m.reason === "same_cdl"
+                ? "same CDL"
+                : "same name"}
+          </li>
+        ))}
+      </ul>
+      <label className="mt-3 flex items-start gap-2 text-xs font-bold text-foreground">
+        <input
+          type="checkbox"
+          checked={ack}
+          onChange={(e) => onAck(e.target.checked)}
+          data-testid="add-driver-dup-ack"
+          className="mt-0.5"
+        />
+        <span>
+          I reviewed the existing record(s). Add a <em>separate</em> driver (different ID) — do not merge.
+        </span>
+      </label>
+    </div>
   );
 }
 

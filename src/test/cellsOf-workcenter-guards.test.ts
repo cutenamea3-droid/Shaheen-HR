@@ -103,7 +103,9 @@ describe("UI Records/DataTable/Dashboard cellsOf", () => {
       resolve(process.cwd(), "src/components/tracker/DriverCards.tsx"),
       "utf8",
     );
-    expect(cards).toMatch(/cells: cellsOf\(raw\)/);
+    // Cards aggregate via shared selectors; SectionFields still heals cells with cellsOf.
+    expect(cards).toMatch(/buildDriverCardModel|primaryRowForDriver/);
+    expect(cards).toMatch(/cellsOf\(row\)/);
     const hist = readFileSync(
       resolve(process.cwd(), "src/components/tracker/ComplianceHistoryPanel.tsx"),
       "utf8",

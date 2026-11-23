@@ -467,14 +467,23 @@ export function linkDrivers(data: AppData): { data: AppData; changed: string[] }
   for (const id of ids) {
     const sec = sections[id];
     if (!sec || !Array.isArray(sec.rows)) continue;
+    // Never create same-driverId multi-rows in one section: if the target id
+    // already has a row here, leave the source row's id for review (warn-only).
+    const occupied = new Set(sec.rows.map((r) => r.driverId));
     let touched = false;
+    const claimed = new Set<string>();
     const rows = sec.rows.map((r) => {
       const want = resolve(r.driverId);
-      if (want !== r.driverId) {
-        touched = true;
-        return { ...r, driverId: want };
+      if (want === r.driverId) {
+        claimed.add(want);
+        return r;
       }
-      return r;
+      if (occupied.has(want) || claimed.has(want)) {
+        return r;
+      }
+      claimed.add(want);
+      touched = true;
+      return { ...r, driverId: want };
     });
     if (touched) {
       sections[id] = { ...sec, rows };
