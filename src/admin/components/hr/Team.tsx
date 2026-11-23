@@ -14,7 +14,6 @@ export function Team() {
     records: recordsRaw,
     addEmployee,
     updateEmployee,
-    removeEmployee,
     moveEmployee,
   } = useApp();
   const employees = useMemo(
@@ -123,7 +122,14 @@ export function Team() {
                   />
                 </label>
                 <label>
-                  <span className="lbl">Name</span>
+                  <span className="lbl">
+                    Name
+                    {e.inactive ? (
+                      <span className="ml-2 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                        Inactive
+                      </span>
+                    ) : null}
+                  </span>
                   <input
                     className="field"
                     data-testid={`admin-emp-name-${e.id}`}
@@ -195,14 +201,35 @@ export function Team() {
                   >
                     ↓
                   </button>
-                  <button
-                    type="button"
-                    className="btn-danger px-3"
-                    onClick={() => confirm(`Remove ${asText(e.name)}?`) && removeEmployee(e.id)}
-                    aria-label="Remove"
-                  >
-                    ✕
-                  </button>
+                  {e.inactive ? (
+                    <button
+                      type="button"
+                      className="btn-primary px-3"
+                      onClick={() => updateEmployee(e.id, { inactive: false })}
+                      aria-label="Reactivate"
+                      title="Restore soft-deleted employee (same ID)"
+                    >
+                      Restore
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-danger px-3"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Soft-delete ${asText(e.name)}?\n\nThey stay on the Team roster as inactive (same ID). Attendance history is kept. Use Restore to bring them back.\n\nThis does NOT wipe cloud records.`,
+                          )
+                        ) {
+                          updateEmployee(e.id, { inactive: true });
+                        }
+                      }}
+                      aria-label="Soft-delete"
+                      title="Soft-delete (inactive) — keeps attendance history"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">

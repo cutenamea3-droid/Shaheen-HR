@@ -15,6 +15,12 @@ export type Employee = {
   joinMonth: string; // YYYY-MM, leave accrual starts here
   openingLeave: number; // saved paid leaves carried in
   /**
+   * Soft-delete for Directory / Team. When true, employee stays in
+   * `employees` (and app_state) so attendance history + sync stay intact —
+   * never wipe records/perf by removing the row.
+   */
+  inactive?: boolean;
+  /**
    * Optional history of department (shift) assignments.
    * When missing, `deptId` is treated as current (seeded from joinMonth-01).
    * Changing department appends — never rewrites prior effective dates.
