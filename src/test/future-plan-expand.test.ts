@@ -85,28 +85,31 @@ describe("Future Plans UI — collapsed by default (source guards)", () => {
     expect(cards).not.toMatch(/from "\.\/FuturePlanSuggest"/);
   });
 
-  test("FuturePlanCell is collapsed unless aria-expanded and never auto-opens", () => {
+  test("FuturePlanCell always shows saved plan; never auto-opens suggestion", () => {
     const cell = readFileSync(
       resolve(process.cwd(), "src/components/tracker/FuturePlanCell.tsx"),
       "utf8",
     );
-    expect(cell).toMatch(/aria-expanded=\{open\}/);
     expect(cell).toMatch(/data-future-plan-cell/);
+    expect(cell).toMatch(/My Saved Future Plan/);
     expect(cell).toMatch(/Never auto-expands/);
+    expect(cell).toMatch(/FuturePlanSuggest/);
     expect(cell).not.toMatch(/defaultOpen\s*=\s*true/);
     expect(cell).not.toMatch(/useState\(\s*true\s*\)/);
-    // Expanded body only when open
-    expect(cell).toMatch(/\{open && \(/);
+    expect(cell).not.toMatch(/embedded/);
   });
 
-  test("FuturePlanSuggest stays hidden until explicit open (standalone)", () => {
+  test("FuturePlanSuggest stays hidden until explicit open", () => {
     const src = readFileSync(
       resolve(process.cwd(), "src/components/tracker/FuturePlanSuggest.tsx"),
       "utf8",
     );
     expect(src).toMatch(/Never auto-expands/);
-    expect(src).toMatch(/if \(!open\)/);
+    expect(src).toMatch(/View Automatic Suggestion/);
+    expect(src).toMatch(/\{open && panel\}/);
     expect(src).toMatch(/data-future-plan-suggest-toggle/);
+    expect(src).toMatch(/window\.confirm/);
+    expect(src).toMatch(/Already matches saved plan/);
     expect(src).not.toMatch(/defaultOpen\s*=\s*true/);
     expect(src).not.toMatch(/useState\(\s*true\s*\)/);
   });
@@ -117,6 +120,7 @@ describe("Future Plans UI — collapsed by default (source guards)", () => {
       "utf8",
     );
     expect(src).toMatch(/<FuturePlanSuggest/);
+    expect(src).toMatch(/My Saved Future Plan/);
     expect(src).not.toMatch(/embedded\s*=\s*\{?true\}?/);
     expect(src).not.toMatch(/defaultOpen|defaultExpanded|autoExpand/);
   });
