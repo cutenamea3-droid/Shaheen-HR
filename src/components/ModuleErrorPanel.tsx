@@ -22,6 +22,13 @@ export function ModuleErrorPanel({
     reportLovableError(error, { boundary: "module_error_panel", module: moduleLabel });
   }, [error, moduleLabel]);
 
+  const detail =
+    error instanceof Error && error.message
+      ? error.message.slice(0, 180)
+      : typeof error === "string"
+        ? error.slice(0, 180)
+        : "";
+
   return (
     <div className="flex min-h-[50vh] items-center justify-center bg-background px-4 py-10">
       <div className="max-w-md text-center">
@@ -31,6 +38,11 @@ export function ModuleErrorPanel({
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong in this module. Other dashboards in the top bar should still work.
         </p>
+        {detail ? (
+          <p className="mt-3 break-words font-mono text-xs text-muted-foreground/90" role="status">
+            {detail}
+          </p>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             type="button"

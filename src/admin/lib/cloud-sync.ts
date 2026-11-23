@@ -20,18 +20,32 @@ import {
   shouldAutoPreferCloud,
 } from "./hr-sync-protect";
 import { hrPayloadsDiverge, needsExplicitConflictUx, type HrSyncUi } from "./hr-sync-status";
-import { withNormalizedTasks } from "./normalize-tasks";
-import { useApp, whenAttendanceHydrated } from "./store";
+import { healHrBlob, useApp, whenAttendanceHydrated } from "./store";
 
 export type { SaveNowResult } from "./hr-local-pending";
 export { hrSyncStatusLabel } from "./hr-sync-status";
 
 const KEYS = ["depts", "employees", "records", "perf", "tasks", "settings", "team", "logs"] as const;
 
-/** Apply cloud/local HR blob without letting malformed tasks crash TaskGate / My HR Today. */
+/**
+ * Apply cloud/local HR blob with the same heal as persist merge —
+ * tasks, employees, settings, records, … so My HR Today / TaskGate cannot throw on corrupt shapes.
+ */
 function applyHrPayload(raw: unknown) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
-  useApp.setState(withNormalizedTasks(raw as Record<string, unknown>) as never);
+  const s = useApp.getState();
+  useApp.setState(
+    healHrBlob(raw as Record<string, unknown>, {
+      depts: s.depts,
+      employees: s.employees,
+      records: s.records,
+      perf: s.perf,
+      tasks: s.tasks,
+      settings: s.settings,
+      team: s.team,
+      logs: s.logs,
+    }) as never,
+  );
 }
 let timer: ReturnType<typeof setTimeout> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;

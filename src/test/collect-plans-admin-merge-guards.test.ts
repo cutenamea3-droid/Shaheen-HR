@@ -26,11 +26,15 @@ describe("collectors tolerate missing cells", () => {
 });
 
 describe("Admin attendance persist merge array coercion", () => {
-  it("merge coerces non-array employees/team/depts/logs", () => {
+  it("merge + healHrBlob coerce non-array employees/team/depts/logs", () => {
     const src = readFileSync(resolve(process.cwd(), "src/admin/lib/store.ts"), "utf8");
-    expect(src).toMatch(/employees: arr\(p\.employees, current\.employees\)/);
-    expect(src).toMatch(/team: arr\(p\.team, current\.team\)/);
-    expect(src).toMatch(/depts: arr\(p\.depts, current\.depts\)/);
-    expect(src).toMatch(/logs: arr\(p\.logs, current\.logs\)/);
+    // Persist merge delegates to healHrBlob (also used by cloud applyHrPayload).
+    expect(src).toMatch(/export function healHrBlob/);
+    expect(src).toMatch(/healHrBlob\(/);
+    expect(src).toMatch(/employees: arr\(raw\.employees, fallback\.employees\)/);
+    expect(src).toMatch(/team: arr\(raw\.team, fallback\.team\)/);
+    expect(src).toMatch(/depts: arr\(raw\.depts, fallback\.depts\)/);
+    expect(src).toMatch(/logs: arr\(raw\.logs, fallback\.logs\)/);
+    expect(src).toMatch(/return \{ \.\.\.current, \.\.\.p, \.\.\.healed \}/);
   });
 });

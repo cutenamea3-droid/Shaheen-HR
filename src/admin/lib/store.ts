@@ -200,6 +200,78 @@ function healPerfTree(
   return out;
 }
 
+/** Slice of attendance state that cloud sync / persist must heal before UI mounts. */
+export type HrHealable = {
+  depts: Dept[];
+  employees: Employee[];
+  records: Record<string, Record<string, DayRec>>;
+  perf: Record<string, Record<string, Perf>>;
+  tasks: Task[];
+  settings: Settings;
+  team: TeamMember[];
+  logs: LogEntry[];
+};
+
+/**
+ * Same coerce path as zustand persist `merge` — use for cloud `setState` too.
+ * Tasks-only heal left holey employees / null settings that crash My HR Today.
+ */
+export function healHrBlob(
+  raw: Record<string, unknown> | Partial<HrHealable>,
+  fallback: HrHealable = {
+    depts: seedData.depts,
+    employees: seedData.employees,
+    records: seedData.records,
+    perf: seedData.perf,
+    tasks: seedData.tasks,
+    settings: seedData.settings,
+    team: seedData.team,
+    logs: seedData.logs,
+  },
+): HrHealable {
+  const arr = <T,>(v: unknown, fb: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fb);
+  const obj = <T extends object>(v: unknown, fb: T): T =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fb;
+  const settingsRaw = obj(raw.settings, fallback.settings);
+  return {
+    tasks: normalizeTasks(arr(raw.tasks, fallback.tasks)),
+    employees: arr(raw.employees, fallback.employees)
+      .filter((e): e is Employee => !!e && typeof e === "object" && !Array.isArray(e))
+      .map((e) => normalizeEmployee(e as Employee)),
+    team: arr(raw.team, fallback.team)
+      .filter((m): m is TeamMember => !!m && typeof m === "object" && !Array.isArray(m))
+      .map((m) => normalizeTeamMember(m as TeamMember)),
+    depts: arr(raw.depts, fallback.depts)
+      .filter((d): d is Dept => !!d && typeof d === "object" && !Array.isArray(d))
+      .map((d) => normalizeDept(d as Dept)),
+    logs: arr(raw.logs, fallback.logs)
+      .filter((l): l is LogEntry => !!l && typeof l === "object" && !Array.isArray(l))
+      .map((l) => ({
+        ...l,
+        id: asText((l as LogEntry).id) || uid(),
+        who: asText((l as LogEntry).who),
+        action: asText((l as LogEntry).action),
+        at:
+          typeof (l as LogEntry).at === "number" && Number.isFinite((l as LogEntry).at)
+            ? (l as LogEntry).at
+            : Number.isFinite(Number((l as LogEntry).at))
+              ? Number((l as LogEntry).at)
+              : Date.now(),
+      })),
+    records: healDayTree(raw.records, fallback.records),
+    perf: healPerfTree(raw.perf, fallback.perf),
+    settings: {
+      ...settingsRaw,
+      company: asText(settingsRaw.company),
+      grace: asFinite(settingsRaw.grace, fallback.settings.grace),
+      breakMin: asFinite(settingsRaw.breakMin, fallback.settings.breakMin),
+      breakLeeway: asFinite(settingsRaw.breakLeeway, fallback.settings.breakLeeway),
+      satTargetHours: asFinite(settingsRaw.satTargetHours, fallback.settings.satTargetHours),
+      overpay: Boolean(settingsRaw.overpay),
+    },
+  };
+}
+
 export const useApp = create<State>()(
   persist(
     (set) => ({
@@ -344,55 +416,23 @@ export const useApp = create<State>()(
     }),
     {
       name: "hr-attendance-v1",
-      // Heal legacy / cloud tasks missing doneDays before TaskGate mounts.
+      // Heal legacy / cloud blobs (tasks, employees, settings, …) before UI mounts.
       merge: (persisted, current) => {
         const p =
           persisted && typeof persisted === "object" && !Array.isArray(persisted)
             ? (persisted as Partial<State>)
             : {};
-        const arr = <T,>(v: unknown, fallback: T[]): T[] => (Array.isArray(v) ? (v as T[]) : fallback);
-        const obj = <T extends object>(v: unknown, fallback: T): T =>
-          v && typeof v === "object" && !Array.isArray(v) ? (v as T) : fallback;
-        const settingsRaw = obj(p.settings, current.settings);
-        return {
-          ...current,
-          ...p,
-          tasks: normalizeTasks(arr(p.tasks, current.tasks)),
-          employees: arr(p.employees, current.employees)
-            .filter((e): e is Employee => !!e && typeof e === "object" && !Array.isArray(e))
-            .map((e) => normalizeEmployee(e as Employee)),
-          team: arr(p.team, current.team)
-            .filter((m): m is TeamMember => !!m && typeof m === "object" && !Array.isArray(m))
-            .map((m) => normalizeTeamMember(m as TeamMember)),
-          depts: arr(p.depts, current.depts)
-            .filter((d): d is Dept => !!d && typeof d === "object" && !Array.isArray(d))
-            .map((d) => normalizeDept(d as Dept)),
-          logs: arr(p.logs, current.logs)
-            .filter((l): l is LogEntry => !!l && typeof l === "object" && !Array.isArray(l))
-            .map((l) => ({
-              ...l,
-              id: asText((l as LogEntry).id) || uid(),
-              who: asText((l as LogEntry).who),
-              action: asText((l as LogEntry).action),
-              at:
-                typeof (l as LogEntry).at === "number" && Number.isFinite((l as LogEntry).at)
-                  ? (l as LogEntry).at
-                  : Number.isFinite(Number((l as LogEntry).at))
-                    ? Number((l as LogEntry).at)
-                    : Date.now(),
-            })),
-          records: healDayTree(p.records, current.records),
-          perf: healPerfTree(p.perf, current.perf),
-          settings: {
-            ...settingsRaw,
-            company: asText(settingsRaw.company),
-            grace: asFinite(settingsRaw.grace, current.settings.grace),
-            breakMin: asFinite(settingsRaw.breakMin, current.settings.breakMin),
-            breakLeeway: asFinite(settingsRaw.breakLeeway, current.settings.breakLeeway),
-            satTargetHours: asFinite(settingsRaw.satTargetHours, current.settings.satTargetHours),
-            overpay: Boolean(settingsRaw.overpay),
-          },
-        };
+        const healed = healHrBlob(p as Record<string, unknown>, {
+          depts: current.depts,
+          employees: current.employees,
+          records: current.records,
+          perf: current.perf,
+          tasks: current.tasks,
+          settings: current.settings,
+          team: current.team,
+          logs: current.logs,
+        });
+        return { ...current, ...p, ...healed };
       },
     },
   ),
