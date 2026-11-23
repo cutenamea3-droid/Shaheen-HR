@@ -49,7 +49,7 @@ export function Team() {
         className="admin-emp-card mb-1 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
-          const nextName = (name.trim() || nameRef.current?.value || "").trim();
+          const nextName = (asText(name).trim() || nameRef.current?.value || "").trim();
           if (!nextName) return;
           addEmployee({
             name: nextName,
@@ -68,14 +68,14 @@ export function Team() {
             ref={nameRef}
             data-testid="admin-add-employee-name"
             className="field"
-            value={name}
+            value={asText(name)}
             onChange={(e) => setName(e.target.value)}
             onInput={(e) => setName((e.target as HTMLInputElement).value)}
           />
         </label>
         <label>
           <span className="lbl">Department</span>
-          <select className="field" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
+          <select className="field" value={asText(deptId)} onChange={(e) => setDeptId(e.target.value)}>
             {depts.map((d) => (
               <option key={asText(d.id)} value={asText(d.id)}>
                 {asText(d.name)} ({fmtTime(d.start)}–{fmtTime(d.end)})
@@ -95,7 +95,7 @@ export function Team() {
           <input
             type="date"
             className="field w-auto"
-            value={deptEffectiveFrom}
+            value={asText(deptEffectiveFrom)}
             onChange={(e) => e.target.value && setDeptEffectiveFrom(e.target.value)}
             title="Applied when you change an employee's department below"
           />

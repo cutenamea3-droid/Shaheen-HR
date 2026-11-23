@@ -121,7 +121,7 @@ export function Reports() {
         <SectionTitle
           title="Monthly closing"
           sub="Close locks the attendance period for reporting. Closing ≠ Paid — salary payment status is never changed here."
-          right={<input type="month" className="field w-auto" aria-label="Close month" value={month} onChange={(e) => onMonthChange(e.target.value)} />}
+          right={<input type="month" className="field w-auto" aria-label="Close month" value={asText(month)} onChange={(e) => onMonthChange(e.target.value)} />}
         />
         <div className="flex flex-wrap items-center gap-2">
           <span className={`chip font-semibold ${isClosed ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
@@ -164,12 +164,12 @@ export function Reports() {
           sub="Summary CSV for the selected date range (reuses attendance calc rules — formulas unchanged). Hours only — no bank/IBAN."
           right={
             <>
-              <input type="month" className="field w-auto" aria-label="Payroll month" value={month} onChange={(e) => onMonthChange(e.target.value)} />
-              <input type="date" className="field w-auto" aria-label="Payroll range from" value={from} onChange={(e) => e.target.value && setFrom(e.target.value)} />
+              <input type="month" className="field w-auto" aria-label="Payroll month" value={asText(month)} onChange={(e) => onMonthChange(e.target.value)} />
+              <input type="date" className="field w-auto" aria-label="Payroll range from" value={asText(from)} onChange={(e) => e.target.value && setFrom(e.target.value)} />
               <span className="text-sm text-muted-foreground" aria-hidden>
                 to
               </span>
-              <input type="date" className="field w-auto" aria-label="Payroll range to" value={to} onChange={(e) => e.target.value && setTo(e.target.value)} />
+              <input type="date" className="field w-auto" aria-label="Payroll range to" value={asText(to)} onChange={(e) => e.target.value && setTo(e.target.value)} />
               <button
                 type="button"
                 className="btn-primary"
@@ -189,7 +189,7 @@ export function Reports() {
         />
       </section>
       <section>
-        <SectionTitle title="CEO daily reports" sub="Bordered tables, violations printed in red." right={<input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />} />
+        <SectionTitle title="CEO daily reports" sub="Bordered tables, violations printed in red." right={<input type="date" className="field w-auto" value={asText(date)} onChange={(e) => e.target.value && setDate(e.target.value)} />} />
         <div className="grid gap-3 md:grid-cols-3">
           <Card title="Combined daily" sub="Attendance + performance in one sheet" make={() => [dailyCombined(data, date)]} name={`daily-combined-${date}`} />
           <Card title="Daily attendance" sub="Punches, breaks, hours, remarks, notes" make={() => [dailyAttendance(data, date)]} name={`daily-attendance-${date}`} />
@@ -200,7 +200,7 @@ export function Reports() {
         <SectionTitle
           title="Monthly reports"
           sub="Premium Shaheen Transport LLC PDF (forest green / gold). Portal UI stays navy/orange. Management Summary for leadership; Full HR Audit includes sensitive note text."
-          right={<input type="month" className="field w-auto" value={month} onChange={(e) => onMonthChange(e.target.value)} aria-label="Report month" />}
+          right={<input type="month" className="field w-auto" value={asText(month)} onChange={(e) => onMonthChange(e.target.value)} aria-label="Report month" />}
         />
         <div className="grid gap-3 md:grid-cols-2">
           <div className="admin-emp-card flex flex-col justify-between gap-3 md:col-span-2">

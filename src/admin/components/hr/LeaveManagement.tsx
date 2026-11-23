@@ -35,7 +35,7 @@ export function LeaveManagement() {
               type="month"
               className="field w-auto"
               aria-label="Leave month"
-              value={month}
+              value={asText(month)}
               onChange={(e) => e.target.value && setMonth(e.target.value)}
             />
             <button type="button" className="btn-ghost" onClick={() => requestTab("attendance", "leave")}>

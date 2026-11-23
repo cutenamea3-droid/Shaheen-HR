@@ -60,10 +60,10 @@ export function Performance() {
 
   const onAddFollowUp = () => {
     const emp = employees.find((e) => e.id === fuEmp);
-    const nextTitle = (fuTitle.trim() || fuTitleRef.current?.value || "").trim();
+    const nextTitle = (asText(fuTitle).trim() || fuTitleRef.current?.value || "").trim();
     const r = addFollowUp({
       employeeId: fuEmp,
-      employeeName: emp?.name ?? "",
+      employeeName: asText(emp?.name),
       due: fuDue,
       title: nextTitle,
       linkedDate: date,
@@ -88,7 +88,7 @@ export function Performance() {
       <SectionTitle
         title="Performance & Follow-Ups"
         sub={`${prettyDate(date)} · Facts (attendance) ≠ Statements (text) ≠ Assessment (rating). Violations appear as facts only.`}
-        right={<input type="date" className="field w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />}
+        right={<input type="date" className="field w-auto" value={asText(date)} onChange={(e) => e.target.value && setDate(e.target.value)} />}
       />
 
       {closed && (
@@ -101,7 +101,7 @@ export function Performance() {
         <h3 className="font-bold tracking-tight">Performance follow-ups</h3>
         <p className="text-sm text-muted-foreground">Desk list only — not push or email. Separate from assessment ratings.</p>
         <div className="admin-toolbar flex-wrap">
-          <select className="field w-auto" value={fuEmp} onChange={(e) => setFuEmp(e.target.value)} aria-label="Follow-up employee">
+          <select className="field w-auto" value={asText(fuEmp)} onChange={(e) => setFuEmp(e.target.value)} aria-label="Follow-up employee">
             <option value="">Employee</option>
             {employees.map((e) => (
               <option key={asText(e.id)} value={asText(e.id)}>
@@ -114,11 +114,11 @@ export function Performance() {
             data-testid="admin-followup-title"
             className="field min-w-[180px] flex-1"
             placeholder="Follow-up title"
-            value={fuTitle}
+            value={asText(fuTitle)}
             onChange={(e) => setFuTitle(e.target.value)}
             onInput={(e) => setFuTitle((e.target as HTMLInputElement).value)}
           />
-          <input type="date" className="field w-auto" value={fuDue} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
+          <input type="date" className="field w-auto" value={asText(fuDue)} onChange={(e) => e.target.value && setFuDue(e.target.value)} />
           <button type="button" className="btn-primary" onClick={onAddFollowUp}>
             Add follow-up
           </button>
@@ -182,7 +182,7 @@ export function Performance() {
                 </span>
                 <select
                   className="field w-auto"
-                  value={p.rating}
+                  value={asText(p.rating)}
                   disabled={closed}
                   onChange={(ev) => setPerf(date, e.id, { rating: ev.target.value as Rating })}
                   aria-label={`${asText(e.name)} assessment rating`}

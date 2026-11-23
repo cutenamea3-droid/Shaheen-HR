@@ -436,6 +436,21 @@ describe("Personal store write-path normalize guards", () => {
     expect(closeoutUi).toMatch(/asText\(description\)\.trim\(\)/);
     expect(opsBoards).toMatch(/asText\(title\)\.trim\(\)/);
     expect(opsBoards).toMatch(/value=\{asText\(title\)\}/);
+    expect(hrTodayUi).toMatch(/asText\(remTitle\)\.trim\(\)/);
+    expect(hrTodayUi).toMatch(/value=\{asText\(remTitle\)\}/);
+    expect(hrTodayUi).toMatch(/value=\{asText\(remEmp\)\}/);
+    expect(perfUi).toMatch(/asText\(fuTitle\)\.trim\(\)/);
+    expect(perfUi).toMatch(/value=\{asText\(fuEmp\)\}/);
+    expect(perfUi).toMatch(/value=\{asText\(p\.rating\)\}/);
+    expect(teamEmpUi).toMatch(/asText\(name\)\.trim\(\)/);
+    expect(teamEmpUi).toMatch(/value=\{asText\(deptId\)\}/);
+    expect(payrollUi).toMatch(/asText\(dayRateDraft\)\.trim\(\)/);
+    expect(payrollUi).toMatch(/value=\{asText\(dayRateDraft\)\}/);
+    expect(followUpUi).toMatch(/asText\(draftSubject\)\.trim\(\)/);
+    expect(followUpUi).toMatch(/value=\{asText\(draftSubject\)\}/);
+    expect(leaveUi).toMatch(/value=\{asText\(month\)\}/);
+    expect(reportsUi).toMatch(/value=\{asText\(month\)\}/);
+    expect(reportsUi).toMatch(/value=\{asText\(from\)\}/);
   });
 
   it("upsertNote / addBacklog / addSession coerce corrupt scalars", () => {

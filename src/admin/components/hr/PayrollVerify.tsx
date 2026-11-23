@@ -81,9 +81,9 @@ export function PayrollVerify() {
 
   const applyPolicy = () => {
     setErr("");
-    const nextDay = (dayRateDraft.trim() || dayRateRef.current?.value || "").trim();
-    const nextOt = (otRateDraft.trim() || otRateRef.current?.value || "").trim();
-    const nextDiv = (divisorDraft.trim() || divisorRef.current?.value || "").trim();
+    const nextDay = (asText(dayRateDraft).trim() || dayRateRef.current?.value || "").trim();
+    const nextOt = (asText(otRateDraft).trim() || otRateRef.current?.value || "").trim();
+    const nextDiv = (asText(divisorDraft).trim() || divisorRef.current?.value || "").trim();
     const day = Number(nextDay);
     const r1 = setAdditionalDayRate(day);
     if (!r1.ok) {
@@ -141,15 +141,15 @@ export function PayrollVerify() {
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
             Additional day rate (PKR)
-            <input ref={dayRateRef} data-testid="admin-day-rate" className="field mt-1" value={dayRateDraft} onChange={(e) => setDayRateDraft(e.target.value)} onInput={(e) => setDayRateDraft((e.target as HTMLInputElement).value)} />
+            <input ref={dayRateRef} data-testid="admin-day-rate" className="field mt-1" value={asText(dayRateDraft)} onChange={(e) => setDayRateDraft(e.target.value)} onInput={(e) => setDayRateDraft((e.target as HTMLInputElement).value)} />
           </label>
           <label className="text-sm">
             OT hourly rate (PKR) — blank = Needs Policy
-            <input ref={otRateRef} data-testid="admin-ot-rate" className="field mt-1" value={otRateDraft} onChange={(e) => setOtRateDraft(e.target.value)} onInput={(e) => setOtRateDraft((e.target as HTMLInputElement).value)} placeholder="unset" />
+            <input ref={otRateRef} data-testid="admin-ot-rate" className="field mt-1" value={asText(otRateDraft)} onChange={(e) => setOtRateDraft(e.target.value)} onInput={(e) => setOtRateDraft((e.target as HTMLInputElement).value)} placeholder="unset" />
           </label>
           <label className="text-sm">
             Working-days divisor — blank = Needs Policy
-            <input ref={divisorRef} data-testid="admin-divisor" className="field mt-1" value={divisorDraft} onChange={(e) => setDivisorDraft(e.target.value)} onInput={(e) => setDivisorDraft((e.target as HTMLInputElement).value)} placeholder="do not invent 26/27" />
+            <input ref={divisorRef} data-testid="admin-divisor" className="field mt-1" value={asText(divisorDraft)} onChange={(e) => setDivisorDraft(e.target.value)} onInput={(e) => setDivisorDraft((e.target as HTMLInputElement).value)} placeholder="do not invent 26/27" />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">

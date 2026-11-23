@@ -143,7 +143,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
               type="date"
               className="field w-auto"
               aria-label="Work date"
-              value={date}
+              value={asText(date)}
               onChange={(e) => e.target.value && setDate(e.target.value)}
             />
           </div>
@@ -194,13 +194,13 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             data-testid="admin-reminder-title"
             className="field min-w-[160px] flex-1"
             placeholder="Reminder title"
-            value={remTitle}
+            value={asText(remTitle)}
             onChange={(e) => setRemTitle(e.target.value)}
             onInput={(e) => setRemTitle((e.target as HTMLInputElement).value)}
             aria-label="Reminder title"
           />
-          <input type="date" className="field w-auto" value={remDue} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
-          <select className="field w-auto" value={remEmp} onChange={(e) => setRemEmp(e.target.value)} aria-label="Reminder employee">
+          <input type="date" className="field w-auto" value={asText(remDue)} onChange={(e) => e.target.value && setRemDue(e.target.value)} aria-label="Reminder due" />
+          <select className="field w-auto" value={asText(remEmp)} onChange={(e) => setRemEmp(e.target.value)} aria-label="Reminder employee">
             <option value="">Optional employee</option>
             {employees.map((e) => (
               <option key={asText(e.id)} value={asText(e.id)}>
@@ -213,7 +213,7 @@ export function MyHrToday({ localOnly = false }: { localOnly?: boolean }) {
             className="btn-primary"
             onClick={() => {
               const emp = employees.find((e) => e.id === remEmp);
-              const nextTitle = (remTitle.trim() || remTitleRef.current?.value || "").trim();
+              const nextTitle = (asText(remTitle).trim() || remTitleRef.current?.value || "").trim();
               const empName = emp ? asText(emp.name) : "";
               const r = addReminder({
                 title: nextTitle,

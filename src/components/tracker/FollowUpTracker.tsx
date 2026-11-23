@@ -43,9 +43,9 @@ export function FollowUpTracker() {
   const appliedSuggestions = useMemo(() => suggestAppliedFollowUps(data), [data]);
 
   function createManual() {
-    const nextSubject = (draftSubject.trim() || draftSubjectRef.current?.value || "").trim();
-    const nextDriver = (draftDriver.trim() || draftDriverRef.current?.value || "").trim();
-    const nextDue = (draftDue.trim() || draftDueRef.current?.value || "").trim();
+    const nextSubject = (asText(draftSubject).trim() || draftSubjectRef.current?.value || "").trim();
+    const nextDriver = (asText(draftDriver).trim() || draftDriverRef.current?.value || "").trim();
+    const nextDue = (asText(draftDue).trim() || draftDueRef.current?.value || "").trim();
     if (!nextSubject) {
       toast.error("Subject is required");
       return;
@@ -101,7 +101,7 @@ export function FollowUpTracker() {
           <input
             ref={draftDriverRef}
             data-testid="followup-driver"
-            value={draftDriver}
+            value={asText(draftDriver)}
             onChange={(e) => setDraftDriver(e.target.value)}
             onInput={(e) => setDraftDriver((e.target as HTMLInputElement).value)}
             placeholder="Driver name"
@@ -110,7 +110,7 @@ export function FollowUpTracker() {
           <input
             ref={draftSubjectRef}
             data-testid="followup-subject"
-            value={draftSubject}
+            value={asText(draftSubject)}
             onChange={(e) => setDraftSubject(e.target.value)}
             onInput={(e) => setDraftSubject((e.target as HTMLInputElement).value)}
             placeholder="Subject *"
@@ -120,7 +120,7 @@ export function FollowUpTracker() {
             ref={draftDueRef}
             data-testid="followup-due"
             type="date"
-            value={draftDue}
+            value={asText(draftDue)}
             onChange={(e) => setDraftDue(e.target.value)}
             onInput={(e) => setDraftDue((e.target as HTMLInputElement).value)}
             className="rounded-lg border-2 border-border bg-background px-3 py-2 text-sm font-semibold"
