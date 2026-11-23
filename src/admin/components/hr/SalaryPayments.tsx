@@ -281,9 +281,9 @@ export function SalaryPayments() {
                             {Number.isFinite(ev.createdAt)
                               ? new Date(ev.createdAt).toISOString().slice(0, 10)
                               : "—"}{" "}
-                            · {ev.eventType}
+                            · {asText(ev.eventType)}
                             {ev.amountPkr != null ? ` · ${formatPkr(ev.amountPkr)}` : ""}
-                            {ev.statusAfter ? ` → ${ev.statusAfter}` : ""}
+                            {ev.statusAfter ? ` → ${asText(ev.statusAfter)}` : ""}
                             {ev.note ? ` · ${asText(ev.note)}` : ""}
                           </li>
                         ))}

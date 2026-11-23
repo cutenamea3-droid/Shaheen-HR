@@ -247,7 +247,7 @@ export function suggestAppliedFollowUps(data: AppData): AppliedFollowSuggestion[
         out.push({
           key: `${def.id}:${row.id}:${col}`,
           driverId: row.driverId,
-          driver: row.cells[0] ?? "",
+          driver: String(row.cells[0] ?? ""),
           sectionId: def.id,
           rowId: row.id,
           docType,

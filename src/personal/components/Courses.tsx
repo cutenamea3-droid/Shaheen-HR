@@ -31,12 +31,12 @@ export function Courses() {
         {courses.map((c) => (
           <CourseEditor
             key={c.id}
-            id={c.id}
-            code={c.code}
-            title={c.title}
+            id={asTxt(c.id)}
+            code={asTxt(c.code)}
+            title={asTxt(c.title)}
             lecturesTotal={c.lecturesTotal}
             lecturesDone={c.lecturesDone}
-            notes={c.notes}
+            notes={asTxt(c.notes)}
             isTbd={c.isTbd}
             {...(c.requirementType ? { requirementType: c.requirementType } : {})}
             onSave={(p) => updateCourse(c.id, p)}

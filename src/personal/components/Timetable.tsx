@@ -97,13 +97,15 @@ export function Timetable() {
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="hp-title text-base font-bold sm:text-lg">{m.title}</span>
+                  <span className="hp-title text-base font-bold sm:text-lg">
+                    {asTxt(m.title)}
+                  </span>
                   <span className="text-2xl font-bold tabular-nums text-[var(--hp-teal)]">
                     {m.minutes}
                     <span className="text-sm font-semibold text-[var(--hp-muted)]">m</span>
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-[var(--hp-muted)]">{m.blurb}</p>
+                <p className="mt-2 text-xs text-[var(--hp-muted)]">{asTxt(m.blurb)}</p>
               </button>
             );
           })}

@@ -173,7 +173,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
 
     for (const rawRow of sec.rows) {
       const row: Row = { ...rawRow, cells: cellsOf(rawRow) };
-      const driver = (row.cells[0] ?? "").trim() || "—";
+      const driver = String(row.cells[0] ?? "").trim() || "—";
       const driverId = row.driverId;
       const isNew = isNewDriver(data, driverId);
       const mutedOrdinary = rowOrdinaryComplianceMuted(def, row, data);
@@ -220,7 +220,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
       // Temporary notes (preserve no-due notes — never invent a due date)
       if (def.types.includes("tempnote") && !leaveMute) {
         const tidx = def.types.indexOf("tempnote");
-        const text = (row.cells[tidx] ?? "").trim();
+        const text = String(row.cells[tidx] ?? "").trim();
         if (text) {
           pushUnique(out, {
             key: `temp-${def.id}-${row.id}`,
@@ -260,7 +260,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         // New/OO muted from ordinary lists but still show plans when filtering future_plans / new
         if (mutedOrdinary && !isNew) continue;
         const suggestion = buildFuturePlanSuggestion(rule, row);
-        const existingPlan = (row.cells[rule.planCol] ?? "").trim();
+        const existingPlan = String(row.cells[rule.planCol] ?? "").trim();
         const statusRaw = rule.statusCol != null ? (row.cells[rule.statusCol] ?? "") : "";
         const expiryRaw = row.cells[rule.expiryCol] ?? "";
         const expiryD = parseISO(expiryRaw);
@@ -369,7 +369,7 @@ export function collectWorkCenterItems(data: AppData): WorkCenterItem[] {
         );
         const planSuggestion = planRule ? buildFuturePlanSuggestion(planRule, row) : null;
         const planCol = planRule?.planCol ?? null;
-        const existingPlan = planCol != null ? (row.cells[planCol] ?? "").trim() : "";
+        const existingPlan = planCol != null ? String(row.cells[planCol] ?? "").trim() : "";
 
         pushUnique(out, {
           key: `issue-${def.id}-${row.id}-${issue.col}-${lab}`,

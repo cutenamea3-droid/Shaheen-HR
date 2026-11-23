@@ -115,7 +115,13 @@ export function RateCardPanel({ driverId }: { driverId: string }) {
                     key={f.key}
                     label={f.label}
                     {...(f.hint ? { hint: f.hint } : {})}
-                    value={rates[f.key] ?? ""}
+                    value={
+                      rates[f.key] == null
+                        ? ""
+                        : typeof rates[f.key] === "string"
+                          ? rates[f.key]
+                          : String(rates[f.key])
+                    }
                     disabled={view}
                     onSave={async (raw) => {
                       const r = await setRateField(driverId, f.key, raw);
@@ -184,12 +190,13 @@ function RateFieldInput({
   disabled?: boolean;
   onSave: (raw: string) => Promise<boolean>;
 }) {
-  const [draft, setDraft] = useState(value);
+  const safeValue = value == null ? "" : typeof value === "string" ? value : String(value);
+  const [draft, setDraft] = useState(safeValue);
   const [dirty, setDirty] = useState(false);
   const saveTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (!dirty) setDraft(value);
-  }, [value, dirty]);
+    if (!dirty) setDraft(safeValue);
+  }, [safeValue, dirty]);
   useEffect(
     () => () => {
       if (saveTimer.current != null) window.clearTimeout(saveTimer.current);

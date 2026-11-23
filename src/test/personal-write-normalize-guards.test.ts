@@ -285,6 +285,13 @@ describe("Personal store write-path normalize guards", () => {
     );
     expect(defaultsLib).toMatch(/pomodoroFocus: asNum\(/);
     expect(vaultUi).toMatch(/Number\.isFinite\(settings\.weekdayMinutes\)/);
+    const rateCardUi = readFileSync(
+      resolve(process.cwd(), "src/components/tracker/driver-hr/RateCardPanel.tsx"),
+      "utf8",
+    );
+    expect(rateCardUi).toMatch(/const safeValue = value == null/);
+    expect(coursesUi).toMatch(/title=\{asTxt\(c\.title\)\}/);
+    expect(coursesUi).toMatch(/notes=\{asTxt\(c\.notes\)\}/);
     const planCalUi = readFileSync(
       resolve(process.cwd(), "src/components/tracker/PlanCalendar.tsx"),
       "utf8",
